@@ -1,6 +1,5 @@
  "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type Question = {
@@ -175,12 +174,9 @@ const questions: Question[] = [
 ];
 
 export default function OnboardingPage() {
-  const router = useRouter();
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
   const [selected, setSelected] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveError, setSaveError] = useState("");
 
   const total = questions.length;
   const isFinal = step >= 20;
@@ -194,33 +190,9 @@ export default function OnboardingPage() {
     setStep((prev) => prev + 1);
   };
 
-  const saveProfile = async () => {
-    if (isSaving) return;
-    setIsSaving(true);
-    setSaveError("");
-
-    try {
-      const response = await fetch("/api/save-profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(answers),
-      });
-
-      if (!response.ok) {
-        const data = (await response.json()) as { error?: string };
-        throw new Error(data.error ?? "Erreur lors de la sauvegarde.");
-      }
-
-      router.push("/dashboard");
-    } catch (error: unknown) {
-      setSaveError(
-        error instanceof Error
-          ? error.message
-          : "Impossible de sauvegarder votre profil.",
-      );
-    } finally {
-      setIsSaving(false);
-    }
+  const saveProfile = () => {
+    alert("saveProfile appelé");
+    console.log("test");
   };
 
   return (
@@ -302,18 +274,13 @@ export default function OnboardingPage() {
               ))}
             </div>
 
-            {saveError ? (
-              <p className="mt-5 text-sm text-red-400">{saveError}</p>
-            ) : null}
-
             <div className="mt-8">
               <button
                 type="button"
                 onClick={() => void saveProfile()}
-                disabled={isSaving}
-                className="rounded-full bg-[#10b981] px-8 py-3 text-sm font-semibold text-black transition hover:bg-[#0fb174] disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-300"
+                className="rounded-full bg-[#10b981] px-8 py-3 text-sm font-semibold text-black transition hover:bg-[#0fb174]"
               >
-                {isSaving ? "Sauvegarde..." : "Acceder a mon espace"}
+                Acceder a mon espace
               </button>
             </div>
           </section>
