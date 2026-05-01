@@ -440,11 +440,12 @@ export default function OnboardingPage() {
 
             <div className="mt-10">
               <button
-                type="button"
-                onClick={() => void saveProfileAndContinue()}
-                className="inline-flex min-h-[50px] items-center justify-center rounded-full bg-[#10b981] px-8 text-sm font-semibold text-black transition hover:bg-[#0fb174] disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-300"
+                onClick={() => {
+                  console.log("TEST");
+                  alert("bouton clique");
+                }}
               >
-                {isSaving ? "Sauvegarde..." : "Acceder a mon espace"}
+                Test
               </button>
             </div>
           </section>
