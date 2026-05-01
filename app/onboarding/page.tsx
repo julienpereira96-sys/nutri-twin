@@ -1,4 +1,11 @@
+ "use client";
 
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+
+type Question = {
+  label: string;
+  options: string[];
 };
 
 const questions: Question[] = [
@@ -180,32 +187,6 @@ export default function OnboardingPage() {
   const currentQuestion = questions[step];
   const progress = isFinal ? 100 : Math.round((step / total) * 100);
 
-  const mappedAnswers = useMemo(
-    () => ({
-      tone_of_voice: answers[0] ?? null,
-      tutoiement: answers[1] ?? null,
-      technicite: answers[2] ?? null,
-      longueur_reponses: answers[3] ?? null,
-      emojis: answers[4] ?? null,
-      approche_generale: answers[5] ?? null,
-      faculents_soir: answers[6] ?? null,
-      jejune: answers[7] ?? null,
-      complements: answers[8] ?? null,
-      regimes: answers[9] ?? null,
-      petit_dejeuner: answers[10] ?? null,
-      collations: answers[11] ?? null,
-      lifestyle_budget: answers[12] ?? null,
-      gestion_ecarts: answers[13] ?? null,
-      emotions: answers[14] ?? null,
-      non_suivi: answers[15] ?? null,
-      fetes_vacances: answers[16] ?? null,
-      perimetre: answers[17] ?? null,
-      questions_medicales: answers[18] ?? null,
-      relance_patients: answers[19] ?? null,
-    }),
-    [answers],
-  );
-
   const goNext = () => {
     if (!selected || isFinal) return;
     setAnswers((prev) => [...prev, selected]);
@@ -214,22 +195,22 @@ export default function OnboardingPage() {
   };
 
   const saveProfile = async () => {
-    alert(process.env.NEXT_PUBLIC_SUPABASE_URL);
     if (isSaving) return;
     setIsSaving(true);
     setSaveError("");
 
     try {
-      const supabase = createClient(
-        "https://jbniaixnljujmhtzuewq.supabase.co",
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpibmlhaXhubGp1am1odHp1ZXdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTQzNjQsImV4cCI6MjA5MzE3MDM2NH0.EECFZq93w__FRaIEq2uA7bX5-nnjZvs_kXWsKPvavhw",
-      );
+      const response = await fetch("/api/save-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(answers),
+      });
 
-      const { error } = await supabase
-        .from("practitioner_profiles")
-        .insert({ ...mappedAnswers });
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string };
+        throw new Error(data.error ?? "Erreur lors de la sauvegarde.");
+      }
 
-      if (error) throw error;
       router.push("/dashboard");
     } catch (error: unknown) {
       setSaveError(
