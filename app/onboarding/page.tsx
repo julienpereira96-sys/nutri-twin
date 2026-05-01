@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { createClient } from "@supabase/supabase-js";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 type Question = {
@@ -217,9 +218,12 @@ const questions: Question[] = [
 ];
 
 export default function OnboardingPage() {
+  const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   const total = questions.length;
   const isSummary = stepIndex >= total;
@@ -237,6 +241,32 @@ export default function OnboardingPage() {
         label: question.label,
         answer: answers[question.id],
       })),
+    [answers],
+  );
+
+  const mappedAnswers = useMemo(
+    () => ({
+      tone_of_voice: answers[1] ?? null,
+      tutoiement: answers[2] ?? null,
+      technicite: answers[3] ?? null,
+      longueur_reponses: answers[4] ?? null,
+      emojis: answers[5] ?? null,
+      approche_generale: answers[6] ?? null,
+      faculents_soir: answers[7] ?? null,
+      jejune: answers[8] ?? null,
+      complements: answers[9] ?? null,
+      regimes: answers[10] ?? null,
+      petit_dejeuner: answers[11] ?? null,
+      collations: answers[12] ?? null,
+      lifestyle_budget: answers[13] ?? null,
+      gestion_ecarts: answers[14] ?? null,
+      emotions: answers[15] ?? null,
+      non_suivi: answers[16] ?? null,
+      fetes_vacances: answers[17] ?? null,
+      perimetre: answers[18] ?? null,
+      questions_medicales: answers[19] ?? null,
+      relance_patients: answers[20] ?? null,
+    }),
     [answers],
   );
 
@@ -259,6 +289,39 @@ export default function OnboardingPage() {
       setStepIndex((prev) => prev + 1);
       setIsTransitioning(false);
     }, 180);
+  };
+
+  const saveProfileAndContinue = async () => {
+    if (isSaving) return;
+
+    setIsSaving(true);
+    setSaveError("");
+
+    try {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      );
+      console.log("Sauvegarde...", answers);
+      const { error } = await supabase
+        .from("practitioner_profiles")
+        .insert({ ...mappedAnswers });
+
+      if (error) {
+        throw error;
+      }
+
+      router.push("/dashboard");
+    } catch (error: unknown) {
+      console.log("Erreur:", error);
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : "Impossible de sauvegarder votre profil pour le moment.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -370,13 +433,19 @@ export default function OnboardingPage() {
               ))}
             </div>
 
+            {saveError ? (
+              <p className="mt-6 text-sm text-red-400">{saveError}</p>
+            ) : null}
+
             <div className="mt-10">
-              <Link
-                href="/chat"
-                className="inline-flex min-h-[50px] items-center justify-center rounded-full bg-[#10b981] px-8 text-sm font-semibold text-black transition hover:bg-[#0fb174]"
+              <button
+                type="button"
+                onClick={() => void saveProfileAndContinue()}
+                disabled={isSaving}
+                className="inline-flex min-h-[50px] items-center justify-center rounded-full bg-[#10b981] px-8 text-sm font-semibold text-black transition hover:bg-[#0fb174] disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-300"
               >
-                Acceder a mon espace
-              </Link>
+                {isSaving ? "Sauvegarde..." : "Acceder a mon espace"}
+              </button>
             </div>
           </section>
         )}
