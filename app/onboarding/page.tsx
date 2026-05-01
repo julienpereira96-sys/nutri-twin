@@ -292,6 +292,7 @@ export default function OnboardingPage() {
   };
 
   const saveProfileAndContinue = async () => {
+    console.log("BOUTON CLIQUE");
     if (isSaving) return;
 
     setIsSaving(true);
