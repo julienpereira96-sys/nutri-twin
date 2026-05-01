@@ -227,6 +227,7 @@ export default function OnboardingPage() {
 
   const total = questions.length;
   const isSummary = stepIndex >= total;
+  console.log("stepIndex:", stepIndex, "total:", total, "isSummary:", isSummary);
   const currentQuestion = questions[stepIndex];
   const selectedOption = currentQuestion ? answers[currentQuestion.id] : undefined;
   const answeredCount = Object.keys(answers).length;
