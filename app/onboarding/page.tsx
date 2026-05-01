@@ -442,7 +442,6 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={() => void saveProfileAndContinue()}
-                disabled={isSaving}
                 className="inline-flex min-h-[50px] items-center justify-center rounded-full bg-[#10b981] px-8 text-sm font-semibold text-black transition hover:bg-[#0fb174] disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-300"
               >
                 {isSaving ? "Sauvegarde..." : "Acceder a mon espace"}
