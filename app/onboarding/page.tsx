@@ -222,6 +222,7 @@ export default function OnboardingPage() {
   };
 
   const saveProfile = async () => {
+    alert(process.env.NEXT_PUBLIC_SUPABASE_URL);
     if (isSaving) return;
     setIsSaving(true);
     setSaveError("");
