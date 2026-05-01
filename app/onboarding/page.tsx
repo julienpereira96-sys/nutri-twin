@@ -281,7 +281,7 @@ export default function OnboardingPage() {
   };
 
   const goNext = () => {
-    if (isSummary || !currentQuestion || !selectedOption || isTransitioning) {
+    if (!currentQuestion || !selectedOption || isTransitioning) {
       return;
     }
 
