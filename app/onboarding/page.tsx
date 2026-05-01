@@ -1,12 +1,4 @@
-"use client";
 
-import { createClient } from "@supabase/supabase-js";
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-
-type Question = {
-  label: string;
-  options: string[];
 };
 
 const questions: Question[] = [
@@ -229,8 +221,8 @@ export default function OnboardingPage() {
 
     try {
       const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        "https://jbniaixnljujmhtzuewq.supabase.co",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpibmlhaXhubGp1am1odHp1ZXdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc1OTQzNjQsImV4cCI6MjA5MzE3MDM2NH0.EECFZq93w__FRaIEq2uA7bX5-nnjZvs_kXWsKPvavhw",
       );
 
       const { error } = await supabase
