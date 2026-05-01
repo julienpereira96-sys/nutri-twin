@@ -218,6 +218,8 @@ const questions: Question[] = [
 ];
 
 export default function OnboardingPage() {
+  const LAST_QUESTION_INDEX = questions.length - 1;
+  const FINAL_STEP_INDEX = questions.length;
   const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -226,7 +228,7 @@ export default function OnboardingPage() {
   const [saveError, setSaveError] = useState("");
 
   const total = questions.length;
-  const isSummary = stepIndex >= total;
+  const isSummary = stepIndex >= FINAL_STEP_INDEX;
   console.log("stepIndex:", stepIndex, "total:", total, "isSummary:", isSummary);
   const currentQuestion = questions[stepIndex];
   const selectedOption = currentQuestion ? answers[currentQuestion.id] : undefined;
@@ -281,13 +283,15 @@ export default function OnboardingPage() {
   };
 
   const goNext = () => {
-    if (!currentQuestion || !selectedOption || isTransitioning) {
+    if (!currentQuestion || !selectedOption || isTransitioning || isSummary) {
       return;
     }
 
     setIsTransitioning(true);
     window.setTimeout(() => {
-      setStepIndex((prev) => prev + 1);
+      setStepIndex((prev) =>
+        prev >= LAST_QUESTION_INDEX ? FINAL_STEP_INDEX : prev + 1,
+      );
       setIsTransitioning(false);
     }, 180);
   };
@@ -441,12 +445,11 @@ export default function OnboardingPage() {
 
             <div className="mt-10">
               <button
-                onClick={() => {
-                  console.log("TEST");
-                  alert("bouton clique");
-                }}
+                type="button"
+                onClick={() => void saveProfileAndContinue()}
+                className="inline-flex min-h-[50px] items-center justify-center rounded-full bg-[#10b981] px-8 text-sm font-semibold text-black transition hover:bg-[#0fb174]"
               >
-                Test
+                Acceder a mon espace
               </button>
             </div>
           </section>
