@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const emerald = "#10b981";
 
@@ -32,13 +32,13 @@ export default function Home() {
             >
               Espace praticien
             </Link>
-            <Link
+            <a
               href="#tarifs"
               className="rounded-full px-4 py-2 text-sm font-semibold text-black transition hover:bg-emerald-400"
               style={{ backgroundColor: emerald }}
             >
               Essai gratuit
-            </Link>
+            </a>
           </nav>
         </div>
       </header>
@@ -326,13 +326,7 @@ export default function Home() {
             <div className="mx-auto mt-10 max-w-sm">
               <FounderCounter />
             </div>
-            <Link
-              href="/signup"
-              className="mt-10 inline-flex min-h-[52px] w-full items-center justify-center rounded-full px-10 text-base font-semibold text-black shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 sm:w-auto"
-              style={{ backgroundColor: emerald }}
-            >
-              Je veux devenir Fondateur →
-            </Link>
+            <FounderButton />
             <p className="mt-4 text-xs text-zinc-500">
               Aucun engagement — annulable à tout moment
             </p>
@@ -364,10 +358,51 @@ export default function Home() {
   );
 }
 
+function FounderButton() {
+  const [loading, setLoading] = useState(false);
+
+  const handleCheckout = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: "fondateur", userId: "" }),
+      });
+      const data = await res.json() as { url: string };
+      if (data.url) window.location.href = data.url;
+    } catch {
+      console.error("Erreur checkout fondateur");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={() => void handleCheckout()}
+      disabled={loading}
+      className="mt-10 inline-flex min-h-[52px] w-full items-center justify-center rounded-full px-10 text-base font-semibold text-black shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 sm:w-auto"
+      style={{ backgroundColor: emerald }}
+    >
+      {loading ? "Chargement..." : "Je veux devenir Fondateur →"}
+    </button>
+  );
+}
+
 function FounderCounter() {
-  const [count] = useState(7);
+  const [count, setCount] = useState(7);
   const total = 10;
   const percentage = ((total - count) / total) * 100;
+
+  useEffect(() => {
+    fetch("/api/founder-count")
+      .then((res) => res.json())
+      .then((data: { count: number }) => {
+        if (data.count !== undefined) setCount(data.count);
+      })
+      .catch(() => null);
+  }, []);
 
   return (
     <div
