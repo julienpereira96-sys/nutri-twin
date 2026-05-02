@@ -30,21 +30,23 @@ export async function POST(request: Request) {
 
   if (!supabaseUrl || (!supabaseServiceKey && !supabaseAnonKey)) {
     return Response.json(
-      { error: "Variables d'environnement Supabase manquantes cote serveur." },
+      { error: "Variables d'environnement Supabase manquantes." },
       { status: 500 },
     );
   }
 
-  let answers: unknown;
+  let body: unknown;
   try {
-    answers = await request.json();
+    body = await request.json();
   } catch {
     return Response.json({ error: "Body JSON invalide." }, { status: 400 });
   }
 
+  const { answers, userId } = body as { answers: unknown; userId: string };
+
   if (!Array.isArray(answers)) {
     return Response.json(
-      { error: "Le body doit etre un tableau de reponses." },
+      { error: "Le body doit contenir un tableau de reponses." },
       { status: 400 },
     );
   }
@@ -61,7 +63,7 @@ export async function POST(request: Request) {
 
     const { error } = await supabase
       .from("practitioner_profiles")
-      .insert({ ...mappedAnswers });
+      .insert({ ...mappedAnswers, user_id: userId ?? null });
 
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });

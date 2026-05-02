@@ -203,7 +203,7 @@ export default function OnboardingPage() {
       const response = await fetch("/api/save-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(answers),
+        body: JSON.stringify({ answers, userId: null }),
       });
 
       if (!response.ok) {
