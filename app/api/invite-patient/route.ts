@@ -9,8 +9,7 @@ export async function POST(request: Request) {
   );
 
   const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://nutri-twin.vercel.app"}/set-password`,
-
+    redirectTo: `http://localhost:3000/set-password`,
   });
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
