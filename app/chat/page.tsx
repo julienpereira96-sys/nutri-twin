@@ -1,6 +1,7 @@
 "use client";
 
-import { KeyboardEvent, useState } from "react";
+import { KeyboardEvent, useState, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -42,7 +43,27 @@ export default function ChatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [breathing, setBreathing] = useState<BreathingStep>("idle");
   const [earnedBadges, setEarnedBadges] = useState<number[]>([0, 2]);
+  const [patientId, setPatientId] = useState<string | null>(null);
+  const [practitionerIdFromDb, setPractitionerIdFromDb] = useState<string | null>(null);
   const affirmation = affirmations[new Date().getDay() % affirmations.length];
+
+  useEffect(() => {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (data.user) {
+        setPatientId(data.user.id);
+        const { data: relation } = await supabase
+          .from("patient_practitioner")
+          .select("practitioner_id")
+          .eq("patient_id", data.user.id)
+          .single();
+        if (relation) setPractitionerIdFromDb(relation.practitioner_id as string);
+      }
+    });
+  }, []);
 
   const startBreathing = () => {
     setBreathing("inhale");
@@ -64,7 +85,11 @@ export default function ChatPage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmedMessage }),
+        body: JSON.stringify({
+          message: trimmedMessage,
+          patientId: patientId ?? undefined,
+          practitionerId: practitionerIdFromDb ?? undefined,
+        }),
       });
       const data = (await res.json()) as { response?: string; error?: string };
       const assistantReply =
@@ -119,7 +144,6 @@ export default function ChatPage() {
 
         {/* Sidebar */}
         <>
-          {/* Overlay mobile */}
           {sidebarOpen && (
             <div
               onClick={() => setSidebarOpen(false)}
@@ -127,7 +151,6 @@ export default function ChatPage() {
                 position: "fixed", inset: 0,
                 background: "rgba(0,0,0,0.3)",
                 zIndex: 20,
-                display: "block",
               }}
             />
           )}
@@ -150,24 +173,17 @@ export default function ChatPage() {
             boxShadow: sidebarOpen ? "4px 0 24px rgba(0,0,0,0.1)" : "none",
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>
-                Mon espace
-              </h2>
+              <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Mon espace</h2>
               <button
                 onClick={() => setSidebarOpen(false)}
                 style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}
-              >
-                ×
-              </button>
+              >×</button>
             </div>
 
-            {/* Affirmation glassmorphism */}
             <div style={{
               background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))",
-              borderRadius: 16,
-              padding: "16px",
+              borderRadius: 16, padding: "16px",
               border: "1px solid rgba(16,185,129,0.2)",
-              backdropFilter: "blur(8px)",
             }}>
               <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "#10b981", letterSpacing: "0.8px", textTransform: "uppercase", marginBottom: 8 }}>
                 ✨ Affirmation du jour
@@ -177,7 +193,6 @@ export default function ChatPage() {
               </p>
             </div>
 
-            {/* Tableau des victoires */}
             <div>
               <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.8px", textTransform: "uppercase" }}>
                 🏆 Mes victoires
@@ -191,12 +206,10 @@ export default function ChatPage() {
                     )}
                     style={{
                       display: "flex", alignItems: "center", gap: 10,
-                      padding: "10px 14px",
-                      borderRadius: 12,
+                      padding: "10px 14px", borderRadius: 12,
                       background: earnedBadges.includes(i) ? "#f0fdf4" : "#f8fafc",
                       border: `1.5px solid ${earnedBadges.includes(i) ? "#10b981" : "#e2e8f0"}`,
-                      cursor: "pointer",
-                      transition: "all 0.2s",
+                      cursor: "pointer", transition: "all 0.2s",
                       opacity: earnedBadges.includes(i) ? 1 : 0.5,
                     }}
                   >
@@ -204,54 +217,35 @@ export default function ChatPage() {
                     <span style={{ fontSize: 13, fontWeight: 500, color: earnedBadges.includes(i) ? "#059669" : "#94a3b8" }}>
                       {badge.label}
                     </span>
-                    {earnedBadges.includes(i) && (
-                      <span style={{ marginLeft: "auto", fontSize: 14 }}>✅</span>
-                    )}
+                    {earnedBadges.includes(i) && <span style={{ marginLeft: "auto", fontSize: 14 }}>✅</span>}
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* SOS Calme */}
             <div style={{ marginTop: "auto" }}>
               <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.8px", textTransform: "uppercase" }}>
                 🧘 SOS Calme
               </p>
               {breathing !== "idle" ? (
-                <div style={{
-                  textAlign: "center",
-                  padding: "20px",
-                  background: "#f0fdf4",
-                  borderRadius: 16,
-                  border: "1.5px solid #10b981",
-                }}>
+                <div style={{ textAlign: "center", padding: "20px", background: "#f0fdf4", borderRadius: 16, border: "1.5px solid #10b981" }}>
                   <div style={{
-                    width: 70, height: 70,
-                    borderRadius: "50%",
+                    width: 70, height: 70, borderRadius: "50%",
                     background: "radial-gradient(circle, #10b981, #6ee7b7)",
                     margin: "0 auto 12px",
-                    animation: breathing === "inhale" ? "grow 4s ease-in-out" :
-                              breathing === "exhale" ? "shrink 4s ease-in-out" : "none",
+                    animation: breathing === "inhale" ? "grow 4s ease-in-out" : breathing === "exhale" ? "shrink 4s ease-in-out" : "none",
                     boxShadow: "0 4px 20px rgba(16,185,129,0.4)",
                   }} />
-                  <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#059669" }}>
-                    {breathingLabel[breathing]}
-                  </p>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#059669" }}>{breathingLabel[breathing]}</p>
                 </div>
               ) : (
                 <button
                   onClick={startBreathing}
                   style={{
-                    width: "100%",
-                    padding: "14px",
-                    borderRadius: 14,
+                    width: "100%", padding: "14px", borderRadius: 14,
                     background: "linear-gradient(135deg, #6ee7b7, #10b981)",
-                    border: "none",
-                    color: "white",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    boxShadow: "0 4px 14px rgba(16,185,129,0.3)",
+                    border: "none", color: "white", fontSize: 14, fontWeight: 600,
+                    cursor: "pointer", boxShadow: "0 4px 14px rgba(16,185,129,0.3)",
                   }}
                 >
                   🫁 Guide de respiration
@@ -264,37 +258,26 @@ export default function ChatPage() {
         {/* Zone chat */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
-          {/* Header */}
           <header style={{
             background: "rgba(255,255,255,0.9)",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
             borderBottom: "1px solid rgba(0,0,0,0.05)",
             padding: "14px 20px",
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
+            position: "sticky", top: 0, zIndex: 10,
             boxShadow: "0 1px 20px rgba(0,0,0,0.04)",
           }}>
             <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", alignItems: "center", gap: 14 }}>
-              {/* Bouton sidebar */}
               <button
                 onClick={() => setSidebarOpen(true)}
                 style={{
-                  width: 40, height: 40,
-                  borderRadius: 12,
-                  background: "#f0fdf4",
-                  border: "1.5px solid #d1fae5",
-                  cursor: "pointer",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 18,
-                  flexShrink: 0,
+                  width: 40, height: 40, borderRadius: 12,
+                  background: "#f0fdf4", border: "1.5px solid #d1fae5",
+                  cursor: "pointer", display: "flex", alignItems: "center",
+                  justifyContent: "center", fontSize: 18, flexShrink: 0,
                 }}
-              >
-                🌿
-              </button>
+              >🌿</button>
 
-              {/* Avatar */}
               <div style={{ position: "relative" }}>
                 <div style={{
                   position: "absolute", inset: -4, borderRadius: "50%",
@@ -304,13 +287,9 @@ export default function ChatPage() {
                 <div style={{
                   width: 46, height: 46, borderRadius: 23,
                   background: "linear-gradient(135deg, #6ee7b7, #10b981)",
-                  display: "flex", alignItems: "center",
-                  justifyContent: "center", fontSize: 22,
-                  boxShadow: "0 4px 14px rgba(16,185,129,0.3)",
-                  position: "relative",
-                }}>
-                  🌿
-                </div>
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 22, boxShadow: "0 4px 14px rgba(16,185,129,0.3)", position: "relative",
+                }}>🌿</div>
                 <div style={{
                   position: "absolute", bottom: 1, right: 1,
                   width: 12, height: 12, borderRadius: "50%",
@@ -320,26 +299,19 @@ export default function ChatPage() {
               </div>
 
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, fontSize: 15, color: "#0f172a" }}>
-                  Compagnon de suivi
-                </div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#0f172a" }}>Compagnon de suivi</div>
                 <div style={{ fontSize: 12, color: "#64748b" }}>
                   Jumeau numérique de{" "}
                   <span style={{ color: "#10b981", fontWeight: 600 }}>{practitionerName}</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
-                  <div style={{
-                    width: 7, height: 7, borderRadius: "50%",
-                    background: "#10b981",
-                    animation: "pulse-dot 2s infinite",
-                  }} />
+                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", animation: "pulse-dot 2s infinite" }} />
                   <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600 }}>En ligne</span>
                 </div>
               </div>
             </div>
           </header>
 
-          {/* Messages */}
           <main style={{ maxWidth: 680, width: "100%", margin: "0 auto", padding: "28px 16px 160px", flex: 1 }}>
 
             {messages.length === 0 && (
@@ -353,18 +325,15 @@ export default function ChatPage() {
                       <div style={{
                         width: 38, height: 38, borderRadius: 19,
                         background: "linear-gradient(135deg, #6ee7b7, #10b981)",
-                        display: "flex", alignItems: "center",
-                        justifyContent: "center", fontSize: 18, flexShrink: 0,
-                        boxShadow: "0 3px 10px rgba(16,185,129,0.25)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 18, flexShrink: 0, boxShadow: "0 3px 10px rgba(16,185,129,0.25)",
                       }}>🌿</div>
                     ) : (
                       <div style={{ width: 38, flexShrink: 0 }} />
                     )}
                     <div style={{
-                      background: "white",
-                      borderRadius: "22px 22px 22px 6px",
-                      padding: "14px 20px",
-                      maxWidth: "80%",
+                      background: "white", borderRadius: "22px 22px 22px 6px",
+                      padding: "14px 20px", maxWidth: "80%",
                       boxShadow: "0 2px 16px rgba(0,0,0,0.06)",
                       border: "1px solid rgba(0,0,0,0.04)",
                     }}>
@@ -383,16 +352,10 @@ export default function ChatPage() {
                         key={action}
                         onClick={() => void send(action)}
                         style={{
-                          background: "white",
-                          border: "1.5px solid #d1fae5",
-                          borderRadius: 22,
-                          padding: "9px 16px",
-                          fontSize: 13,
-                          color: "#059669",
-                          cursor: "pointer",
-                          fontWeight: 500,
-                          transition: "all 0.2s",
-                          boxShadow: "0 1px 6px rgba(16,185,129,0.08)",
+                          background: "white", border: "1.5px solid #d1fae5",
+                          borderRadius: 22, padding: "9px 16px", fontSize: 13,
+                          color: "#059669", cursor: "pointer", fontWeight: 500,
+                          transition: "all 0.2s", boxShadow: "0 1px 6px rgba(16,185,129,0.08)",
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.background = "#f0fdf4";
@@ -404,9 +367,7 @@ export default function ChatPage() {
                           e.currentTarget.style.borderColor = "#d1fae5";
                           e.currentTarget.style.transform = "translateY(0)";
                         }}
-                      >
-                        {action}
-                      </button>
+                      >{action}</button>
                     ))}
                   </div>
                 </div>
@@ -422,8 +383,7 @@ export default function ChatPage() {
                     style={{
                       display: "flex",
                       justifyContent: isUser ? "flex-end" : "flex-start",
-                      alignItems: "flex-end",
-                      gap: 10,
+                      alignItems: "flex-end", gap: 10,
                       animation: "fadeUp 0.3s ease",
                     }}
                   >
@@ -431,22 +391,17 @@ export default function ChatPage() {
                       <div style={{
                         width: 38, height: 38, borderRadius: 19,
                         background: "linear-gradient(135deg, #6ee7b7, #10b981)",
-                        display: "flex", alignItems: "center",
-                        justifyContent: "center", fontSize: 18, flexShrink: 0,
-                        boxShadow: "0 3px 10px rgba(16,185,129,0.25)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 18, flexShrink: 0, boxShadow: "0 3px 10px rgba(16,185,129,0.25)",
                       }}>🌿</div>
                     )}
                     <div style={{
-                      maxWidth: "78%",
-                      padding: "14px 20px",
+                      maxWidth: "78%", padding: "14px 20px",
                       borderRadius: isUser ? "22px 22px 6px 22px" : "22px 22px 22px 6px",
                       background: isUser ? "#10b981" : "white",
                       color: isUser ? "white" : "#374151",
-                      fontSize: 15,
-                      lineHeight: 1.7,
-                      boxShadow: isUser
-                        ? "0 4px 16px rgba(16,185,129,0.35)"
-                        : "0 2px 16px rgba(0,0,0,0.06)",
+                      fontSize: 15, lineHeight: 1.7,
+                      boxShadow: isUser ? "0 4px 16px rgba(16,185,129,0.35)" : "0 2px 16px rgba(0,0,0,0.06)",
                       border: isUser ? "none" : "1px solid rgba(0,0,0,0.04)",
                     }}>
                       {chatMessage.content}
@@ -460,21 +415,17 @@ export default function ChatPage() {
                   <div style={{
                     width: 38, height: 38, borderRadius: 19,
                     background: "linear-gradient(135deg, #6ee7b7, #10b981)",
-                    display: "flex", alignItems: "center",
-                    justifyContent: "center", fontSize: 18,
-                    boxShadow: "0 3px 10px rgba(16,185,129,0.25)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 18, boxShadow: "0 3px 10px rgba(16,185,129,0.25)",
                   }}>🌿</div>
                   <div style={{
-                    background: "white",
-                    borderRadius: "22px 22px 22px 6px",
-                    padding: "16px 22px",
-                    display: "flex", gap: 6, alignItems: "center",
+                    background: "white", borderRadius: "22px 22px 22px 6px",
+                    padding: "16px 22px", display: "flex", gap: 6, alignItems: "center",
                     boxShadow: "0 2px 16px rgba(0,0,0,0.06)",
                   }}>
                     {[0, 200, 400].map((delay, i) => (
                       <div key={i} style={{
-                        width: 9, height: 9, borderRadius: "50%",
-                        background: "#10b981",
+                        width: 9, height: 9, borderRadius: "50%", background: "#10b981",
                         animation: `bounce 1.4s infinite ${delay}ms`,
                       }} />
                     ))}
@@ -484,13 +435,10 @@ export default function ChatPage() {
             </div>
           </main>
 
-          {/* Input */}
           <div style={{
-            position: "fixed",
-            bottom: 0, left: 0, right: 0,
+            position: "fixed", bottom: 0, left: 0, right: 0,
             background: "rgba(248,250,252,0.92)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
+            backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)",
             borderTop: "1px solid rgba(0,0,0,0.05)",
             padding: "14px 16px",
             paddingBottom: "max(18px, env(safe-area-inset-bottom))",
@@ -504,9 +452,8 @@ export default function ChatPage() {
                 placeholder="Posez votre question..."
                 style={{
                   flex: 1, height: 52, borderRadius: 26,
-                  border: "1.5px solid #e2e8f0",
-                  padding: "0 22px", fontSize: 15, outline: "none",
-                  background: "white", color: "#0f172a",
+                  border: "1.5px solid #e2e8f0", padding: "0 22px",
+                  fontSize: 15, outline: "none", background: "white", color: "#0f172a",
                   boxShadow: "0 1px 6px rgba(0,0,0,0.04)",
                   transition: "border-color 0.2s, box-shadow 0.2s",
                 }}
@@ -524,9 +471,7 @@ export default function ChatPage() {
                 disabled={loading || !message.trim()}
                 style={{
                   width: 52, height: 52, borderRadius: 26,
-                  background: loading || !message.trim()
-                    ? "#e2e8f0"
-                    : "linear-gradient(135deg, #34d399, #10b981)",
+                  background: loading || !message.trim() ? "#e2e8f0" : "linear-gradient(135deg, #34d399, #10b981)",
                   border: "none",
                   cursor: loading || !message.trim() ? "not-allowed" : "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
