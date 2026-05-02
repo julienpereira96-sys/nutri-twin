@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     subscription_data: {
       trial_period_days: 14,
     },
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/signup?plan=${plan}`,
+    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment-success?plan=${plan}`,
     cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/#tarifs`,
     metadata: { userId, plan },
   });
