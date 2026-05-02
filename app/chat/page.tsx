@@ -54,26 +54,41 @@ export default function ChatPage() {
     supabase.auth.getUser().then(async ({ data }) => {
       if (data.user) {
         setPatientId(data.user.id);
+
         const { data: relation } = await supabase
           .from("patient_practitioner")
           .select("practitioner_id")
           .eq("patient_id", data.user.id)
           .single();
+
         if (relation) {
           setPractitionerIdFromDb(relation.practitioner_id as string);
+
           const { data: practitioner } = await supabase
             .from("practitioners")
             .select("first_name, last_name")
             .eq("user_id", relation.practitioner_id)
             .single();
+
           if (practitioner) {
             setPractitionerName(`${practitioner.first_name} ${practitioner.last_name}`);
+          }
+
+          // Charger l'historique des conversations
+          const { data: history } = await supabase
+            .from("conversations")
+            .select("role, content")
+            .eq("patient_id", data.user.id)
+            .eq("practitioner_id", relation.practitioner_id)
+            .order("created_at", { ascending: true });
+
+          if (history && history.length > 0) {
+            setMessages(history as ChatMessage[]);
           }
         }
       }
     });
   }, []);
-  
 
   const startBreathing = () => {
     setBreathing("inhale");
