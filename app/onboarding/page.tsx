@@ -1,198 +1,428 @@
- "use client";
+"use client";
 
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { useState } from "react";
 
+type QuestionType = "single" | "multiple" | "free";
+
 type Question = {
+  id: string;
+  block: string;
   label: string;
-  options: string[];
+  sublabel?: string;
+  type: QuestionType;
+  options?: string[];
+  placeholder?: string;
 };
 
 const questions: Question[] = [
+  // BLOC 1 — Identité & Caractère
   {
+    id: "tone_of_voice",
+    block: "Identité & Caractère",
     label: "Comment doit sonner votre jumeau ?",
+    type: "single",
     options: [
-      "Le Medical (factuel, precis, pas d'emojis)",
-      "Le Coach (energique, motivant, emojis)",
-      "Le Complice (chaleureux, empathique)",
-      "Le Pedagogue (explicatif, vulgarise la science)",
+      "Le Médical — factuel, précis, sobre, sans émojis",
+      "Le Coach — énergique, motivant, direct",
+      "Le Complice — chaleureux, empathique, humain",
+      "Le Pédagogue — explique, vulgarise, rassure",
     ],
   },
   {
-    label: "Comment vous adressez-vous a vos patients ?",
+    id: "tutoiement",
+    block: "Identité & Caractère",
+    label: "Comment vous adressez-vous à vos patients ?",
+    type: "single",
     options: [
       "Vouvoiement strict",
       "Vouvoiement bienveillant",
-      "Tutoiement coaching",
+      "Tutoiement naturel",
       "Je m'adapte selon le patient",
     ],
   },
   {
-    label: "Niveau de langage de votre jumeau ?",
+    id: "technicite",
+    block: "Identité & Caractère",
+    label: "Quel niveau de langage utilisez-vous ?",
+    type: "single",
     options: [
-      "Tres vulgarise",
-      "Scientifique et precis",
-      "Adaptatif selon le patient",
+      "Très vulgarisé — zéro jargon",
+      "Quelques termes techniques expliqués",
+      "Scientifique et précis",
+      "Je m'adapte selon le patient",
     ],
   },
   {
-    label: "Longueur des reponses ?",
+    id: "longueur_reponses",
+    block: "Identité & Caractère",
+    label: "Votre style de communication ?",
+    type: "single",
     options: [
-      "Courtes et directes",
-      "Detaillees et completes",
-      "Selon la complexite de la question",
+      "Court et direct — l'essentiel en 2-3 phrases",
+      "Détaillé et complet — j'explique tout",
+      "Adapté à la complexité de la question",
     ],
   },
   {
-    label: "Utilisation des emojis ?",
-    options: ["Jamais", "Avec moderation", "Souvent pour humaniser"],
-  },
-  {
-    label: "Votre approche generale ?",
+    id: "emojis",
+    block: "Identité & Caractère",
+    label: "Votre jumeau doit-il utiliser des émojis ?",
+    type: "single",
     options: [
-      "Reequilibrage alimentaire doux",
-      "Protocoles structures",
+      "Jamais — je reste professionnel",
+      "Avec modération — un ou deux maximum",
+      "Souvent — ça humanise les échanges",
+    ],
+  },
+
+  // BLOC 2 — Philosophie Nutritionnelle
+  {
+    id: "approche_generale",
+    block: "Philosophie Nutritionnelle",
+    label: "Quelle est votre philosophie principale ?",
+    type: "single",
+    options: [
+      "Rééquilibrage alimentaire progressif",
       "Alimentation intuitive",
       "Micronutrition fonctionnelle",
+      "Protocoles structurés et mesurés",
     ],
   },
   {
-    label: "Votre position sur les feculents le soir ?",
+    id: "pathologies",
+    block: "Philosophie Nutritionnelle",
+    label: "Quel est votre cœur de métier ?",
+    sublabel: "Vous pouvez en sélectionner plusieurs",
+    type: "multiple",
     options: [
-      "Je les autorise",
-      "Depend de l'objectif",
-      "Je les limite",
-      "Je les supprime",
+      "Perte de poids / obésité",
+      "TCA (troubles du comportement alimentaire)",
+      "Diabète / glycémie / métabolisme",
+      "Performance sportive",
+      "Inconfort digestif / FODMAP",
+      "Fatigue / micronutrition",
+      "Femme enceinte / post-partum",
+      "Enfants / adolescents",
     ],
   },
   {
-    label: "Votre position sur le jeune intermittent ?",
+    id: "position_regimes",
+    block: "Philosophie Nutritionnelle",
+    label: "Votre avis sur les régimes restrictifs ?",
+    type: "single",
     options: [
-      "Je le recommande souvent",
-      "Cas par cas",
-      "Je prefere eviter",
+      "Je les déconseille systématiquement",
+      "Je les étudie cas par cas",
+      "Certains sont utiles dans mon protocole",
+      "Je reste neutre et m'adapte",
+    ],
+  },
+  {
+    id: "position_glucides",
+    block: "Philosophie Nutritionnelle",
+    label: "Votre position sur les féculents et glucides ?",
+    type: "single",
+    options: [
+      "Indispensables à chaque repas",
+      "À moduler selon l'objectif",
+      "Je les limite en général",
+      "Dépend du patient et du moment",
+    ],
+  },
+  {
+    id: "jejune",
+    block: "Philosophie Nutritionnelle",
+    label: "Votre approche du jeûne intermittent ?",
+    type: "single",
+    options: [
+      "Je le recommande régulièrement",
+      "Uniquement sur indication précise",
+      "Je préfère éviter",
       "Je ne me prononce pas",
     ],
   },
   {
-    label: "Votre approche des complements alimentaires ?",
+    id: "complements",
+    block: "Philosophie Nutritionnelle",
+    label: "Votre position sur les compléments alimentaires ?",
+    type: "single",
     options: [
-      "J'en prescris regulierement",
-      "Seulement si carence averee",
-      "Je prefere l'alimentation seule",
-      "Cas par cas",
+      "J'en prescris régulièrement",
+      "Seulement en cas de carence avérée",
+      "Je préfère l'alimentation seule",
+      "Cas par cas selon le bilan",
     ],
   },
   {
-    label: "Votre position sur les regimes populaires (keto, paleo, detox) ?",
+    id: "petit_dejeuner",
+    block: "Philosophie Nutritionnelle",
+    label: "Votre philosophie sur le petit-déjeuner ?",
+    type: "single",
     options: [
-      "Je les integre si adaptes",
-      "Je les deconseille",
-      "Je les etudie cas par cas",
-      "Je reste neutre",
+      "Indispensable, je l'optimise toujours",
+      "Optionnel selon le patient",
+      "Je ne l'impose jamais",
     ],
   },
   {
-    label: "Votre approche du petit-dejeuner ?",
-    options: ["Indispensable", "Optionnel", "Selon le patient et ses habitudes"],
-  },
-  {
-    label: "Votre position sur les collations ?",
-    options: [
-      "Encouragees",
-      "Deconseillees",
-      "Selon l'objectif du patient",
-    ],
-  },
-  {
+    id: "lifestyle_budget",
+    block: "Philosophie Nutritionnelle",
     label: "Votre approche lifestyle et budget ?",
+    type: "single",
     options: [
-      "Je prone le bio et le local",
+      "Je prône le bio et le local",
       "Je m'adapte au budget du patient",
-      "Je mise sur le moins transforme possible",
+      "Je mise sur le moins transformé possible",
+      "Je ne fais pas de distinction",
     ],
   },
   {
-    label: "Un patient craque sur une pizza. Vous repondez comment ?",
+    id: "jamais_dire",
+    block: "Philosophie Nutritionnelle",
+    label: "Y a-t-il des pratiques que vous refusez catégoriquement ?",
+    sublabel: "Ex: régimes très hypocaloriques, détox, jeûne prolongé...",
+    type: "free",
+    placeholder: "Décrivez ce que votre jumeau ne doit jamais recommander...",
+  },
+  {
+    id: "conviction",
+    block: "Philosophie Nutritionnelle",
+    label: "Quelle est votre règle d'or ?",
+    sublabel: "Votre conviction la plus forte en tant que praticien",
+    type: "free",
+    placeholder: "Ex: Pas d'aliment interdit, Le plaisir avant tout, La régularité prime sur la perfection...",
+  },
+
+  // BLOC 3 — Gestion Humaine & Émotions
+  {
+    id: "gestion_ecarts",
+    block: "Gestion Humaine & Émotions",
+    label: "Un patient craque sur une pizza. Vous répondez comment ?",
+    type: "single",
     options: [
-      "Sans culpabilite, on repart",
-      "On analyse pourquoi",
-      "On recadre sur les objectifs",
-      "L'equilibre se fait sur la duree",
+      "Sans culpabilité, on repart de zéro",
+      "On analyse pourquoi ça s'est passé",
+      "On recadre doucement sur les objectifs",
+      "L'équilibre se fait sur la durée, un écart ne compte pas",
     ],
   },
   {
-    label: "Un patient mange ses emotions. Votre approche ?",
+    id: "emotions",
+    block: "Gestion Humaine & Émotions",
+    label: "Un patient mange ses émotions. Votre approche ?",
+    type: "single",
     options: [
       "Je travaille uniquement l'alimentation",
-      "Je l'oriente vers un psy",
-      "Les deux en parallele",
-      "J'integre ca dans mon suivi global",
+      "J'oriente vers un psy si besoin",
+      "Je travaille les deux en parallèle",
+      "C'est intégré dans mon suivi global",
     ],
   },
   {
-    label: "Un patient ne suit pas vos conseils. Votre reaction ?",
+    id: "non_suivi",
+    block: "Gestion Humaine & Émotions",
+    label: "Un patient ne suit plus votre protocole. Votre réaction ?",
+    type: "single",
     options: [
-      "Bienveillance et comprehension",
-      "Recadrage ferme",
-      "On remet en question le suivi ensemble",
-      "On cherche pourquoi ensemble",
+      "Bienveillance totale, on repart sans jugement",
+      "On cherche ensemble pourquoi ça bloque",
+      "Recadrage ferme mais bienveillant",
+      "On remet en question le protocole ensemble",
     ],
   },
   {
-    label: "Gestion des fetes et vacances ?",
+    id: "fetes_vacances",
+    block: "Gestion Humaine & Émotions",
+    label: "Votre position sur les fêtes et vacances ?",
+    type: "single",
     options: [
-      "On planifie a l'avance",
-      "Liberte totale pendant",
-      "On compense la semaine d'apres",
-      "L'equilibre se fait sur le mois",
+      "On planifie à l'avance ensemble",
+      "Liberté totale, on reprend après",
+      "L'équilibre se fait sur le mois",
+      "Je donne des guidelines souples",
     ],
   },
   {
-    label: "Perimetre de votre jumeau ?",
+    id: "motivation_berne",
+    block: "Gestion Humaine & Émotions",
+    label: "Comment remotivez-vous un patient qui décroche ?",
+    type: "single",
+    options: [
+      "Je rappelle ses objectifs initiaux",
+      "Je valorise chaque petit progrès",
+      "Je propose d'ajuster le protocole",
+      "Je lui laisse de l'espace et j'attends son retour",
+    ],
+  },
+  {
+    id: "posture",
+    block: "Gestion Humaine & Émotions",
+    label: "Comment définiriez-vous votre posture ?",
+    type: "single",
+    options: [
+      "Expert qui guide et prescrit",
+      "Coach qui encourage et challenge",
+      "Partenaire qui co-construit",
+      "Confident bienveillant",
+    ],
+  },
+
+  // BLOC 4 — Sécurité & Limites
+  {
+    id: "perimetre",
+    block: "Sécurité & Limites",
+    label: "Jusqu'où peut aller votre jumeau ?",
+    type: "single",
     options: [
       "Autonomie totale sur nutrition et lifestyle",
-      "Prudence sur les pathologies",
-      "Securite maximale, questions simples uniquement",
+      "Prudent sur les pathologies, il me redirige",
+      "Questions simples uniquement, il m'alerte pour tout le reste",
     ],
   },
   {
-    label: "Face a une question medicale complexe ?",
+    id: "questions_medicales",
+    block: "Sécurité & Limites",
+    label: "Face à une question médicale complexe ?",
+    type: "single",
     options: [
-      "Il repond selon la litterature",
-      "Il dit qu'il ne sait pas et vous alerte",
-      "Il propose une reponse et attend votre validation",
+      "Il répond selon la littérature scientifique",
+      "Il dit qu'il ne sait pas et m'alerte",
+      "Il propose une piste et attend ma validation",
+      "Il redirige systématiquement vers le médecin",
     ],
   },
   {
-    label: "Votre jumeau doit-il relancer les patients ?",
+    id: "urgence_detresse",
+    block: "Sécurité & Limites",
+    label: "Un patient exprime une vraie souffrance psychologique ?",
+    type: "single",
     options: [
-      "Jamais, il attend qu'on lui ecrive",
-      "Il relance apres 4 jours sans nouvelles",
-      "Il envoie chaque matin un conseil personnalise",
+      "Il exprime de l'empathie et m'alerte immédiatement",
+      "Il oriente vers une ligne d'écoute ou un professionnel",
+      "Il gère avec bienveillance dans les limites de son périmètre",
     ],
   },
+  {
+    id: "ligne_rouge",
+    block: "Sécurité & Limites",
+    label: "Votre ligne rouge absolue ?",
+    sublabel: "Ce que votre jumeau ne doit JAMAIS dire ou faire",
+    type: "free",
+    placeholder: "Ex: Ne jamais culpabiliser, Ne jamais donner de calories précises, Ne jamais parler de médicaments...",
+  },
+
+  // BLOC 5 — Votre approche en vos mots
+  {
+    id: "approche_libre",
+    block: "Votre approche en vos mots",
+    label: "Décrivez votre approche en quelques phrases",
+    sublabel: "Parlez librement — comme si vous expliquiez votre méthode à un confrère",
+    type: "free",
+    placeholder: "Ma façon d'accompagner mes patients est...",
+  },
+
+  // BLOC 6 — Mises en situation
+  {
+    id: "situation1",
+    block: "Mises en situation",
+    label: "Il est 22h. Un patient vous écrit :",
+    sublabel: '"J\'ai craqué sur tout le frigo ce soir, je me déteste, je suis nul(le). Je vais jamais y arriver."',
+    type: "free",
+    placeholder: "Votre réponse exacte...",
+  },
+  {
+    id: "situation2",
+    block: "Mises en situation",
+    label: "Un patient vous demande :",
+    sublabel: '"Est-ce que je peux faire le régime Dukan ? Ma collègue a perdu 8kg en 1 mois."',
+    type: "free",
+    placeholder: "Votre réponse exacte...",
+  },
+  {
+    id: "situation3",
+    block: "Mises en situation",
+    label: "Ça fait 3 semaines qu'un patient ne suit plus votre protocole.",
+    sublabel: "Il ne répond plus à vos messages. Vous lui écrivez quoi ?",
+    type: "free",
+    placeholder: "Votre message de relance...",
+  },
+  {
+    id: "situation4",
+    block: "Mises en situation",
+    label: "Un patient vous écrit :",
+    sublabel: '"Mon médecin m\'a dit que j\'ai un prédiabète. Est-ce que je dois arrêter les féculents complètement ?"',
+    type: "free",
+    placeholder: "Votre réponse exacte...",
+  },
+  {
+    id: "situation5",
+    block: "Mises en situation",
+    label: "Un patient vous annonce :",
+    sublabel: '"J\'ai perdu 3kg ce mois-ci et je suis tellement fier(e) de moi !"',
+    type: "free",
+    placeholder: "Votre réponse exacte...",
+  },
+  {
+    id: "situation6",
+    block: "Mises en situation",
+    label: "Un patient vous confie :",
+    sublabel: '"Je mange mes émotions depuis l\'enfance. C\'est lié à un traumatisme familial."',
+    type: "free",
+    placeholder: "Comment vous gérez ça...",
+  },
+];
+
+const BLOCKS = [
+  "Identité & Caractère",
+  "Philosophie Nutritionnelle",
+  "Gestion Humaine & Émotions",
+  "Sécurité & Limites",
+  "Votre approche en vos mots",
+  "Mises en situation",
 ];
 
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<string[]>([]);
-  const [selected, setSelected] = useState("");
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const [selected, setSelected] = useState<string | string[]>("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
 
   const total = questions.length;
-  const isFinal = step >= 20;
+  const isFinal = step >= total;
   const currentQuestion = questions[step];
   const progress = isFinal ? 100 : Math.round((step / total) * 100);
 
+  const currentBlock = isFinal ? "" : currentQuestion.block;
+  const blockIndex = BLOCKS.indexOf(currentBlock);
+
+  const canGoNext = () => {
+    if (currentQuestion?.type === "multiple") {
+      return Array.isArray(selected) && selected.length > 0;
+    }
+    if (currentQuestion?.type === "free") {
+      return typeof selected === "string" && selected.trim().length > 0;
+    }
+    return typeof selected === "string" && selected.length > 0;
+  };
+
   const goNext = () => {
-    if (!selected || isFinal) return;
-    setAnswers((prev) => [...prev, selected]);
-    setSelected("");
+    if (!canGoNext() || isFinal) return;
+    setAnswers((prev) => ({ ...prev, [currentQuestion.id]: selected }));
+    setSelected(currentQuestion.type === "multiple" ? [] : "");
     setStep((prev) => prev + 1);
+  };
+
+  const toggleMultiple = (option: string) => {
+    setSelected((prev) => {
+      const arr = Array.isArray(prev) ? prev : [];
+      return arr.includes(option)
+        ? arr.filter((x) => x !== option)
+        : [...arr, option];
+    });
   };
 
   const saveProfile = async () => {
@@ -201,10 +431,26 @@ export default function OnboardingPage() {
     setSaveError("");
 
     try {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const formattedAnswers = Object.fromEntries(
+        Object.entries(answers).map(([k, v]) => [
+          k,
+          Array.isArray(v) ? v.join(", ") : v,
+        ])
+      );
+
       const response = await fetch("/api/save-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers, userId: (await createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).auth.getUser()).data.user?.id ?? null }),
+        body: JSON.stringify({
+          answers: formattedAnswers,
+          userId: user?.id ?? null,
+        }),
       });
 
       if (!response.ok) {
@@ -226,86 +472,177 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
-      <main className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+
+        {/* Progress */}
         <div className="mb-8">
-          <p className="mb-3 text-sm font-medium text-zinc-300">
-            Personnalisation de votre jumeau : {progress}%
-          </p>
-          <div className="h-2 w-full rounded-full bg-white/10">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-medium text-zinc-300">
+              Configuration de votre jumeau — {progress}%
+            </p>
+            {!isFinal && (
+              <p className="text-xs text-zinc-500">
+                {step + 1} / {total}
+              </p>
+            )}
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-white/10">
             <div
-              className="h-full rounded-full bg-[#10b981] transition-all duration-300"
+              className="h-full rounded-full bg-[#10b981] transition-all duration-500"
               style={{ width: `${progress}%` }}
             />
           </div>
+
+          {/* Blocs */}
+          {!isFinal && (
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+              {BLOCKS.map((block, i) => (
+                <span
+                  key={block}
+                  className="whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition"
+                  style={{
+                    background: i === blockIndex
+                      ? "rgba(16,185,129,0.15)"
+                      : "rgba(255,255,255,0.04)",
+                    color: i === blockIndex ? "#10b981" : "#52525b",
+                    border: i === blockIndex
+                      ? "1px solid rgba(16,185,129,0.3)"
+                      : "1px solid rgba(255,255,255,0.06)",
+                  }}
+                >
+                  {block}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {!isFinal && currentQuestion ? (
           <section className="rounded-3xl border border-white/10 bg-[#121212] p-6 sm:p-8">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#10b981]">
-              Question {step + 1} / {total}
+              {currentQuestion.block}
             </p>
-            <h1 className="text-xl font-bold leading-tight sm:text-3xl">
+            <h1 className="text-xl font-bold leading-tight sm:text-2xl">
               {currentQuestion.label}
             </h1>
+            {currentQuestion.sublabel && (
+              <p className="mt-2 text-sm italic text-zinc-400">
+                {currentQuestion.sublabel}
+              </p>
+            )}
 
-            <div className="mt-8 grid gap-3 sm:gap-4">
-              {currentQuestion.options.map((option) => {
-                const isActive = selected === option;
+            <div className="mt-8">
+              {/* Single choice */}
+              {currentQuestion.type === "single" && (
+                <div className="grid gap-3">
+                  {currentQuestion.options?.map((option) => {
+                    const isActive = selected === option;
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => setSelected(option)}
+                        className={`w-full rounded-2xl border px-4 py-4 text-left text-[15px] transition ${
+                          isActive
+                            ? "border-[#10b981] bg-[#10b981]/15 text-white"
+                            : "border-white/10 bg-[#1a1a1a] text-zinc-300 hover:border-[#10b981]/50"
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setSelected(option)}
-                    className={`w-full rounded-2xl border px-4 py-4 text-left text-[15px] transition ${
-                      isActive
-                        ? "border-[#10b981] bg-[#10b981]/15"
-                        : "border-white/10 bg-[#1a1a1a] hover:border-[#10b981]/50"
-                    }`}
-                  >
-                    {option}
-                  </button>
-                );
-              })}
+              {/* Multiple choice */}
+              {currentQuestion.type === "multiple" && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {currentQuestion.options?.map((option) => {
+                    const arr = Array.isArray(selected) ? selected : [];
+                    const isActive = arr.includes(option);
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => toggleMultiple(option)}
+                        className={`w-full rounded-2xl border px-4 py-3 text-left text-[14px] transition ${
+                          isActive
+                            ? "border-[#10b981] bg-[#10b981]/15 text-white"
+                            : "border-white/10 bg-[#1a1a1a] text-zinc-300 hover:border-[#10b981]/50"
+                        }`}
+                      >
+                        <span className="mr-2">{isActive ? "✓" : "+"}</span>
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Free text */}
+              {currentQuestion.type === "free" && (
+                <textarea
+                  value={typeof selected === "string" ? selected : ""}
+                  onChange={(e) => setSelected(e.target.value)}
+                  placeholder={currentQuestion.placeholder}
+                  rows={5}
+                  className="w-full rounded-2xl border border-white/10 bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition placeholder:text-zinc-600 focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
+                />
+              )}
             </div>
 
-            <div className="mt-8 flex justify-end">
+            <div className="mt-8 flex items-center justify-between">
+              {step > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep((prev) => prev - 1);
+                    setSelected("");
+                  }}
+                  className="text-sm text-zinc-500 transition hover:text-white"
+                >
+                  ← Retour
+                </button>
+              ) : <div />}
               <button
                 type="button"
                 onClick={goNext}
-                disabled={!selected}
+                disabled={!canGoNext()}
                 className="rounded-full bg-[#10b981] px-7 py-3 text-sm font-semibold text-black transition hover:bg-[#0fb174] disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-300"
               >
-                Suivant
+                Suivant →
               </button>
             </div>
           </section>
         ) : (
           <section className="rounded-3xl border border-[#10b981]/30 bg-[#121212] p-6 sm:p-8">
             <p className="mb-2 text-sm font-semibold text-[#10b981]">
-              Votre jumeau est pret
+              ✅ Configuration terminée
             </p>
             <h1 className="text-2xl font-bold sm:text-3xl">
-              Votre jumeau vous ressemble. Il est pret.
+              Votre jumeau vous ressemble. Il est prêt.
             </h1>
-            <p className="mt-3 text-sm text-zinc-300">
-              Resume de vos choix avant sauvegarde.
+            <p className="mt-3 text-sm text-zinc-400">
+              Vos réponses ont été enregistrées. Votre jumeau est configuré selon votre vision et votre approche.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-2">
-              {answers.map((answer, index) => (
-                <span
-                  key={`${answer}-${index}`}
-                  className="rounded-full border border-[#10b981]/40 bg-[#10b981]/15 px-3 py-1 text-sm text-[#34d399]"
-                >
-                  {answer}
-                </span>
+              {Object.values(answers).flat().slice(0, 15).map((answer, index) => (
+                typeof answer === "string" && answer.length < 60 ? (
+                  <span
+                    key={index}
+                    className="rounded-full border border-[#10b981]/40 bg-[#10b981]/15 px-3 py-1 text-xs text-[#34d399]"
+                  >
+                    {answer}
+                  </span>
+                ) : null
               ))}
             </div>
 
-            {saveError ? (
+            {saveError && (
               <p className="mt-5 text-sm text-red-400">{saveError}</p>
-            ) : null}
+            )}
 
             <div className="mt-8">
               <button
@@ -314,7 +651,7 @@ export default function OnboardingPage() {
                 disabled={isSaving}
                 className="rounded-full bg-[#10b981] px-8 py-3 text-sm font-semibold text-black transition hover:bg-[#0fb174] disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-300"
               >
-                {isSaving ? "Sauvegarde..." : "Acceder a mon espace"}
+                {isSaving ? "Sauvegarde..." : "Accéder à mon espace →"}
               </button>
             </div>
           </section>

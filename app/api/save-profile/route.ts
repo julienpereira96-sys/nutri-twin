@@ -1,28 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 
-const ANSWER_KEYS = [
-  "tone_of_voice",
-  "tutoiement",
-  "technicite",
-  "longueur_reponses",
-  "emojis",
-  "approche_generale",
-  "faculents_soir",
-  "jejune",
-  "complements",
-  "regimes",
-  "petit_dejeuner",
-  "collations",
-  "lifestyle_budget",
-  "gestion_ecarts",
-  "emotions",
-  "non_suivi",
-  "fetes_vacances",
-  "perimetre",
-  "questions_medicales",
-  "relance_patients",
-] as const;
-
 export async function POST(request: Request) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -42,18 +19,17 @@ export async function POST(request: Request) {
     return Response.json({ error: "Body JSON invalide." }, { status: 400 });
   }
 
-  const { answers, userId } = body as { answers: unknown; userId: string };
+  const { answers, userId } = body as {
+    answers: Record<string, string>;
+    userId: string | null;
+  };
 
-  if (!Array.isArray(answers)) {
+  if (!answers || typeof answers !== "object") {
     return Response.json(
-      { error: "Le body doit contenir un tableau de reponses." },
+      { error: "Le body doit contenir un objet answers." },
       { status: 400 },
     );
   }
-
-  const mappedAnswers = Object.fromEntries(
-    ANSWER_KEYS.map((key, index) => [key, answers[index] ?? null]),
-  );
 
   try {
     const supabase = createClient(
@@ -63,7 +39,7 @@ export async function POST(request: Request) {
 
     const { error } = await supabase
       .from("practitioner_profiles")
-      .insert({ ...mappedAnswers, user_id: userId ?? null });
+      .insert({ ...answers, user_id: userId ?? null });
 
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
