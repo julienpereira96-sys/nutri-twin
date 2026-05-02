@@ -8,8 +8,6 @@ type ChatMessage = {
   content: string;
 };
 
-const practitionerName = "Dr. Martin";
-
 const affirmations = [
   "Chaque repas est une opportunité de prendre soin de vous.",
   "Votre corps mérite votre bienveillance aujourd'hui.",
@@ -45,6 +43,7 @@ export default function ChatPage() {
   const [earnedBadges, setEarnedBadges] = useState<number[]>([0, 2]);
   const [patientId, setPatientId] = useState<string | null>(null);
   const [practitionerIdFromDb, setPractitionerIdFromDb] = useState<string | null>(null);
+  const [practitionerName, setPractitionerName] = useState("votre praticien");
   const affirmation = affirmations[new Date().getDay() % affirmations.length];
 
   useEffect(() => {
@@ -60,10 +59,21 @@ export default function ChatPage() {
           .select("practitioner_id")
           .eq("patient_id", data.user.id)
           .single();
-        if (relation) setPractitionerIdFromDb(relation.practitioner_id as string);
+        if (relation) {
+          setPractitionerIdFromDb(relation.practitioner_id as string);
+          const { data: practitioner } = await supabase
+            .from("practitioners")
+            .select("first_name, last_name")
+            .eq("user_id", relation.practitioner_id)
+            .single();
+          if (practitioner) {
+            setPractitionerName(`${practitioner.first_name} ${practitioner.last_name}`);
+          }
+        }
       }
     });
   }, []);
+  
 
   const startBreathing = () => {
     setBreathing("inhale");

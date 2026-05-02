@@ -20,7 +20,7 @@ export default function LoginPage() {
 
     try {
       const supabase = createSupabaseBrowserClient();
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
@@ -30,19 +30,7 @@ export default function LoginPage() {
         return;
       }
 
-      if (data.user) {
-        const { data: practitioner } = await supabase
-          .from("practitioners")
-          .select("id")
-          .eq("user_id", data.user.id)
-          .single();
-
-        if (practitioner) {
-          router.push("/dashboard");
-        } else {
-          router.push("/chat");
-        }
-      }
+      router.push("/dashboard");
     } catch {
       setError("Une erreur est survenue. Reessayez plus tard.");
     } finally {
@@ -58,7 +46,7 @@ export default function LoginPage() {
             <span className="text-2xl">🍃</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">NutriTwin</h1>
-          <p className="mt-2 text-sm text-zinc-400">Connexion</p>
+          <p className="mt-2 text-sm text-zinc-400">Connexion praticien</p>
         </div>
 
         <form
@@ -75,7 +63,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="mt-2 w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
-                placeholder="votre@email.fr"
+                placeholder="vous@cabinet.fr"
               />
             </label>
             <label className="block">
@@ -106,9 +94,9 @@ export default function LoginPage() {
           </button>
 
           <p className="mt-6 text-center text-sm text-zinc-400">
-            Praticien ? {" "}
+            Pas encore de compte ?{" "}
             <Link href="/signup" className="font-medium text-[#34d399] hover:underline">
-              Créer un compte
+              S'inscrire
             </Link>
           </p>
         </form>
