@@ -17,7 +17,6 @@ type Question = {
 };
 
 const questions: Question[] = [
-  // BLOC 1 — Identité & Caractère
   {
     id: "tone_of_voice",
     block: "Identité & Caractère",
@@ -76,8 +75,6 @@ const questions: Question[] = [
       "Souvent — ça humanise les échanges",
     ],
   },
-
-  // BLOC 2 — Philosophie Nutritionnelle
   {
     id: "approche_generale",
     block: "Philosophie Nutritionnelle",
@@ -194,8 +191,6 @@ const questions: Question[] = [
     type: "free",
     placeholder: "Ex: Pas d'aliment interdit, Le plaisir avant tout, La régularité prime sur la perfection...",
   },
-
-  // BLOC 3 — Gestion Humaine & Émotions
   {
     id: "gestion_ecarts",
     block: "Gestion Humaine & Émotions",
@@ -268,8 +263,6 @@ const questions: Question[] = [
       "Confident bienveillant",
     ],
   },
-
-  // BLOC 4 — Sécurité & Limites
   {
     id: "perimetre",
     block: "Sécurité & Limites",
@@ -312,8 +305,6 @@ const questions: Question[] = [
     type: "free",
     placeholder: "Ex: Ne jamais culpabiliser, Ne jamais donner de calories précises, Ne jamais parler de médicaments...",
   },
-
-  // BLOC 5 — Votre approche en vos mots
   {
     id: "approche_libre",
     block: "Votre approche en vos mots",
@@ -322,8 +313,6 @@ const questions: Question[] = [
     type: "free",
     placeholder: "Ma façon d'accompagner mes patients est...",
   },
-
-  // BLOC 6 — Mises en situation
   {
     id: "situation1",
     block: "Mises en situation",
@@ -381,6 +370,7 @@ const BLOCKS = [
   "Sécurité & Limites",
   "Votre approche en vos mots",
   "Mises en situation",
+  "Vos documents",
 ];
 
 export default function OnboardingPage() {
@@ -390,13 +380,18 @@ export default function OnboardingPage() {
   const [selected, setSelected] = useState<string | string[]>("");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+  const [uploadSuccess, setUploadSuccess] = useState<string[]>([]);
+  const [practitionerId, setPractitionerId] = useState<string | null>(null);
 
   const total = questions.length;
-  const isFinal = step >= total;
+  const isUploadStep = step === total;
+  const isFinal = step > total;
   const currentQuestion = questions[step];
-  const progress = isFinal ? 100 : Math.round((step / total) * 100);
-
-  const currentBlock = isFinal ? "" : currentQuestion.block;
+  const progress = isFinal ? 100 : isUploadStep ? 95 : Math.round((step / total) * 100);
+  const currentBlock = isUploadStep || isFinal ? "" : currentQuestion.block;
   const blockIndex = BLOCKS.indexOf(currentBlock);
 
   const canGoNext = () => {
@@ -410,7 +405,7 @@ export default function OnboardingPage() {
   };
 
   const goNext = () => {
-    if (!canGoNext() || isFinal) return;
+    if (!canGoNext() || isUploadStep || isFinal) return;
     setAnswers((prev) => ({ ...prev, [currentQuestion.id]: selected }));
     setSelected(currentQuestion.type === "multiple" ? [] : "");
     setStep((prev) => prev + 1);
@@ -423,6 +418,52 @@ export default function OnboardingPage() {
         ? arr.filter((x) => x !== option)
         : [...arr, option];
     });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const valid = files.filter((f) => {
+      const ext = f.name.split(".").pop()?.toLowerCase();
+      return ["pdf", "docx", "txt"].includes(ext ?? "");
+    });
+    setUploadedFiles((prev) => [...prev, ...valid]);
+  };
+
+  const uploadFiles = async () => {
+    if (uploadedFiles.length === 0) return;
+    setUploading(true);
+    setUploadErrors([]);
+    setUploadSuccess([]);
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data: { user } } = await supabase.auth.getUser();
+    const pid = user?.id ?? practitionerId ?? "";
+    setPractitionerId(pid);
+
+    for (const file of uploadedFiles) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("practitionerId", pid);
+
+      try {
+        const res = await fetch("/api/upload-document", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json() as { success?: boolean; error?: string; chunks?: number };
+        if (res.ok && data.success) {
+          setUploadSuccess((prev) => [...prev, `${file.name} — ${data.chunks} chunks indexés`]);
+        } else {
+          setUploadErrors((prev) => [...prev, `${file.name} : ${data.error ?? "Erreur"}`]);
+        }
+      } catch {
+        setUploadErrors((prev) => [...prev, `${file.name} : Erreur réseau`]);
+      }
+    }
+    setUploading(false);
   };
 
   const saveProfile = async () => {
@@ -474,16 +515,13 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
 
-        {/* Progress */}
         <div className="mb-8">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-sm font-medium text-zinc-300">
               Configuration de votre jumeau — {progress}%
             </p>
-            {!isFinal && (
-              <p className="text-xs text-zinc-500">
-                {step + 1} / {total}
-              </p>
+            {!isUploadStep && !isFinal && (
+              <p className="text-xs text-zinc-500">{step + 1} / {total}</p>
             )}
           </div>
           <div className="h-1.5 w-full rounded-full bg-white/10">
@@ -492,22 +530,16 @@ export default function OnboardingPage() {
               style={{ width: `${progress}%` }}
             />
           </div>
-
-          {/* Blocs */}
-          {!isFinal && (
+          {!isUploadStep && !isFinal && (
             <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
               {BLOCKS.map((block, i) => (
                 <span
                   key={block}
                   className="whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition"
                   style={{
-                    background: i === blockIndex
-                      ? "rgba(16,185,129,0.15)"
-                      : "rgba(255,255,255,0.04)",
+                    background: i === blockIndex ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
                     color: i === blockIndex ? "#10b981" : "#52525b",
-                    border: i === blockIndex
-                      ? "1px solid rgba(16,185,129,0.3)"
-                      : "1px solid rgba(255,255,255,0.06)",
+                    border: i === blockIndex ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)",
                   }}
                 >
                   {block}
@@ -517,7 +549,7 @@ export default function OnboardingPage() {
           )}
         </div>
 
-        {!isFinal && currentQuestion ? (
+        {!isUploadStep && !isFinal && currentQuestion ? (
           <section className="rounded-3xl border border-white/10 bg-[#121212] p-6 sm:p-8">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#10b981]">
               {currentQuestion.block}
@@ -526,13 +558,10 @@ export default function OnboardingPage() {
               {currentQuestion.label}
             </h1>
             {currentQuestion.sublabel && (
-              <p className="mt-2 text-sm italic text-zinc-400">
-                {currentQuestion.sublabel}
-              </p>
+              <p className="mt-2 text-sm italic text-zinc-400">{currentQuestion.sublabel}</p>
             )}
 
             <div className="mt-8">
-              {/* Single choice */}
               {currentQuestion.type === "single" && (
                 <div className="grid gap-3">
                   {currentQuestion.options?.map((option) => {
@@ -555,7 +584,6 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              {/* Multiple choice */}
               {currentQuestion.type === "multiple" && (
                 <div className="grid gap-3 sm:grid-cols-2">
                   {currentQuestion.options?.map((option) => {
@@ -580,7 +608,6 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              {/* Free text */}
               {currentQuestion.type === "free" && (
                 <textarea
                   value={typeof selected === "string" ? selected : ""}
@@ -596,10 +623,7 @@ export default function OnboardingPage() {
               {step > 0 ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    setStep((prev) => prev - 1);
-                    setSelected("");
-                  }}
+                  onClick={() => { setStep((prev) => prev - 1); setSelected(""); }}
                   className="text-sm text-zinc-500 transition hover:text-white"
                 >
                   ← Retour
@@ -615,11 +639,105 @@ export default function OnboardingPage() {
               </button>
             </div>
           </section>
+
+        ) : isUploadStep ? (
+          <section className="rounded-3xl border border-white/10 bg-[#121212] p-6 sm:p-8">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#10b981]">
+              Vos documents
+            </p>
+            <h1 className="text-xl font-bold leading-tight sm:text-2xl">
+              Enrichissez votre jumeau avec vos documents
+            </h1>
+            <p className="mt-3 text-sm text-zinc-400 leading-relaxed">
+              Uploadez vos plans alimentaires types, comptes-rendus, protocoles ou emails patients.
+              Votre jumeau les intégrera intelligemment pour répondre avec précision.
+            </p>
+            <p className="mt-2 text-xs text-zinc-500">
+              Formats acceptés : PDF, DOCX, TXT — Cette étape est optionnelle.
+            </p>
+
+            {/* Avertissement RGPD */}
+            <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+              <p className="text-xs text-amber-400 leading-relaxed">
+                ⚠️ <strong>Important :</strong> N'uploadez pas de documents contenant des données nominatives patients (noms, dates de naissance, numéros de sécurité sociale). Anonymisez vos documents avant upload. NutriTwin est actuellement en phase beta — la certification HDS est prévue en 2026.
+              </p>
+            </div>
+
+            <label className="mt-6 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/20 bg-[#1a1a1a] px-6 py-10 transition hover:border-[#10b981]/50">
+              <span className="text-4xl mb-3">📄</span>
+              <span className="text-sm font-medium text-zinc-300">Cliquez pour sélectionner vos fichiers</span>
+              <span className="mt-1 text-xs text-zinc-500">PDF, DOCX, TXT</span>
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.docx,.txt"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </label>
+
+            {uploadedFiles.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {uploadedFiles.map((f, i) => (
+                  <div key={i} className="flex items-center justify-between rounded-xl border border-white/10 bg-[#1a1a1a] px-4 py-2">
+                    <span className="text-sm text-zinc-300 truncate">{f.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setUploadedFiles((prev) => prev.filter((_, j) => j !== i))}
+                      className="ml-3 text-zinc-500 hover:text-red-400 transition"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => void uploadFiles()}
+                  disabled={uploading}
+                  className="mt-3 w-full rounded-full border border-[#10b981] px-6 py-2.5 text-sm font-semibold text-[#10b981] transition hover:bg-[#10b981]/10 disabled:opacity-50"
+                >
+                  {uploading ? "Indexation en cours..." : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""}`}
+                </button>
+              </div>
+            )}
+
+            {uploadSuccess.length > 0 && (
+              <div className="mt-4 space-y-1">
+                {uploadSuccess.map((s, i) => (
+                  <p key={i} className="text-xs text-[#10b981]">✅ {s}</p>
+                ))}
+              </div>
+            )}
+
+            {uploadErrors.length > 0 && (
+              <div className="mt-4 space-y-1">
+                {uploadErrors.map((e, i) => (
+                  <p key={i} className="text-xs text-red-400">❌ {e}</p>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-8 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => { setStep((prev) => prev - 1); setSelected(""); }}
+                className="text-sm text-zinc-500 transition hover:text-white"
+              >
+                ← Retour
+              </button>
+              <button
+                type="button"
+                onClick={() => setStep((prev) => prev + 1)}
+                className="rounded-full bg-[#10b981] px-7 py-3 text-sm font-semibold text-black transition hover:bg-[#0fb174]"
+              >
+                {uploadedFiles.length === 0 ? "Passer cette étape →" : "Continuer →"}
+              </button>
+            </div>
+          </section>
+
         ) : (
           <section className="rounded-3xl border border-[#10b981]/30 bg-[#121212] p-6 sm:p-8">
-            <p className="mb-2 text-sm font-semibold text-[#10b981]">
-              ✅ Configuration terminée
-            </p>
+            <p className="mb-2 text-sm font-semibold text-[#10b981]">✅ Configuration terminée</p>
             <h1 className="text-2xl font-bold sm:text-3xl">
               Votre jumeau vous ressemble. Il est prêt.
             </h1>
@@ -640,9 +758,7 @@ export default function OnboardingPage() {
               ))}
             </div>
 
-            {saveError && (
-              <p className="mt-5 text-sm text-red-400">{saveError}</p>
-            )}
+            {saveError && <p className="mt-5 text-sm text-red-400">{saveError}</p>}
 
             <div className="mt-8">
               <button
