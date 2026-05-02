@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
 
 type Message = {
   id: string;
@@ -134,6 +135,17 @@ export default function DashboardPage() {
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [inviteError, setInviteError] = useState("");
+  const [practitionerId, setPractitionerId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setPractitionerId(data.user.id);
+    });
+  }, []);
 
   const selectedPatient = useMemo(
     () => patients.find((p) => p.id === selectedPatientId) ?? patients[0],
@@ -151,18 +163,15 @@ export default function DashboardPage() {
       const res = await fetch("/api/invite-patient", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: inviteEmail.trim() }),
+        body: JSON.stringify({ email: inviteEmail.trim(), practitionerId: practitionerId ?? "" }),
       });
       const data = await res.json() as { error?: string };
       if (!res.ok) {
         setInviteError(data.error ?? "Une erreur est survenue.");
       } else {
         setInviteSuccess(true);
-        setInviteEmail("");
-        setTimeout(() => {
-          setInviteSuccess(false);
-          setShowInviteModal(false);
-        }, 2500);
+setInviteEmail("");
+
       }
     } catch {
       setInviteError("Impossible d'envoyer l'invitation.");
@@ -193,7 +202,6 @@ export default function DashboardPage() {
       </header>
 
       <main className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 p-4 sm:p-6 lg:grid-cols-[280px_minmax(0,1fr)_260px]">
-        {/* Sidebar patients */}
         <aside className="flex h-[calc(100vh-130px)] flex-col rounded-2xl border border-white/10 bg-[#121212]">
           <div className="border-b border-white/10 px-4 py-4">
             <div className="flex items-center gap-3">
@@ -250,7 +258,6 @@ export default function DashboardPage() {
           </div>
         </aside>
 
-        {/* Zone chat */}
         <section className="flex h-[calc(100vh-130px)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111111]">
           <div className="border-b border-white/10 px-5 py-4">
             <p className="text-lg font-semibold">{selectedPatient.firstName}</p>
@@ -283,7 +290,6 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Fiche patient */}
         <aside className="h-[calc(100vh-130px)] overflow-y-auto rounded-2xl border border-white/10 bg-[#121212] p-4">
           <div className="mb-6 flex flex-col items-center text-center">
             <div className={`mb-3 flex h-16 w-16 items-center justify-center rounded-full text-sm font-bold text-white ${selectedPatient.avatarColor}`}>
@@ -311,7 +317,6 @@ export default function DashboardPage() {
         </aside>
       </main>
 
-      {/* Modale invitation */}
       {showInviteModal && (
         <div
           onClick={(e) => { if (e.target === e.currentTarget) setShowInviteModal(false); }}
