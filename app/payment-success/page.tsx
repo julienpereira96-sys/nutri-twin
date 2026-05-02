@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const plan = searchParams.get("plan") ?? "pro";
-  const [countdown, setCountdown] = useState(5);
+  const [countdown, setCountdown] = useState(10);
 
   useEffect(() => {
     const timer = setInterval(() => {
