@@ -2,11 +2,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 async function getRelevantDocuments(question: string, practitionerId: string): Promise<string> {
   try {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const embeddingResponse = await openai.embeddings.create({
       model: "text-embedding-3-small",
       input: question,
@@ -32,9 +30,7 @@ async function getRelevantDocuments(question: string, practitionerId: string): P
       .map((d) => d.content)
       .join("\n\n");
 
-    return relevant
-      ? `\nDOCUMENTS DE RÉFÉRENCE DU PRATICIEN :\n${relevant}\n`
-      : "";
+    return relevant ? `\nDOCUMENTS DE RÉFÉRENCE DU PRATICIEN :\n${relevant}\n` : "";
   } catch {
     return "";
   }
@@ -120,6 +116,8 @@ function getDefaultPrompt(): string {
 
 export async function POST(request: Request) {
   try {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    
     const { message, systemPrompt, patientId, practitionerId } = await request.json() as {
       message: string;
       systemPrompt?: string;
