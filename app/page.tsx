@@ -14,7 +14,7 @@ export default function Home() {
           "var(--font-geist-sans), Inter, ui-sans-serif, system-ui, sans-serif",
       }}
     >
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-[480px] bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(16,185,129,0.18),transparent)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(16,185,129,0.18),transparent)]" />
 
       {/* Nav */}
       <header className="relative z-10 border-b border-white/[0.06]">
@@ -46,10 +46,10 @@ export default function Home() {
       <main className="relative z-10">
 
         {/* HERO */}
-        <section className="mx-auto max-w-7xl px-4 pb-16 pt-12 sm:px-6 sm:pb-24 sm:pt-16 lg:px-8 lg:pt-24">
+        <section className="mx-auto max-w-7xl px-4 pb-16 pt-16 sm:px-6 sm:pb-24 sm:pt-24 lg:px-8 lg:pt-32">
           <div className="mx-auto max-w-3xl text-center">
             <p
-              className="mb-4 inline-flex rounded-full px-4 py-1.5 text-xs font-medium uppercase tracking-wider ring-1"
+              className="mb-6 inline-flex rounded-full px-4 py-1.5 text-xs font-medium uppercase tracking-wider ring-1"
               style={{
                 backgroundColor: "rgba(16,185,129,0.08)",
                 color: emerald,
@@ -58,65 +58,88 @@ export default function Home() {
             >
               Votre IA personnalisée pour nutritionnistes
             </p>
-            <h1 className="text-[1.625rem] font-bold leading-[1.15] tracking-tight text-white sm:text-4xl sm:leading-[1.1] lg:text-[2.75rem]">
+
+            <h1 className="text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl">
               Votre expertise,<br />disponible 24h/24
             </h1>
-            <p className="mt-6 text-base leading-relaxed text-zinc-400 sm:text-lg sm:leading-8">
-              Parce que vos patients ont besoin de vous entre les séances aussi.
+
+            <p className="mt-8 text-xl font-medium leading-relaxed text-white sm:text-2xl">
+              Parce que vos patients ont besoin de vous<br className="hidden sm:block" /> entre les séances aussi.
             </p>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-500 sm:text-base">
-              Le suivi ne s'arrête pas à la porte du cabinet. Votre expertise non plus.
+
+            {/* Phrase forte mise en avant */}
+            <div className="mx-auto mt-8 max-w-xl">
+              <p
+                className="text-base leading-relaxed sm:text-lg"
+                style={{ color: emerald }}
+              >
+                Le suivi ne s'arrête pas à la porte du cabinet.<br />
+                <span className="text-white">Votre expertise non plus.</span>
+              </p>
+            </div>
+
+            <p className="mx-auto mt-6 max-w-2xl text-sm leading-relaxed text-zinc-500 sm:text-base">
               NutriTwin crée votre jumeau numérique — vos patients reçoivent vos conseils,
               dans votre style, même quand vous n'êtes pas disponible.
             </p>
-            <div className="mt-10 flex flex-col items-stretch gap-4 sm:flex-row sm:justify-center sm:gap-5">
+
+            <div className="mt-12 flex flex-col items-stretch gap-4 sm:flex-row sm:justify-center sm:gap-5">
               <Link
                 href="/signup"
-                className="inline-flex min-h-[48px] items-center justify-center rounded-full px-8 text-sm font-semibold text-black shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400"
+                className="inline-flex min-h-[52px] items-center justify-center rounded-full px-10 text-sm font-semibold text-black shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400"
                 style={{ backgroundColor: emerald }}
               >
                 14 jours gratuits — aucun engagement
               </Link>
               <a
                 href="#demo"
-                className="inline-flex min-h-[48px] items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-8 text-sm font-medium text-white ring-1 ring-white/[0.08] backdrop-blur transition hover:bg-white/[0.08]"
+                className="inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-10 text-sm font-medium text-white ring-1 ring-white/[0.08] backdrop-blur transition hover:bg-white/[0.08]"
               >
-                Voir une conversation
+                Voir une conversation →
               </a>
             </div>
           </div>
         </section>
 
         {/* PROBLÈME */}
-        <section className="border-y border-white/[0.06] bg-[#070707] py-16 sm:py-20">
+        <section className="border-y border-white/[0.06] bg-[#070707] py-20 sm:py-28">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <h2 className="mx-auto max-w-3xl text-center text-2xl font-bold tracking-tight sm:text-3xl">
-              Ce que vivent vos patients entre deux séances
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-center text-sm text-zinc-400 sm:text-base">
-              Et ce que vous n'avez plus le temps de gérer.
-            </p>
-            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:mt-14 lg:grid-cols-3 lg:gap-6">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: emerald }}>
+                Le quotidien de vos patients
+              </p>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                Ce qui se passe entre deux séances
+              </h2>
+              <p className="mt-4 text-base text-zinc-400">
+                Et ce que vous n'avez plus le temps de gérer.
+              </p>
+            </div>
+            <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {[
                 {
                   icon: "💬",
-                  text: "Ils vous envoient un message à 21h parce qu'ils ne savent pas quoi manger ce soir.",
+                  title: "Le message du soir",
+                  text: "Ils vous écrivent à 21h parce qu'ils ne savent pas quoi manger ce soir.",
                 },
                 {
                   icon: "🔁",
+                  title: "Les mêmes questions",
                   text: "Ils posent les mêmes questions à chaque séance, faute de suivi entre les consultations.",
                 },
                 {
                   icon: "😔",
+                  title: "Le craquage silencieux",
                   text: "Ils craquent, culpabilisent, et attendent la prochaine séance pour en parler.",
                 },
               ].map((item) => (
                 <article
-                  key={item.text}
-                  className="flex flex-col rounded-2xl border border-white/[0.08] bg-[#121212]/80 p-6 ring-1 ring-white/[0.04] backdrop-blur-sm transition hover:border-emerald-500/20"
+                  key={item.title}
+                  className="flex flex-col rounded-2xl border border-white/[0.08] bg-[#121212]/80 p-7 ring-1 ring-white/[0.04] backdrop-blur-sm transition hover:border-emerald-500/20"
                 >
-                  <span className="mb-4 text-3xl">{item.icon}</span>
-                  <p className="text-[15px] leading-relaxed text-zinc-300">{item.text}</p>
+                  <span className="mb-5 text-4xl">{item.icon}</span>
+                  <h3 className="mb-2 text-base font-bold text-white">{item.title}</h3>
+                  <p className="text-[15px] leading-relaxed text-zinc-400">{item.text}</p>
                 </article>
               ))}
             </div>
@@ -124,42 +147,47 @@ export default function Home() {
         </section>
 
         {/* SOLUTION */}
-        <section className="py-16 sm:py-24">
+        <section className="py-20 sm:py-28">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <h2 className="mx-auto max-w-4xl text-center text-2xl font-bold tracking-tight sm:text-3xl lg:text-[1.75rem]">
-              NutriTwin répond à votre place,<br />avec votre vision et votre expertise
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-center text-sm text-zinc-400 sm:text-base">
-              Pas un chatbot générique. Votre méthode, votre ton, vos protocoles —
-              configurés une fois, actifs 24h/24.
-            </p>
-            <div className="mx-auto mt-12 grid max-w-5xl gap-6 lg:grid-cols-3">
-              <div className="flex flex-col items-center rounded-2xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 text-center">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: emerald }}>
+                La solution
+              </p>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                NutriTwin répond à votre place,<br />avec votre vision et votre expertise
+              </h2>
+              <p className="mt-4 text-base text-zinc-400">
+                Pas un chatbot générique. Votre méthode, votre ton, vos protocoles —
+                configurés une fois, actifs 24h/24.
+              </p>
+            </div>
+            <div className="mx-auto mt-16 grid max-w-5xl gap-6 lg:grid-cols-3">
+              <div className="flex flex-col items-center rounded-2xl border border-white/[0.08] bg-white/[0.02] px-6 py-10 text-center">
                 <ClockIcon />
-                <h3 className="mt-5 text-[15px] font-semibold leading-snug text-white">
+                <h3 className="mt-6 text-base font-bold text-white">
                   Libérez 3h par semaine
                 </h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                <p className="mt-3 text-sm leading-relaxed text-zinc-400">
                   Votre jumeau gère les questions récurrentes. Vous gardez votre
                   énergie pour ce qui compte vraiment.
                 </p>
               </div>
-              <div className="flex flex-col items-center rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] px-6 py-8 text-center ring-1 ring-emerald-500/15">
+              <div className="flex flex-col items-center rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] px-6 py-10 text-center ring-1 ring-emerald-500/15">
                 <HeartIcon />
-                <h3 className="mt-5 text-[15px] font-semibold leading-snug text-white">
+                <h3 className="mt-6 text-base font-bold text-white">
                   Un suivi qui ne s'interrompt plus
                 </h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+                <p className="mt-3 text-sm leading-relaxed text-zinc-300">
                   Vos patients restent accompagnés entre les séances, avec
                   cohérence et bienveillance.
                 </p>
               </div>
-              <div className="flex flex-col items-center rounded-2xl border border-white/[0.08] bg-white/[0.02] px-6 py-8 text-center">
+              <div className="flex flex-col items-center rounded-2xl border border-white/[0.08] bg-white/[0.02] px-6 py-10 text-center">
                 <SparklesIcon />
-                <h3 className="mt-5 text-[15px] font-semibold leading-snug text-white">
+                <h3 className="mt-6 text-base font-bold text-white">
                   Votre image, intacte
                 </h3>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                <p className="mt-3 text-sm leading-relaxed text-zinc-400">
                   Chaque réponse reflète votre approche. Vos patients ne voient
                   pas une IA — ils vous voient, vous.
                 </p>
@@ -171,35 +199,36 @@ export default function Home() {
         {/* DEMO */}
         <section
           id="demo"
-          className="border-y border-white/[0.06] bg-[#050505] py-16 sm:py-24"
+          className="border-y border-white/[0.06] bg-[#050505] py-20 sm:py-28"
         >
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: emerald }}>
+                Démonstration
+              </p>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
                 Comme si vous étiez là
               </h2>
-              <p className="mt-3 text-sm text-zinc-400 sm:text-base">
+              <p className="mt-4 text-base text-zinc-400">
                 Une conversation réelle entre Thomas et le jumeau de sa nutritionniste.
               </p>
             </div>
-            <div className="mx-auto mt-10 max-w-md sm:mt-14">
+            <div className="mx-auto mt-14 max-w-md">
               <div className="overflow-hidden rounded-[2rem] border border-white/[0.1] bg-[#1c1c1e] shadow-2xl shadow-black/50 ring-1 ring-white/[0.05]">
                 <div className="flex items-center gap-3 border-b border-white/[0.08] bg-[#2c2c2e] px-4 py-3">
                   <div className="flex size-9 items-center justify-center rounded-full bg-emerald-500/20 text-base">
                     🌿
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-white">
-                      Dr Sophie Martin · NutriTwin
-                    </p>
-                    <p className="text-[10px] text-emerald-400">● En ligne</p>
+                    <p className="text-xs font-semibold text-white">Dr Sophie Martin · NutriTwin</p>
+                    <p className="text-[10px]" style={{ color: emerald }}>● En ligne</p>
                   </div>
                 </div>
                 <div className="space-y-3 px-4 py-6 pb-8">
                   <p className="text-center text-[10px] text-zinc-500">Aujourd'hui 21h14</p>
                   <div className="flex justify-start">
                     <div className="max-w-[88%] rounded-[18px] rounded-bl-md bg-[#3a3a3c] px-3 py-2.5 text-[14px] leading-relaxed text-white">
-                      Bonsoir... j'ai encore craqué sur des chips ce soir. Je me sens nulle 😔
+                      Bonsoir... j'ai encore craqué sur des chips ce soir. Je me sens nul 😔
                     </div>
                   </div>
                   <div className="flex justify-end">
@@ -240,15 +269,20 @@ export default function Home() {
         </section>
 
         {/* TARIFS */}
-        <section id="tarifs" className="py-16 sm:py-24">
+        <section id="tarifs" className="py-20 sm:py-28">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <h2 className="text-center text-2xl font-bold tracking-tight sm:text-3xl">
-              Un investissement qui se rembourse seul
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-center text-sm text-zinc-400 sm:text-base">
-              Sans engagement. Annulable à tout moment.
-            </p>
-            <div className="mt-12 grid gap-6 lg:mt-14 lg:grid-cols-3 lg:gap-8">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: emerald }}>
+                Tarifs
+              </p>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                Un investissement qui se rembourse seul
+              </h2>
+              <p className="mt-4 text-base text-zinc-400">
+                Sans engagement. Annulable à tout moment.
+              </p>
+            </div>
+            <div className="mt-16 grid gap-6 lg:grid-cols-3 lg:gap-8">
               <PricingCard
                 name="Essentiel"
                 price="149€"
@@ -295,7 +329,7 @@ export default function Home() {
         </section>
 
         {/* FONDATEURS */}
-        <section className="border-t border-white/[0.06] bg-gradient-to-b from-emerald-500/[0.07] via-[#0a0a0a] to-[#0a0a0a] py-16 sm:py-24">
+        <section className="border-t border-white/[0.06] bg-gradient-to-b from-emerald-500/[0.07] via-[#0a0a0a] to-[#0a0a0a] py-20 sm:py-28">
           <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
             <p
               className="mb-4 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider ring-1"
@@ -307,13 +341,14 @@ export default function Home() {
             >
               Offre limitée aux 10 premiers
             </p>
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
               Devenez Fondateur NutriTwin
             </h2>
-            <p className="mt-6 text-[15px] leading-relaxed text-zinc-300">
+            <p className="mt-6 text-base leading-relaxed text-zinc-300 sm:text-lg">
               Je cherche 10 nutritionnistes visionnaires pour co-construire NutriTwin.
               En échange de vos retours pendant 2 mois, vous accédez au plan Pro
-              au prix de l'Essentiel — <strong className="text-white">149€/mois garanti à vie</strong>,
+              au prix de l'Essentiel —{" "}
+              <strong className="text-white">149€/mois garanti à vie</strong>,
               patients illimités, votre nom dans l'histoire du produit.
             </p>
             <div className="mx-auto mt-10 max-w-sm">
@@ -321,7 +356,7 @@ export default function Home() {
             </div>
             <Link
               href="/signup"
-              className="mt-8 inline-flex min-h-[52px] w-full items-center justify-center rounded-full px-8 text-base font-semibold text-black shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 sm:w-auto"
+              className="mt-10 inline-flex min-h-[52px] w-full items-center justify-center rounded-full px-10 text-base font-semibold text-black shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 sm:w-auto"
               style={{ backgroundColor: emerald }}
             >
               Je veux devenir Fondateur →
@@ -364,7 +399,7 @@ function FounderCounter() {
 
   return (
     <div
-      className="rounded-2xl border p-6"
+      className="rounded-2xl border p-6 text-left"
       style={{
         background: "rgba(16,185,129,0.06)",
         borderColor: `${emerald}33`,
@@ -372,7 +407,7 @@ function FounderCounter() {
     >
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-medium text-zinc-300">Places restantes</span>
-        <span className="text-2xl font-bold" style={{ color: emerald }}>{count}</span>
+        <span className="text-3xl font-bold" style={{ color: emerald }}>{count}</span>
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
         <div
