@@ -8,6 +8,8 @@ export default function SetPasswordPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
@@ -25,6 +27,10 @@ export default function SetPasswordPage() {
   }, []);
 
   const handleSubmit = async () => {
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("Veuillez renseigner votre prénom et nom.");
+      return;
+    }
     if (!password || password !== confirm) {
       setError("Les mots de passe ne correspondent pas.");
       return;
@@ -46,6 +52,20 @@ export default function SetPasswordPage() {
       setError(updateError.message);
       setLoading(false);
       return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await fetch("/api/create-patient", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: user.id,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: user.email,
+        }),
+      });
     }
 
     router.push("/chat");
@@ -83,7 +103,7 @@ export default function SetPasswordPage() {
             Bienvenue sur NutriTwin
           </h1>
           <p style={{ margin: "8px 0 0", fontSize: 14, color: "#64748b" }}>
-            Créez votre mot de passe pour accéder à votre espace
+            Quelques informations pour personnaliser votre espace
           </p>
         </div>
 
@@ -94,10 +114,49 @@ export default function SetPasswordPage() {
         ) : (
           <>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <label style={{ display: "block" }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Prénom</span>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Marie"
+                    style={{
+                      display: "block", width: "100%", marginTop: 6,
+                      height: 48, borderRadius: 12,
+                      border: "1.5px solid #e2e8f0",
+                      padding: "0 16px", fontSize: 15, outline: "none",
+                      background: "#f8fafc", color: "#0f172a",
+                      boxSizing: "border-box",
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = "#10b981"}
+                    onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
+                  />
+                </label>
+                <label style={{ display: "block" }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Nom</span>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Dupont"
+                    style={{
+                      display: "block", width: "100%", marginTop: 6,
+                      height: 48, borderRadius: 12,
+                      border: "1.5px solid #e2e8f0",
+                      padding: "0 16px", fontSize: 15, outline: "none",
+                      background: "#f8fafc", color: "#0f172a",
+                      boxSizing: "border-box",
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = "#10b981"}
+                    onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
+                  />
+                </label>
+              </div>
+
               <label style={{ display: "block" }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
-                  Mot de passe
-                </span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Mot de passe</span>
                 <input
                   type="password"
                   value={password}
@@ -116,9 +175,7 @@ export default function SetPasswordPage() {
                 />
               </label>
               <label style={{ display: "block" }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
-                  Confirmer le mot de passe
-                </span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Confirmer le mot de passe</span>
                 <input
                   type="password"
                   value={confirm}
@@ -145,18 +202,18 @@ export default function SetPasswordPage() {
 
             <button
               onClick={() => void handleSubmit()}
-              disabled={loading || !password || !confirm}
+              disabled={loading || !password || !confirm || !firstName || !lastName}
               style={{
                 width: "100%", height: 48, marginTop: 20,
                 borderRadius: 24,
-                background: loading || !password || !confirm
+                background: loading || !password || !confirm || !firstName || !lastName
                   ? "#e2e8f0"
                   : "linear-gradient(135deg, #34d399, #10b981)",
                 border: "none",
-                color: loading || !password || !confirm ? "#94a3b8" : "white",
+                color: loading || !password || !confirm || !firstName || !lastName ? "#94a3b8" : "white",
                 fontSize: 15, fontWeight: 600,
-                cursor: loading || !password || !confirm ? "not-allowed" : "pointer",
-                boxShadow: loading || !password || !confirm
+                cursor: loading || !password || !confirm || !firstName || !lastName ? "not-allowed" : "pointer",
+                boxShadow: loading || !password || !confirm || !firstName || !lastName
                   ? "none" : "0 4px 14px rgba(16,185,129,0.35)",
                 transition: "all 0.2s",
               }}
