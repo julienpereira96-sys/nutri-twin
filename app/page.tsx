@@ -30,10 +30,10 @@ export default function Home() {
               href="/login"
               className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-300 transition hover:text-white sm:px-4"
             >
-              Connexion
+              Espace praticien
             </Link>
             <Link
-              href="/signup"
+              href="#tarifs"
               className="rounded-full px-4 py-2 text-sm font-semibold text-black transition hover:bg-emerald-400"
               style={{ backgroundColor: emerald }}
             >
@@ -67,12 +67,8 @@ export default function Home() {
               Parce que vos patients ont besoin de vous<br className="hidden sm:block" /> entre les séances aussi.
             </p>
 
-            {/* Phrase forte mise en avant */}
             <div className="mx-auto mt-8 max-w-xl">
-              <p
-                className="text-base leading-relaxed sm:text-lg"
-                style={{ color: emerald }}
-              >
+              <p className="text-base leading-relaxed sm:text-lg" style={{ color: emerald }}>
                 Le suivi ne s'arrête pas à la porte du cabinet.<br />
                 <span className="text-white">Votre expertise non plus.</span>
               </p>
@@ -84,19 +80,19 @@ export default function Home() {
             </p>
 
             <div className="mt-12 flex flex-col items-stretch gap-4 sm:flex-row sm:justify-center sm:gap-5">
-              <Link
-                href="/signup"
+              <a
+                href="#tarifs"
                 className="inline-flex min-h-[52px] items-center justify-center rounded-full px-10 text-sm font-semibold text-black shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400"
                 style={{ backgroundColor: emerald }}
               >
-                14 jours gratuits — aucun engagement
-              </Link>
-              <a
-                href="#demo"
+                14 jours gratuits — CB requise
+              </a>
+              <Link
+                href="/chat"
                 className="inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-10 text-sm font-medium text-white ring-1 ring-white/[0.08] backdrop-blur transition hover:bg-white/[0.08]"
               >
                 Voir une conversation →
-              </a>
+              </Link>
             </div>
           </div>
         </section>
@@ -164,32 +160,23 @@ export default function Home() {
             <div className="mx-auto mt-16 grid max-w-5xl gap-6 lg:grid-cols-3">
               <div className="flex flex-col items-center rounded-2xl border border-white/[0.08] bg-white/[0.02] px-6 py-10 text-center">
                 <ClockIcon />
-                <h3 className="mt-6 text-base font-bold text-white">
-                  Libérez 3h par semaine
-                </h3>
+                <h3 className="mt-6 text-base font-bold text-white">Libérez 3h par semaine</h3>
                 <p className="mt-3 text-sm leading-relaxed text-zinc-400">
-                  Votre jumeau gère les questions récurrentes. Vous gardez votre
-                  énergie pour ce qui compte vraiment.
+                  Votre jumeau gère les questions récurrentes. Vous gardez votre énergie pour ce qui compte vraiment.
                 </p>
               </div>
               <div className="flex flex-col items-center rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.06] px-6 py-10 text-center ring-1 ring-emerald-500/15">
                 <HeartIcon />
-                <h3 className="mt-6 text-base font-bold text-white">
-                  Un suivi qui ne s'interrompt plus
-                </h3>
+                <h3 className="mt-6 text-base font-bold text-white">Un suivi qui ne s'interrompt plus</h3>
                 <p className="mt-3 text-sm leading-relaxed text-zinc-300">
-                  Vos patients restent accompagnés entre les séances, avec
-                  cohérence et bienveillance.
+                  Vos patients restent accompagnés entre les séances, avec cohérence et bienveillance.
                 </p>
               </div>
               <div className="flex flex-col items-center rounded-2xl border border-white/[0.08] bg-white/[0.02] px-6 py-10 text-center">
                 <SparklesIcon />
-                <h3 className="mt-6 text-base font-bold text-white">
-                  Votre image, intacte
-                </h3>
+                <h3 className="mt-6 text-base font-bold text-white">Votre image, intacte</h3>
                 <p className="mt-3 text-sm leading-relaxed text-zinc-400">
-                  Chaque réponse reflète votre approche. Vos patients ne voient
-                  pas une IA — ils vous voient, vous.
+                  Chaque réponse reflète votre approche. Vos patients ne voient pas une IA — ils vous voient, vous.
                 </p>
               </div>
             </div>
@@ -197,18 +184,13 @@ export default function Home() {
         </section>
 
         {/* DEMO */}
-        <section
-          id="demo"
-          className="border-y border-white/[0.06] bg-[#050505] py-20 sm:py-28"
-        >
+        <section id="demo" className="border-y border-white/[0.06] bg-[#050505] py-20 sm:py-28">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
               <p className="mb-3 text-xs font-semibold uppercase tracking-widest" style={{ color: emerald }}>
                 Démonstration
               </p>
-              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Comme si vous étiez là
-              </h2>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">Comme si vous étiez là</h2>
               <p className="mt-4 text-base text-zinc-400">
                 Une conversation réelle entre Thomas et le jumeau de sa nutritionniste.
               </p>
@@ -216,9 +198,7 @@ export default function Home() {
             <div className="mx-auto mt-14 max-w-md">
               <div className="overflow-hidden rounded-[2rem] border border-white/[0.1] bg-[#1c1c1e] shadow-2xl shadow-black/50 ring-1 ring-white/[0.05]">
                 <div className="flex items-center gap-3 border-b border-white/[0.08] bg-[#2c2c2e] px-4 py-3">
-                  <div className="flex size-9 items-center justify-center rounded-full bg-emerald-500/20 text-base">
-                    🌿
-                  </div>
+                  <div className="flex size-9 items-center justify-center rounded-full bg-emerald-500/20 text-base">🌿</div>
                   <div>
                     <p className="text-xs font-semibold text-white">Dr Sophie Martin · NutriTwin</p>
                     <p className="text-[10px]" style={{ color: emerald }}>● En ligne</p>
@@ -232,10 +212,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="flex justify-end">
-                    <div
-                      className="max-w-[88%] rounded-[18px] rounded-br-md px-3 py-2.5 text-[14px] leading-relaxed text-black"
-                      style={{ backgroundColor: emerald }}
-                    >
+                    <div className="max-w-[88%] rounded-[18px] rounded-br-md px-3 py-2.5 text-[14px] leading-relaxed text-black" style={{ backgroundColor: emerald }}>
                       Bonsoir Thomas. Un écart, ça arrive — et ça ne définit pas votre parcours. Dites-moi, vous aviez mangé quoi ce midi ?
                     </div>
                   </div>
@@ -245,10 +222,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="flex justify-end">
-                    <div
-                      className="max-w-[88%] rounded-[18px] rounded-br-md px-3 py-2.5 text-[14px] leading-relaxed text-black"
-                      style={{ backgroundColor: emerald }}
-                    >
+                    <div className="max-w-[88%] rounded-[18px] rounded-br-md px-3 py-2.5 text-[14px] leading-relaxed text-black" style={{ backgroundColor: emerald }}>
                       Voilà, tout s'explique. Un déjeuner insuffisant crée une vraie dette énergétique le soir. Ce n'est pas un manque de volonté — c'est de la biologie. Demain, on vise un déjeuner avec une vraie source de protéines. D'accord ?
                     </div>
                   </div>
@@ -258,9 +232,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="flex justify-center pt-2">
-                    <span className="text-[11px] text-zinc-500">
-                      Votre praticienne sera informée lors de votre prochaine séance
-                    </span>
+                    <span className="text-[11px] text-zinc-500">Votre praticienne sera informée lors de votre prochaine séance</span>
                   </div>
                 </div>
               </div>
@@ -279,7 +251,7 @@ export default function Home() {
                 Un investissement qui se rembourse seul
               </h2>
               <p className="mt-4 text-base text-zinc-400">
-                Sans engagement. Annulable à tout moment.
+                14 jours gratuits. Sans engagement. Annulable à tout moment.
               </p>
             </div>
             <div className="mt-16 grid gap-6 lg:grid-cols-3 lg:gap-8">
@@ -294,7 +266,7 @@ export default function Home() {
                   "Support par email",
                   "Sans engagement",
                 ]}
-                ctaHref="/signup"
+                plan="essentiel"
               />
               <PricingCard
                 name="Pro"
@@ -309,7 +281,7 @@ export default function Home() {
                   "Support prioritaire",
                   "Sans engagement",
                 ]}
-                ctaHref="/signup"
+                plan="pro"
               />
               <PricingCard
                 name="Cabinet"
@@ -322,7 +294,7 @@ export default function Home() {
                   "Support dédié",
                   "Sans engagement",
                 ]}
-                ctaHref="/signup"
+                plan="cabinet"
               />
             </div>
           </div>
@@ -379,8 +351,8 @@ export default function Home() {
           </div>
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-12">
             <nav className="flex flex-wrap gap-x-8 gap-y-3 text-sm text-zinc-400">
-              <a href="#" className="transition hover:text-white">CGU</a>
-              <a href="#" className="transition hover:text-white">Confidentialité</a>
+              <Link href="/cgu" className="transition hover:text-white">CGU</Link>
+              <Link href="/confidentialite" className="transition hover:text-white">Confidentialité</Link>
             </nav>
             <p className="text-sm text-zinc-500">
               © {new Date().getFullYear()} NutriTwin. Tous droits réservés.
@@ -400,10 +372,7 @@ function FounderCounter() {
   return (
     <div
       className="rounded-2xl border p-6 text-left"
-      style={{
-        background: "rgba(16,185,129,0.06)",
-        borderColor: `${emerald}33`,
-      }}
+      style={{ background: "rgba(16,185,129,0.06)", borderColor: `${emerald}33` }}
     >
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-medium text-zinc-300">Places restantes</span>
@@ -429,10 +398,28 @@ function PricingCard(props: {
   badge?: string;
   description: string;
   features: string[];
-  ctaHref: string;
+  plan: "essentiel" | "pro" | "cabinet";
 }) {
-  const { name, price, featured, badge, description, features, ctaHref } = props;
+  const { name, price, featured, badge, description, features, plan } = props;
   const [hovered, setHovered] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleCheckout = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, userId: "" }),
+      });
+      const data = await res.json() as { url: string };
+      if (data.url) window.location.href = data.url;
+    } catch {
+      console.error("Erreur checkout");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <article
@@ -478,8 +465,9 @@ function PricingCard(props: {
           14 jours gratuits
         </span>
       </div>
-      <Link
-        href={ctaHref}
+      <button
+        onClick={() => void handleCheckout()}
+        disabled={loading}
         className={`mt-4 inline-flex min-h-[48px] w-full items-center justify-center rounded-2xl text-sm font-semibold transition ${
           featured
             ? "text-black hover:bg-emerald-400"
@@ -487,8 +475,8 @@ function PricingCard(props: {
         }`}
         style={featured ? { backgroundColor: emerald } : {}}
       >
-        Commencer l'essai
-      </Link>
+        {loading ? "Chargement..." : "Commencer l'essai"}
+      </button>
     </article>
   );
 }
