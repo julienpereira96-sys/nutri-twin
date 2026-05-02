@@ -6,23 +6,49 @@ import { FormEvent, useState } from "react";
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
+const specialties = [
+  "Nutritionniste",
+  "Diététicien / Diététicienne",
+  "Médecin Nutritionniste",
+  "Endocrinologue / Diabétologue",
+  "Naturopathe",
+  "Coach Nutrition / Conseiller",
+  "Psychologue (TCA)",
+];
+
 export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [specialty, setSpecialty] = useState("");
+  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
   const [specialtyOther, setSpecialtyOther] = useState("");
+  const [showOther, setShowOther] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const toggleSpecialty = (s: string) => {
+    setSelectedSpecialties((prev) =>
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+    );
+  };
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
-    setLoading(true);
 
-    const finalSpecialty = specialty === "Autre" ? specialtyOther.trim() : specialty;
+    const allSpecialties = showOther && specialtyOther.trim()
+      ? [...selectedSpecialties, specialtyOther.trim()]
+      : selectedSpecialties;
+
+    if (allSpecialties.length === 0) {
+      setError("Veuillez sélectionner au moins une spécialité.");
+      return;
+    }
+
+    setLoading(true);
+    const finalSpecialty = allSpecialties.join(", ");
 
     try {
       const supabase = createSupabaseBrowserClient();
@@ -105,35 +131,56 @@ export default function SignupPage() {
                 />
               </label>
             </div>
-            <label className="block">
-              <span className="text-sm font-medium text-zinc-300">Spécialité</span>
-              <select
-                required
-                value={specialty}
-                onChange={(e) => setSpecialty(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
-              >
-                <option value="">Choisir...</option>
-                <option value="Nutritionniste">Nutritionniste</option>
-                <option value="Diététicien / Diététicienne">Diététicien / Diététicienne</option>
-                <option value="Médecin Nutritionniste">Médecin Nutritionniste</option>
-                <option value="Endocrinologue / Diabétologue">Endocrinologue / Diabétologue</option>
-                <option value="Naturopathe">Naturopathe</option>
-                <option value="Coach Nutrition / Conseiller">Coach Nutrition / Conseiller</option>
-                <option value="Psychologue (TCA)">Psychologue (TCA)</option>
-                <option value="Autre">Autre (préciser)</option>
-              </select>
-              {specialty === "Autre" && (
+
+            {/* Spécialités multi-sélection */}
+            <div>
+              <span className="text-sm font-medium text-zinc-300">
+                Spécialité(s)
+              </span>
+              <p className="mt-1 text-xs text-zinc-500">Vous pouvez en sélectionner plusieurs</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {specialties.map((s) => {
+                  const isSelected = selectedSpecialties.includes(s);
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => toggleSpecialty(s)}
+                      className="rounded-full border px-3 py-1.5 text-xs font-medium transition"
+                      style={{
+                        background: isSelected ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
+                        borderColor: isSelected ? "#10b981" : "rgba(255,255,255,0.12)",
+                        color: isSelected ? "#10b981" : "#a1a1aa",
+                      }}
+                    >
+                      {isSelected ? "✓ " : ""}{s}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setShowOther((prev) => !prev)}
+                  className="rounded-full border px-3 py-1.5 text-xs font-medium transition"
+                  style={{
+                    background: showOther ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
+                    borderColor: showOther ? "#10b981" : "rgba(255,255,255,0.12)",
+                    color: showOther ? "#10b981" : "#a1a1aa",
+                  }}
+                >
+                  {showOther ? "✓ " : ""}Autre
+                </button>
+              </div>
+              {showOther && (
                 <input
                   type="text"
-                  required
                   value={specialtyOther}
                   onChange={(e) => setSpecialtyOther(e.target.value)}
                   placeholder="Précisez votre spécialité..."
                   className="mt-2 w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
                 />
               )}
-            </label>
+            </div>
+
             <label className="block">
               <span className="text-sm font-medium text-zinc-300">Email</span>
               <input
