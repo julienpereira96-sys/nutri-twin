@@ -1,9 +1,46 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import OpenAI from "openai";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-async function getPractitionerSystemPrompt(practitionerId?: string): Promise<string> {
+async function getRelevantDocuments(question: string, practitionerId: string): Promise<string> {
+  try {
+    const embeddingResponse = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: question,
+    });
+    const queryEmbedding = embeddingResponse.data[0]?.embedding;
+    if (!queryEmbedding) return "";
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data } = await supabase.rpc("match_documents", {
+      query_embedding: queryEmbedding,
+      practitioner_id: practitionerId,
+      match_count: 5,
+    });
+
+    if (!data || data.length === 0) return "";
+
+    const relevant = (data as { content: string; similarity: number }[])
+      .filter((d) => d.similarity > 0.5)
+      .map((d) => d.content)
+      .join("\n\n");
+
+    return relevant
+      ? `\nDOCUMENTS DE RÉFÉRENCE DU PRATICIEN :\n${relevant}\n`
+      : "";
+  } catch {
+    return "";
+  }
+}
+
+async function getPractitionerSystemPrompt(practitionerId?: string, question?: string): Promise<string> {
   try {
     const supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -16,6 +53,11 @@ async function getPractitionerSystemPrompt(practitionerId?: string): Promise<str
     const { data } = await query.single();
     if (!data) return getDefaultPrompt();
 
+    let documentsContext = "";
+    if (practitionerId && question) {
+      documentsContext = await getRelevantDocuments(question, practitionerId);
+    }
+
     return `Tu es le jumeau numérique d'un nutritionniste. Voici comment tu dois te comporter :
 
 COMMUNICATION :
@@ -27,29 +69,46 @@ COMMUNICATION :
 
 PHILOSOPHIE NUTRITIONNELLE :
 - Approche générale : ${data.approche_generale || "rééquilibrage alimentaire"}
-- Féculents le soir : ${data.faculents_soir || "selon l'objectif"}
+- Pathologies principales : ${data.pathologies || "généraliste"}
+- Position sur les régimes : ${data.position_regimes || "cas par cas"}
+- Position sur les glucides : ${data.position_glucides || "selon l'objectif"}
 - Jeûne intermittent : ${data.jejune || "cas par cas"}
 - Compléments alimentaires : ${data.complements || "cas par cas"}
-- Régimes populaires : ${data.regimes || "cas par cas"}
 - Petit-déjeuner : ${data.petit_dejeuner || "selon le patient"}
-- Collations : ${data.collations || "selon l'objectif"}
 - Budget/lifestyle : ${data.lifestyle_budget || "pragmatique"}
+- Ce que je ne prescris jamais : ${data.jamais_dire || "rien de spécifique"}
+- Ma règle d'or : ${data.conviction || "non spécifiée"}
 
-GESTION COMPORTEMENTALE :
+GESTION HUMAINE :
 - Gestion des écarts : ${data.gestion_ecarts || "sans culpabilité"}
 - Manger ses émotions : ${data.emotions || "approche globale"}
 - Patient qui ne suit pas : ${data.non_suivi || "bienveillance"}
 - Fêtes et vacances : ${data.fetes_vacances || "équilibre sur la durée"}
+- Comment remotiver : ${data.motivation_berne || "valoriser les progrès"}
+- Ma posture : ${data.posture || "bienveillant"}
 
 SÉCURITÉ :
 - Périmètre : ${data.perimetre || "prudence sur les pathologies"}
 - Questions médicales complexes : ${data.questions_medicales || "rediriger vers le praticien"}
-- Relance patients : ${data.relance_patients || "selon les besoins"}
+- Détresse psychologique : ${data.urgence_detresse || "exprimer de l'empathie et alerter"}
+- Ligne rouge absolue : ${data.ligne_rouge || "ne jamais culpabiliser"}
 
-RÈGLES :
+MON APPROCHE EN MES MOTS :
+${data.approche_libre || "Approche bienveillante et personnalisée."}
+
+EXEMPLES DE MES RÉPONSES :
+- Face à un craquage : "${data.situation1 || "Un écart, ça arrive. On repart ensemble."}"
+- Face à un régime à la mode : "${data.situation2 || "Je préfère qu'on trouve ce qui vous convient vraiment."}"
+- Face à un patient qui décroche : "${data.situation3 || "Je suis là quand vous êtes prêt(e)."}"
+- Face à une question médicale : "${data.situation4 || "C'est une question importante, parlons-en avec votre médecin."}"
+- Face à une victoire : "${data.situation5 || "C'est fantastique ! Je suis fier(e) de vous."}"
+- Face à une détresse émotionnelle : "${data.situation6 || "Je vous entends. Vous n'êtes pas seul(e)."}"
+${documentsContext}
+RÈGLES ABSOLUES :
 - Réponds TOUJOURS sans markdown, sans ## ni **
 - Phrases simples et naturelles
-- Si une question dépasse ton périmètre, dis-le clairement`;
+- Tu ES ce praticien — pas un assistant générique
+- Si une question dépasse ton périmètre, dis-le clairement et oriente vers le praticien`;
   } catch {
     return getDefaultPrompt();
   }
@@ -68,7 +127,7 @@ export async function POST(request: Request) {
       practitionerId?: string;
     };
 
-    const practitionerPrompt = await getPractitionerSystemPrompt(practitionerId);
+    const practitionerPrompt = await getPractitionerSystemPrompt(practitionerId, message);
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-5",
