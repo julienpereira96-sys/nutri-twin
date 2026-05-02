@@ -1,8 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
 function chunkText(text: string, chunkSize = 500): string[] {
   const words = text.split(" ");
   const chunks: string[] = [];
@@ -22,6 +20,8 @@ function chunkText(text: string, chunkSize = 500): string[] {
 
 export async function POST(request: Request) {
   try {
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
     const formData = await request.formData();
     const file = formData.get("file") as File;
     const practitionerId = formData.get("practitionerId") as string;
