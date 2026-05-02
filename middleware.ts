@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/auth-helpers-nextjs";
 import { type NextRequest, NextResponse } from "next/server";
 
+const protectedRoutes = ["/dashboard", "/onboarding"];
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -25,7 +27,15 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const isProtected = protectedRoutes.some((route) =>
+    request.nextUrl.pathname.startsWith(route)
+  );
+
+  if (isProtected && !user) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
 
   return supabaseResponse;
 }
