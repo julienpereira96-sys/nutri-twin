@@ -1,159 +1,161 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-type Message = {
-  id: string;
-  from: "patient" | "ai";
-  text: string;
-  time: string;
-};
-
-type Patient = {
+type RealPatient = {
   id: string;
   firstName: string;
+  lastName: string;
   initials: string;
   avatarColor: string;
-  age: number;
-  objective: string;
-  lastConsultation: string;
-  activePlan: string;
-  lastQuestion: string;
+  email: string;
+  lastMessage: string;
   lastMessageTime: string;
-  hasNewMessage: boolean;
-  monthlyStats: {
-    messagesHandled: number;
-    timeSaved: string;
-    satisfaction: string;
-  };
-  conversation: Message[];
+  lastMessageRole: string;
+  totalMessages: number;
 };
 
-const patients: Patient[] = [
-  {
-    id: "p1",
-    firstName: "Camille",
-    initials: "CA",
-    avatarColor: "bg-rose-500",
-    age: 34,
-    objective: "Perte de masse grasse durable",
-    lastConsultation: "12 avril 2026",
-    activePlan: "Plan Mediterraneen 1600 kcal",
-    lastQuestion: "Je rentre tard ce soir, quoi manger rapidement sans craquer ?",
-    lastMessageTime: "19:42",
-    hasNewMessage: true,
-    monthlyStats: { messagesHandled: 46, timeSaved: "2h40", satisfaction: "96%" },
-    conversation: [
-      { id: "c1", from: "patient", text: "Bonsoir, je finis tard et j'ai tres faim. Je peux faire quoi en 10 minutes ?", time: "19:12" },
-      { id: "c2", from: "ai", text: "Bonsoir Camille. Fais une assiette simple avec une source de proteines, des legumes deja prets et un feculent en petite portion.", time: "19:13" },
-      { id: "c3", from: "patient", text: "J'ai peur de regrignoter plus tard si je mange trop leger.", time: "19:18" },
-      { id: "c4", from: "ai", text: "Bonne remarque. Ajoute un laitage riche en proteines ou une poignee d'amandes pour renforcer la satiete.", time: "19:19" },
-      { id: "c5", from: "patient", text: "Parfait, je vais faire ca. Merci !", time: "19:22" },
-      { id: "c6", from: "ai", text: "Avec plaisir. Demain matin, dis-moi comment tu t'es sentie apres ce diner.", time: "19:23" },
-    ],
-  },
-  {
-    id: "p2",
-    firstName: "Julien",
-    initials: "JU",
-    avatarColor: "bg-blue-500",
-    age: 41,
-    objective: "Stabiliser la glycemie",
-    lastConsultation: "08 avril 2026",
-    activePlan: "Plan IG bas sur 4 semaines",
-    lastQuestion: "Est-ce que je peux garder des fruits au petit-dejeuner ?",
-    lastMessageTime: "17:08",
-    hasNewMessage: true,
-    monthlyStats: { messagesHandled: 39, timeSaved: "2h10", satisfaction: "94%" },
-    conversation: [
-      { id: "j1", from: "patient", text: "Je prends banane + cafe le matin, c'est ok pour ma glycemie ?", time: "17:00" },
-      { id: "j2", from: "ai", text: "Tu peux garder un fruit, mais associe-le a une proteine et un peu de gras: yaourt grec, graines ou oeufs.", time: "17:01" },
-    ],
-  },
-  {
-    id: "p3",
-    firstName: "Sophie",
-    initials: "SO",
-    avatarColor: "bg-violet-500",
-    age: 29,
-    objective: "Retrouver de l'energie",
-    lastConsultation: "03 avril 2026",
-    activePlan: "Plan anti-fatigue riche en fer",
-    lastQuestion: "Je suis fatiguee l'apres-midi, quelle collation tu conseilles ?",
-    lastMessageTime: "Hier",
-    hasNewMessage: false,
-    monthlyStats: { messagesHandled: 28, timeSaved: "1h35", satisfaction: "92%" },
-    conversation: [
-      { id: "s1", from: "patient", text: "Je m'endors presque vers 16h, tu as une idee de collation ?", time: "16:20" },
-      { id: "s2", from: "ai", text: "Teste une collation avec proteines + fibres: skyr et fruit rouge, ou houmous et crudites.", time: "16:21" },
-    ],
-  },
-  {
-    id: "p4",
-    firstName: "Thomas",
-    initials: "TH",
-    avatarColor: "bg-amber-500",
-    age: 37,
-    objective: "Prise de masse maigre",
-    lastConsultation: "30 mars 2026",
-    activePlan: "Plan performance 2800 kcal",
-    lastQuestion: "Comment repartir mes proteines sur la journee ?",
-    lastMessageTime: "Lun",
-    hasNewMessage: false,
-    monthlyStats: { messagesHandled: 33, timeSaved: "1h50", satisfaction: "95%" },
-    conversation: [
-      { id: "t1", from: "patient", text: "Je mange beaucoup le soir, c'est mieux de repartir ?", time: "12:10" },
-      { id: "t2", from: "ai", text: "Oui, vise 25 a 35 g de proteines par repas et une portion post-entrainement.", time: "12:11" },
-    ],
-  },
-  {
-    id: "p5",
-    firstName: "Nadia",
-    initials: "NA",
-    avatarColor: "bg-emerald-500",
-    age: 46,
-    objective: "Confort digestif",
-    lastConsultation: "26 mars 2026",
-    activePlan: "Plan digestion FODMAP progressif",
-    lastQuestion: "Les legumes crus me ballonnent, je fais quoi ?",
-    lastMessageTime: "Mar",
-    hasNewMessage: false,
-    monthlyStats: { messagesHandled: 25, timeSaved: "1h20", satisfaction: "93%" },
-    conversation: [
-      { id: "n1", from: "patient", text: "J'ai encore des ballonnements apres la salade du midi.", time: "13:40" },
-      { id: "n2", from: "ai", text: "Passe sur des legumes cuits quelques jours et teste une progression graduelle.", time: "13:42" },
-    ],
-  },
+type Conversation = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+};
+
+const AVATAR_COLORS = [
+  "bg-rose-500", "bg-blue-500", "bg-violet-500",
+  "bg-amber-500", "bg-emerald-500", "bg-pink-500",
+  "bg-cyan-500", "bg-orange-500",
 ];
 
 export default function DashboardPage() {
-  const [selectedPatientId, setSelectedPatientId] = useState(patients[0]?.id ?? "");
+  const [patients, setPatients] = useState<RealPatient[]>([]);
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [practitionerId, setPractitionerId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [practitionerName, setPractitionerName] = useState("");
 
   useEffect(() => {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setPractitionerId(data.user.id);
+
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const pid = data.user.id;
+      setPractitionerId(pid);
+
+      // Récupérer le nom du praticien
+      const { data: practitioner } = await supabase
+        .from("practitioners")
+        .select("first_name, last_name")
+        .eq("user_id", pid)
+        .single();
+      if (practitioner) {
+        setPractitionerName(`${practitioner.first_name} ${practitioner.last_name}`);
+      }
+
+      // Récupérer les patients liés à ce praticien
+      const { data: relations } = await supabase
+        .from("patient_practitioner")
+        .select("patient_id")
+        .eq("practitioner_id", pid);
+
+      if (!relations || relations.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      const patientIds = relations.map((r) => r.patient_id);
+
+      // Récupérer les infos des patients
+      const { data: patientsData } = await supabase
+        .from("patients")
+        .select("user_id, first_name, last_name, email")
+        .in("user_id", patientIds);
+
+      if (!patientsData) {
+        setLoading(false);
+        return;
+      }
+
+      // Récupérer le dernier message et le total pour chaque patient
+      const patientsWithStats = await Promise.all(
+        patientsData.map(async (p, i) => {
+          const { data: convs } = await supabase
+            .from("conversations")
+            .select("role, content, created_at")
+            .eq("patient_id", p.user_id)
+            .eq("practitioner_id", pid)
+            .order("created_at", { ascending: false })
+            .limit(1);
+
+          const lastConv = convs?.[0];
+
+          const { count } = await supabase
+            .from("conversations")
+            .select("*", { count: "exact", head: true })
+            .eq("patient_id", p.user_id)
+            .eq("practitioner_id", pid);
+
+          const initials = `${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase();
+
+          return {
+            id: p.user_id,
+            firstName: p.first_name ?? "Patient",
+            lastName: p.last_name ?? "",
+            initials,
+            avatarColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
+            email: p.email ?? "",
+            lastMessage: lastConv?.content ?? "Aucun message pour l'instant",
+            lastMessageTime: lastConv?.created_at
+              ? new Date(lastConv.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+              : "",
+            lastMessageRole: lastConv?.role ?? "",
+            totalMessages: count ?? 0,
+          };
+        })
+      );
+
+      setPatients(patientsWithStats);
+      if (patientsWithStats.length > 0) {
+        setSelectedPatientId(patientsWithStats[0].id);
+      }
+      setLoading(false);
     });
   }, []);
 
-  const selectedPatient = useMemo(
-    () => patients.find((p) => p.id === selectedPatientId) ?? patients[0],
-    [selectedPatientId],
-  );
+  // Charger les conversations du patient sélectionné
+  useEffect(() => {
+    if (!selectedPatientId || !practitionerId) return;
 
-  const activePatients = patients.length;
-  const messagesThisMonth = patients.reduce((sum, p) => sum + p.monthlyStats.messagesHandled, 0);
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    supabase
+      .from("conversations")
+      .select("id, role, content, created_at")
+      .eq("patient_id", selectedPatientId)
+      .eq("practitioner_id", practitionerId)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        setConversations((data as Conversation[]) ?? []);
+      });
+  }, [selectedPatientId, practitionerId]);
+
+  const selectedPatient = patients.find((p) => p.id === selectedPatientId);
+  const totalMessages = patients.reduce((sum, p) => sum + p.totalMessages, 0);
 
   const sendInvite = async () => {
     if (!inviteEmail.trim()) return;
@@ -170,8 +172,7 @@ export default function DashboardPage() {
         setInviteError(data.error ?? "Une erreur est survenue.");
       } else {
         setInviteSuccess(true);
-setInviteEmail("");
-
+        setInviteEmail("");
       }
     } catch {
       setInviteError("Impossible d'envoyer l'invitation.");
@@ -180,16 +181,16 @@ setInviteEmail("");
     }
   };
 
-  if (!selectedPatient) return null;
-
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <header className="border-b border-white/10 bg-[#111111]/70 backdrop-blur">
         <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <div>
-            <h1 className="text-lg font-bold tracking-tight sm:text-xl">Dashboard NutriTwin</h1>
+            <h1 className="text-lg font-bold tracking-tight sm:text-xl">
+              {practitionerName ? `Bonjour ${practitionerName.split(" ")[0]} 👋` : "Dashboard NutriTwin"}
+            </h1>
             <p className="text-xs text-zinc-400 sm:text-sm">
-              {activePatients} patients actifs · {messagesThisMonth} messages ce mois
+              {patients.length} patient{patients.length > 1 ? "s" : ""} actif{patients.length > 1 ? "s" : ""} · {totalMessages} messages au total
             </p>
           </div>
           <Link
@@ -202,6 +203,7 @@ setInviteEmail("");
       </header>
 
       <main className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 p-4 sm:p-6 lg:grid-cols-[280px_minmax(0,1fr)_260px]">
+        {/* Sidebar patients */}
         <aside className="flex h-[calc(100vh-130px)] flex-col rounded-2xl border border-white/10 bg-[#121212]">
           <div className="border-b border-white/10 px-4 py-4">
             <div className="flex items-center gap-3">
@@ -209,42 +211,50 @@ setInviteEmail("");
                 <span className="text-lg">🍃</span>
               </div>
               <div>
-                <p className="font-semibold">NutriTwin</p>
+                <p className="font-semibold">Mes patients</p>
                 <p className="text-xs text-zinc-400">Espace praticien</p>
               </div>
             </div>
           </div>
 
           <div className="flex-1 space-y-2 overflow-y-auto p-3">
-            {patients.map((patient) => {
-              const isSelected = patient.id === selectedPatient.id;
-              return (
-                <button
-                  key={patient.id}
-                  type="button"
-                  onClick={() => setSelectedPatientId(patient.id)}
-                  className={`w-full rounded-xl border p-3 text-left transition ${
-                    isSelected
-                      ? "border-[#10b981]/70 bg-[#10b981]/10"
-                      : "border-white/10 bg-[#171717] hover:border-white/20"
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${patient.avatarColor}`}>
-                      {patient.initials}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-sm font-semibold">{patient.firstName}</p>
-                        <span className="text-[11px] text-zinc-500">{patient.lastMessageTime}</span>
+            {loading ? (
+              <p className="text-center text-xs text-zinc-500 mt-4">Chargement...</p>
+            ) : patients.length === 0 ? (
+              <div className="mt-6 text-center">
+                <p className="text-sm text-zinc-400">Aucun patient pour l'instant</p>
+                <p className="mt-2 text-xs text-zinc-500">Invitez votre premier patient !</p>
+              </div>
+            ) : (
+              patients.map((patient) => {
+                const isSelected = patient.id === selectedPatientId;
+                return (
+                  <button
+                    key={patient.id}
+                    type="button"
+                    onClick={() => setSelectedPatientId(patient.id)}
+                    className={`w-full rounded-xl border p-3 text-left transition ${
+                      isSelected
+                        ? "border-[#10b981]/70 bg-[#10b981]/10"
+                        : "border-white/10 bg-[#171717] hover:border-white/20"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${patient.avatarColor}`}>
+                        {patient.initials}
                       </div>
-                      <p className="truncate text-xs text-zinc-400">{patient.lastQuestion}</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-sm font-semibold">{patient.firstName}</p>
+                          <span className="text-[11px] text-zinc-500">{patient.lastMessageTime}</span>
+                        </div>
+                        <p className="truncate text-xs text-zinc-400">{patient.lastMessage}</p>
+                      </div>
                     </div>
-                    {patient.hasNewMessage && <span className="mt-1 h-2.5 w-2.5 rounded-full bg-[#10b981]" />}
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })
+            )}
           </div>
 
           <div className="border-t border-white/10 p-3">
@@ -258,65 +268,83 @@ setInviteEmail("");
           </div>
         </aside>
 
+        {/* Zone conversations */}
         <section className="flex h-[calc(100vh-130px)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111111]">
-          <div className="border-b border-white/10 px-5 py-4">
-            <p className="text-lg font-semibold">{selectedPatient.firstName}</p>
-            <p className="text-sm text-zinc-400">{selectedPatient.objective}</p>
-          </div>
-
-          <div className="flex-1 space-y-4 overflow-y-auto bg-[#0f0f0f] p-4 sm:p-6">
-            {selectedPatient.conversation.map((message) => {
-              const isPatient = message.from === "patient";
-              return (
-                <div key={message.id} className={`flex ${isPatient ? "justify-start" : "justify-end"}`}>
-                  <div className="max-w-[82%]">
-                    <div className={`rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
-                      isPatient ? "rounded-bl-md bg-[#2a2a2a] text-zinc-100" : "rounded-br-md bg-[#10b981] text-black"
-                    }`}>
-                      {message.text}
-                    </div>
-                    <div className={`mt-1 flex items-center gap-2 text-[11px] ${isPatient ? "justify-start text-zinc-500" : "justify-end text-zinc-500"}`}>
-                      <span>{message.time}</span>
-                    </div>
-                    {!isPatient && (
-                      <button type="button" className="mt-2 rounded-full border border-[#10b981]/50 px-3 py-1 text-xs font-medium text-[#34d399] transition hover:bg-[#10b981]/10">
-                        Corriger cette reponse
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          {selectedPatient ? (
+            <>
+              <div className="border-b border-white/10 px-5 py-4">
+                <p className="text-lg font-semibold">{selectedPatient.firstName} {selectedPatient.lastName}</p>
+                <p className="text-sm text-zinc-400">{selectedPatient.email}</p>
+              </div>
+              <div className="flex-1 space-y-4 overflow-y-auto bg-[#0f0f0f] p-4 sm:p-6">
+                {conversations.length === 0 ? (
+                  <p className="text-center text-sm text-zinc-500 mt-8">
+                    Aucune conversation pour l'instant
+                  </p>
+                ) : (
+                  conversations.map((message) => {
+                    const isPatient = message.role === "user";
+                    return (
+                      <div key={message.id} className={`flex ${isPatient ? "justify-start" : "justify-end"}`}>
+                        <div className="max-w-[82%]">
+                          <div className={`rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
+                            isPatient ? "rounded-bl-md bg-[#2a2a2a] text-zinc-100" : "rounded-br-md bg-[#10b981] text-black"
+                          }`}>
+                            {message.content}
+                          </div>
+                          <div className={`mt-1 text-[11px] ${isPatient ? "text-zinc-500" : "text-right text-zinc-500"}`}>
+                            {new Date(message.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-1 items-center justify-center">
+              <p className="text-sm text-zinc-500">
+                {loading ? "Chargement..." : "Sélectionnez un patient"}
+              </p>
+            </div>
+          )}
         </section>
 
+        {/* Fiche patient */}
         <aside className="h-[calc(100vh-130px)] overflow-y-auto rounded-2xl border border-white/10 bg-[#121212] p-4">
-          <div className="mb-6 flex flex-col items-center text-center">
-            <div className={`mb-3 flex h-16 w-16 items-center justify-center rounded-full text-sm font-bold text-white ${selectedPatient.avatarColor}`}>
-              {selectedPatient.initials}
-            </div>
-            <p className="text-lg font-semibold">{selectedPatient.firstName}</p>
-            <p className="text-xs text-zinc-400">{selectedPatient.objective}</p>
-          </div>
+          {selectedPatient ? (
+            <>
+              <div className="mb-6 flex flex-col items-center text-center">
+                <div className={`mb-3 flex h-16 w-16 items-center justify-center rounded-full text-sm font-bold text-white ${selectedPatient.avatarColor}`}>
+                  {selectedPatient.initials}
+                </div>
+                <p className="text-lg font-semibold">{selectedPatient.firstName} {selectedPatient.lastName}</p>
+                <p className="text-xs text-zinc-400">{selectedPatient.email}</p>
+              </div>
 
-          <div className="space-y-3 rounded-xl border border-white/10 bg-[#181818] p-3 text-sm">
-            <InfoRow label="Age" value={`${selectedPatient.age} ans`} />
-            <InfoRow label="Objectif" value={selectedPatient.objective} />
-            <InfoRow label="Derniere consultation" value={selectedPatient.lastConsultation} />
-            <InfoRow label="Plan actif" value={selectedPatient.activePlan} />
-          </div>
+              <div className="space-y-3 rounded-xl border border-white/10 bg-[#181818] p-3 text-sm">
+                <InfoRow label="Email" value={selectedPatient.email} />
+                <InfoRow label="Messages totaux" value={String(selectedPatient.totalMessages)} />
+              </div>
 
-          <div className="mt-5">
-            <p className="mb-3 text-sm font-semibold text-zinc-200">Stats du mois</p>
-            <div className="space-y-3">
-              <StatCard label="Messages traites" value={String(selectedPatient.monthlyStats.messagesHandled)} />
-              <StatCard label="Temps economise estime" value={selectedPatient.monthlyStats.timeSaved} />
-              <StatCard label="Satisfaction" value={selectedPatient.monthlyStats.satisfaction} />
+              <div className="mt-5">
+                <p className="mb-3 text-sm font-semibold text-zinc-200">Statistiques</p>
+                <div className="space-y-3">
+                  <StatCard label="Messages échangés" value={String(selectedPatient.totalMessages)} />
+                  <StatCard label="Dernier message" value={selectedPatient.lastMessageTime || "—"} />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-sm text-zinc-500">Sélectionnez un patient</p>
             </div>
-          </div>
+          )}
         </aside>
       </main>
 
+      {/* Modale invitation */}
       {showInviteModal && (
         <div
           onClick={(e) => { if (e.target === e.currentTarget) setShowInviteModal(false); }}
@@ -329,11 +357,8 @@ setInviteEmail("");
           }}
         >
           <div style={{
-            background: "#121212",
-            borderRadius: 20,
-            padding: 28,
-            width: "100%",
-            maxWidth: 420,
+            background: "#121212", borderRadius: 20, padding: 28,
+            width: "100%", maxWidth: 420,
             border: "1px solid rgba(255,255,255,0.1)",
             boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
           }}>
@@ -341,21 +366,15 @@ setInviteEmail("");
               Inviter un patient
             </h2>
             <p style={{ margin: "0 0 20px", fontSize: 14, color: "#94a3b8" }}>
-              Votre patient recevra un email pour acceder a son espace de chat personnalise.
+              Votre patient recevra un email pour accéder à son espace personnalisé.
             </p>
-
             {inviteSuccess ? (
               <div style={{
-                background: "rgba(16,185,129,0.15)",
-                border: "1px solid #10b981",
-                borderRadius: 12,
-                padding: "16px 18px",
-                textAlign: "center",
-                color: "#10b981",
-                fontWeight: 600,
-                fontSize: 15,
+                background: "rgba(16,185,129,0.15)", border: "1px solid #10b981",
+                borderRadius: 12, padding: "16px 18px", textAlign: "center",
+                color: "#10b981", fontWeight: 600, fontSize: 15,
               }}>
-                ✅ Invitation envoyee avec succes !
+                ✅ Invitation envoyée !
               </div>
             ) : (
               <>
@@ -366,15 +385,10 @@ setInviteEmail("");
                   onKeyDown={(e) => { if (e.key === "Enter") void sendInvite(); }}
                   placeholder="email@patient.fr"
                   style={{
-                    width: "100%",
-                    height: 48,
-                    borderRadius: 12,
+                    width: "100%", height: 48, borderRadius: 12,
                     border: "1.5px solid rgba(255,255,255,0.1)",
-                    background: "#1a1a1a",
-                    color: "white",
-                    padding: "0 16px",
-                    fontSize: 15,
-                    outline: "none",
+                    background: "#1a1a1a", color: "white",
+                    padding: "0 16px", fontSize: 15, outline: "none",
                     boxSizing: "border-box",
                   }}
                   onFocus={(e) => e.target.style.borderColor = "#10b981"}
@@ -404,8 +418,7 @@ setInviteEmail("");
                       border: "none",
                       color: inviting || !inviteEmail.trim() ? "#4a4a4a" : "black",
                       cursor: inviting || !inviteEmail.trim() ? "not-allowed" : "pointer",
-                      fontSize: 14, fontWeight: 600,
-                      transition: "all 0.2s",
+                      fontSize: 14, fontWeight: 600, transition: "all 0.2s",
                     }}
                   >
                     {inviting ? "Envoi..." : "Envoyer"}
