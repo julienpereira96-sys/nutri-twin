@@ -1,6 +1,7 @@
  "use client";
 
 import { useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 import { useState } from "react";
 
 type Question = {
@@ -203,7 +204,7 @@ export default function OnboardingPage() {
       const response = await fetch("/api/save-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers, userId: null }),
+        body: JSON.stringify({ answers, userId: (await createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).auth.getUser()).data.user?.id ?? null }),
       });
 
       if (!response.ok) {
