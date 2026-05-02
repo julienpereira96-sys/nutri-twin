@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const plan = searchParams.get("plan") ?? "pro";
   const [countdown, setCountdown] = useState(5);
@@ -38,10 +38,7 @@ export default function PaymentSuccessPage() {
       padding: 20,
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
-      <div style={{
-        textAlign: "center",
-        maxWidth: 480,
-      }}>
+      <div style={{ textAlign: "center", maxWidth: 480 }}>
         <div style={{
           width: 80, height: 80, borderRadius: 40,
           background: "linear-gradient(135deg, #6ee7b7, #10b981)",
@@ -51,20 +48,16 @@ export default function PaymentSuccessPage() {
         }}>
           ✓
         </div>
-
         <h1 style={{ fontSize: 28, fontWeight: 700, color: "white", margin: "0 0 12px" }}>
           Paiement confirmé !
         </h1>
-
         <p style={{ fontSize: 16, color: "#10b981", fontWeight: 600, margin: "0 0 8px" }}>
           Plan {planNames[plan] ?? "Pro"} — 14 jours gratuits
         </p>
-
         <p style={{ fontSize: 15, color: "#94a3b8", lineHeight: 1.7, margin: "0 0 32px" }}>
           Bienvenue dans NutriTwin ! Vous allez maintenant créer votre compte
           et configurer votre jumeau numérique.
         </p>
-
         <div style={{
           background: "rgba(16,185,129,0.08)",
           border: "1px solid rgba(16,185,129,0.2)",
@@ -79,7 +72,6 @@ export default function PaymentSuccessPage() {
             {countdown}
           </p>
         </div>
-
         <Link
           href="/signup"
           style={{
@@ -101,5 +93,20 @@ export default function PaymentSuccessPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: "100vh", background: "#0a0a0a",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <p style={{ color: "#10b981", fontSize: 16 }}>Chargement...</p>
+      </div>
+    }>
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }
