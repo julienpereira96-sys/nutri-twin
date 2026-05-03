@@ -2,6 +2,7 @@
 
 import { KeyboardEvent, useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
+import JournalModal from "./JournalModal";
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -25,7 +26,7 @@ const tools = [
   { id: "ancrage", emoji: "🌊", label: "Technique 5-4-3-2-1" },
   { id: "marche", emoji: "🚶", label: "Marche consciente" },
   { id: "manger", emoji: "🍽️", label: "Manger en pleine conscience" },
-  { id: "journal", emoji: "✍️", label: "Journal de gratitude" },
+  { id: "journal", emoji: "📓", label: "Journal de bord" },
 ];
 
 export default function ChatPage() {
@@ -42,8 +43,10 @@ export default function ChatPage() {
   // Breathing
   const [breathingStep, setBreathingStep] = useState<BreathingStep>("idle");
   const [breathingCycle, setBreathingCycle] = useState(0);
+  const [breathingTimer, setBreathingTimer] = useState(0);
+  const breathingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Ancrage 5-4-3-2-1
+  // Ancrage
   const [ancrageStep, setAncrageStep] = useState(0);
   const ancrageSteps = [
     { count: 5, sense: "voyez", icon: "👀" },
@@ -55,7 +58,6 @@ export default function ChatPage() {
 
   // Marche
   const [marcheStep, setMarcheStep] = useState(0);
-  const [marcheText, setMarcheText] = useState("");
   const marcheSteps = [
     "Levez-vous doucement. Sentez vos pieds sur le sol. Respirez profondément.",
     "Commencez à marcher lentement. Portez attention à chaque pas. Sentez le contact de vos pieds avec le sol.",
@@ -64,12 +66,6 @@ export default function ChatPage() {
     "Portez votre attention sur votre respiration. Elle se synchronise naturellement avec vos pas.",
     "Vous êtes ancré dans le moment présent. Chaque pas est une intention, chaque souffle est une renaissance. 🌿",
   ];
-
-  // Journal
-  const [journalEntry, setJournalEntry] = useState("");
-  const [journalResponse, setJournalResponse] = useState("");
-  const [journalLoading, setJournalLoading] = useState(false);
-  const [journalSent, setJournalSent] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -117,7 +113,6 @@ export default function ChatPage() {
           }
         }
 
-        // Récupérer le prénom du patient
         const { data: patient } = await supabase
           .from("patients")
           .select("first_name")
@@ -129,26 +124,70 @@ export default function ChatPage() {
     });
   }, []);
 
-  // Breathing logic
+  // Nettoyage interval breathing
+  useEffect(() => {
+    return () => {
+      if (breathingIntervalRef.current) clearInterval(breathingIntervalRef.current);
+    };
+  }, []);
+
+  const closeTool = () => {
+    setActiveTool(null);
+    setBreathingStep("idle");
+    setBreathingCycle(0);
+    setBreathingTimer(0);
+    if (breathingIntervalRef.current) clearInterval(breathingIntervalRef.current);
+    setAncrageStep(0);
+    setMarcheStep(0);
+  };
+
   const startBreathing = () => {
+    let cycle = 1;
+    let phase: BreathingStep = "inhale";
+    let timer = 5;
+
     setBreathingStep("inhale");
     setBreathingCycle(1);
-    let cycle = 1;
-    const runCycle = () => {
-      setTimeout(() => setBreathingStep("hold"), 5000);
-      setTimeout(() => setBreathingStep("exhale"), 9000);
-      setTimeout(() => {
-        cycle++;
-        if (cycle <= 5) {
-          setBreathingStep("inhale");
-          setBreathingCycle(cycle);
-          runCycle();
-        } else {
-          setBreathingStep("done");
-        }
-      }, 14000);
+    setBreathingTimer(5);
+
+    const phaseDurations: Record<string, number> = {
+      inhale: 5,
+      hold: 4,
+      exhale: 5,
     };
-    runCycle();
+
+    const interval = setInterval(() => {
+      timer--;
+      setBreathingTimer(timer);
+
+      if (timer <= 0) {
+        if (phase === "inhale") {
+          phase = "hold";
+          timer = phaseDurations.hold;
+          setBreathingStep("hold");
+          setBreathingTimer(timer);
+        } else if (phase === "hold") {
+          phase = "exhale";
+          timer = phaseDurations.exhale;
+          setBreathingStep("exhale");
+          setBreathingTimer(timer);
+        } else if (phase === "exhale") {
+          cycle++;
+          if (cycle <= 5) {
+            phase = "inhale";
+            timer = phaseDurations.inhale;
+            setBreathingStep("inhale");
+            setBreathingCycle(cycle);
+            setBreathingTimer(timer);
+          } else {
+            setBreathingStep("done");
+            clearInterval(interval);
+          }
+        }
+      }
+    }, 1000);
+
+    breathingIntervalRef.current = interval;
   };
 
   const send = async (text?: string) => {
@@ -183,27 +222,6 @@ export default function ChatPage() {
     }
   };
 
-  const sendJournal = async () => {
-    if (!journalEntry.trim() || journalLoading) return;
-    setJournalLoading(true);
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: `L'utilisateur écrit dans son journal de gratitude : "${journalEntry}". Réponds de manière très encourageante, bienveillante et chaleureuse en 2-3 phrases. Sans markdown.`,
-          patientId: patientId ?? undefined,
-          practitionerId: practitionerIdFromDb ?? undefined,
-        }),
-      });
-      const data = (await res.json()) as { response?: string };
-      setJournalResponse(data.response ?? "Merci pour ce partage. 🌿");
-      setJournalSent(true);
-    } finally {
-      setJournalLoading(false);
-    }
-  };
-
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -227,8 +245,32 @@ export default function ChatPage() {
     done: "#10b981",
   };
 
+  // Bouton fermer universel
+  const CloseButton = () => (
+    <button
+      onClick={closeTool}
+      style={{
+        position: "absolute", top: 16, right: 16,
+        width: 32, height: 32, borderRadius: 16,
+        background: "#f1f5f9", border: "none",
+        cursor: "pointer", fontSize: 16, color: "#64748b",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}
+    >×</button>
+  );
+
   const renderTool = () => {
     if (!activeTool) return null;
+
+    if (activeTool === "journal") {
+      return (
+        <JournalModal
+          patientId={patientId}
+          practitionerId={practitionerIdFromDb}
+          onClose={closeTool}
+        />
+      );
+    }
 
     return (
       <div style={{
@@ -241,18 +283,20 @@ export default function ChatPage() {
           background: "white", borderRadius: 24, padding: 32,
           width: "100%", maxWidth: 440,
           boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+          position: "relative",
         }}>
+          <CloseButton />
 
           {/* COHÉRENCE CARDIAQUE */}
           {activeTool === "breathing" && (
             <div style={{ textAlign: "center" }}>
               <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "#0f172a" }}>🫁 Cohérence cardiaque</h2>
-              <p style={{ margin: "0 0 24px", fontSize: 14, color: "#64748b" }}>5 cycles de respiration · 5 secondes chacun</p>
+              <p style={{ margin: "0 0 24px", fontSize: 14, color: "#64748b" }}>5 cycles · Inspirez 5s · Retenez 4s · Expirez 5s</p>
 
               {breathingStep === "idle" && (
                 <>
                   <p style={{ fontSize: 15, color: "#374151", marginBottom: 24 }}>
-                    La cohérence cardiaque réduit le stress et les envies de grignoter. Prenez 5 minutes pour vous.
+                    La cohérence cardiaque réduit le stress et les envies de grignoter. Prenez quelques minutes pour vous.
                   </p>
                   <button onClick={startBreathing} style={{
                     width: "100%", height: 52, borderRadius: 26,
@@ -268,20 +312,28 @@ export default function ChatPage() {
               {breathingStep !== "idle" && breathingStep !== "done" && (
                 <>
                   <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 16 }}>Cycle {breathingCycle} / 5</p>
-                  <div style={{
-                    width: 120, height: 120, borderRadius: "50%",
-                    background: `radial-gradient(circle, ${breathingColor[breathingStep]}, ${breathingColor[breathingStep]}88)`,
-                    margin: "0 auto 24px",
-                    transition: "transform 5s ease-in-out, background 1s",
-                    transform: breathingStep === "inhale" ? "scale(1.3)" : breathingStep === "exhale" ? "scale(0.8)" : "scale(1.1)",
-                    boxShadow: `0 8px 30px ${breathingColor[breathingStep]}44`,
-                  }} />
+                  <div style={{ position: "relative", width: 140, height: 140, margin: "0 auto 24px" }}>
+                    <div style={{
+                      width: 140, height: 140, borderRadius: "50%",
+                      background: `radial-gradient(circle, ${breathingColor[breathingStep]}, ${breathingColor[breathingStep]}88)`,
+                      transition: "transform 1s ease-in-out, background 0.5s",
+                      transform: breathingStep === "inhale" ? "scale(1.2)" : breathingStep === "exhale" ? "scale(0.85)" : "scale(1.05)",
+                      boxShadow: `0 8px 30px ${breathingColor[breathingStep]}44`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      <span style={{ fontSize: 36, fontWeight: 800, color: "white" }}>{breathingTimer}</span>
+                    </div>
+                  </div>
                   <p style={{ fontSize: 22, fontWeight: 700, color: breathingColor[breathingStep] }}>
                     {breathingLabel[breathingStep]}
                   </p>
-                  <p style={{ fontSize: 13, color: "#94a3b8", marginTop: 8 }}>
-                    {breathingStep === "inhale" ? "5 secondes" : breathingStep === "hold" ? "4 secondes" : "5 secondes"}
-                  </p>
+                  <button onClick={closeTool} style={{
+                    marginTop: 20, width: "100%", height: 44, borderRadius: 22,
+                    background: "transparent", border: "1.5px solid #e2e8f0",
+                    color: "#94a3b8", fontSize: 14, cursor: "pointer",
+                  }}>
+                    Arrêter
+                  </button>
                 </>
               )}
 
@@ -294,7 +346,7 @@ export default function ChatPage() {
                   <p style={{ fontSize: 15, color: "#64748b", marginBottom: 24 }}>
                     Vous venez de faire quelque chose de précieux pour vous. Votre corps vous remercie. 🌿
                   </p>
-                  <button onClick={() => { setActiveTool(null); setBreathingStep("idle"); setBreathingCycle(0); }} style={{
+                  <button onClick={closeTool} style={{
                     width: "100%", height: 48, borderRadius: 24,
                     background: "linear-gradient(135deg, #34d399, #10b981)",
                     border: "none", color: "white", fontSize: 15, fontWeight: 600, cursor: "pointer",
@@ -302,16 +354,6 @@ export default function ChatPage() {
                     Terminer
                   </button>
                 </>
-              )}
-
-              {breathingStep === "idle" && (
-                <button onClick={() => setActiveTool(null)} style={{
-                  marginTop: 12, width: "100%", height: 44, borderRadius: 22,
-                  background: "transparent", border: "1.5px solid #e2e8f0",
-                  color: "#94a3b8", fontSize: 14, cursor: "pointer",
-                }}>
-                  Annuler
-                </button>
               )}
             </div>
           )}
@@ -346,6 +388,13 @@ export default function ChatPage() {
                   }}>
                     {ancrageStep < 4 ? "Suivant →" : "Terminer"}
                   </button>
+                  <button onClick={closeTool} style={{
+                    marginTop: 10, width: "100%", height: 44, borderRadius: 22,
+                    background: "transparent", border: "1.5px solid #e2e8f0",
+                    color: "#94a3b8", fontSize: 14, cursor: "pointer",
+                  }}>
+                    Quitter
+                  </button>
                 </>
               ) : (
                 <>
@@ -356,7 +405,7 @@ export default function ChatPage() {
                   <p style={{ fontSize: 15, color: "#64748b", marginBottom: 24 }}>
                     Vous venez de ramener votre esprit dans le moment présent. C'est un acte de soin envers vous-même. 🌿
                   </p>
-                  <button onClick={() => { setActiveTool(null); setAncrageStep(0); }} style={{
+                  <button onClick={closeTool} style={{
                     width: "100%", height: 48, borderRadius: 24,
                     background: "linear-gradient(135deg, #34d399, #10b981)",
                     border: "none", color: "white", fontSize: 15, fontWeight: 600, cursor: "pointer",
@@ -364,16 +413,6 @@ export default function ChatPage() {
                     Fermer
                   </button>
                 </>
-              )}
-
-              {ancrageStep < 5 && (
-                <button onClick={() => { setActiveTool(null); setAncrageStep(0); }} style={{
-                  marginTop: 12, width: "100%", height: 44, borderRadius: 22,
-                  background: "transparent", border: "1.5px solid #e2e8f0",
-                  color: "#94a3b8", fontSize: 14, cursor: "pointer",
-                }}>
-                  Annuler
-                </button>
               )}
             </div>
           )}
@@ -412,6 +451,13 @@ export default function ChatPage() {
                   }}>
                     {marcheStep < marcheSteps.length - 1 ? "Suivant →" : "Terminer"}
                   </button>
+                  <button onClick={closeTool} style={{
+                    marginTop: 10, width: "100%", height: 44, borderRadius: 22,
+                    background: "transparent", border: "1.5px solid #e2e8f0",
+                    color: "#94a3b8", fontSize: 14, cursor: "pointer",
+                  }}>
+                    Quitter
+                  </button>
                 </>
               ) : (
                 <>
@@ -422,7 +468,7 @@ export default function ChatPage() {
                   <p style={{ fontSize: 15, color: "#64748b", marginBottom: 24 }}>
                     Chaque pas conscient est une victoire. Vous avez pris soin de votre corps et de votre esprit. 💚
                   </p>
-                  <button onClick={() => { setActiveTool(null); setMarcheStep(0); setMarcheText(""); }} style={{
+                  <button onClick={closeTool} style={{
                     width: "100%", height: 48, borderRadius: 24,
                     background: "linear-gradient(135deg, #34d399, #10b981)",
                     border: "none", color: "white", fontSize: 15, fontWeight: 600, cursor: "pointer",
@@ -430,16 +476,6 @@ export default function ChatPage() {
                     Fermer
                   </button>
                 </>
-              )}
-
-              {marcheStep < marcheSteps.length && (
-                <button onClick={() => { setActiveTool(null); setMarcheStep(0); }} style={{
-                  marginTop: 12, width: "100%", height: 44, borderRadius: 22,
-                  background: "transparent", border: "1.5px solid #e2e8f0",
-                  color: "#94a3b8", fontSize: 14, cursor: "pointer",
-                }}>
-                  Annuler
-                </button>
               )}
             </div>
           )}
@@ -466,98 +502,13 @@ export default function ChatPage() {
                 ))}
               </div>
 
-              <button onClick={() => setActiveTool(null)} style={{
+              <button onClick={closeTool} style={{
                 width: "100%", height: 52, borderRadius: 26,
                 background: "linear-gradient(135deg, #34d399, #10b981)",
                 border: "none", color: "white", fontSize: 16, fontWeight: 600, cursor: "pointer",
               }}>
                 Bon appétit 🌿
               </button>
-            </div>
-          )}
-
-          {/* JOURNAL DE GRATITUDE */}
-          {activeTool === "journal" && (
-            <div>
-              <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "#0f172a" }}>✍️ Journal de gratitude</h2>
-              <p style={{ margin: "0 0 20px", fontSize: 14, color: "#64748b" }}>
-                Notez 3 choses pour lesquelles vous êtes reconnaissant(e) aujourd'hui
-              </p>
-
-              {!journalSent ? (
-                <>
-                  <textarea
-                    value={journalEntry}
-                    onChange={(e) => setJournalEntry(e.target.value)}
-                    placeholder="Aujourd'hui je suis reconnaissant(e) pour..."
-                    rows={5}
-                    style={{
-                      width: "100%", borderRadius: 16,
-                      border: "1.5px solid #e2e8f0",
-                      padding: "14px 16px", fontSize: 15, outline: "none",
-                      background: "#f8fafc", color: "#0f172a",
-                      boxSizing: "border-box", resize: "none",
-                      fontFamily: "'Inter', sans-serif", lineHeight: 1.6,
-                    }}
-                    onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                    onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
-                  />
-                  <button
-                    onClick={() => void sendJournal()}
-                    disabled={!journalEntry.trim() || journalLoading}
-                    style={{
-                      marginTop: 12, width: "100%", height: 52, borderRadius: 26,
-                      background: !journalEntry.trim() || journalLoading ? "#e2e8f0" : "linear-gradient(135deg, #34d399, #10b981)",
-                      border: "none",
-                      color: !journalEntry.trim() || journalLoading ? "#94a3b8" : "white",
-                      fontSize: 15, fontWeight: 600,
-                      cursor: !journalEntry.trim() || journalLoading ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    {journalLoading ? "Envoi..." : "Partager mon journal 💚"}
-                  </button>
-                  <button onClick={() => setActiveTool(null)} style={{
-                    marginTop: 10, width: "100%", height: 44, borderRadius: 22,
-                    background: "transparent", border: "1.5px solid #e2e8f0",
-                    color: "#94a3b8", fontSize: 14, cursor: "pointer",
-                  }}>
-                    Annuler
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div style={{
-                    background: "#f0fdf4", borderRadius: 16, padding: "16px 20px",
-                    border: "1.5px solid #d1fae5", marginBottom: 16,
-                  }}>
-                    <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", marginBottom: 8 }}>Votre entrée :</p>
-                    <p style={{ margin: 0, fontSize: 14, color: "#374151", lineHeight: 1.6, fontStyle: "italic" }}>
-                      "{journalEntry}"
-                    </p>
-                  </div>
-                  <div style={{
-                    background: "white", borderRadius: 16, padding: "16px 20px",
-                    border: "1.5px solid #e2e8f0", marginBottom: 20,
-                    display: "flex", gap: 12, alignItems: "flex-start",
-                  }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: 16, flexShrink: 0,
-                      background: "linear-gradient(135deg, #6ee7b7, #10b981)",
-                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16,
-                    }}>🌿</div>
-                    <p style={{ margin: 0, fontSize: 14, color: "#374151", lineHeight: 1.7 }}>
-                      {journalResponse}
-                    </p>
-                  </div>
-                  <button onClick={() => { setActiveTool(null); setJournalEntry(""); setJournalResponse(""); setJournalSent(false); }} style={{
-                    width: "100%", height: 48, borderRadius: 24,
-                    background: "linear-gradient(135deg, #34d399, #10b981)",
-                    border: "none", color: "white", fontSize: 15, fontWeight: 600, cursor: "pointer",
-                  }}>
-                    Fermer 🌿
-                  </button>
-                </>
-              )}
             </div>
           )}
         </div>
@@ -575,14 +526,12 @@ export default function ChatPage() {
 
       <div style={{ display: "flex", flex: 1, position: "relative" }}>
 
-        {/* Sidebar overlay */}
         {sidebarOpen && (
           <div onClick={() => setSidebarOpen(false)} style={{
             position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 20,
           }} />
         )}
 
-        {/* Sidebar */}
         <aside style={{
           width: 290, background: "white",
           borderRight: "1px solid rgba(0,0,0,0.06)",
@@ -598,8 +547,6 @@ export default function ChatPage() {
                 background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8",
               }}>×</button>
             </div>
-
-            {/* Nouvelle conversation */}
             <button
               onClick={() => { setMessages([]); setSidebarOpen(false); }}
               style={{
@@ -614,7 +561,6 @@ export default function ChatPage() {
             </button>
           </div>
 
-          {/* Outils bien-être */}
           <div style={{ padding: "16px" }}>
             <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.8px", textTransform: "uppercase" }}>
               🌿 Outils bien-être
@@ -649,7 +595,6 @@ export default function ChatPage() {
             </div>
           </div>
 
-          {/* Discussions récentes */}
           {messages.length > 0 && (
             <div style={{ padding: "0 16px 16px", flex: 1 }}>
               <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.8px", textTransform: "uppercase" }}>
@@ -666,10 +611,7 @@ export default function ChatPage() {
           )}
         </aside>
 
-        {/* Zone chat */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-
-          {/* Header */}
           <header style={{
             background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(0,0,0,0.05)",
@@ -718,9 +660,7 @@ export default function ChatPage() {
             </div>
           </header>
 
-          {/* Messages */}
           <main style={{ maxWidth: 680, width: "100%", margin: "0 auto", padding: "28px 16px 160px", flex: 1 }}>
-
             {messages.length === 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
@@ -833,7 +773,6 @@ export default function ChatPage() {
             </div>
           </main>
 
-          {/* Input */}
           <div style={{
             position: "fixed", bottom: 0, left: 0, right: 0,
             background: "rgba(248,250,252,0.92)",
