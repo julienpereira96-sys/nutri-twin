@@ -33,8 +33,11 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith(route)
   );
 
+  // Rediriger vers le bon login si non connecté
   if (isProtected && !user) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const isChat = request.nextUrl.pathname.startsWith("/chat");
+    const loginUrl = isChat ? "/patient-login" : "/login";
+    return NextResponse.redirect(new URL(loginUrl, request.url));
   }
 
   // Bloquer /onboarding et /dashboard si email non confirmé
