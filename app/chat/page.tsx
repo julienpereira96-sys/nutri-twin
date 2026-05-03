@@ -577,12 +577,12 @@ export default function ChatPage() {
               style={{
                 width: "100%", height: 40, borderRadius: 10,
                 background: "linear-gradient(135deg, #34d399, #10b981)",
-                border: "none", color: "white", fontSize: 20, fontWeight: 300,
+                border: "none", color: "white", fontSize: 13, fontWeight: 600,
                 cursor: "pointer", display: "flex", alignItems: "center",
                 justifyContent: "center", gap: 8,
               }}
             >
-              +
+              + Nouvelle conversation
             </button>
           </div>
 
@@ -684,10 +684,14 @@ export default function ChatPage() {
             <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", alignItems: "center", gap: 14 }}>
               <button onClick={() => setSidebarOpen(true)} style={{
                 width: 40, height: 40, borderRadius: 12,
-                background: "#f0fdf4", border: "1.5px solid #d1fae5",
+                background: "#059669", border: "1.5px solid #047857",
                 cursor: "pointer", display: "flex", alignItems: "center",
-                justifyContent: "center", fontSize: 18, flexShrink: 0,
-              }}>🌿</button>
+                justifyContent: "center", flexShrink: 0,
+              }}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="white" style={{ width: 20, height: 20 }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                </svg>
+              </button>
 
               <div style={{ position: "relative" }}>
                 <div style={{
