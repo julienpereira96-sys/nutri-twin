@@ -36,7 +36,72 @@ async function getRelevantDocuments(question: string, practitionerId: string): P
   }
 }
 
-async function getPractitionerSystemPrompt(practitionerId?: string, question?: string): Promise<string> {
+async function getPatientProfile(patientId: string): Promise<string> {
+  try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data } = await supabase
+      .from("patients")
+      .select("first_name, last_name, age, objective, pathologies, allergies, notes")
+      .eq("user_id", patientId)
+      .single();
+
+    if (!data) return "";
+
+    const parts = [];
+    if (data.first_name) parts.push(`Prénom : ${data.first_name}`);
+    if (data.age) parts.push(`Âge : ${data.age} ans`);
+    if (data.objective) parts.push(`Objectif : ${data.objective}`);
+    if (data.pathologies) parts.push(`Pathologies : ${data.pathologies}`);
+    if (data.allergies) parts.push(`Allergies : ${data.allergies}`);
+    if (data.notes) parts.push(`Notes : ${data.notes}`);
+
+    return parts.length > 0 ? `\nPROFIL DU PATIENT :\n${parts.join("\n")}\n` : "";
+  } catch {
+    return "";
+  }
+}
+
+async function getConversationHistory(
+  patientId: string,
+  practitionerId: string,
+  sessionId?: string
+): Promise<{ role: "user" | "assistant"; content: string }[]> {
+  try {
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    let query = supabase
+      .from("conversations")
+      .select("role, content")
+      .eq("patient_id", patientId)
+      .eq("practitioner_id", practitionerId)
+      .order("created_at", { ascending: true })
+      .limit(20);
+
+    if (sessionId) {
+      query = query.eq("session_id", sessionId);
+    }
+
+    const { data } = await query;
+    if (!data || data.length === 0) return [];
+
+    return data as { role: "user" | "assistant"; content: string }[];
+  } catch {
+    return [];
+  }
+}
+
+async function getPractitionerSystemPrompt(
+  practitionerId?: string,
+  question?: string,
+  patientId?: string
+): Promise<string> {
   try {
     const supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -52,6 +117,11 @@ async function getPractitionerSystemPrompt(practitionerId?: string, question?: s
     let documentsContext = "";
     if (practitionerId && question) {
       documentsContext = await getRelevantDocuments(question, practitionerId);
+    }
+
+    let patientContext = "";
+    if (patientId) {
+      patientContext = await getPatientProfile(patientId);
     }
 
     return `Tu es le jumeau numérique d'un nutritionniste. Voici comment tu dois te comporter :
@@ -99,11 +169,13 @@ EXEMPLES DE MES RÉPONSES :
 - Face à une question médicale : "${data.situation4 || "C'est une question importante, parlons-en avec votre médecin."}"
 - Face à une victoire : "${data.situation5 || "C'est fantastique ! Je suis fier(e) de vous."}"
 - Face à une détresse émotionnelle : "${data.situation6 || "Je vous entends. Vous n'êtes pas seul(e)."}"
-${documentsContext}
+${patientContext}${documentsContext}
 RÈGLES ABSOLUES :
 - Réponds TOUJOURS sans markdown, sans ## ni **
-- Phrases simples et naturelles
+- Phrases simples et naturelles, bien aérées
+- Saute des lignes entre les idées pour faciliter la lecture
 - Tu ES ce praticien — pas un assistant générique
+- Utilise le prénom du patient si tu le connais
 - Si une question dépasse ton périmètre, dis-le clairement et oriente vers le praticien`;
   } catch {
     return getDefaultPrompt();
@@ -111,7 +183,7 @@ RÈGLES ABSOLUES :
 }
 
 function getDefaultPrompt(): string {
-  return "Tu es un assistant nutritionniste. Réponds sans markdown, sans ## ni **, en phrases simples et naturelles.";
+  return "Tu es un assistant nutritionniste. Réponds sans markdown, sans ## ni **, en phrases simples et naturelles bien aérées.";
 }
 
 export async function POST(request: Request) {
@@ -126,13 +198,25 @@ export async function POST(request: Request) {
       sessionId?: string;
     };
 
-    const practitionerPrompt = await getPractitionerSystemPrompt(practitionerId, message);
+    const practitionerPrompt = await getPractitionerSystemPrompt(practitionerId, message, patientId);
+
+    // Récupérer l'historique de conversation
+    let conversationHistory: { role: "user" | "assistant"; content: string }[] = [];
+    if (patientId && practitionerId) {
+      conversationHistory = await getConversationHistory(patientId, practitionerId, sessionId);
+    }
+
+    // Construire les messages avec l'historique
+    const messages: { role: "user" | "assistant"; content: string }[] = [
+      ...conversationHistory,
+      { role: "user", content: message },
+    ];
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-5",
-      max_tokens: 1000,
+      max_tokens: 1024,
       system: systemPrompt || practitionerPrompt,
-      messages: [{ role: "user", content: message }],
+      messages,
     });
 
     const textBlock = response.content.find((block) => block.type === "text");
@@ -161,7 +245,6 @@ export async function POST(request: Request) {
         },
       ]);
 
-      // Mettre à jour le dernier message de la session
       if (sessionId) {
         await supabase
           .from("conversations_sessions")
