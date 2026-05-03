@@ -15,6 +15,11 @@ type RealPatient = {
   lastMessageTime: string;
   lastMessageRole: string;
   totalMessages: number;
+  age?: number;
+  objective?: string;
+  pathologies?: string;
+  allergies?: string;
+  notes?: string;
 };
 
 type Conversation = {
@@ -38,6 +43,7 @@ export default function DashboardPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
@@ -46,12 +52,109 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [practitionerName, setPractitionerName] = useState("");
 
+  // Profil patient éditable
+  const [editAge, setEditAge] = useState("");
+  const [editObjective, setEditObjective] = useState("");
+  const [editPathologies, setEditPathologies] = useState("");
+  const [editAllergies, setEditAllergies] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
+
   // Rapport
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>("month");
   const [reportDateFrom, setReportDateFrom] = useState("");
   const [reportDateTo, setReportDateTo] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
   const [reportContent, setReportContent] = useState("");
+
+  // Invitation délai
+  useEffect(() => {
+    if (inviteSuccess) {
+      const timer = setTimeout(() => {
+        setInviteSuccess(false);
+        setShowInviteModal(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [inviteSuccess]);
+
+  const loadPatients = async (pid: string) => {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    const { data: relations } = await supabase
+      .from("patient_practitioner")
+      .select("patient_id")
+      .eq("practitioner_id", pid);
+
+    if (!relations || relations.length === 0) {
+      setLoading(false);
+      return;
+    }
+
+    const patientIds = relations.map((r) => r.patient_id);
+
+    const { data: patientsData } = await supabase
+      .from("patients")
+      .select("user_id, first_name, last_name, email, age, objective, pathologies, allergies, notes")
+      .in("user_id", patientIds);
+
+    if (!patientsData) {
+      setLoading(false);
+      return;
+    }
+
+    const patientsWithStats = await Promise.all(
+      patientsData.map(async (p, i) => {
+        const { data: convs } = await supabase
+          .from("conversations")
+          .select("role, content, created_at")
+          .eq("patient_id", p.user_id)
+          .eq("practitioner_id", pid)
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        const lastConv = convs?.[0];
+
+        const { count } = await supabase
+          .from("conversations")
+          .select("*", { count: "exact", head: true })
+          .eq("patient_id", p.user_id)
+          .eq("practitioner_id", pid);
+
+        const initials = `${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase();
+
+        return {
+          id: p.user_id,
+          firstName: p.first_name ?? "Patient",
+          lastName: p.last_name ?? "",
+          initials,
+          avatarColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
+          email: p.email ?? "",
+          lastMessage: lastConv?.content ?? "Aucun message pour l'instant",
+          lastMessageTime: lastConv?.created_at
+            ? new Date(lastConv.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+            : "",
+          lastMessageRole: lastConv?.role ?? "",
+          totalMessages: count ?? 0,
+          age: p.age,
+          objective: p.objective,
+          pathologies: p.pathologies,
+          allergies: p.allergies,
+          notes: p.notes,
+        };
+      })
+    );
+
+    setPatients(patientsWithStats);
+    if (patientsWithStats.length > 0) {
+      setSelectedPatientId(patientsWithStats[0].id);
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
     const supabase = createClient(
@@ -73,70 +176,7 @@ export default function DashboardPage() {
         setPractitionerName(`${practitioner.first_name} ${practitioner.last_name}`);
       }
 
-      const { data: relations } = await supabase
-        .from("patient_practitioner")
-        .select("patient_id")
-        .eq("practitioner_id", pid);
-
-      if (!relations || relations.length === 0) {
-        setLoading(false);
-        return;
-      }
-
-      const patientIds = relations.map((r) => r.patient_id);
-
-      const { data: patientsData } = await supabase
-        .from("patients")
-        .select("user_id, first_name, last_name, email")
-        .in("user_id", patientIds);
-
-      if (!patientsData) {
-        setLoading(false);
-        return;
-      }
-
-      const patientsWithStats = await Promise.all(
-        patientsData.map(async (p, i) => {
-          const { data: convs } = await supabase
-            .from("conversations")
-            .select("role, content, created_at")
-            .eq("patient_id", p.user_id)
-            .eq("practitioner_id", pid)
-            .order("created_at", { ascending: false })
-            .limit(1);
-
-          const lastConv = convs?.[0];
-
-          const { count } = await supabase
-            .from("conversations")
-            .select("*", { count: "exact", head: true })
-            .eq("patient_id", p.user_id)
-            .eq("practitioner_id", pid);
-
-          const initials = `${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase();
-
-          return {
-            id: p.user_id,
-            firstName: p.first_name ?? "Patient",
-            lastName: p.last_name ?? "",
-            initials,
-            avatarColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
-            email: p.email ?? "",
-            lastMessage: lastConv?.content ?? "Aucun message pour l'instant",
-            lastMessageTime: lastConv?.created_at
-              ? new Date(lastConv.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
-              : "",
-            lastMessageRole: lastConv?.role ?? "",
-            totalMessages: count ?? 0,
-          };
-        })
-      );
-
-      setPatients(patientsWithStats);
-      if (patientsWithStats.length > 0) {
-        setSelectedPatientId(patientsWithStats[0].id);
-      }
-      setLoading(false);
+      await loadPatients(pid);
     });
   }, []);
 
@@ -159,6 +199,58 @@ export default function DashboardPage() {
       });
   }, [selectedPatientId, practitionerId]);
 
+  const openProfileModal = () => {
+    const patient = patients.find((p) => p.id === selectedPatientId);
+    if (!patient) return;
+    setEditAge(patient.age ? String(patient.age) : "");
+    setEditObjective(patient.objective ?? "");
+    setEditPathologies(patient.pathologies ?? "");
+    setEditAllergies(patient.allergies ?? "");
+    setEditNotes(patient.notes ?? "");
+    setProfileSaved(false);
+    setShowProfileModal(true);
+  };
+
+  const saveProfile = async () => {
+    if (!selectedPatientId) return;
+    setSavingProfile(true);
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    await supabase
+      .from("patients")
+      .update({
+        age: editAge ? parseInt(editAge) : null,
+        objective: editObjective || null,
+        pathologies: editPathologies || null,
+        allergies: editAllergies || null,
+        notes: editNotes || null,
+      })
+      .eq("user_id", selectedPatientId);
+
+    // Mettre à jour localement
+    setPatients((prev) => prev.map((p) => {
+      if (p.id === selectedPatientId) {
+        return {
+          ...p,
+          age: editAge ? parseInt(editAge) : undefined,
+          objective: editObjective || undefined,
+          pathologies: editPathologies || undefined,
+          allergies: editAllergies || undefined,
+          notes: editNotes || undefined,
+        };
+      }
+      return p;
+    }));
+
+    setSavingProfile(false);
+    setProfileSaved(true);
+    setTimeout(() => setShowProfileModal(false), 1500);
+  };
+
   const selectedPatient = patients.find((p) => p.id === selectedPatientId);
   const totalMessages = patients.reduce((sum, p) => sum + p.totalMessages, 0);
 
@@ -173,7 +265,6 @@ export default function DashboardPage() {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
 
-      // Calculer les dates
       const now = new Date();
       let dateFrom = "";
       let dateTo = now.toISOString().split("T")[0];
@@ -191,7 +282,6 @@ export default function DashboardPage() {
         dateTo = reportDateTo;
       }
 
-      // Récupérer les entrées journal (données agrégées seulement — pas le texte libre)
       const { data: journalEntries } = await supabase
         .from("journal_entries")
         .select("date, mood, food_rating, emotions")
@@ -206,7 +296,6 @@ export default function DashboardPage() {
         return;
       }
 
-      // Agréger les données sans le texte libre
       const moodLabels = ["Difficile", "Moyen", "Bien", "Très bien", "Excellent"];
       const foodLabels = ["Difficile", "Bien", "Super"];
 
@@ -215,43 +304,33 @@ export default function DashboardPage() {
 
       const allEmotions = journalEntries.flatMap((e) => e.emotions as string[]);
       const emotionCounts: Record<string, number> = {};
-      allEmotions.forEach((em) => {
-        emotionCounts[em] = (emotionCounts[em] ?? 0) + 1;
-      });
+      allEmotions.forEach((em) => { emotionCounts[em] = (emotionCounts[em] ?? 0) + 1; });
       const topEmotions = Object.entries(emotionCounts)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5)
         .map(([em, count]) => `${em} (${count}x)`)
         .join(", ");
 
-      const moodTrend = journalEntries.map((e) => `${e.date}: humeur ${moodLabels[e.mood - 1]}, alimentation ${foodLabels[e.food_rating - 1]}`).join("\n");
+      const moodTrend = journalEntries.map((e) =>
+        `${e.date}: humeur ${moodLabels[e.mood - 1]}, alimentation ${foodLabels[e.food_rating - 1]}`
+      ).join("\n");
 
-      const prompt = `Tu es un assistant pour un praticien en nutrition. Génère un compte rendu professionnel et bienveillant basé sur les données agrégées du journal de bord d'un patient sur la période du ${dateFrom} au ${dateTo}.
+      const prompt = `Tu es un assistant pour un praticien en nutrition. Génère un compte rendu professionnel basé sur les données agrégées du journal de bord d'un patient sur la période du ${dateFrom} au ${dateTo}.
 
-DONNÉES AGRÉGÉES (pas de texte libre du patient) :
+DONNÉES :
 - Nombre d'entrées : ${journalEntries.length}
 - Humeur moyenne : ${avgMood}/5
 - Alimentation moyenne : ${avgFood}/3
 - Émotions dominantes : ${topEmotions || "non renseignées"}
-- Évolution jour par jour :
+- Évolution :
 ${moodTrend}
 
-Génère un compte rendu structuré avec :
-1. Vue d'ensemble de la période
-2. Tendances observées (humeur, alimentation, émotions)
-3. Points positifs à valoriser en consultation
-4. Axes de travail suggérés
-5. Questions à poser au patient lors de la prochaine consultation
-
-Ton : professionnel, bienveillant, orienté action. Sans markdown. Utilise des titres clairs.`;
+Génère un compte rendu avec : vue d'ensemble, tendances, points positifs, axes de travail, questions pour la prochaine consultation. Ton professionnel et bienveillant. Sans markdown.`;
 
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: prompt,
-          practitionerId: practitionerId ?? undefined,
-        }),
+        body: JSON.stringify({ message: prompt, practitionerId: practitionerId ?? undefined }),
       });
 
       const aiData = (await res.json()) as { response?: string };
@@ -277,6 +356,7 @@ Ton : professionnel, bienveillant, orienté action. Sans markdown. Utilise des t
       } else {
         setInviteSuccess(true);
         setInviteEmail("");
+        if (practitionerId) await loadPatients(practitionerId);
       }
     } catch {
       setInviteError("Impossible d'envoyer l'invitation.");
@@ -428,7 +508,7 @@ Ton : professionnel, bienveillant, orienté action. Sans markdown. Utilise des t
         <aside className="h-[calc(100vh-130px)] overflow-y-auto rounded-2xl border border-white/10 bg-[#121212] p-4">
           {selectedPatient ? (
             <>
-              <div className="mb-6 flex flex-col items-center text-center">
+              <div className="mb-4 flex flex-col items-center text-center">
                 <div className={`mb-3 flex h-16 w-16 items-center justify-center rounded-full text-sm font-bold text-white ${selectedPatient.avatarColor}`}>
                   {selectedPatient.initials}
                 </div>
@@ -436,27 +516,32 @@ Ton : professionnel, bienveillant, orienté action. Sans markdown. Utilise des t
                 <p className="text-xs text-zinc-400">{selectedPatient.email}</p>
               </div>
 
-              <div className="space-y-3 rounded-xl border border-white/10 bg-[#181818] p-3 text-sm">
-                <InfoRow label="Email" value={selectedPatient.email} />
+              {/* Infos de base */}
+              <div className="space-y-3 rounded-xl border border-white/10 bg-[#181818] p-3 text-sm mb-4">
                 <InfoRow label="Messages totaux" value={String(selectedPatient.totalMessages)} />
+                <InfoRow label="Dernier message" value={selectedPatient.lastMessageTime || "—"} />
+                {selectedPatient.age && <InfoRow label="Âge" value={`${selectedPatient.age} ans`} />}
+                {selectedPatient.objective && <InfoRow label="Objectif" value={selectedPatient.objective} />}
+                {selectedPatient.pathologies && <InfoRow label="Pathologies" value={selectedPatient.pathologies} />}
+                {selectedPatient.allergies && <InfoRow label="Allergies" value={selectedPatient.allergies} />}
+                {selectedPatient.notes && <InfoRow label="Notes" value={selectedPatient.notes} />}
               </div>
 
-              <div className="mt-5">
-                <p className="mb-3 text-sm font-semibold text-zinc-200">Statistiques</p>
-                <div className="space-y-3">
-                  <StatCard label="Messages échangés" value={String(selectedPatient.totalMessages)} />
-                  <StatCard label="Dernier message" value={selectedPatient.lastMessageTime || "—"} />
-                </div>
-              </div>
+              {/* Bouton modifier profil */}
+              <button
+                onClick={openProfileModal}
+                className="w-full rounded-xl border border-white/10 bg-[#181818] px-4 py-3 text-sm font-semibold text-zinc-300 transition hover:border-white/20 hover:text-white mb-3"
+              >
+                ✏️ Modifier le profil patient
+              </button>
 
-              <div className="mt-5">
-                <button
-                  onClick={() => { setShowReportModal(true); setReportContent(""); }}
-                  className="w-full rounded-xl bg-[#10b981]/10 border border-[#10b981]/30 px-4 py-3 text-sm font-semibold text-[#10b981] transition hover:bg-[#10b981]/20"
-                >
-                  📊 Générer rapport journal
-                </button>
-              </div>
+              {/* Bouton rapport */}
+              <button
+                onClick={() => { setShowReportModal(true); setReportContent(""); }}
+                className="w-full rounded-xl bg-[#10b981]/10 border border-[#10b981]/30 px-4 py-3 text-sm font-semibold text-[#10b981] transition hover:bg-[#10b981]/20"
+              >
+                📊 Générer rapport journal
+              </button>
             </>
           ) : (
             <div className="flex h-full items-center justify-center">
@@ -465,6 +550,153 @@ Ton : professionnel, bienveillant, orienté action. Sans markdown. Utilise des t
           )}
         </aside>
       </main>
+
+      {/* Modale profil patient */}
+      {showProfileModal && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setShowProfileModal(false); }}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
+            zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div style={{
+            background: "#121212", borderRadius: 20, padding: 28,
+            width: "100%", maxWidth: 460,
+            border: "1px solid rgba(255,255,255,0.1)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+            maxHeight: "85vh", overflowY: "auto",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>
+                ✏️ Profil — {selectedPatient?.firstName}
+              </h2>
+              <button onClick={() => setShowProfileModal(false)} style={{
+                background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8",
+              }}>×</button>
+            </div>
+
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>
+              Ces informations enrichissent les réponses du jumeau numérique pour ce patient.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Âge</p>
+                <input
+                  type="number"
+                  value={editAge}
+                  onChange={(e) => setEditAge(e.target.value)}
+                  placeholder="Ex: 34"
+                  style={{
+                    width: "100%", height: 44, borderRadius: 10,
+                    border: "1.5px solid rgba(255,255,255,0.1)",
+                    background: "#1a1a1a", color: "white",
+                    padding: "0 14px", fontSize: 14, outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = "#10b981"}
+                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+                />
+              </div>
+
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Objectif principal</p>
+                <input
+                  type="text"
+                  value={editObjective}
+                  onChange={(e) => setEditObjective(e.target.value)}
+                  placeholder="Ex: Perte de poids durable"
+                  style={{
+                    width: "100%", height: 44, borderRadius: 10,
+                    border: "1.5px solid rgba(255,255,255,0.1)",
+                    background: "#1a1a1a", color: "white",
+                    padding: "0 14px", fontSize: 14, outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = "#10b981"}
+                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+                />
+              </div>
+
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Pathologies</p>
+                <input
+                  type="text"
+                  value={editPathologies}
+                  onChange={(e) => setEditPathologies(e.target.value)}
+                  placeholder="Ex: Diabète type 2, hypothyroïdie"
+                  style={{
+                    width: "100%", height: 44, borderRadius: 10,
+                    border: "1.5px solid rgba(255,255,255,0.1)",
+                    background: "#1a1a1a", color: "white",
+                    padding: "0 14px", fontSize: 14, outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = "#10b981"}
+                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+                />
+              </div>
+
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Allergies & intolérances</p>
+                <input
+                  type="text"
+                  value={editAllergies}
+                  onChange={(e) => setEditAllergies(e.target.value)}
+                  placeholder="Ex: Gluten, lactose, arachides"
+                  style={{
+                    width: "100%", height: 44, borderRadius: 10,
+                    border: "1.5px solid rgba(255,255,255,0.1)",
+                    background: "#1a1a1a", color: "white",
+                    padding: "0 14px", fontSize: 14, outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = "#10b981"}
+                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+                />
+              </div>
+
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Notes personnalisées</p>
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Informations importantes sur ce patient..."
+                  rows={3}
+                  style={{
+                    width: "100%", borderRadius: 10,
+                    border: "1.5px solid rgba(255,255,255,0.1)",
+                    background: "#1a1a1a", color: "white",
+                    padding: "12px 14px", fontSize: 14, outline: "none",
+                    boxSizing: "border-box", resize: "none",
+                    fontFamily: "'Inter', sans-serif",
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = "#10b981"}
+                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={() => void saveProfile()}
+              disabled={savingProfile}
+              style={{
+                width: "100%", height: 48, borderRadius: 24,
+                background: profileSaved ? "rgba(16,185,129,0.2)" : "#10b981",
+                border: profileSaved ? "1px solid #10b981" : "none",
+                color: profileSaved ? "#10b981" : "black",
+                fontSize: 15, fontWeight: 600,
+                cursor: savingProfile ? "not-allowed" : "pointer",
+                marginTop: 20, transition: "all 0.2s",
+              }}
+            >
+              {profileSaved ? "✅ Profil sauvegardé !" : savingProfile ? "Sauvegarde..." : "Sauvegarder le profil"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Modale rapport */}
       {showReportModal && (
@@ -488,16 +720,14 @@ Ton : professionnel, bienveillant, orienté action. Sans markdown. Utilise des t
                 📊 Rapport journal — {selectedPatient?.firstName}
               </h2>
               <button onClick={() => setShowReportModal(false)} style={{
-                background: "none", border: "none", cursor: "pointer",
-                fontSize: 22, color: "#94a3b8",
+                background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8",
               }}>×</button>
             </div>
 
             <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b" }}>
-              Ce rapport est généré à partir des données agrégées du journal (humeur, alimentation, émotions). Le contenu personnel du patient reste confidentiel.
+              Ce rapport est généré à partir des données agrégées du journal. Le contenu personnel reste confidentiel.
             </p>
 
-            {/* Choix période */}
             <div style={{ marginBottom: 20 }}>
               <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Période</p>
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
@@ -526,33 +756,13 @@ Ton : professionnel, bienveillant, orienté action. Sans markdown. Utilise des t
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
                     <p style={{ margin: "0 0 6px", fontSize: 12, color: "#94a3b8" }}>Du</p>
-                    <input
-                      type="date"
-                      value={reportDateFrom}
-                      onChange={(e) => setReportDateFrom(e.target.value)}
-                      style={{
-                        width: "100%", height: 40, borderRadius: 8,
-                        border: "1.5px solid rgba(255,255,255,0.1)",
-                        background: "#1a1a1a", color: "white",
-                        padding: "0 12px", fontSize: 13, outline: "none",
-                        boxSizing: "border-box",
-                      }}
-                    />
+                    <input type="date" value={reportDateFrom} onChange={(e) => setReportDateFrom(e.target.value)}
+                      style={{ width: "100%", height: 40, borderRadius: 8, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                   </div>
                   <div>
                     <p style={{ margin: "0 0 6px", fontSize: 12, color: "#94a3b8" }}>Au</p>
-                    <input
-                      type="date"
-                      value={reportDateTo}
-                      onChange={(e) => setReportDateTo(e.target.value)}
-                      style={{
-                        width: "100%", height: 40, borderRadius: 8,
-                        border: "1.5px solid rgba(255,255,255,0.1)",
-                        background: "#1a1a1a", color: "white",
-                        padding: "0 12px", fontSize: 13, outline: "none",
-                        boxSizing: "border-box",
-                      }}
-                    />
+                    <input type="date" value={reportDateTo} onChange={(e) => setReportDateTo(e.target.value)}
+                      style={{ width: "100%", height: 40, borderRadius: 8, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                   </div>
                 </div>
               )}
@@ -565,10 +775,8 @@ Ton : professionnel, bienveillant, orienté action. Sans markdown. Utilise des t
                 style={{
                   width: "100%", height: 48, borderRadius: 24,
                   background: reportLoading ? "#1a1a1a" : "#10b981",
-                  border: "none",
-                  color: reportLoading ? "#4a4a4a" : "black",
-                  fontSize: 15, fontWeight: 600,
-                  cursor: reportLoading ? "not-allowed" : "pointer",
+                  border: "none", color: reportLoading ? "#4a4a4a" : "black",
+                  fontSize: 15, fontWeight: 600, cursor: reportLoading ? "not-allowed" : "pointer",
                   marginBottom: 16,
                 }}
               >
@@ -589,28 +797,16 @@ Ton : professionnel, bienveillant, orienté action. Sans markdown. Utilise des t
 
             {reportContent && (
               <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                <button
-                  onClick={() => { setReportContent(""); }}
-                  style={{
-                    flex: 1, height: 44, borderRadius: 12,
-                    background: "transparent", border: "1px solid rgba(255,255,255,0.15)",
-                    color: "#94a3b8", cursor: "pointer", fontSize: 14,
-                  }}
-                >
-                  Nouvelle période
-                </button>
-                <button
-                  onClick={() => {
-                    void navigator.clipboard.writeText(reportContent);
-                  }}
-                  style={{
-                    flex: 1, height: 44, borderRadius: 12,
-                    background: "#10b981", border: "none",
-                    color: "black", cursor: "pointer", fontSize: 14, fontWeight: 600,
-                  }}
-                >
-                  📋 Copier
-                </button>
+                <button onClick={() => setReportContent("")} style={{
+                  flex: 1, height: 44, borderRadius: 12,
+                  background: "transparent", border: "1px solid rgba(255,255,255,0.15)",
+                  color: "#94a3b8", cursor: "pointer", fontSize: 14,
+                }}>Nouvelle période</button>
+                <button onClick={() => void navigator.clipboard.writeText(reportContent)} style={{
+                  flex: 1, height: 44, borderRadius: 12,
+                  background: "#10b981", border: "none",
+                  color: "black", cursor: "pointer", fontSize: 14, fontWeight: 600,
+                }}>📋 Copier</button>
               </div>
             )}
           </div>
@@ -632,20 +828,31 @@ Ton : professionnel, bienveillant, orienté action. Sans markdown. Utilise des t
             width: "100%", maxWidth: 420,
             border: "1px solid rgba(255,255,255,0.1)",
             boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+            position: "relative",
           }}>
+            <button
+              onClick={() => { setShowInviteModal(false); setInviteEmail(""); setInviteError(""); setInviteSuccess(false); }}
+              style={{
+                position: "absolute", top: 16, right: 16,
+                background: "none", border: "none", cursor: "pointer",
+                fontSize: 22, color: "#94a3b8",
+              }}
+            >×</button>
+
             <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: "white" }}>
               Inviter un patient
             </h2>
             <p style={{ margin: "0 0 20px", fontSize: 14, color: "#94a3b8" }}>
               Votre patient recevra un email pour accéder à son espace personnalisé.
             </p>
+
             {inviteSuccess ? (
               <div style={{
                 background: "rgba(16,185,129,0.15)", border: "1px solid #10b981",
                 borderRadius: 12, padding: "16px 18px", textAlign: "center",
                 color: "#10b981", fontWeight: 600, fontSize: 15,
               }}>
-                ✅ Invitation envoyée !
+                ✅ Invitation envoyée ! La fenêtre se ferme automatiquement...
               </div>
             ) : (
               <>
@@ -673,13 +880,10 @@ Ton : professionnel, bienveillant, orienté action. Sans markdown. Utilise des t
                     onClick={() => { setShowInviteModal(false); setInviteEmail(""); setInviteError(""); }}
                     style={{
                       flex: 1, height: 44, borderRadius: 12,
-                      background: "transparent",
-                      border: "1px solid rgba(255,255,255,0.15)",
+                      background: "transparent", border: "1px solid rgba(255,255,255,0.15)",
                       color: "#94a3b8", cursor: "pointer", fontSize: 14,
                     }}
-                  >
-                    Annuler
-                  </button>
+                  >Annuler</button>
                   <button
                     onClick={() => void sendInvite()}
                     disabled={inviting || !inviteEmail.trim()}
