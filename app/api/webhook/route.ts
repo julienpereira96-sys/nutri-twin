@@ -28,7 +28,6 @@ export async function POST(request: Request) {
     const plan = session.metadata?.plan ?? "pro";
     const customerId = session.customer as string;
 
-    // Mettre à jour le praticien avec son customer ID Stripe et son plan
     if (session.customer_email) {
       await supabase
         .from("practitioners")
@@ -38,6 +37,11 @@ export async function POST(request: Request) {
           subscription_status: "active",
         })
         .eq("email", session.customer_email);
+    }
+
+    // Décrémenter le compteur si plan Fondateur
+    if (plan === "fondateur") {
+      await supabase.rpc("decrement_founder_counter");
     }
   }
 

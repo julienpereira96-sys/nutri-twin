@@ -301,37 +301,8 @@ export default function Home() {
         </section>
 
         {/* FONDATEURS */}
-        <section className="border-t border-white/[0.06] bg-gradient-to-b from-emerald-500/[0.07] via-[#0a0a0a] to-[#0a0a0a] py-20 sm:py-28">
-          <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
-            <p
-              className="mb-4 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider ring-1"
-              style={{
-                backgroundColor: "rgba(16,185,129,0.12)",
-                color: emerald,
-                borderColor: `${emerald}55`,
-              }}
-            >
-              Offre limitée aux 10 premiers
-            </p>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Devenez Fondateur NutriTwin
-            </h2>
-            <p className="mt-6 text-base leading-relaxed text-zinc-300 sm:text-lg">
-              Je cherche 10 nutritionnistes visionnaires pour co-construire NutriTwin.
-              En échange de vos retours pendant 2 mois, vous accédez au plan Pro
-              au prix de l'Essentiel —{" "}
-              <strong className="text-white">149€/mois garanti à vie</strong>,
-              patients illimités, votre nom dans l'histoire du produit.
-            </p>
-            <div className="mx-auto mt-10 max-w-sm">
-              <FounderCounter />
-            </div>
-            <FounderButton />
-            <p className="mt-4 text-xs text-zinc-500">
-              Aucun engagement — annulable à tout moment
-            </p>
-          </div>
-        </section>
+        <FounderSection />
+
       </main>
 
       {/* FOOTER */}
@@ -354,6 +325,91 @@ export default function Home() {
           </div>
         </div>
       </footer>
+    </div>
+  );
+}
+
+function FounderSection() {
+  const [count, setCount] = useState(10);
+
+  useEffect(() => {
+    fetch("/api/founder-count")
+      .then((res) => res.json())
+      .then((data: { count: number }) => {
+        if (data.count !== undefined) setCount(data.count);
+      })
+      .catch(() => null);
+  }, []);
+
+  if (count <= 0) return null;
+
+  return (
+    <section className="border-t border-white/[0.06] bg-gradient-to-b from-emerald-500/[0.07] via-[#0a0a0a] to-[#0a0a0a] py-20 sm:py-28">
+      <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
+        <p
+          className="mb-4 inline-flex rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-wider ring-1"
+          style={{
+            backgroundColor: "rgba(16,185,129,0.12)",
+            color: emerald,
+            borderColor: `${emerald}55`,
+          }}
+        >
+          Offre limitée aux 10 premiers
+        </p>
+        <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          Devenez Fondateur NutriTwin
+        </h2>
+        <p className="mt-6 text-base leading-relaxed text-zinc-300 sm:text-lg">
+          Je cherche 10 nutritionnistes visionnaires pour co-construire NutriTwin.
+          En échange de vos retours pendant 2 mois, vous accédez au plan Pro
+          au prix de l'Essentiel —{" "}
+          <strong className="text-white">149€/mois garanti à vie</strong>,
+          patients illimités, votre nom dans l'histoire du produit.
+        </p>
+        <div className="mx-auto mt-10 max-w-sm">
+          <FounderCounter />
+        </div>
+        <FounderButton />
+        <p className="mt-4 text-xs text-zinc-500">
+          Aucun engagement — annulable à tout moment
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function FounderCounter() {
+  const [count, setCount] = useState(10);
+  const total = 10;
+  const percentage = ((total - count) / total) * 100;
+
+  useEffect(() => {
+    fetch("/api/founder-count")
+      .then((res) => res.json())
+      .then((data: { count: number }) => {
+        if (data.count !== undefined) setCount(data.count);
+      })
+      .catch(() => null);
+  }, []);
+
+  return (
+    <div
+      className="rounded-2xl border p-6 text-left"
+      style={{ background: "rgba(16,185,129,0.06)", borderColor: `${emerald}33` }}
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-sm font-medium text-zinc-300">Places restantes</span>
+        <span className="text-3xl font-bold" style={{ color: emerald }}>{count}</span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${percentage}%`, backgroundColor: emerald }}
+        />
+      </div>
+      <p className="mt-3 text-xs text-zinc-500">
+        {total - count} praticien{total - count > 1 ? "s" : ""} ont déjà rejoint le programme
+      </p>
     </div>
   );
 }
@@ -387,42 +443,6 @@ function FounderButton() {
     >
       {loading ? "Chargement..." : "Je veux devenir Fondateur →"}
     </button>
-  );
-}
-
-function FounderCounter() {
-  const [count, setCount] = useState(7);
-  const total = 10;
-  const percentage = ((total - count) / total) * 100;
-
-  useEffect(() => {
-    fetch("/api/founder-count")
-      .then((res) => res.json())
-      .then((data: { count: number }) => {
-        if (data.count !== undefined) setCount(data.count);
-      })
-      .catch(() => null);
-  }, []);
-
-  return (
-    <div
-      className="rounded-2xl border p-6 text-left"
-      style={{ background: "rgba(16,185,129,0.06)", borderColor: `${emerald}33` }}
-    >
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-sm font-medium text-zinc-300">Places restantes</span>
-        <span className="text-3xl font-bold" style={{ color: emerald }}>{count}</span>
-      </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${percentage}%`, backgroundColor: emerald }}
-        />
-      </div>
-      <p className="mt-3 text-xs text-zinc-500">
-        {total - count} praticien{total - count > 1 ? "s" : ""} ont déjà rejoint le programme
-      </p>
-    </div>
   );
 }
 
