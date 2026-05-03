@@ -26,7 +26,8 @@ function PaymentSuccessContent() {
     essentiel: "Essentiel",
     pro: "Pro",
     cabinet: "Cabinet",
-  };
+    fondateur: "Fondateur",
+  };  
 
   return (
     <div style={{
