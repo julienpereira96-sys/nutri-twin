@@ -117,12 +117,13 @@ function getDefaultPrompt(): string {
 export async function POST(request: Request) {
   try {
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    
-    const { message, systemPrompt, patientId, practitionerId } = await request.json() as {
+
+    const { message, systemPrompt, patientId, practitionerId, sessionId } = await request.json() as {
       message: string;
       systemPrompt?: string;
       patientId?: string;
       practitionerId?: string;
+      sessionId?: string;
     };
 
     const practitionerPrompt = await getPractitionerSystemPrompt(practitionerId, message);
@@ -142,10 +143,34 @@ export async function POST(request: Request) {
         process.env.SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY!
       );
+
       await supabase.from("conversations").insert([
-        { patient_id: patientId, practitioner_id: practitionerId, role: "user", content: message },
-        { patient_id: patientId, practitioner_id: practitionerId, role: "assistant", content: text },
+        {
+          patient_id: patientId,
+          practitioner_id: practitionerId,
+          role: "user",
+          content: message,
+          session_id: sessionId ?? null,
+        },
+        {
+          patient_id: patientId,
+          practitioner_id: practitionerId,
+          role: "assistant",
+          content: text,
+          session_id: sessionId ?? null,
+        },
       ]);
+
+      // Mettre à jour le dernier message de la session
+      if (sessionId) {
+        await supabase
+          .from("conversations_sessions")
+          .update({
+            last_message: text.slice(0, 100),
+            last_message_at: new Date().toISOString(),
+          })
+          .eq("id", sessionId);
+      }
     }
 
     return Response.json({ response: text });

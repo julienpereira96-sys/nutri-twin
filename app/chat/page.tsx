@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyboardEvent, useState, useEffect, useRef } from "react";
+import { KeyboardEvent, useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 import JournalModal from "./JournalModal";
 
@@ -11,6 +11,12 @@ type ChatMessage = {
 
 type Tool = "breathing" | "ancrage" | "marche" | "manger" | "journal" | null;
 type BreathingStep = "idle" | "inhale" | "hold" | "exhale" | "done";
+
+type Session = {
+  id: string;
+  title: string;
+  last_message_at: string;
+};
 
 const quickActions = [
   "J'ai craqué ce soir, que faire ?",
@@ -39,6 +45,10 @@ export default function ChatPage() {
   const [patientFirstName, setPatientFirstName] = useState<string>("");
   const [practitionerIdFromDb, setPractitionerIdFromDb] = useState<string | null>(null);
   const [practitionerName, setPractitionerName] = useState("votre praticien");
+
+  // Sessions
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
 
   // Breathing
   const [breathingStep, setBreathingStep] = useState<BreathingStep>("idle");
@@ -73,6 +83,20 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const loadSessions = useCallback(async (pid: string) => {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data } = await supabase
+      .from("conversations_sessions")
+      .select("id, title, last_message_at")
+      .eq("patient_id", pid)
+      .order("last_message_at", { ascending: false })
+      .limit(10);
+    if (data) setSessions(data as Session[]);
+  }, []);
+
   useEffect(() => {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -106,6 +130,7 @@ export default function ChatPage() {
             .select("role, content")
             .eq("patient_id", data.user.id)
             .eq("practitioner_id", relation.practitioner_id)
+            .is("session_id", null)
             .order("created_at", { ascending: true });
 
           if (history && history.length > 0) {
@@ -120,11 +145,12 @@ export default function ChatPage() {
           .single();
 
         if (patient?.first_name) setPatientFirstName(patient.first_name);
+
+        await loadSessions(data.user.id);
       }
     });
-  }, []);
+  }, [loadSessions]);
 
-  // Nettoyage interval breathing
   useEffect(() => {
     return () => {
       if (breathingIntervalRef.current) clearInterval(breathingIntervalRef.current);
@@ -141,6 +167,47 @@ export default function ChatPage() {
     setMarcheStep(0);
   };
 
+  const createSession = async (firstMessage: string): Promise<string | null> => {
+    if (!patientId || !practitionerIdFromDb) return null;
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const title = firstMessage.slice(0, 40) + (firstMessage.length > 40 ? "..." : "");
+    const { data } = await supabase
+      .from("conversations_sessions")
+      .insert({
+        patient_id: patientId,
+        practitioner_id: practitionerIdFromDb,
+        title,
+        last_message: firstMessage,
+        last_message_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+    return data?.id ?? null;
+  };
+
+  const loadSession = async (sessionId: string) => {
+    if (!patientId || !practitionerIdFromDb) return;
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data } = await supabase
+      .from("conversations")
+      .select("role, content")
+      .eq("patient_id", patientId)
+      .eq("practitioner_id", practitionerIdFromDb)
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: true });
+    if (data) {
+      setMessages(data as ChatMessage[]);
+      setCurrentSessionId(sessionId);
+      setSidebarOpen(false);
+    }
+  };
+
   const startBreathing = () => {
     let cycle = 1;
     let phase: BreathingStep = "inhale";
@@ -150,11 +217,7 @@ export default function ChatPage() {
     setBreathingCycle(1);
     setBreathingTimer(5);
 
-    const phaseDurations: Record<string, number> = {
-      inhale: 5,
-      hold: 4,
-      exhale: 5,
-    };
+    const phaseDurations: Record<string, number> = { inhale: 5, hold: 4, exhale: 5 };
 
     const interval = setInterval(() => {
       timer--;
@@ -194,6 +257,12 @@ export default function ChatPage() {
     const trimmedMessage = (text ?? message).trim();
     if (!trimmedMessage || loading) return;
 
+    let sessionId = currentSessionId;
+    if (!sessionId) {
+      sessionId = await createSession(trimmedMessage);
+      setCurrentSessionId(sessionId);
+    }
+
     const newMessages: ChatMessage[] = [...messages, { role: "user", content: trimmedMessage }];
     setMessages(newMessages);
     setMessage("");
@@ -207,6 +276,7 @@ export default function ChatPage() {
           message: trimmedMessage,
           patientId: patientId ?? undefined,
           practitionerId: practitionerIdFromDb ?? undefined,
+          sessionId: sessionId ?? undefined,
         }),
       });
       const data = (await res.json()) as { response?: string; error?: string };
@@ -215,6 +285,7 @@ export default function ChatPage() {
           ? data.response
           : (data.error ?? "Une erreur est survenue.");
       setMessages([...newMessages, { role: "assistant", content: assistantReply }]);
+      if (patientId) await loadSessions(patientId);
     } catch {
       setMessages([...newMessages, { role: "assistant", content: "Impossible de contacter le serveur." }]);
     } finally {
@@ -230,33 +301,21 @@ export default function ChatPage() {
   };
 
   const breathingLabel: Record<BreathingStep, string> = {
-    idle: "",
-    inhale: "Inspirez...",
-    hold: "Retenez...",
-    exhale: "Expirez...",
-    done: "Bravo ! 🎉",
+    idle: "", inhale: "Inspirez...", hold: "Retenez...", exhale: "Expirez...", done: "Bravo ! 🎉",
   };
 
   const breathingColor: Record<BreathingStep, string> = {
-    idle: "#10b981",
-    inhale: "#10b981",
-    hold: "#6366f1",
-    exhale: "#06b6d4",
-    done: "#10b981",
+    idle: "#10b981", inhale: "#10b981", hold: "#6366f1", exhale: "#06b6d4", done: "#10b981",
   };
 
-  // Bouton fermer universel
   const CloseButton = () => (
-    <button
-      onClick={closeTool}
-      style={{
-        position: "absolute", top: 16, right: 16,
-        width: 32, height: 32, borderRadius: 16,
-        background: "#f1f5f9", border: "none",
-        cursor: "pointer", fontSize: 16, color: "#64748b",
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}
-    >×</button>
+    <button onClick={closeTool} style={{
+      position: "absolute", top: 16, right: 16,
+      width: 32, height: 32, borderRadius: 16,
+      background: "#f1f5f9", border: "none",
+      cursor: "pointer", fontSize: 16, color: "#64748b",
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }}>×</button>
   );
 
   const renderTool = () => {
@@ -287,7 +346,6 @@ export default function ChatPage() {
         }}>
           <CloseButton />
 
-          {/* COHÉRENCE CARDIAQUE */}
           {activeTool === "breathing" && (
             <div style={{ textAlign: "center" }}>
               <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "#0f172a" }}>🫁 Cohérence cardiaque</h2>
@@ -303,9 +361,7 @@ export default function ChatPage() {
                     background: "linear-gradient(135deg, #34d399, #10b981)",
                     border: "none", color: "white", fontSize: 16, fontWeight: 600, cursor: "pointer",
                     boxShadow: "0 4px 14px rgba(16,185,129,0.35)",
-                  }}>
-                    Commencer
-                  </button>
+                  }}>Commencer</button>
                 </>
               )}
 
@@ -331,18 +387,14 @@ export default function ChatPage() {
                     marginTop: 20, width: "100%", height: 44, borderRadius: 22,
                     background: "transparent", border: "1.5px solid #e2e8f0",
                     color: "#94a3b8", fontSize: 14, cursor: "pointer",
-                  }}>
-                    Arrêter
-                  </button>
+                  }}>Arrêter</button>
                 </>
               )}
 
               {breathingStep === "done" && (
                 <>
                   <div style={{ fontSize: 60, marginBottom: 16 }}>🎉</div>
-                  <h3 style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", margin: "0 0 8px" }}>
-                    Excellent travail !
-                  </h3>
+                  <h3 style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", margin: "0 0 8px" }}>Excellent travail !</h3>
                   <p style={{ fontSize: 15, color: "#64748b", marginBottom: 24 }}>
                     Vous venez de faire quelque chose de précieux pour vous. Votre corps vous remercie. 🌿
                   </p>
@@ -350,15 +402,12 @@ export default function ChatPage() {
                     width: "100%", height: 48, borderRadius: 24,
                     background: "linear-gradient(135deg, #34d399, #10b981)",
                     border: "none", color: "white", fontSize: 15, fontWeight: 600, cursor: "pointer",
-                  }}>
-                    Terminer
-                  </button>
+                  }}>Terminer</button>
                 </>
               )}
             </div>
           )}
 
-          {/* ANCRAGE 5-4-3-2-1 */}
           {activeTool === "ancrage" && (
             <div style={{ textAlign: "center" }}>
               <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "#0f172a" }}>🌊 Technique 5-4-3-2-1</h2>
@@ -367,13 +416,8 @@ export default function ChatPage() {
               {ancrageStep < 5 ? (
                 <>
                   <div style={{ fontSize: 48, marginBottom: 16 }}>{ancrageSteps[ancrageStep].icon}</div>
-                  <div style={{
-                    background: "#f0fdf4", borderRadius: 16, padding: "20px 24px", marginBottom: 24,
-                    border: "1.5px solid #d1fae5",
-                  }}>
-                    <p style={{ margin: 0, fontSize: 32, fontWeight: 800, color: "#10b981" }}>
-                      {ancrageSteps[ancrageStep].count}
-                    </p>
+                  <div style={{ background: "#f0fdf4", borderRadius: 16, padding: "20px 24px", marginBottom: 24, border: "1.5px solid #d1fae5" }}>
+                    <p style={{ margin: 0, fontSize: 32, fontWeight: 800, color: "#10b981" }}>{ancrageSteps[ancrageStep].count}</p>
                     <p style={{ margin: "8px 0 0", fontSize: 16, color: "#374151" }}>
                       chose{ancrageSteps[ancrageStep].count > 1 ? "s" : ""} que vous <strong>{ancrageSteps[ancrageStep].sense}</strong>
                     </p>
@@ -385,23 +429,17 @@ export default function ChatPage() {
                     width: "100%", height: 52, borderRadius: 26,
                     background: "linear-gradient(135deg, #34d399, #10b981)",
                     border: "none", color: "white", fontSize: 16, fontWeight: 600, cursor: "pointer",
-                  }}>
-                    {ancrageStep < 4 ? "Suivant →" : "Terminer"}
-                  </button>
+                  }}>{ancrageStep < 4 ? "Suivant →" : "Terminer"}</button>
                   <button onClick={closeTool} style={{
                     marginTop: 10, width: "100%", height: 44, borderRadius: 22,
                     background: "transparent", border: "1.5px solid #e2e8f0",
                     color: "#94a3b8", fontSize: 14, cursor: "pointer",
-                  }}>
-                    Quitter
-                  </button>
+                  }}>Quitter</button>
                 </>
               ) : (
                 <>
                   <div style={{ fontSize: 60, marginBottom: 16 }}>✨</div>
-                  <h3 style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", margin: "0 0 8px" }}>
-                    Vous êtes ancré(e) !
-                  </h3>
+                  <h3 style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", margin: "0 0 8px" }}>Vous êtes ancré(e) !</h3>
                   <p style={{ fontSize: 15, color: "#64748b", marginBottom: 24 }}>
                     Vous venez de ramener votre esprit dans le moment présent. C'est un acte de soin envers vous-même. 🌿
                   </p>
@@ -409,15 +447,12 @@ export default function ChatPage() {
                     width: "100%", height: 48, borderRadius: 24,
                     background: "linear-gradient(135deg, #34d399, #10b981)",
                     border: "none", color: "white", fontSize: 15, fontWeight: 600, cursor: "pointer",
-                  }}>
-                    Fermer
-                  </button>
+                  }}>Fermer</button>
                 </>
               )}
             </div>
           )}
 
-          {/* MARCHE CONSCIENTE */}
           {activeTool === "marche" && (
             <div style={{ textAlign: "center" }}>
               <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "#0f172a" }}>🚶 Marche consciente</h2>
@@ -448,23 +483,17 @@ export default function ChatPage() {
                     width: "100%", height: 52, borderRadius: 26,
                     background: "linear-gradient(135deg, #34d399, #10b981)",
                     border: "none", color: "white", fontSize: 16, fontWeight: 600, cursor: "pointer",
-                  }}>
-                    {marcheStep < marcheSteps.length - 1 ? "Suivant →" : "Terminer"}
-                  </button>
+                  }}>{marcheStep < marcheSteps.length - 1 ? "Suivant →" : "Terminer"}</button>
                   <button onClick={closeTool} style={{
                     marginTop: 10, width: "100%", height: 44, borderRadius: 22,
                     background: "transparent", border: "1.5px solid #e2e8f0",
                     color: "#94a3b8", fontSize: 14, cursor: "pointer",
-                  }}>
-                    Quitter
-                  </button>
+                  }}>Quitter</button>
                 </>
               ) : (
                 <>
                   <div style={{ fontSize: 60, marginBottom: 16 }}>🌿</div>
-                  <h3 style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", margin: "0 0 8px" }}>
-                    Belle promenade !
-                  </h3>
+                  <h3 style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", margin: "0 0 8px" }}>Belle promenade !</h3>
                   <p style={{ fontSize: 15, color: "#64748b", marginBottom: 24 }}>
                     Chaque pas conscient est une victoire. Vous avez pris soin de votre corps et de votre esprit. 💚
                   </p>
@@ -472,20 +501,16 @@ export default function ChatPage() {
                     width: "100%", height: 48, borderRadius: 24,
                     background: "linear-gradient(135deg, #34d399, #10b981)",
                     border: "none", color: "white", fontSize: 15, fontWeight: 600, cursor: "pointer",
-                  }}>
-                    Fermer
-                  </button>
+                  }}>Fermer</button>
                 </>
               )}
             </div>
           )}
 
-          {/* MANGER EN PLEINE CONSCIENCE */}
           {activeTool === "manger" && (
             <div style={{ textAlign: "center" }}>
               <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "#0f172a" }}>🍽️ Manger en pleine conscience</h2>
               <p style={{ margin: "0 0 24px", fontSize: 14, color: "#64748b" }}>Avant de commencer votre repas</p>
-
               <div style={{ textAlign: "left", display: "flex", flexDirection: "column", gap: 16, marginBottom: 28 }}>
                 {[
                   { icon: "📵", text: "Posez votre téléphone. Ce repas mérite toute votre attention." },
@@ -501,14 +526,11 @@ export default function ChatPage() {
                   </div>
                 ))}
               </div>
-
               <button onClick={closeTool} style={{
                 width: "100%", height: 52, borderRadius: 26,
                 background: "linear-gradient(135deg, #34d399, #10b981)",
                 border: "none", color: "white", fontSize: 16, fontWeight: 600, cursor: "pointer",
-              }}>
-                Bon appétit 🌿
-              </button>
+              }}>Bon appétit 🌿</button>
             </div>
           )}
         </div>
@@ -540,6 +562,7 @@ export default function ChatPage() {
           zIndex: 30, transition: "left 0.3s ease",
           overflowY: "auto", boxShadow: sidebarOpen ? "4px 0 24px rgba(0,0,0,0.1)" : "none",
         }}>
+          {/* Header sidebar */}
           <div style={{ padding: "20px 16px 16px", borderBottom: "1px solid #f1f5f9" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Mon espace</h2>
@@ -547,20 +570,23 @@ export default function ChatPage() {
                 background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8",
               }}>×</button>
             </div>
+
+            {/* Nouvelle conversation */}
             <button
-              onClick={() => { setMessages([]); setSidebarOpen(false); }}
+              onClick={() => { setMessages([]); setCurrentSessionId(null); setSidebarOpen(false); }}
               style={{
                 width: "100%", height: 40, borderRadius: 10,
                 background: "linear-gradient(135deg, #34d399, #10b981)",
-                border: "none", color: "white", fontSize: 13, fontWeight: 600,
+                border: "none", color: "white", fontSize: 20, fontWeight: 300,
                 cursor: "pointer", display: "flex", alignItems: "center",
                 justifyContent: "center", gap: 8,
               }}
             >
-              ✏️ Nouvelle conversation
+              +
             </button>
           </div>
 
+          {/* Outils bien-être */}
           <div style={{ padding: "16px" }}>
             <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.8px", textTransform: "uppercase" }}>
               🌿 Outils bien-être
@@ -595,22 +621,59 @@ export default function ChatPage() {
             </div>
           </div>
 
-          {messages.length > 0 && (
-            <div style={{ padding: "0 16px 16px", flex: 1 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.8px", textTransform: "uppercase" }}>
-                💬 Discussion récente
+          {/* Discussions récentes */}
+          <div style={{ padding: "0 16px 16px", flex: 1 }}>
+            <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.8px", textTransform: "uppercase" }}>
+              💬 Discussions récentes
+            </p>
+            {sessions.length === 0 ? (
+              <p style={{ fontSize: 12, color: "#94a3b8", textAlign: "center", marginTop: 8 }}>
+                Aucune discussion pour l'instant
               </p>
-              <div style={{
-                padding: "10px 12px", borderRadius: 10,
-                background: "#f0fdf4", border: "1.5px solid #d1fae5",
-                fontSize: 13, color: "#059669", fontWeight: 500,
-              }}>
-                {messages.filter(m => m.role === "user").slice(-1)[0]?.content.slice(0, 40)}...
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {sessions.map((session) => (
+                  <button
+                    key={session.id}
+                    onClick={() => void loadSession(session.id)}
+                    style={{
+                      padding: "10px 12px", borderRadius: 10, textAlign: "left",
+                      background: currentSessionId === session.id ? "#f0fdf4" : "#f8fafc",
+                      border: `1.5px solid ${currentSessionId === session.id ? "#10b981" : "#e2e8f0"}`,
+                      cursor: "pointer", transition: "all 0.15s",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (currentSessionId !== session.id) {
+                        e.currentTarget.style.background = "#f0fdf4";
+                        e.currentTarget.style.borderColor = "#d1fae5";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (currentSessionId !== session.id) {
+                        e.currentTarget.style.background = "#f8fafc";
+                        e.currentTarget.style.borderColor = "#e2e8f0";
+                      }
+                    }}
+                  >
+                    <p style={{
+                      margin: 0, fontSize: 12, fontWeight: 600,
+                      color: currentSessionId === session.id ? "#059669" : "#374151",
+                      marginBottom: 2, overflow: "hidden",
+                      textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {session.title}
+                    </p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#94a3b8" }}>
+                      {new Date(session.last_message_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                    </p>
+                  </button>
+                ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </aside>
 
+        {/* Zone chat */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <header style={{
             background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)",
