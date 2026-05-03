@@ -10,8 +10,7 @@ export default function Home() {
     <div
       className="relative min-h-screen overflow-x-hidden bg-[#0a0a0a] text-white"
       style={{
-        fontFamily:
-          "var(--font-geist-sans), Inter, ui-sans-serif, system-ui, sans-serif",
+        fontFamily: "var(--font-geist-sans), Inter, ui-sans-serif, system-ui, sans-serif",
       }}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(16,185,129,0.18),transparent)]" />
@@ -415,34 +414,14 @@ function FounderCounter() {
 }
 
 function FounderButton() {
-  const [loading, setLoading] = useState(false);
-
-  const handleCheckout = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/create-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: "fondateur", userId: "" }),
-      });
-      const data = await res.json() as { url: string };
-      if (data.url) window.location.href = data.url;
-    } catch {
-      console.error("Erreur checkout fondateur");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <button
-      onClick={() => void handleCheckout()}
-      disabled={loading}
+    <Link
+      href="/signup?plan=fondateur"
       className="mt-10 inline-flex min-h-[52px] w-full items-center justify-center rounded-full px-10 text-base font-semibold text-black shadow-lg shadow-emerald-500/25 transition hover:bg-emerald-400 sm:w-auto"
       style={{ backgroundColor: emerald }}
     >
-      {loading ? "Chargement..." : "Je veux devenir Fondateur →"}
-    </button>
+      Je veux devenir Fondateur →
+    </Link>
   );
 }
 
@@ -457,24 +436,6 @@ function PricingCard(props: {
 }) {
   const { name, price, featured, badge, description, features, plan } = props;
   const [hovered, setHovered] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  const handleCheckout = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/create-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, userId: "" }),
-      });
-      const data = await res.json() as { url: string };
-      if (data.url) window.location.href = data.url;
-    } catch {
-      console.error("Erreur checkout");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <article
@@ -520,9 +481,8 @@ function PricingCard(props: {
           14 jours gratuits
         </span>
       </div>
-      <button
-        onClick={() => void handleCheckout()}
-        disabled={loading}
+      <Link
+        href={`/signup?plan=${plan}`}
         className={`mt-4 inline-flex min-h-[48px] w-full items-center justify-center rounded-2xl text-sm font-semibold transition ${
           featured
             ? "text-black hover:bg-emerald-400"
@@ -530,8 +490,8 @@ function PricingCard(props: {
         }`}
         style={featured ? { backgroundColor: emerald } : {}}
       >
-        {loading ? "Chargement..." : "Commencer l'essai"}
-      </button>
+        Commencer l'essai
+      </Link>
     </article>
   );
 }

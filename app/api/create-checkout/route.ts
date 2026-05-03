@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     payment_method_types: ["card"],
     line_items: [{ price: priceMap[plan], quantity: 1 }],
     subscription_data: { trial_period_days: 14 },
-    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment-success?plan=${plan}`,
+    success_url: `${process.env.NEXT_PUBLIC_APP_URL}/verify-email`,
     cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/#tarifs`,
     metadata: { userId, plan },
   });

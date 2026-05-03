@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
-
+import { useSearchParams } from "next/navigation";
+import { FormEvent, useState, Suspense } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const specialties = [
@@ -16,9 +15,12 @@ const specialties = [
   "Psychologue (TCA)",
 ];
 
-export default function SignupPage() {
-  const router = useRouter();
+function SignupForm() {
+  const searchParams = useSearchParams();
+  const plan = searchParams.get("plan") ?? "pro";
+
   const [email, setEmail] = useState("");
+  const [emailConfirm, setEmailConfirm] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState("");
@@ -38,6 +40,11 @@ export default function SignupPage() {
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
+
+    if (email.trim() !== emailConfirm.trim()) {
+      setError("Les adresses email ne correspondent pas.");
+      return;
+    }
 
     const allSpecialties = showOther && specialtyOther.trim()
       ? [...selectedSpecialties, specialtyOther.trim()]
@@ -80,13 +87,21 @@ export default function SignupPage() {
             firstName: firstName.trim(),
             lastName: lastName.trim(),
             specialty: finalSpecialty,
+            email: email.trim(),
           }),
         });
-      }
 
-      router.push("/onboarding");
+        // Rediriger vers Stripe avec le plan choisi
+        const res = await fetch("/api/create-checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan, userId: data.user.id }),
+        });
+        const checkoutData = await res.json() as { url: string };
+        if (checkoutData.url) window.location.href = checkoutData.url;
+      }
     } catch {
-      setError("Une erreur est survenue. Reessayez plus tard.");
+      setError("Une erreur est survenue. Réessayez plus tard.");
     } finally {
       setLoading(false);
     }
@@ -100,13 +115,15 @@ export default function SignupPage() {
             <span className="text-2xl">🍃</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">NutriTwin</h1>
-          <p className="mt-2 text-sm text-zinc-400">Inscription praticien</p>
+          <p className="mt-2 text-sm text-zinc-400">Créez votre compte — puis procédez au paiement</p>
+          {plan && (
+            <p className="mt-1 text-xs text-[#10b981] font-semibold">
+              Plan {plan.charAt(0).toUpperCase() + plan.slice(1)} sélectionné
+            </p>
+          )}
         </div>
 
-        <form
-          onSubmit={onSubmit}
-          className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8"
-        >
+        <form onSubmit={onSubmit} className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
@@ -193,6 +210,18 @@ export default function SignupPage() {
             </label>
 
             <label className="block">
+              <span className="text-sm font-medium text-zinc-300">Confirmer l'email</span>
+              <input
+                type="email"
+                required
+                value={emailConfirm}
+                onChange={(e) => setEmailConfirm(e.target.value)}
+                className="mt-2 w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
+                placeholder="vous@cabinet.fr"
+              />
+            </label>
+
+            <label className="block">
               <span className="text-sm font-medium text-zinc-300">Mot de passe</span>
               <div className="relative mt-2">
                 <input
@@ -226,9 +255,7 @@ export default function SignupPage() {
           </div>
 
           {error ? (
-            <p className="mt-4 text-sm text-red-400" role="alert">
-              {error}
-            </p>
+            <p className="mt-4 text-sm text-red-400" role="alert">{error}</p>
           ) : null}
 
           <button
@@ -236,10 +263,14 @@ export default function SignupPage() {
             disabled={loading}
             className="mt-6 w-full rounded-full bg-[#10b981] py-3 text-sm font-semibold text-black transition hover:bg-[#34d399] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Création..." : "Créer mon compte"}
+            {loading ? "Création du compte..." : "Créer mon compte et payer →"}
           </button>
 
-          <p className="mt-6 text-center text-sm text-zinc-400">
+          <p className="mt-4 text-center text-xs text-zinc-500">
+            Vous serez redirigé vers notre page de paiement sécurisée
+          </p>
+
+          <p className="mt-4 text-center text-sm text-zinc-400">
             Déjà un compte ?{" "}
             <Link href="/login" className="font-medium text-[#34d399] hover:underline">
               Se connecter
@@ -248,5 +279,17 @@ export default function SignupPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <p className="text-zinc-400">Chargement...</p>
+      </div>
+    }>
+      <SignupForm />
+    </Suspense>
   );
 }
