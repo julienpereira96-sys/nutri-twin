@@ -37,6 +37,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // Bloquer /onboarding et /dashboard si email non confirmé
+  if (user && !user.email_confirmed_at) {
+    const needsConfirmation = ["/onboarding", "/dashboard"].some((route) =>
+      request.nextUrl.pathname.startsWith(route)
+    );
+    if (needsConfirmation) {
+      return NextResponse.redirect(new URL("/verify-email", request.url));
+    }
+  }
+
   return supabaseResponse;
 }
 
