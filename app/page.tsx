@@ -5,7 +5,6 @@ import { useState, useEffect, useRef } from "react";
 
 const emerald = "#10b981";
 
-// Hook intersection observer
 function useInView(threshold = 0.2) {
   const ref = useRef<HTMLDivElement>(null);
   const [inView, setInView] = useState(false);
@@ -20,7 +19,6 @@ function useInView(threshold = 0.2) {
   return { ref, inView };
 }
 
-// Chat animé
 function AnimatedChat() {
   const messages = [
     { role: "patient", text: "Bonsoir... j'ai encore craqué sur des chips ce soir. Je me sens nulle 😔", delay: 1500 },
@@ -38,38 +36,27 @@ function AnimatedChat() {
   useEffect(() => {
     const timers: NodeJS.Timeout[] = [];
 
-    messages.forEach((msg, i) => {
-      const showTyping = setTimeout(() => {
-        setIsTyping(true);
-      }, msg.delay - 1000);
-
-      const showMsg = setTimeout(() => {
+    messages.forEach((msg) => {
+      timers.push(setTimeout(() => setIsTyping(true), msg.delay - 1000));
+      timers.push(setTimeout(() => {
         setIsTyping(false);
-        setVisibleMessages(prev => [...prev, i]);
-      }, msg.delay);
-
-      timers.push(showTyping, showMsg);
+        setVisibleMessages(prev => [...prev, messages.indexOf(msg)]);
+      }, msg.delay));
     });
 
-    // Reset après le dernier message
-    const reset = setTimeout(() => {
-      setVisibleMessages([]);
-    }, messages[messages.length - 1].delay + 4000);
-    timers.push(reset);
+    timers.push(setTimeout(() => setVisibleMessages([]), messages[messages.length - 1].delay + 4000));
 
     return () => timers.forEach(t => clearTimeout(t));
   }, [visibleMessages.length === messages.length]);
 
   return (
-    <div className="relative">
-      <div className="absolute -inset-4 rounded-3xl bg-emerald-500/[0.06] blur-2xl" />
+    <div className="relative mx-auto max-w-sm">
+      <div className="absolute -inset-6 rounded-[3rem] bg-emerald-500/[0.08] blur-3xl" />
 
-      <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[#0d0d0d] shadow-2xl shadow-black/60">
+      <div className="relative overflow-hidden rounded-[2.5rem] border border-white/[0.08] bg-[#0d0d0d] shadow-2xl shadow-black/60">
         <div className="flex items-center gap-3 border-b border-white/[0.06] bg-[#111111] px-5 py-4">
           <div className="relative">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-sm font-bold text-black">
-              TM
-            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-sm font-bold text-black">TM</div>
             <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-[#111111] bg-emerald-400" />
           </div>
           <div>
@@ -79,9 +66,7 @@ function AnimatedChat() {
               <p className="text-[11px] text-emerald-400">Répond instantanément</p>
             </div>
           </div>
-          <div className="ml-auto rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-400 ring-1 ring-emerald-500/20">
-            21h14
-          </div>
+          <div className="ml-auto rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-400 ring-1 ring-emerald-500/20">21h14</div>
         </div>
 
         <div className="space-y-3 px-4 py-5 min-h-[420px]">
@@ -94,9 +79,7 @@ function AnimatedChat() {
             >
               <div
                 className={`max-w-[82%] rounded-[18px] px-4 py-2.5 text-[13px] leading-relaxed ${
-                  msg.role === "ai"
-                    ? "rounded-br-md text-black"
-                    : "rounded-bl-md bg-[#1e1e1e] text-zinc-200"
+                  msg.role === "ai" ? "rounded-br-md text-black" : "rounded-bl-md bg-[#1e1e1e] text-zinc-200"
                 }`}
                 style={msg.role === "ai" ? { backgroundColor: emerald } : {}}
               >
@@ -142,40 +125,47 @@ function AnimatedChat() {
   );
 }
 
-// Carte avec effet glow souris
-function GlowCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = useState(false);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-  };
-
-  return (
-    <div
-      ref={cardRef}
-      className={`relative overflow-hidden ${className}`}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      {isHovered && (
-        <div
-          className="pointer-events-none absolute inset-0 z-10 transition-opacity duration-300"
-          style={{
-            background: `radial-gradient(250px circle at ${mousePos.x}px ${mousePos.y}px, rgba(16,185,129,0.10), transparent 70%)`,
-          }}
-        />
-      )}
-      <div className="relative z-20 h-full">
-        {children}
-      </div>
-    </div>
-  );
-}
+// Icônes Lucide-style
+const ClockIcon = () => (
+  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+  </svg>
+);
+const SparkIcon = () => (
+  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+  </svg>
+);
+const HeartIcon = () => (
+  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+  </svg>
+);
+const LockIcon = () => (
+  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+  </svg>
+);
+const ShieldIcon = () => (
+  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
+  </svg>
+);
+const UserCheckIcon = () => (
+  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+  </svg>
+);
+const BookIcon = () => (
+  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+  </svg>
+);
+const SendIcon = () => (
+  <svg fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+  </svg>
+);
 
 export default function Home() {
   return (
@@ -183,46 +173,44 @@ export default function Home() {
       className="relative min-h-screen overflow-x-hidden bg-[#070707] text-white"
       style={{ fontFamily: "var(--font-geist-sans), Inter, ui-sans-serif, system-ui, sans-serif" }}
     >
-      {/* Glow ambiant fixe */}
+      {/* Glow ambiant */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute -top-1/4 left-1/2 h-[900px] w-[900px] -translate-x-1/2 rounded-full bg-emerald-500/[0.05] blur-[140px]" />
+        <div className="absolute -top-1/4 left-1/2 h-[900px] w-[900px] -translate-x-1/2 rounded-full bg-emerald-500/[0.06] blur-[140px]" />
       </div>
 
-      {/* NAV */}
-      <header className="fixed top-0 z-50 w-full border-b border-white/[0.04] bg-[#070707]/75 backdrop-blur-2xl">
+      {/* HEADER glassmorphism */}
+      <header className="fixed top-0 z-50 w-full border-b border-white/[0.04] bg-[#070707]/60 backdrop-blur-2xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-8">
-          <div className="flex items-center gap-2.5">
+          <Link href="/" className="flex items-center gap-2.5">
             <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-500/20">
               <span className="text-sm">🍃</span>
             </div>
             <span className="text-[15px] font-semibold tracking-tight">NutriTwin</span>
-          </div>
-          <nav className="hidden items-center gap-8 md:flex">
+          </Link>
+          <nav className="hidden items-center gap-10 md:flex">
             {[
-              { label: "Le problème", href: "#probleme" },
-              { label: "La solution", href: "#solution" },
-              { label: "Dashboard", href: "#dashboard" },
+              { label: "Concept", href: "#concept" },
+              { label: "Sécurité", href: "#securite" },
               { label: "Tarifs", href: "#tarifs" },
             ].map((item) => (
               <a
                 key={item.href}
                 href={item.href}
-                className="text-[13px] text-zinc-400 transition-colors hover:text-white"
+                className="text-[13px] font-medium text-zinc-400 transition-colors hover:text-white"
               >
                 {item.label}
               </a>
             ))}
           </nav>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-[13px] text-zinc-400 transition hover:text-white">
-              Connexion
+            <Link href="/login" className="text-[13px] font-medium text-zinc-400 transition hover:text-white">
+              Se connecter
             </Link>
             <a
               href="#tarifs"
-              className="rounded-full px-4 py-2 text-[13px] font-semibold text-black transition hover:opacity-90 active:scale-95"
-              style={{ backgroundColor: emerald }}
+              className="rounded-full bg-white px-4 py-2 text-[13px] font-semibold text-black transition hover:bg-zinc-200 active:scale-95"
             >
-              Essai gratuit
+              Créer mon jumeau
             </a>
           </div>
         </div>
@@ -230,233 +218,215 @@ export default function Home() {
 
       <main className="relative z-10 pt-16">
 
-        {/* HERO SPLIT — fond #070707 */}
-        <section className="mx-auto max-w-7xl px-6 pb-24 pt-24 lg:px-8 lg:pt-32">
-          <div className="grid items-center gap-16 lg:grid-cols-2 lg:gap-20">
-
-            <div>
-              <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/[0.05] px-4 py-1.5 backdrop-blur">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-emerald-400">
-                  Jumeau numérique · Nutritionnistes
-                </span>
-              </div>
-
-              <h1 className="text-[52px] font-bold leading-[1.05] tracking-tight sm:text-[60px] lg:text-[68px]">
-                <span className="block text-white">Le suivi</span>
-                <span className="block text-white">ne s'arrête pas</span>
-                <span className="block" style={{ color: emerald }}>à la porte</span>
-                <span className="block" style={{ color: emerald }}>du cabinet.</span>
-              </h1>
-
-              <div className="mt-3 h-px w-16 rounded-full" style={{ backgroundColor: emerald }} />
-
-              <p className="mt-6 text-[17px] font-medium leading-relaxed text-zinc-300">
-                Votre expertise non plus.
-              </p>
-
-              <p className="mt-3 max-w-md text-[15px] leading-relaxed text-zinc-500">
-                Parce que vos patients ont besoin de vous entre les séances.
-                NutriTwin crée votre jumeau numérique — une IA entraînée sur vos méthodes, disponible 24h/24.
-              </p>
-
-              <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <a
-                  href="#tarifs"
-                  className="group relative inline-flex h-[52px] items-center justify-center overflow-hidden rounded-full px-8 text-[15px] font-semibold text-black transition-all active:scale-95"
-                  style={{ backgroundColor: emerald }}
-                >
-                  <span className="relative z-10 flex items-center gap-2">
-                    Créer mon jumeau numérique
-                    <svg className="size-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  </span>
-                  <div className="absolute inset-0 translate-y-full bg-emerald-400 transition-transform duration-300 group-hover:translate-y-0" />
-                </a>
-                <a
-                  href="#solution"
-                  className="inline-flex h-[52px] items-center justify-center gap-2 rounded-full border border-white/10 px-8 text-[15px] text-zinc-400 transition hover:border-white/20 hover:text-white"
-                >
-                  Voir la démo
-                </a>
-              </div>
+        {/* HERO */}
+        <section className="px-6 py-32 lg:px-8 lg:py-40">
+          <div className="mx-auto max-w-4xl text-center">
+            <div className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 backdrop-blur">
+              <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-300">
+                Jumeau numérique pour nutritionnistes
+              </span>
             </div>
 
-            <div className="lg:pl-4">
+            <h1 className="text-[56px] font-black leading-[1.02] tracking-tight sm:text-[72px] lg:text-[88px]">
+              <span className="block text-white">Le suivi ne s'arrête pas</span>
+              <span className="block text-white">à la porte du cabinet,</span>
+              <span className="block bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-500 bg-clip-text text-transparent">
+                votre expertise non plus.
+              </span>
+            </h1>
+
+            <p className="mx-auto mt-10 max-w-2xl text-[17px] leading-relaxed text-zinc-400">
+              NutriTwin crée votre jumeau numérique : une IA entraînée sur vos méthodes
+              qui conseille vos patients, avec votre style, même quand vous n'êtes pas disponible.
+            </p>
+
+            <div className="mt-12 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <a
+                href="#tarifs"
+                className="group inline-flex h-[56px] items-center justify-center gap-2 rounded-full bg-white px-9 text-[15px] font-semibold text-black transition hover:bg-zinc-200 active:scale-95"
+              >
+                Créer mon jumeau gratuitement
+                <svg className="size-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </a>
+              <a
+                href="#concept"
+                className="inline-flex h-[56px] items-center justify-center rounded-full border border-white/[0.10] px-9 text-[15px] text-zinc-300 transition hover:border-white/20 hover:text-white"
+              >
+                Voir la démo
+              </a>
+            </div>
+
+            <p className="mt-6 text-[12px] text-zinc-600">
+              14 jours gratuits · Sans engagement · Annulable à tout moment
+            </p>
+
+            {/* Visuel chat smartphone */}
+            <div className="mt-24">
               <AnimatedChat />
             </div>
           </div>
         </section>
 
-        {/* PROBLÈME — fond #0a0a0a */}
-        <section id="probleme" className="border-y border-white/[0.04] bg-[#0a0a0a] py-28">
+        {/* TRANSITION */}
+        <section className="border-y border-white/[0.04] bg-[#0a0a0a] py-32">
+          <div className="mx-auto max-w-3xl px-6 text-center lg:px-8">
+            <p className="text-[28px] font-medium leading-snug text-zinc-300 sm:text-[36px]">
+              Parce que vos patients ont besoin de vous{" "}
+              <span style={{ color: emerald }}>entre les séances.</span>
+            </p>
+          </div>
+        </section>
+
+        {/* MATCH PROBLÈME / SOLUTION */}
+        <section id="concept" className="bg-[#070707] py-32">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="mx-auto max-w-2xl text-center mb-16">
-              <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-emerald-500">
-                Ce que vivent vos patients
+            <div className="mx-auto mb-20 max-w-2xl text-center">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-500">
+                Avant / Après
               </p>
-              <h2 className="text-[36px] font-bold tracking-tight text-white sm:text-[44px]">
-                Entre deux séances,<br />
-                <span className="text-zinc-500">c'est le silence.</span>
+              <h2 className="text-[40px] font-black tracking-tight text-white sm:text-[48px]">
+                Le suivi entre deux séances<br />
+                <span className="text-zinc-500">change tout.</span>
               </h2>
             </div>
 
-            <div className="grid gap-5 md:grid-cols-3 max-w-5xl mx-auto">
-              <GlowCard className="rounded-2xl border border-white/[0.06] bg-[#111111] p-7">
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500/10 ring-1 ring-orange-500/20">
-                  <span className="text-xl">😟</span>
-                </div>
-                <h3 className="mb-3 text-[15px] font-bold text-white">Quand ils craquent, personne</h3>
-                <p className="text-[13.5px] leading-relaxed text-zinc-500">
-                  Un écart, une tentation, un moment de faiblesse. Et personne à qui se référer dans l'instant.
-                </p>
-              </GlowCard>
+            <div className="grid gap-6 lg:grid-cols-2 max-w-5xl mx-auto">
 
-              <GlowCard className="rounded-2xl border border-white/[0.06] bg-[#111111] p-7">
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 ring-1 ring-blue-500/20">
-                  <span className="text-xl">❓</span>
+              {/* AVANT — sombre */}
+              <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0a] p-10">
+                <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/[0.05] px-3 py-1">
+                  <div className="h-1.5 w-1.5 rounded-full bg-red-400" />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-red-400">Sans NutriTwin</span>
                 </div>
-                <h3 className="mb-3 text-[15px] font-bold text-white">Des doutes sans réponse</h3>
-                <p className="text-[13.5px] leading-relaxed text-zinc-500">
-                  Des questions au quotidien, mais personne dans l'immédiat pour y répondre. L'incertitude s'installe.
-                </p>
-              </GlowCard>
 
-              <GlowCard className="rounded-2xl border border-white/[0.06] bg-[#111111] p-7">
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-red-500/10 ring-1 ring-red-500/20">
-                  <span className="text-xl">😔</span>
+                <h3 className="text-[22px] font-bold text-white mb-2">L'isolement du patient</h3>
+                <p className="text-[14px] text-zinc-500 mb-8">Entre deux rendez-vous, c'est le silence.</p>
+
+                <div className="space-y-5">
+                  {[
+                    { title: "90 repas en autonomie", desc: "Entre deux rendez-vous, le patient est livré à lui-même face à ses doutes." },
+                    { title: "Le risque de décrochage", desc: "Une question sans réponse est souvent le début d'un abandon." },
+                    { title: "Votre charge mentale", desc: "Votre téléphone vibre pour des questions répétitives, hors cabinet." },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500/10">
+                        <div className="h-1 w-2 rounded-full bg-red-400" />
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-semibold text-zinc-300">{item.title}</p>
+                        <p className="mt-0.5 text-[13px] text-zinc-600 leading-relaxed">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <h3 className="mb-3 text-[15px] font-bold text-white">Se sentir seul, c'est abandonner</h3>
-                <p className="text-[13.5px] leading-relaxed text-zinc-500">
-                  Sans accompagnement entre les séances, le découragement gagne. Et certains ne reviennent plus.
-                </p>
-              </GlowCard>
+              </div>
+
+              {/* APRÈS — vert lumineux */}
+              <div className="relative rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.08] to-[#0a0a0a] p-10">
+                <div className="absolute -top-px left-10 right-10 h-px bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
+
+                <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/[0.08] px-3 py-1">
+                  <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-400">Avec NutriTwin</span>
+                </div>
+
+                <h3 className="text-[22px] font-bold text-white mb-2">La présence de votre jumeau</h3>
+                <p className="text-[14px] text-zinc-400 mb-8">Une expertise toujours disponible, jamais distante.</p>
+
+                <div className="space-y-5">
+                  {[
+                    { title: "Zéro attente", desc: "Une réponse immédiate et bienveillante à 21h, le dimanche, ou pendant vos vacances." },
+                    { title: "L'engagement maintenu", desc: "Un soutien continu qui maintient la motivation et booste les résultats." },
+                    { title: "Votre liberté retrouvée", desc: "L'IA gère les questions du quotidien. Vous gardez votre énergie pour l'humain." },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: emerald }}>
+                        <svg className="size-3 text-black" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-[14px] font-semibold text-white">{item.title}</p>
+                        <p className="mt-0.5 text-[13px] text-zinc-400 leading-relaxed">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* SOLUTION — fond #060606 */}
-        <section id="solution" className="bg-[#060606] py-28">
+        {/* PROCESSUS — Bento Grid */}
+        <section className="border-y border-white/[0.04] bg-[#0a0a0a] py-32">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="mx-auto max-w-2xl text-center mb-16">
-              <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-emerald-500">
-                La solution
-              </p>
-              <h2 className="text-[36px] font-bold tracking-tight text-white sm:text-[44px]">
-                Avec NutriTwin,<br />
-                <span style={{ color: emerald }}>vous êtes toujours là.</span>
-              </h2>
-              <p className="mt-5 text-[15px] leading-relaxed text-zinc-500">
-                Pas un chatbot générique. Votre méthode, votre ton, vos protocoles — configurés une fois, actifs 24h/24.
-              </p>
-            </div>
-
-            <div className="grid gap-5 md:grid-cols-3 max-w-5xl mx-auto">
-              <GlowCard className="relative rounded-2xl border border-emerald-500/25 bg-gradient-to-b from-emerald-500/[0.07] to-[#080808] p-7">
-                <div className="absolute -top-px left-7 right-7 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/15 ring-1 ring-emerald-500/30">
-                  <span className="text-xl">⏰</span>
-                </div>
-                <h3 className="mb-3 text-[15px] font-bold text-white">Disponible 24h/24</h3>
-                <p className="text-[13.5px] leading-relaxed text-zinc-400">
-                  Vos patients reçoivent une réponse immédiate et bienveillante, à toute heure du jour et de la nuit.
-                </p>
-              </GlowCard>
-
-              <GlowCard className="rounded-2xl border border-white/[0.06] bg-[#111111] p-7">
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-white/[0.04] ring-1 ring-white/[0.08]">
-                  <span className="text-xl">🪞</span>
-                </div>
-                <h3 className="mb-3 text-[15px] font-bold text-white">Répond comme vous</h3>
-                <p className="text-[13.5px] leading-relaxed text-zinc-500">
-                  Avec votre méthode, votre ton, votre approche. Vos patients ne voient pas une IA — ils vous voient, vous.
-                </p>
-              </GlowCard>
-
-              <GlowCard className="rounded-2xl border border-white/[0.06] bg-[#111111] p-7">
-                <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl bg-white/[0.04] ring-1 ring-white/[0.08]">
-                  <span className="text-xl">💚</span>
-                </div>
-                <h3 className="mb-3 text-[15px] font-bold text-white">Un suivi qui motive</h3>
-                <p className="text-[13.5px] leading-relaxed text-zinc-500">
-                  Un patient accompagné se sent soutenu. Il garde sa motivation et reste engagé sur la durée.
-                </p>
-              </GlowCard>
-            </div>
-          </div>
-        </section>
-
-        {/* COMMENT ÇA MARCHE — fond #0a0a0a */}
-        <section className="border-y border-white/[0.04] bg-[#0a0a0a] py-28">
-          <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="mx-auto max-w-2xl text-center mb-20">
-              <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-emerald-500">
+            <div className="mx-auto mb-20 max-w-2xl text-center">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-500">
                 Comment ça marche
               </p>
-              <h2 className="text-[36px] font-bold tracking-tight text-white sm:text-[44px]">
-                Configuré une fois.<br />
-                <span className="text-zinc-500">Actif pour toujours.</span>
+              <h2 className="text-[40px] font-black tracking-tight text-white sm:text-[48px]">
+                Trois étapes,<br />
+                <span className="text-zinc-500">une transformation.</span>
               </h2>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
+            <div className="grid gap-5 md:grid-cols-3 max-w-6xl mx-auto">
               {[
                 {
                   num: "01",
-                  icon: "⚙️",
-                  title: "Configurez votre jumeau",
-                  desc: "Répondez à 31 questions sur votre approche. Uploadez vos documents (Plan Pro). 20 minutes pour toute une vie.",
+                  title: "L'Imprégnation",
+                  desc: "Confiez-lui vos protocoles, vos guides, vos méthodes. Ou laissez l'IA vous interviewer pour capturer votre savoir.",
+                  icon: <BookIcon />,
                 },
                 {
                   num: "02",
-                  icon: "✉️",
-                  title: "Invitez vos patients",
-                  desc: "Un email suffit. Vos patients accèdent à leur espace personnalisé et peuvent écrire à votre jumeau immédiatement.",
+                  title: "L'Apprentissage",
+                  desc: "Ajustez le ton, le style, les valeurs de votre double. Pour qu'il réponde exactement comme vous le feriez.",
+                  icon: <SparkIcon />,
                 },
                 {
                   num: "03",
-                  icon: "🤖",
-                  title: "Votre jumeau prend le relais",
-                  desc: "Il répond avec votre ton et votre méthode. Vous suivez les conversations et générez des rapports IA.",
+                  title: "L'Accompagnement",
+                  desc: "Donnez le lien à vos patients. Ils sont désormais épaulés 24h/24, toujours sous votre contrôle.",
+                  icon: <SendIcon />,
                 },
               ].map((step, i) => (
-                <GlowCard key={i} className="rounded-2xl border border-white/[0.06] bg-[#111111] p-7">
-                  <div className="mb-5 flex items-center justify-between">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
-                      <span className="text-2xl">{step.icon}</span>
+                <div key={i} className="rounded-3xl border border-white/[0.06] bg-[#0d0d0d] p-10 transition-all hover:border-white/[0.10]">
+                  <div className="mb-6 flex items-start justify-between">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20">
+                      {step.icon}
                     </div>
-                    <span className="text-3xl font-bold text-white/[0.08]">{step.num}</span>
+                    <span className="text-[60px] font-black leading-none text-white/[0.04] tracking-tighter">{step.num}</span>
                   </div>
-                  <h3 className="mb-3 text-[16px] font-bold text-white">{step.title}</h3>
-                  <p className="text-[13.5px] leading-relaxed text-zinc-500">{step.desc}</p>
-                </GlowCard>
+                  <h3 className="mb-3 text-[19px] font-bold text-white">{step.title}</h3>
+                  <p className="text-[14px] leading-relaxed text-zinc-500">{step.desc}</p>
+                </div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* DASHBOARD — fond #060606 */}
-        <section id="dashboard" className="bg-[#060606] py-28">
+        {/* DASHBOARD */}
+        <section className="bg-[#070707] py-32">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="mx-auto max-w-2xl text-center mb-12">
-              <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-emerald-500">
+            <div className="mx-auto mb-16 max-w-2xl text-center">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-500">
                 Votre cockpit
               </p>
-              <h2 className="text-[36px] font-bold tracking-tight text-white sm:text-[44px]">
+              <h2 className="text-[40px] font-black tracking-tight text-white sm:text-[48px]">
                 Suivez vos patients<br />
                 <span className="text-zinc-500">en temps réel.</span>
               </h2>
-              <p className="mt-5 text-[15px] leading-relaxed text-zinc-500">
-                Toutes les conversations, profils et données dans une interface claire et puissante.
-              </p>
             </div>
 
             <div className="relative mx-auto max-w-5xl">
               <div className="absolute -inset-x-20 -top-10 -bottom-10 bg-gradient-to-b from-transparent via-emerald-500/[0.04] to-transparent blur-3xl" />
 
-              <div className="relative rounded-2xl border border-white/[0.08] bg-[#0f0f0f] p-2 shadow-2xl shadow-black/50">
-                <div className="flex items-center gap-2 rounded-t-xl bg-[#161616] px-4 py-3 border-b border-white/[0.06]">
+              <div className="relative rounded-3xl border border-white/[0.08] bg-[#0d0d0d] p-2 shadow-2xl shadow-black/50">
+                <div className="flex items-center gap-2 rounded-t-2xl bg-[#161616] px-4 py-3 border-b border-white/[0.06]">
                   <div className="flex gap-1.5">
                     <div className="h-3 w-3 rounded-full bg-[#FF5F57]" />
                     <div className="h-3 w-3 rounded-full bg-[#FFBD2E]" />
@@ -468,7 +438,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-[220px_1fr_200px] gap-0 rounded-b-xl overflow-hidden" style={{ minHeight: 460 }}>
+                <div className="grid grid-cols-[220px_1fr_200px] gap-0 rounded-b-2xl overflow-hidden" style={{ minHeight: 460 }}>
                   <div className="bg-[#111111] border-r border-white/[0.06] p-3">
                     <div className="mb-3 flex items-center gap-2 px-2 py-2">
                       <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/20">
@@ -482,7 +452,7 @@ export default function Home() {
                       { name: "Julie P.", msg: "Merci pour les conseils !", time: "Hier", active: false, color: "bg-violet-500" },
                       { name: "Marc D.", msg: "Je me sens mieux cette semaine", time: "Lun", active: false, color: "bg-amber-500" },
                     ].map((p, i) => (
-                      <div key={i} className={`mb-1.5 rounded-xl p-2.5 ${p.active ? "bg-emerald-500/10 border border-emerald-500/20" : "hover:bg-white/[0.03]"}`}>
+                      <div key={i} className={`mb-1.5 rounded-xl p-2.5 ${p.active ? "bg-emerald-500/10 border border-emerald-500/20" : ""}`}>
                         <div className="flex items-center gap-2 mb-1">
                           <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${p.color}`}>
                             {p.name.split(" ").map(n => n[0]).join("")}
@@ -571,17 +541,60 @@ export default function Home() {
           </div>
         </section>
 
-        {/* TARIFS — fond #0a0a0a */}
-        <section id="tarifs" className="border-y border-white/[0.04] bg-[#0a0a0a] py-28">
+        {/* TRUST BAR */}
+        <section id="securite" className="border-y border-white/[0.04] bg-[#0a0a0a] py-28">
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
-            <div className="mx-auto max-w-2xl text-center mb-6">
-              <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-emerald-500">Tarifs</p>
-              <h2 className="text-[36px] font-bold tracking-tight text-white sm:text-[44px]">
+            <div className="mx-auto mb-16 max-w-2xl text-center">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-500">
+                Sécurité & Éthique
+              </p>
+              <h2 className="text-[40px] font-black tracking-tight text-white sm:text-[48px]">
+                Vos données,<br />
+                <span className="text-zinc-500">votre confiance.</span>
+              </h2>
+            </div>
+
+            <div className="grid gap-5 md:grid-cols-3 max-w-5xl mx-auto">
+              {[
+                {
+                  icon: <LockIcon />,
+                  title: "Chiffrement de bout en bout",
+                  desc: "Toutes les données sont chiffrées et stockées sur des serveurs européens. Conformité RGPD totale.",
+                },
+                {
+                  icon: <ShieldIcon />,
+                  title: "Conçu pour le secret médical",
+                  desc: "Les conversations restent confidentielles. Le praticien voit uniquement les données nécessaires à son suivi.",
+                },
+                {
+                  icon: <UserCheckIcon />,
+                  title: "Une IA qui assiste, jamais ne remplace",
+                  desc: "Le jumeau seconde le praticien. Pour toute question médicale, il oriente toujours vers vous.",
+                },
+              ].map((item, i) => (
+                <div key={i} className="rounded-3xl border border-white/[0.06] bg-[#0d0d0d] p-8">
+                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20">
+                    {item.icon}
+                  </div>
+                  <h3 className="mb-3 text-[16px] font-bold text-white">{item.title}</h3>
+                  <p className="text-[13.5px] leading-relaxed text-zinc-500">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* TARIFS */}
+        <section id="tarifs" className="bg-[#070707] py-32">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <div className="mx-auto mb-6 max-w-2xl text-center">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.15em] text-emerald-500">Tarifs</p>
+              <h2 className="text-[40px] font-black tracking-tight text-white sm:text-[48px]">
                 Commencez gratuitement
               </h2>
             </div>
 
-            <div className="mx-auto mb-14 max-w-lg text-center">
+            <div className="mx-auto mb-16 max-w-lg text-center">
               <div className="inline-flex items-center gap-2.5 rounded-full border border-emerald-500/20 bg-emerald-500/[0.05] px-5 py-2.5">
                 <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
                 <span className="text-[13px] font-medium text-emerald-400">
@@ -608,7 +621,7 @@ export default function Home() {
                 featured={false}
               />
               <PricingCard
-                name="Pro"
+                name="Professionnel"
                 price="249€"
                 badge="Recommandé"
                 description="Le jumeau le plus fidèle à votre expertise."
@@ -645,12 +658,43 @@ export default function Home() {
           </div>
         </section>
 
-        {/* FONDATEURS — fond #070707 */}
+        {/* FONDATEURS */}
         <FounderSection />
+
+        {/* CTA FINAL */}
+        <section className="bg-[#0a0a0a] py-32">
+          <div className="mx-auto max-w-4xl px-6 text-center lg:px-8">
+            <div className="rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.08] via-[#0a0a0a] to-[#0a0a0a] p-16 sm:p-20">
+              <h2 className="text-[40px] font-black tracking-tight text-white sm:text-[56px]">
+                Prêt à vous{" "}
+                <span className="bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-500 bg-clip-text text-transparent">
+                  dédoubler ?
+                </span>
+              </h2>
+              <p className="mt-6 text-[16px] leading-relaxed text-zinc-400 max-w-xl mx-auto">
+                Rejoignez les nutritionnistes qui transforment le suivi patient — sans jamais compromettre la qualité humaine.
+              </p>
+              <div className="mt-12 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                <a
+                  href="#tarifs"
+                  className="group inline-flex h-[56px] items-center justify-center gap-2 rounded-full bg-white px-9 text-[15px] font-semibold text-black transition hover:bg-zinc-200 active:scale-95"
+                >
+                  Commencer maintenant
+                  <svg className="size-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </a>
+              </div>
+              <p className="mt-5 text-[12px] text-zinc-600">
+                14 jours gratuits · Aucun engagement
+              </p>
+            </div>
+          </div>
+        </section>
 
       </main>
 
-      {/* FOOTER — fond #040404 */}
+      {/* FOOTER */}
       <footer className="border-t border-white/[0.04] bg-[#040404] py-14">
         <div className="mx-auto max-w-7xl px-6 lg:px-8">
           <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
@@ -689,22 +733,22 @@ function FounderSection() {
   if (count <= 0) return null;
 
   return (
-    <section className="bg-[#070707] py-28">
+    <section className="border-y border-white/[0.04] bg-[#0a0a0a] py-28">
       <div className="mx-auto max-w-3xl px-6 text-center lg:px-8">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/[0.05] px-4 py-1.5">
           <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-amber-400">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-amber-400">
             Offre limitée · {count} places restantes
           </span>
         </div>
 
-        <h2 className="text-[36px] font-bold tracking-tight text-white sm:text-[44px] mb-6">
+        <h2 className="text-[40px] font-black tracking-tight text-white sm:text-[48px] mb-6">
           Devenez Fondateur NutriTwin
         </h2>
 
         <p className="text-[15px] leading-relaxed text-zinc-500 mb-10 max-w-xl mx-auto">
           Je cherche 10 nutritionnistes visionnaires pour co-construire NutriTwin.
-          En échange de vos retours pendant 2 mois — accès au plan Pro au prix de l'Essentiel,{" "}
+          En échange de vos retours pendant 2 mois — accès au plan Professionnel au prix de l'Essentiel,{" "}
           <strong className="text-white">149€/mois garanti à vie</strong>,
           patients illimités, votre nom dans l'histoire du produit.
         </p>
@@ -724,8 +768,7 @@ function FounderSection() {
 
         <Link
           href="/signup?plan=fondateur"
-          className="inline-flex h-[52px] items-center justify-center rounded-full px-10 text-[15px] font-semibold text-black transition hover:opacity-90 active:scale-95"
-          style={{ backgroundColor: emerald }}
+          className="inline-flex h-[52px] items-center justify-center rounded-full bg-white px-10 text-[15px] font-semibold text-black transition hover:bg-zinc-200 active:scale-95"
         >
           Je veux devenir Fondateur →
         </Link>
@@ -747,10 +790,10 @@ function PricingCard({
   featured: boolean;
 }) {
   return (
-    <div className={`relative flex flex-col rounded-2xl p-8 transition-all ${
+    <div className={`relative flex flex-col rounded-3xl p-8 transition-all ${
       featured
         ? "border border-emerald-500/30 bg-gradient-to-b from-emerald-500/[0.07] to-[#080808] shadow-xl shadow-emerald-500/5"
-        : "border border-white/[0.06] bg-[#111111] hover:border-white/[0.10]"
+        : "border border-white/[0.06] bg-[#0d0d0d] hover:border-white/[0.10]"
     }`}>
       {featured && (
         <>
@@ -766,7 +809,7 @@ function PricingCard({
       <p className="mb-1 text-[13px] font-semibold text-zinc-400">{name}</p>
 
       <div className="mb-4 flex items-baseline gap-1">
-        <span className="text-[42px] font-bold tracking-tight text-white">{price}</span>
+        <span className="text-[42px] font-black tracking-tight text-white">{price}</span>
         <span className="text-[13px] text-zinc-600">/mois</span>
       </div>
 
