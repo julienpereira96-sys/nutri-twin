@@ -647,7 +647,7 @@ export default function OnboardingPage() {
               Votre jumeau les intégrera intelligemment pour répondre avec précision.
             </p>
             <p className="mt-2 text-xs text-zinc-500">
-              Formats acceptés : PDF, DOCX, TXT — Cette étape est optionnelle.
+              Formats acceptés : PDF, DOCX, TXT — Cette étape est optionnelle mais fortement recommandée pour optimiser pour une fidélité et une précision maximale.
             </p>
 
             <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">

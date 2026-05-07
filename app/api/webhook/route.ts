@@ -27,8 +27,9 @@ export async function POST(request: Request) {
     const session = event.data.object as Stripe.Checkout.Session;
     const plan = session.metadata?.plan ?? "pro";
     const customerId = session.customer as string;
+    const userId = session.metadata?.userId;
 
-    if (session.customer_email) {
+    if (userId) {
       await supabase
         .from("practitioners")
         .update({
@@ -36,10 +37,9 @@ export async function POST(request: Request) {
           plan,
           subscription_status: "active",
         })
-        .eq("email", session.customer_email);
+        .eq("user_id", userId);
     }
 
-    // Décrémenter le compteur si plan Fondateur
     if (plan === "fondateur") {
       await supabase.rpc("decrement_founder_counter");
     }
