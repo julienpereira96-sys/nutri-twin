@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { FormEvent, useState, Suspense } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -18,6 +18,7 @@ const specialties = [
 function SignupForm() {
   const searchParams = useSearchParams();
   const plan = searchParams.get("plan") ?? "pro";
+  const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -70,7 +71,6 @@ function SignupForm() {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/onboarding`,
           data: {
             first_name: firstName.trim(),
             last_name: lastName.trim(),
@@ -97,13 +97,7 @@ function SignupForm() {
           }),
         });
 
-        const res = await fetch("/api/create-checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ plan, userId: data.user.id }),
-        });
-        const checkoutData = await res.json() as { url: string };
-        if (checkoutData.url) window.location.href = checkoutData.url;
+        router.push(`/verify-otp?email=${encodeURIComponent(email.trim())}&plan=${plan}`);
       }
     } catch {
       setError("Une erreur est survenue. Réessayez plus tard.");
@@ -144,7 +138,6 @@ function SignupForm() {
         <form onSubmit={onSubmit} className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
           <div className="space-y-4">
 
-            {/* Prénom / Nom */}
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="text-sm font-medium text-zinc-300">Prénom</span>
@@ -170,7 +163,6 @@ function SignupForm() {
               </label>
             </div>
 
-            {/* Spécialités */}
             <div>
               <span className="text-sm font-medium text-zinc-300">Spécialité(s)</span>
               <p className="mt-1 text-xs text-zinc-500">Vous pouvez en sélectionner plusieurs</p>
@@ -217,7 +209,6 @@ function SignupForm() {
               )}
             </div>
 
-            {/* Email */}
             <label className="block">
               <span className="text-sm font-medium text-zinc-300">Email</span>
               <input
@@ -231,7 +222,6 @@ function SignupForm() {
               />
             </label>
 
-            {/* Mot de passe */}
             <label className="block">
               <span className="text-sm font-medium text-zinc-300">Mot de passe</span>
               <div className="relative mt-2">
@@ -255,7 +245,6 @@ function SignupForm() {
               </div>
             </label>
 
-            {/* Confirmer mot de passe */}
             <label className="block">
               <span className="text-sm font-medium text-zinc-300">Confirmer le mot de passe</span>
               <div className="relative mt-2">
@@ -293,7 +282,7 @@ function SignupForm() {
           </button>
 
           <p className="mt-4 text-center text-xs text-zinc-500">
-            Vous serez redirigé vers notre page de paiement sécurisée
+            Un code de vérification vous sera envoyé par email
           </p>
 
           <p className="mt-4 text-center text-sm text-zinc-400">
