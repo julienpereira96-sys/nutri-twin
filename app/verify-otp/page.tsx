@@ -113,12 +113,11 @@ function VerifyOTPForm() {
             </div>
             <h1 className="text-[22px] font-bold text-white mb-2">Vérifiez votre email</h1>
             <p className="text-[13px] text-zinc-400">
-  Un code à 6 chiffres a été envoyé à
-</p>
-<p className="text-[11px] text-zinc-600 mt-2">
-  Si vous ne le voyez pas, vérifiez vos spams.
-</p>
-
+              Un code à 6 chiffres a été envoyé à
+            </p>
+            <p className="text-[11px] text-zinc-600 mt-2">
+              Si vous ne le voyez pas, vérifiez vos spams.
+            </p>
             <p className="text-[13px] font-semibold mt-1" style={{ color: emerald }}>
               {email}
             </p>
@@ -192,7 +191,7 @@ function VerifyOTPForm() {
         </div>
 
         <p className="mt-6 text-center text-[11px] text-zinc-700">
-          Le code expire dans 10 minutes
+          Le code expire dans 1 heure
         </p>
       </div>
     </div>
