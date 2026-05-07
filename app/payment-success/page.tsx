@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
-  const plan = searchParams.get("plan") ?? "pro";
+  const sessionId = searchParams.get("session_id");
   const [countdown, setCountdown] = useState(10);
 
   useEffect(() => {
@@ -14,20 +14,13 @@ function PaymentSuccessContent() {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          window.location.href = "/signup";
+          window.location.href = "/onboarding";
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
   }, []);
-
-  const planNames: Record<string, string> = {
-    essentiel: "Essentiel",
-    pro: "Pro",
-    cabinet: "Cabinet",
-    fondateur: "Fondateur",
-  };  
 
   return (
     <div style={{
@@ -53,11 +46,10 @@ function PaymentSuccessContent() {
           Paiement confirmé !
         </h1>
         <p style={{ fontSize: 16, color: "#10b981", fontWeight: 600, margin: "0 0 8px" }}>
-          Plan {planNames[plan] ?? "Pro"} — 14 jours gratuits
+          14 jours gratuits — aucun débit aujourd'hui
         </p>
         <p style={{ fontSize: 15, color: "#94a3b8", lineHeight: 1.7, margin: "0 0 32px" }}>
-          Bienvenue dans NutriTwin ! Vous allez maintenant créer votre compte
-          et configurer votre jumeau numérique.
+          Bienvenue dans NutriTwin ! Configurez maintenant votre jumeau numérique en quelques minutes.
         </p>
         <div style={{
           background: "rgba(16,185,129,0.08)",
@@ -74,7 +66,7 @@ function PaymentSuccessContent() {
           </p>
         </div>
         <Link
-          href="/signup"
+          href="/onboarding"
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -90,7 +82,7 @@ function PaymentSuccessContent() {
             boxShadow: "0 4px 16px rgba(16,185,129,0.4)",
           }}
         >
-          Créer mon compte maintenant →
+          Configurer mon jumeau numérique →
         </Link>
       </div>
     </div>

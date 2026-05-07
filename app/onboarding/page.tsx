@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
 import { useState } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type QuestionType = "single" | "multiple" | "free";
 
@@ -435,10 +435,7 @@ export default function OnboardingPage() {
     setUploadErrors([]);
     setUploadSuccess([]);
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
+    const supabase = createSupabaseBrowserClient();
     const { data: { user } } = await supabase.auth.getUser();
     const pid = user?.id ?? practitionerId ?? "";
     setPractitionerId(pid);
@@ -472,10 +469,7 @@ export default function OnboardingPage() {
     setSaveError("");
 
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
+      const supabase = createSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
 
       const formattedAnswers = Object.fromEntries(
@@ -656,7 +650,6 @@ export default function OnboardingPage() {
               Formats acceptés : PDF, DOCX, TXT — Cette étape est optionnelle.
             </p>
 
-            {/* Avertissement RGPD */}
             <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
               <p className="text-xs text-amber-400 leading-relaxed">
                 ⚠️ <strong>Important :</strong> N'uploadez pas de documents contenant des données nominatives patients (noms, dates de naissance, numéros de sécurité sociale). Anonymisez vos documents avant upload. NutriTwin est actuellement en phase beta — la certification HDS est prévue en 2026.

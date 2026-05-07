@@ -46,7 +46,7 @@ export async function POST(request: Request) {
       payment_method_types: ["card"],
       line_items: [{ price: priceMap[plan], quantity: 1 }],
       subscription_data: { trial_period_days: 14 },
-      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
+      return_url: `${process.env.NEXT_PUBLIC_APP_URL}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
       metadata: {
         userId: userId || user?.id || "",
         plan,
