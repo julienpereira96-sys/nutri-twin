@@ -35,6 +35,7 @@ export async function middleware(request: NextRequest) {
     path.startsWith("/login") ||
     path.startsWith("/patient-login") ||
     path.startsWith("/set-password")
+    path.startsWith("/reset-password") //
   ) {
     return supabaseResponse;
   }

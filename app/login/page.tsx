@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -13,6 +12,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -33,10 +34,25 @@ export default function LoginPage() {
 
       router.push("/dashboard");
     } catch {
-      setError("Une erreur est survenue. Reessayez plus tard.");
+      setError("Une erreur est survenue. Réessayez plus tard.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError("Entrez votre email pour réinitialiser votre mot de passe.");
+      return;
+    }
+    setError("");
+    setResetLoading(true);
+    const supabase = createSupabaseBrowserClient();
+    await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setResetSent(true);
+    setResetLoading(false);
   };
 
   return (
@@ -67,6 +83,7 @@ export default function LoginPage() {
                 placeholder="vous@cabinet.fr"
               />
             </label>
+
             <label className="block">
               <span className="text-sm font-medium text-zinc-300">Mot de passe</span>
               <div className="relative mt-2">
@@ -99,11 +116,17 @@ export default function LoginPage() {
             </label>
           </div>
 
-          {error ? (
-            <p className="mt-4 text-sm text-red-400" role="alert">
-              {error}
-            </p>
-          ) : null}
+          {error && (
+            <p className="mt-4 text-sm text-red-400" role="alert">{error}</p>
+          )}
+
+          {resetSent && (
+            <div className="mt-4 rounded-xl border border-[#10b981]/20 bg-[#10b981]/08 px-4 py-3">
+              <p className="text-sm text-[#10b981]">
+                ✅ Un email de réinitialisation a été envoyé à {email}
+              </p>
+            </div>
+          )}
 
           <button
             type="submit"
@@ -111,6 +134,15 @@ export default function LoginPage() {
             className="mt-6 w-full rounded-full bg-[#10b981] py-3 text-sm font-semibold text-black transition hover:bg-[#34d399] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Connexion..." : "Se connecter"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void handleForgotPassword()}
+            disabled={resetLoading}
+            className="mt-3 w-full text-center text-sm text-zinc-500 hover:text-[#10b981] transition underline cursor-pointer disabled:opacity-50"
+          >
+            {resetLoading ? "Envoi en cours..." : "Mot de passe oublié ?"}
           </button>
 
           <p className="mt-6 text-center text-sm text-zinc-400">
