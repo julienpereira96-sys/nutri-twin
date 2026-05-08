@@ -1,8 +1,13 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
+import { Redis } from "@upstash/redis";
 import OpenAI from "openai";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 // ============================================================
 // PLAN CONFIG
@@ -82,23 +87,64 @@ function createSupabaseClient() {
 }
 
 // ============================================================
-// RÉCUPÉRER LE PLAN DU PRATICIEN
+// REDIS — CACHE PLAN + PROFIL PRATICIEN
 // ============================================================
-async function getPractitionerPlan(practitionerId: string): Promise<PlanType> {
-  try {
-    const supabase = createSupabaseClient();
-    const { data } = await supabase
-      .from("practitioners")
-      .select("plan")
-      .eq("user_id", practitionerId)
-      .single();
+type CachedPractitioner = {
+  plan: PlanType;
+  profile: Record<string, string> | null;
+};
 
-    const plan = (data as { plan?: string } | null)?.plan;
-    if (plan && plan in PLAN_CONFIG) return plan as PlanType;
-    return "essentiel";
+async function getPractitionerFromCache(practitionerId: string): Promise<CachedPractitioner | null> {
+  try {
+    const cached = await redis.get<CachedPractitioner>(`practitioner:${practitionerId}`);
+    return cached ?? null;
   } catch {
-    return "essentiel";
+    return null;
   }
+}
+
+async function setPractitionerInCache(practitionerId: string, data: CachedPractitioner): Promise<void> {
+  try {
+    await redis.set(`practitioner:${practitionerId}`, data, { ex: 3600 }); // TTL 1h
+  } catch {
+    // Silencieux
+  }
+}
+
+async function invalidatePractitionerCache(practitionerId: string): Promise<void> {
+  try {
+    await redis.del(`practitioner:${practitionerId}`);
+  } catch {
+    // Silencieux
+  }
+}
+
+// ============================================================
+// RÉCUPÉRER LE PLAN + PROFIL DU PRATICIEN (avec cache Redis)
+// ============================================================
+async function getPractitionerData(practitionerId: string): Promise<CachedPractitioner> {
+  // 1. Vérifier le cache Redis
+  const cached = await getPractitionerFromCache(practitionerId);
+  if (cached) return cached;
+
+  // 2. Sinon charger depuis Supabase
+  const supabase = createSupabaseClient();
+
+  const [practitionerResult, profileResult] = await Promise.all([
+    supabase.from("practitioners").select("plan").eq("user_id", practitionerId).single(),
+    supabase.from("practitioner_profiles").select("*").eq("user_id", practitionerId).single(),
+  ]);
+
+  const plan = (practitionerResult.data as { plan?: string } | null)?.plan;
+  const validPlan: PlanType = plan && plan in PLAN_CONFIG ? plan as PlanType : "essentiel";
+  const profile = profileResult.data as Record<string, string> | null;
+
+  const data: CachedPractitioner = { plan: validPlan, profile };
+
+  // 3. Stocker dans Redis pour 1h
+  await setPractitionerInCache(practitionerId, data);
+
+  return data;
 }
 
 // ============================================================
@@ -303,20 +349,15 @@ async function getConversationHistory(
     if (messages.length > historyLimit) {
       const oldMessages = messages.slice(0, messages.length - historyLimit);
       const recentMessages = messages.slice(messages.length - historyLimit);
-
       const summary = await summarizeOldMessages(oldMessages);
 
-      const summaryMessage = {
-        role: "user" as const,
-        parts: [{ text: summary }],
-      };
-
-      const recentFormatted = recentMessages.map((m) => ({
-        role: m.role === "assistant" ? "model" as const : "user" as const,
-        parts: [{ text: m.content }],
-      }));
-
-      return [summaryMessage, ...recentFormatted];
+      return [
+        { role: "user" as const, parts: [{ text: summary }] },
+        ...recentMessages.map((m) => ({
+          role: m.role === "assistant" ? "model" as const : "user" as const,
+          parts: [{ text: m.content }],
+        })),
+      ];
     }
 
     return messages.map((m) => ({
@@ -329,30 +370,16 @@ async function getConversationHistory(
 }
 
 // ============================================================
-// SYSTEM PROMPT COMPACT
+// SYSTEM PROMPT COMPACT (depuis cache Redis)
 // ============================================================
-async function getPractitionerSystemPrompt(
-  practitionerId: string,
-  question: string,
-  patientId: string | undefined,
-  ragChunks: number,
-  openai: OpenAI
-): Promise<string> {
-  try {
-    const supabase = createSupabaseClient();
-    const { data } = await supabase
-      .from("practitioner_profiles")
-      .select("*")
-      .eq("user_id", practitionerId)
-      .single();
+function buildSystemPrompt(
+  profile: Record<string, string> | null,
+  patientContext: string,
+  documentsContext: string
+): string {
+  if (!profile) return getDefaultPrompt();
 
-    const profile = data as Record<string, string> | null;
-    if (!profile) return getDefaultPrompt();
-
-    const documentsContext = await getRelevantDocuments(question, practitionerId, ragChunks, openai);
-    const patientContext = patientId ? await getPatientProfile(patientId) : "";
-
-    return `Tu es le jumeau numérique d'un nutritionniste.
+  return `Tu es le jumeau numérique d'un nutritionniste.
 
 COMMUNICATION : ton=${profile.tone_of_voice||"bienveillant"} | ${profile.tutoiement||"vouvoiement"} | niveau=${profile.technicite||"adaptatif"} | longueur=${profile.longueur_reponses||"court"} | emojis=${profile.emojis||"modération"}
 
@@ -367,9 +394,6 @@ MON APPROCHE : ${profile.approche_libre||"bienveillant et personnalisé"}
 EXEMPLES : craquage="${profile.situation1||"Un écart, on repart."}" | régime="${profile.situation2||"Trouvons ce qui vous convient."}" | décroche="${profile.situation3||"Je suis là."}" | médical="${profile.situation4||"Parlons-en avec votre médecin."}" | victoire="${profile.situation5||"Bravo !"}" | détresse="${profile.situation6||"Vous n'êtes pas seul(e)."}"
 ${patientContext}${documentsContext}
 RÈGLES ABSOLUES : sans markdown | phrases simples et aérées | max 150 mots | tu ES ce praticien | utilise le prénom du patient`;
-  } catch {
-    return getDefaultPrompt();
-  }
 }
 
 function getDefaultPrompt(): string {
@@ -408,11 +432,12 @@ export async function POST(request: Request) {
       imageMimeType,
     } = await request.json() as ChatRequest;
 
-    // Récupérer le plan du praticien
-    const plan = practitionerId
-      ? await getPractitionerPlan(practitionerId)
-      : "essentiel" as PlanType;
+    // ── Plan + Profil depuis Redis (ou Supabase si cache miss) ──
+    const practitionerData = practitionerId
+      ? await getPractitionerData(practitionerId)
+      : { plan: "essentiel" as PlanType, profile: null };
 
+    const plan = practitionerData.plan;
     const config = PLAN_CONFIG[plan];
 
     // ── Quota journalier ──
@@ -435,10 +460,15 @@ export async function POST(request: Request) {
       }
     }
 
+    // ── Contexte patient + documents ──
+    const [patientContext, documentsContext] = await Promise.all([
+      patientId ? getPatientProfile(patientId) : Promise.resolve(""),
+      practitionerId ? getRelevantDocuments(message, practitionerId, config.ragChunks, openai) : Promise.resolve(""),
+    ]);
+
     // ── System prompt ──
-    const practitionerPrompt = practitionerId
-      ? await getPractitionerSystemPrompt(practitionerId, message, patientId, config.ragChunks, openai)
-      : getDefaultPrompt();
+    const practitionerPrompt = systemPrompt ||
+      buildSystemPrompt(practitionerData.profile, patientContext, documentsContext);
 
     // ── Historique ──
     let conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[] = [];
@@ -452,13 +482,15 @@ export async function POST(request: Request) {
     }
 
     // ── Model routing ──
-    const modelName = plan === "essentiel"
-      ? config.model
-      : isComplexMessage(message) ? "gemini-3-flash" : "gemini-3-flash-lite";
+    const modelName = imageBase64
+      ? "gemini-3-flash" // Vision toujours sur Flash
+      : plan === "essentiel"
+        ? config.model
+        : isComplexMessage(message) ? "gemini-3-flash" : "gemini-3-flash-lite";
 
     const model = genAI.getGenerativeModel({
-      model: imageBase64 ? "gemini-3-flash" : modelName, // Vision toujours sur Flash
-      systemInstruction: systemPrompt || practitionerPrompt,
+      model: modelName,
+      systemInstruction: practitionerPrompt,
       generationConfig: {
         maxOutputTokens: config.maxOutputTokens,
         temperature: 0.7,
@@ -470,13 +502,8 @@ export async function POST(request: Request) {
     // ── Envoi message ou image ──
     let result;
     if (imageBase64 && imageMimeType) {
-      const patientContext = patientId ? await getPatientProfile(patientId) : "";
-      const docsContext = practitionerId
-        ? await getRelevantDocuments(message || "analyse repas", practitionerId, config.ragChunks, openai)
-        : "";
-
       const visionPrompt = `Tu reçois une photo de repas d'un patient en suivi nutritionnel.
-${patientContext}${docsContext}
+${patientContext}${documentsContext}
 Analyse :
 1. Identifie les aliments visibles et les proportions approximatives
 2. Croise avec le protocole du praticien et le profil patient
@@ -530,7 +557,7 @@ Max 150 mots. Sans markdown.`;
           .eq("id", sessionId);
       }
 
-      // Sauvegarder dans le cache sémantique (pas les images)
+      // Cache sémantique (pas les images)
       if (practitionerId && !imageBase64) {
         await saveToCache(message, text, practitionerId, openai);
       }
@@ -542,3 +569,6 @@ Max 150 mots. Sans markdown.`;
     return Response.json({ response: "Erreur: " + errorMessage }, { status: 500 });
   }
 }
+
+// Export pour invalider le cache quand le praticien met à jour son profil
+export { invalidatePractitionerCache };

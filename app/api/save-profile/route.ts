@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { Redis } from "@upstash/redis";
 
 export async function POST(request: Request) {
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -43,6 +44,19 @@ export async function POST(request: Request) {
 
     if (error) {
       return Response.json({ error: error.message }, { status: 500 });
+    }
+
+    // Invalider le cache Redis du praticien
+    if (userId) {
+      try {
+        const redis = new Redis({
+          url: process.env.UPSTASH_REDIS_REST_URL!,
+          token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+        });
+        await redis.del(`practitioner:${userId}`);
+      } catch {
+        // Silencieux — le cache sera mis à jour à la prochaine requête
+      }
     }
 
     return Response.json({ success: true });
