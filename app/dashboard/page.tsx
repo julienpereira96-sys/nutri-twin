@@ -51,6 +51,11 @@ export default function DashboardPage() {
   const [practitionerId, setPractitionerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [practitionerName, setPractitionerName] = useState("");
+  const [hasDocuments, setHasDocuments] = useState(false);
+
+  const fidelityScore = hasDocuments ? 100 : 70;
+  const fidelityColor = hasDocuments ? "#10b981" : "#f59e0b";
+  const fidelityLabel = hasDocuments ? "Jumeau Fidèle" : "Jumeau Personnalisé";
 
   // Profil patient éditable
   const [editAge, setEditAge] = useState("");
@@ -68,7 +73,6 @@ export default function DashboardPage() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportContent, setReportContent] = useState("");
 
-  // Invitation délai
   useEffect(() => {
     if (inviteSuccess) {
       const timer = setTimeout(() => {
@@ -176,6 +180,13 @@ export default function DashboardPage() {
         setPractitionerName(`${practitioner.first_name} ${practitioner.last_name}`);
       }
 
+      // Vérifier si des documents existent
+      const { count } = await supabase
+        .from("documents")
+        .select("*", { count: "exact", head: true })
+        .eq("practitioner_id", pid);
+      setHasDocuments((count ?? 0) > 0);
+
       await loadPatients(pid);
     });
   }, []);
@@ -231,7 +242,6 @@ export default function DashboardPage() {
       })
       .eq("user_id", selectedPatientId);
 
-    // Mettre à jour localement
     setPatients((prev) => prev.map((p) => {
       if (p.id === selectedPatientId) {
         return {
@@ -368,28 +378,72 @@ Génère un compte rendu avec : vue d'ensemble, tendances, points positifs, axes
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <header className="border-b border-white/10 bg-[#111111]/70 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <div>
-            <h1 className="text-lg font-bold tracking-tight sm:text-xl">
-              {practitionerName ? `Bonjour ${practitionerName.split(" ")[0]} 👋` : "Dashboard NutriTwin"}
-            </h1>
-            <p className="text-xs text-zinc-400 sm:text-sm">
-              {patients.length} patient{patients.length > 1 ? "s" : ""} actif{patients.length > 1 ? "s" : ""} · {totalMessages} messages au total
-            </p>
+        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 px-4 py-4 sm:px-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-bold tracking-tight sm:text-xl">
+                {practitionerName ? `Bonjour ${practitionerName.split(" ")[0]} 👋` : "Dashboard NutriTwin"}
+              </h1>
+              <p className="text-xs text-zinc-400 sm:text-sm">
+                {patients.length} patient{patients.length > 1 ? "s" : ""} actif{patients.length > 1 ? "s" : ""} · {totalMessages} messages au total
+              </p>
+            </div>
+            <Link
+              href="/onboarding"
+              className="rounded-full bg-[#10b981] px-4 py-2 text-sm font-semibold text-black transition hover:bg-[#34d399]"
+            >
+              Mon jumeau
+            </Link>
           </div>
-          <Link
-            href="/onboarding"
-            className="rounded-full bg-[#10b981] px-4 py-2 text-sm font-semibold text-black transition hover:bg-[#34d399]"
-          >
-            Mon jumeau
-          </Link>
+
+          {/* Jauge de fidélité */}
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] font-semibold text-white">
+                  Statut du Jumeau :
+                </span>
+                <span className="text-[12px] font-semibold" style={{ color: fidelityColor }}>
+                  {fidelityLabel}
+                </span>
+              </div>
+              <span className="text-[12px] font-bold" style={{ color: fidelityColor }}>
+                {fidelityScore}%
+              </span>
+            </div>
+            <div className="h-1.5 w-full rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${fidelityScore}%`, backgroundColor: fidelityColor }}
+              />
+            </div>
+            {!hasDocuments && (
+              <div className="mt-2 flex items-center justify-between">
+                <p className="text-[11px] text-zinc-500">
+                  Votre jumeau connaît votre philosophie mais pas encore vos protocoles. Il répond de manière générique.
+                </p>
+                <Link
+                  href="/onboarding"
+                  className="ml-4 shrink-0 text-[11px] font-semibold transition hover:opacity-80"
+                  style={{ color: fidelityColor }}
+                >
+                  Importer mes protocoles →
+                </Link>
+              </div>
+            )}
+            {hasDocuments && (
+              <p className="mt-1.5 text-[11px] text-emerald-500">
+                ✅ Votre jumeau est prêt à représenter votre méthode auprès de vos patients.
+              </p>
+            )}
+          </div>
         </div>
       </header>
 
       <main className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 p-4 sm:p-6 lg:grid-cols-[280px_minmax(0,1fr)_260px]">
 
         {/* Sidebar patients */}
-        <aside className="flex h-[calc(100vh-130px)] flex-col rounded-2xl border border-white/10 bg-[#121212]">
+        <aside className="flex h-[calc(100vh-180px)] flex-col rounded-2xl border border-white/10 bg-[#121212]">
           <div className="border-b border-white/10 px-4 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#10b981]/20">
@@ -408,7 +462,9 @@ Génère un compte rendu avec : vue d'ensemble, tendances, points positifs, axes
             ) : patients.length === 0 ? (
               <div className="mt-6 text-center">
                 <p className="text-sm text-zinc-400">Aucun patient pour l'instant</p>
-                <p className="mt-2 text-xs text-zinc-500">Invitez votre premier patient !</p>
+                <p className="mt-2 text-xs text-zinc-500">
+                  {hasDocuments ? "Invitez votre premier patient !" : "Importez vos protocoles pour débloquer l'invitation."}
+                </p>
               </div>
             ) : (
               patients.map((patient) => {
@@ -443,18 +499,35 @@ Génère un compte rendu avec : vue d'ensemble, tendances, points positifs, axes
           </div>
 
           <div className="border-t border-white/10 p-3">
-            <button
-              type="button"
-              onClick={() => setShowInviteModal(true)}
-              className="w-full rounded-full bg-[#10b981] px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-[#34d399]"
-            >
-              + Inviter un patient
-            </button>
+            {hasDocuments ? (
+              <button
+                type="button"
+                onClick={() => setShowInviteModal(true)}
+                className="w-full rounded-full bg-[#10b981] px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-[#34d399]"
+              >
+                + Inviter un patient
+              </button>
+            ) : (
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.08] p-3 text-center">
+                <p className="text-[11px] text-amber-400 mb-2">
+                  Statut du Jumeau : Incomplet
+                </p>
+                <p className="text-[10px] text-zinc-500 mb-2">
+                  Votre jumeau utilise une base générique. Importez vos protocoles pour activer l'invitation de patients.
+                </p>
+                <Link
+                  href="/onboarding"
+                  className="inline-block rounded-full border border-amber-500/40 px-4 py-1.5 text-[11px] font-semibold text-amber-400 transition hover:bg-amber-500/10"
+                >
+                  Importer mes protocoles →
+                </Link>
+              </div>
+            )}
           </div>
         </aside>
 
         {/* Zone conversations */}
-        <section className="flex h-[calc(100vh-130px)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111111]">
+        <section className="flex h-[calc(100vh-180px)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111111]">
           {selectedPatient ? (
             <>
               <div className="border-b border-white/10 px-5 py-4 flex items-center justify-between">
@@ -505,7 +578,7 @@ Génère un compte rendu avec : vue d'ensemble, tendances, points positifs, axes
         </section>
 
         {/* Fiche patient */}
-        <aside className="h-[calc(100vh-130px)] overflow-y-auto rounded-2xl border border-white/10 bg-[#121212] p-4">
+        <aside className="h-[calc(100vh-180px)] overflow-y-auto rounded-2xl border border-white/10 bg-[#121212] p-4">
           {selectedPatient ? (
             <>
               <div className="mb-4 flex flex-col items-center text-center">
@@ -516,7 +589,6 @@ Génère un compte rendu avec : vue d'ensemble, tendances, points positifs, axes
                 <p className="text-xs text-zinc-400">{selectedPatient.email}</p>
               </div>
 
-              {/* Infos de base */}
               <div className="space-y-3 rounded-xl border border-white/10 bg-[#181818] p-3 text-sm mb-4">
                 <InfoRow label="Messages totaux" value={String(selectedPatient.totalMessages)} />
                 <InfoRow label="Dernier message" value={selectedPatient.lastMessageTime || "—"} />
@@ -527,7 +599,6 @@ Génère un compte rendu avec : vue d'ensemble, tendances, points positifs, axes
                 {selectedPatient.notes && <InfoRow label="Notes" value={selectedPatient.notes} />}
               </div>
 
-              {/* Bouton modifier profil */}
               <button
                 onClick={openProfileModal}
                 className="w-full rounded-xl border border-white/10 bg-[#181818] px-4 py-3 text-sm font-semibold text-zinc-300 transition hover:border-white/20 hover:text-white mb-3"
@@ -535,7 +606,6 @@ Génère un compte rendu avec : vue d'ensemble, tendances, points positifs, axes
                 ✏️ Modifier le profil patient
               </button>
 
-              {/* Bouton rapport */}
               <button
                 onClick={() => { setShowReportModal(true); setReportContent(""); }}
                 className="w-full rounded-xl bg-[#10b981]/10 border border-[#10b981]/30 px-4 py-3 text-sm font-semibold text-[#10b981] transition hover:bg-[#10b981]/20"
@@ -582,82 +652,31 @@ Génère un compte rendu avec : vue d'ensemble, tendances, points positifs, axes
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div>
-                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Âge</p>
-                <input
-                  type="number"
-                  value={editAge}
-                  onChange={(e) => setEditAge(e.target.value)}
-                  placeholder="Ex: 34"
-                  style={{
-                    width: "100%", height: 44, borderRadius: 10,
-                    border: "1.5px solid rgba(255,255,255,0.1)",
-                    background: "#1a1a1a", color: "white",
-                    padding: "0 14px", fontSize: 14, outline: "none",
-                    boxSizing: "border-box",
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
-                />
-              </div>
-
-              <div>
-                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Objectif principal</p>
-                <input
-                  type="text"
-                  value={editObjective}
-                  onChange={(e) => setEditObjective(e.target.value)}
-                  placeholder="Ex: Perte de poids durable"
-                  style={{
-                    width: "100%", height: 44, borderRadius: 10,
-                    border: "1.5px solid rgba(255,255,255,0.1)",
-                    background: "#1a1a1a", color: "white",
-                    padding: "0 14px", fontSize: 14, outline: "none",
-                    boxSizing: "border-box",
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
-                />
-              </div>
-
-              <div>
-                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Pathologies</p>
-                <input
-                  type="text"
-                  value={editPathologies}
-                  onChange={(e) => setEditPathologies(e.target.value)}
-                  placeholder="Ex: Diabète type 2, hypothyroïdie"
-                  style={{
-                    width: "100%", height: 44, borderRadius: 10,
-                    border: "1.5px solid rgba(255,255,255,0.1)",
-                    background: "#1a1a1a", color: "white",
-                    padding: "0 14px", fontSize: 14, outline: "none",
-                    boxSizing: "border-box",
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
-                />
-              </div>
-
-              <div>
-                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Allergies & intolérances</p>
-                <input
-                  type="text"
-                  value={editAllergies}
-                  onChange={(e) => setEditAllergies(e.target.value)}
-                  placeholder="Ex: Gluten, lactose, arachides"
-                  style={{
-                    width: "100%", height: 44, borderRadius: 10,
-                    border: "1.5px solid rgba(255,255,255,0.1)",
-                    background: "#1a1a1a", color: "white",
-                    padding: "0 14px", fontSize: 14, outline: "none",
-                    boxSizing: "border-box",
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
-                />
-              </div>
-
+              {[
+                { label: "Âge", value: editAge, onChange: setEditAge, placeholder: "Ex: 34", type: "number" },
+                { label: "Objectif principal", value: editObjective, onChange: setEditObjective, placeholder: "Ex: Perte de poids durable", type: "text" },
+                { label: "Pathologies", value: editPathologies, onChange: setEditPathologies, placeholder: "Ex: Diabète type 2, hypothyroïdie", type: "text" },
+                { label: "Allergies & intolérances", value: editAllergies, onChange: setEditAllergies, placeholder: "Ex: Gluten, lactose, arachides", type: "text" },
+              ].map(({ label, value, onChange, placeholder, type }) => (
+                <div key={label}>
+                  <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
+                  <input
+                    type={type}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    style={{
+                      width: "100%", height: 44, borderRadius: 10,
+                      border: "1.5px solid rgba(255,255,255,0.1)",
+                      background: "#1a1a1a", color: "white",
+                      padding: "0 14px", fontSize: 14, outline: "none",
+                      boxSizing: "border-box",
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = "#10b981"}
+                    onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+                  />
+                </div>
+              ))}
               <div>
                 <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Notes personnalisées</p>
                 <textarea
@@ -913,15 +932,6 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-xs text-zinc-500">{label}</p>
       <p className="text-sm text-zinc-200">{value}</p>
-    </div>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-[#10b981]/20 bg-[#10b981]/10 p-3">
-      <p className="text-xs text-zinc-300">{label}</p>
-      <p className="mt-1 text-xl font-bold text-[#34d399]">{value}</p>
     </div>
   );
 }
