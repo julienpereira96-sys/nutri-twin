@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 type RealPatient = {
@@ -31,6 +30,13 @@ type Conversation = {
 
 type ReportPeriod = "week" | "month" | "custom";
 
+type Document = {
+  id: string;
+  file_name: string;
+  file_type: string;
+  created_at: string;
+};
+
 const AVATAR_COLORS = [
   "bg-rose-500", "bg-blue-500", "bg-violet-500",
   "bg-amber-500", "bg-emerald-500", "bg-pink-500",
@@ -44,6 +50,7 @@ export default function DashboardPage() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showJumeauModal, setShowJumeauModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
@@ -52,6 +59,22 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [practitionerName, setPractitionerName] = useState("");
   const [hasDocuments, setHasDocuments] = useState(false);
+
+  // Documents
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState<string[]>([]);
+  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Mémo vocal
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fidelityScore = hasDocuments ? 100 : 70;
   const fidelityColor = hasDocuments ? "#10b981" : "#f59e0b";
@@ -82,6 +105,30 @@ export default function DashboardPage() {
       return () => clearTimeout(timer);
     }
   }, [inviteSuccess]);
+
+  const loadDocuments = async (pid: string) => {
+    setLoadingDocs(true);
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data } = await supabase
+      .from("documents")
+      .select("id, file_name, file_type, created_at")
+      .eq("practitioner_id", pid)
+      .order("created_at", { ascending: false });
+
+    // Dédupliquer par file_name
+    const seen = new Set<string>();
+    const unique = (data as Document[] ?? []).filter((d) => {
+      if (seen.has(d.file_name)) return false;
+      seen.add(d.file_name);
+      return true;
+    });
+
+    setDocuments(unique);
+    setLoadingDocs(false);
+  };
 
   const loadPatients = async (pid: string) => {
     const supabase = createClient(
@@ -180,7 +227,6 @@ export default function DashboardPage() {
         setPractitionerName(`${practitioner.first_name} ${practitioner.last_name}`);
       }
 
-      // Vérifier si des documents existent
       const { count } = await supabase
         .from("documents")
         .select("*", { count: "exact", head: true })
@@ -209,6 +255,118 @@ export default function DashboardPage() {
         setConversations((data as Conversation[]) ?? []);
       });
   }, [selectedPatientId, practitionerId]);
+
+  const openJumeauModal = async () => {
+    setShowJumeauModal(true);
+    setUploadedFiles([]);
+    setUploadSuccess([]);
+    setUploadErrors([]);
+    if (practitionerId) await loadDocuments(practitionerId);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    const valid = files.filter((f) => {
+      const ext = f.name.split(".").pop()?.toLowerCase();
+      return ["pdf", "docx", "txt", "jpg", "jpeg", "png", "xlsx", "csv", "mp3", "wav", "m4a"].includes(ext ?? "");
+    });
+    setUploadedFiles((prev) => [...prev, ...valid]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+
+      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "audio/mp3" });
+        setAudioBlob(blob);
+        stream.getTracks().forEach((t) => t.stop());
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+    } catch {
+      alert("Impossible d'accéder au microphone.");
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
+    if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+  };
+
+  const uploadAudioMemo = () => {
+    if (!audioBlob) return;
+    const file = new File([audioBlob], `memo_vocal_${Date.now()}.mp3`, { type: "audio/mp3" });
+    setUploadedFiles((prev) => [...prev, file]);
+    setAudioBlob(null);
+  };
+
+  const uploadFiles = async () => {
+    if (uploadedFiles.length === 0 || !practitionerId) return;
+    setUploading(true);
+    setUploadErrors([]);
+    setUploadSuccess([]);
+
+    for (const file of uploadedFiles) {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("practitionerId", practitionerId);
+
+      try {
+        const res = await fetch("/api/upload-document", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json() as { success?: boolean; error?: string; chunks?: number };
+        if (res.ok && data.success) {
+          setUploadSuccess((prev) => [...prev, `${file.name} — ${data.chunks} chunks indexés`]);
+        } else {
+          setUploadErrors((prev) => [...prev, `${file.name} : ${data.error ?? "Erreur"}`]);
+        }
+      } catch {
+        setUploadErrors((prev) => [...prev, `${file.name} : Erreur réseau`]);
+      }
+    }
+
+    setUploading(false);
+    setUploadedFiles([]);
+    setHasDocuments(true);
+    await loadDocuments(practitionerId);
+  };
+
+  const deleteDocument = async (docId: string, fileName: string) => {
+    if (!practitionerId) return;
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    await supabase
+      .from("documents")
+      .delete()
+      .eq("practitioner_id", practitionerId)
+      .eq("file_name", fileName);
+
+    await loadDocuments(practitionerId);
+
+    const { count } = await supabase
+      .from("documents")
+      .select("*", { count: "exact", head: true })
+      .eq("practitioner_id", practitionerId);
+    setHasDocuments((count ?? 0) > 0);
+  };
 
   const openProfileModal = () => {
     const patient = patients.find((p) => p.id === selectedPatientId);
@@ -292,7 +450,6 @@ export default function DashboardPage() {
         dateTo = reportDateTo;
       }
 
-      // Journal de bord
       const { data: journalEntries } = await supabase
         .from("journal_entries")
         .select("date, mood, food_rating, emotions")
@@ -301,7 +458,6 @@ export default function DashboardPage() {
         .lte("date", dateTo)
         .order("date", { ascending: true });
 
-      // Conversations chat
       const { data: chatMessages } = await supabase
         .from("conversations")
         .select("role, content, created_at")
@@ -320,7 +476,6 @@ export default function DashboardPage() {
         return;
       }
 
-      // Traitement journal
       let journalSection = "";
       if (hasJournal) {
         const moodLabels = ["Difficile", "Moyen", "Bien", "Très bien", "Excellent"];
@@ -348,7 +503,6 @@ JOURNAL DE BORD (${journalEntries.length} entrées) :
 ${moodTrend}`;
       }
 
-      // Traitement conversations
       let chatSection = "";
       if (hasChat) {
         const patientMessages = chatMessages
@@ -389,7 +543,6 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
     }
   };
 
-
   const sendInvite = async () => {
     if (!inviteEmail.trim()) return;
     setInviting(true);
@@ -415,6 +568,21 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
     }
   };
 
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
+  };
+
+  const fileTypeIcon = (type: string) => {
+    if (["jpg", "jpeg", "png"].includes(type)) return "🖼️";
+    if (["mp3", "wav", "m4a"].includes(type)) return "🎙️";
+    if (["xlsx", "csv"].includes(type)) return "📊";
+    if (type === "pdf") return "📕";
+    if (type === "docx") return "📝";
+    return "📄";
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <header className="border-b border-white/10 bg-[#111111]/70 backdrop-blur">
@@ -428,28 +596,22 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                 {patients.length} patient{patients.length > 1 ? "s" : ""} actif{patients.length > 1 ? "s" : ""} · {totalMessages} messages au total
               </p>
             </div>
-            <Link
-              href="/onboarding"
+            <button
+              onClick={() => void openJumeauModal()}
               className="rounded-full bg-[#10b981] px-4 py-2 text-sm font-semibold text-black transition hover:bg-[#34d399]"
             >
-              Mon jumeau
-            </Link>
+              Mon jumeau 🍃
+            </button>
           </div>
 
           {/* Jauge de fidélité */}
           <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
-                <span className="text-[12px] font-semibold text-white">
-                  Statut du Jumeau :
-                </span>
-                <span className="text-[12px] font-semibold" style={{ color: fidelityColor }}>
-                  {fidelityLabel}
-                </span>
+                <span className="text-[12px] font-semibold text-white">Statut du Jumeau :</span>
+                <span className="text-[12px] font-semibold" style={{ color: fidelityColor }}>{fidelityLabel}</span>
               </div>
-              <span className="text-[12px] font-bold" style={{ color: fidelityColor }}>
-                {fidelityScore}%
-              </span>
+              <span className="text-[12px] font-bold" style={{ color: fidelityColor }}>{fidelityScore}%</span>
             </div>
             <div className="h-1.5 w-full rounded-full bg-white/10">
               <div
@@ -462,13 +624,13 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                 <p className="text-[11px] text-zinc-500">
                   Votre jumeau connaît votre philosophie mais pas encore vos protocoles. Il répond de manière générique.
                 </p>
-                <Link
-                  href="/onboarding"
+                <button
+                  onClick={() => void openJumeauModal()}
                   className="ml-4 shrink-0 text-[11px] font-semibold transition hover:opacity-80"
                   style={{ color: fidelityColor }}
                 >
                   Importer mes protocoles →
-                </Link>
+                </button>
               </div>
             )}
             {hasDocuments && (
@@ -549,18 +711,16 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
               </button>
             ) : (
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.08] p-3 text-center">
-                <p className="text-[11px] text-amber-400 mb-2">
-                  Statut du Jumeau : Incomplet
-                </p>
+                <p className="text-[11px] text-amber-400 mb-2">Statut du Jumeau : Incomplet</p>
                 <p className="text-[10px] text-zinc-500 mb-2">
-                  Votre jumeau utilise une base générique. Importez vos protocoles pour activer l'invitation de patients.
+                  Importez vos protocoles pour activer l'invitation de patients.
                 </p>
-                <Link
-                  href="/onboarding"
+                <button
+                  onClick={() => void openJumeauModal()}
                   className="inline-block rounded-full border border-amber-500/40 px-4 py-1.5 text-[11px] font-semibold text-amber-400 transition hover:bg-amber-500/10"
                 >
                   Importer mes protocoles →
-                </Link>
+                </button>
               </div>
             )}
           </div>
@@ -584,9 +744,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
               </div>
               <div className="flex-1 space-y-4 overflow-y-auto bg-[#0f0f0f] p-4 sm:p-6">
                 {conversations.length === 0 ? (
-                  <p className="text-center text-sm text-zinc-500 mt-8">
-                    Aucune conversation pour l'instant
-                  </p>
+                  <p className="text-center text-sm text-zinc-500 mt-8">Aucune conversation pour l'instant</p>
                 ) : (
                   conversations.map((message) => {
                     const isPatient = message.role === "user";
@@ -610,9 +768,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
             </>
           ) : (
             <div className="flex flex-1 items-center justify-center">
-              <p className="text-sm text-zinc-500">
-                {loading ? "Chargement..." : "Sélectionnez un patient"}
-              </p>
+              <p className="text-sm text-zinc-500">{loading ? "Chargement..." : "Sélectionnez un patient"}</p>
             </div>
           )}
         </section>
@@ -660,6 +816,278 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
           )}
         </aside>
       </main>
+
+      {/* ══════════════════════════════════════════════ */}
+      {/* MODALE MON JUMEAU 🍃                          */}
+      {/* ══════════════════════════════════════════════ */}
+      {showJumeauModal && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setShowJumeauModal(false); }}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
+            zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div style={{
+            background: "#0d0d0d", borderRadius: 24, padding: 28,
+            width: "100%", maxWidth: 560,
+            border: "1px solid rgba(255,255,255,0.08)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+            maxHeight: "90vh", overflowY: "auto",
+          }}>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>
+                  Mon jumeau 🍃
+                </h2>
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>
+                  Gérez les documents qui enrichissent votre jumeau
+                </p>
+              </div>
+              <button onClick={() => setShowJumeauModal(false)} style={{
+                background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8",
+              }}>×</button>
+            </div>
+
+            {/* Score de fidélité */}
+            <div style={{
+              background: "rgba(255,255,255,0.02)", borderRadius: 16,
+              border: "1px solid rgba(255,255,255,0.06)",
+              padding: "14px 16px", marginBottom: 20,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "white" }}>Score de fidélité</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: fidelityColor }}>{fidelityScore}%</span>
+              </div>
+              <div style={{ height: 6, background: "rgba(255,255,255,0.08)", borderRadius: 3 }}>
+                <div style={{
+                  height: "100%", borderRadius: 3, backgroundColor: fidelityColor,
+                  width: `${fidelityScore}%`, transition: "width 0.7s",
+                }} />
+              </div>
+              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#64748b" }}>
+                {hasDocuments
+                  ? "✅ Jumeau Fidèle — Votre jumeau est prêt à représenter votre méthode."
+                  : "🟠 Jumeau Personnalisé — Importez des documents pour atteindre 100%"}
+              </p>
+            </div>
+
+            {/* Documents existants */}
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>
+                Documents indexés ({documents.length})
+              </p>
+              {loadingDocs ? (
+                <p style={{ fontSize: 12, color: "#64748b" }}>Chargement...</p>
+              ) : documents.length === 0 ? (
+                <div style={{
+                  background: "rgba(255,255,255,0.02)", borderRadius: 12,
+                  border: "1px dashed rgba(255,255,255,0.08)",
+                  padding: "20px", textAlign: "center",
+                }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Aucun document indexé</p>
+                  <p style={{ margin: "4px 0 0", fontSize: 11, color: "#475569" }}>
+                    Votre jumeau utilise uniquement vos réponses au questionnaire
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {documents.map((doc) => (
+                    <div key={doc.id} style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      background: "rgba(255,255,255,0.02)", borderRadius: 10,
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      padding: "10px 14px",
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                        <span style={{ fontSize: 18, flexShrink: 0 }}>{fileTypeIcon(doc.file_type)}</span>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: 13, color: "white", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {doc.file_name}
+                          </p>
+                          <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>
+                            {new Date(doc.created_at).toLocaleDateString("fr-FR")}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => void deleteDocument(doc.id, doc.file_name)}
+                        style={{
+                          background: "none", border: "none", cursor: "pointer",
+                          fontSize: 14, color: "#64748b", flexShrink: 0, marginLeft: 8,
+                          padding: "4px 8px", borderRadius: 6,
+                          transition: "color 0.2s",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = "#f87171"}
+                        onMouseLeave={(e) => e.currentTarget.style.color = "#64748b"}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Zone upload */}
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>
+                Ajouter des documents
+              </p>
+
+              {/* Avertissement sécurité */}
+              <div style={{
+                background: "rgba(16,185,129,0.05)", borderRadius: 10,
+                border: "1px solid rgba(16,185,129,0.15)",
+                padding: "10px 14px", marginBottom: 12,
+              }}>
+                <p style={{ margin: 0, fontSize: 11, color: "#34d399", lineHeight: 1.6 }}>
+                  🔒 Vos documents sont automatiquement anonymisés par l'IA avant indexation. Aucune donnée personnelle n'est conservée.
+                </p>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a"
+                onChange={handleFileChange}
+                style={{ display: "none" }}
+              />
+
+              <label
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center",
+                  justifyContent: "center", borderRadius: 12,
+                  border: "2px dashed rgba(255,255,255,0.1)",
+                  background: "rgba(255,255,255,0.01)",
+                  padding: "20px", cursor: "pointer",
+                  transition: "border-color 0.2s",
+                  marginBottom: 12,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = "rgba(16,185,129,0.4)"}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"}
+              >
+                <span style={{ fontSize: 28, marginBottom: 8 }}>📄</span>
+                <span style={{ fontSize: 13, fontWeight: 500, color: "#94a3b8" }}>Cliquez pour sélectionner</span>
+                <span style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>
+                  PDF · DOCX · TXT · JPG · PNG · Excel · CSV · MP3 · WAV · M4A
+                </span>
+              </label>
+
+              {/* Mémo vocal */}
+              <div style={{
+                background: "rgba(255,255,255,0.02)", borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.06)",
+                padding: "12px 14px", marginBottom: 12,
+              }}>
+                <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "white" }}>🎙️ Mémo vocal</p>
+                <p style={{ margin: "0 0 10px", fontSize: 11, color: "#64748b" }}>
+                  Enregistrez votre philosophie à l'oral — transcription automatique.
+                </p>
+                {!audioBlob ? (
+                  <button
+                    type="button"
+                    onClick={isRecording ? stopRecording : startRecording}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      borderRadius: 20, padding: "8px 16px", fontSize: 12, fontWeight: 600,
+                      cursor: "pointer", border: "none",
+                      background: isRecording ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.15)",
+                      color: isRecording ? "#f87171" : "#10b981",
+                    }}
+                  >
+                    {isRecording ? (
+                      <>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", animation: "pulse 1s infinite" }} />
+                        Arrêter — {formatTime(recordingTime)}
+                      </>
+                    ) : (
+                      <>🎙️ Enregistrer</>
+                    )}
+                  </button>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <p style={{ margin: 0, fontSize: 12, color: "#10b981" }}>✅ {formatTime(recordingTime)}</p>
+                    <button
+                      onClick={uploadAudioMemo}
+                      style={{
+                        borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 600,
+                        background: "#10b981", border: "none", color: "black", cursor: "pointer",
+                      }}
+                    >
+                      Ajouter
+                    </button>
+                    <button
+                      onClick={() => setAudioBlob(null)}
+                      style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 14 }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Fichiers sélectionnés */}
+              {uploadedFiles.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  {uploadedFiles.map((f, i) => (
+                    <div key={i} style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "8px 12px", borderRadius: 8,
+                      background: "rgba(255,255,255,0.02)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      marginBottom: 6,
+                    }}>
+                      <span style={{ fontSize: 12, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {f.name}
+                      </span>
+                      <button
+                        onClick={() => setUploadedFiles((prev) => prev.filter((_, j) => j !== i))}
+                        style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", marginLeft: 8 }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => void uploadFiles()}
+                    disabled={uploading}
+                    style={{
+                      width: "100%", height: 44, borderRadius: 22,
+                      background: uploading ? "rgba(255,255,255,0.05)" : "#10b981",
+                      border: "none", color: uploading ? "#64748b" : "black",
+                      fontSize: 14, fontWeight: 600, cursor: uploading ? "not-allowed" : "pointer",
+                      marginTop: 8,
+                    }}
+                  >
+                    {uploading ? "Anonymisation et indexation en cours..." : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""}`}
+                  </button>
+                </div>
+              )}
+
+              {uploadSuccess.length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  {uploadSuccess.map((s, i) => (
+                    <p key={i} style={{ margin: "0 0 4px", fontSize: 11, color: "#10b981" }}>✅ {s}</p>
+                  ))}
+                </div>
+              )}
+
+              {uploadErrors.length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  {uploadErrors.map((e, i) => (
+                    <p key={i} style={{ margin: "0 0 4px", fontSize: 11, color: "#f87171" }}>❌ {e}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modale profil patient */}
       {showProfileModal && (
@@ -784,7 +1212,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
             </div>
 
             <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b" }}>
-              Ce rapport est généré à partir des données agrégées du journal. Le contenu personnel reste confidentiel.
+              Ce rapport est généré à partir des données agrégées du journal et des conversations. Le contenu personnel reste confidentiel.
             </p>
 
             <div style={{ marginBottom: 20 }}>
