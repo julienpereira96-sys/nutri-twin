@@ -7,6 +7,7 @@ import JournalModal from "./JournalModal";
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  imageUrl?: string;
 };
 
 type Tool = "breathing" | "ancrage" | "marche" | "manger" | "journal" | null;
@@ -35,6 +36,44 @@ const tools = [
   { id: "journal", emoji: "📓", label: "Journal de bord" },
 ];
 
+// Compression image côté client
+async function compressImage(file: File): Promise<{ base64: string; mimeType: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        // Max 1024px
+        if (width > 1024 || height > 1024) {
+          if (width > height) {
+            height = Math.round((height * 1024) / width);
+            width = 1024;
+          } else {
+            width = Math.round((width * 1024) / height);
+            height = 1024;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const base64 = canvas.toDataURL("image/jpeg", 0.7).split(",")[1];
+        resolve({ base64, mimeType: "image/jpeg" });
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ChatPage() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -45,6 +84,14 @@ export default function ChatPage() {
   const [patientFirstName, setPatientFirstName] = useState<string>("");
   const [practitionerIdFromDb, setPractitionerIdFromDb] = useState<string | null>(null);
   const [practitionerName, setPractitionerName] = useState("votre praticien");
+  const [practitionerPlan, setPractitionerPlan] = useState<string>("essentiel");
+
+  // Upload photo
+  const [showUpsellModal, setShowUpsellModal] = useState(false);
+  const [imageCompressing, setImageCompressing] = useState(false);
+  const [compressionProgress, setCompressionProgress] = useState(0);
+  const [pendingImage, setPendingImage] = useState<{ base64: string; mimeType: string; previewUrl: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sessions
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -113,23 +160,26 @@ export default function ChatPage() {
           .single();
 
         if (relation) {
-          setPractitionerIdFromDb(relation.practitioner_id as string);
+          const practId = relation.practitioner_id as string;
+          setPractitionerIdFromDb(practId);
 
           const { data: practitioner } = await supabase
             .from("practitioners")
-            .select("first_name, last_name")
-            .eq("user_id", relation.practitioner_id)
+            .select("first_name, last_name, plan")
+            .eq("user_id", practId)
             .single();
 
           if (practitioner) {
-            setPractitionerName(`${practitioner.first_name} ${practitioner.last_name}`);
+            const pract = practitioner as { first_name: string; last_name: string; plan: string };
+            setPractitionerName(`${pract.first_name} ${pract.last_name}`);
+            setPractitionerPlan(pract.plan || "essentiel");
           }
 
           const { data: history } = await supabase
             .from("conversations")
             .select("role, content")
             .eq("patient_id", data.user.id)
-            .eq("practitioner_id", relation.practitioner_id)
+            .eq("practitioner_id", practId)
             .is("session_id", null)
             .order("created_at", { ascending: true });
 
@@ -144,7 +194,10 @@ export default function ChatPage() {
           .eq("user_id", data.user.id)
           .single();
 
-        if (patient?.first_name) setPatientFirstName(patient.first_name);
+        if (patient) {
+          const p = patient as { first_name?: string };
+          if (p.first_name) setPatientFirstName(p.first_name);
+        }
 
         await loadSessions(data.user.id);
       }
@@ -185,7 +238,7 @@ export default function ChatPage() {
       })
       .select()
       .single();
-    return data?.id ?? null;
+    return (data as { id: string } | null)?.id ?? null;
   };
 
   const loadSession = async (sessionId: string) => {
@@ -206,6 +259,48 @@ export default function ChatPage() {
       setCurrentSessionId(sessionId);
       setSidebarOpen(false);
     }
+  };
+
+  const handleImageClick = () => {
+    const isPro = ["pro", "cabinet", "fondateur"].includes(practitionerPlan);
+    if (!isPro) {
+      setShowUpsellModal(true);
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImageCompressing(true);
+    setCompressionProgress(0);
+
+    try {
+      // Simule progression rapide
+      const progressInterval = setInterval(() => {
+        setCompressionProgress((prev) => Math.min(prev + 30, 90));
+      }, 100);
+
+      const compressed = await compressImage(file);
+
+      clearInterval(progressInterval);
+      setCompressionProgress(100);
+
+      setTimeout(() => {
+        setImageCompressing(false);
+        setCompressionProgress(0);
+        const previewUrl = `data:image/jpeg;base64,${compressed.base64}`;
+        setPendingImage({ ...compressed, previewUrl });
+      }, 300);
+    } catch {
+      setImageCompressing(false);
+      setCompressionProgress(0);
+    }
+
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const startBreathing = () => {
@@ -255,29 +350,45 @@ export default function ChatPage() {
 
   const send = async (text?: string) => {
     const trimmedMessage = (text ?? message).trim();
-    if (!trimmedMessage || loading) return;
+    if ((!trimmedMessage && !pendingImage) || loading) return;
 
     let sessionId = currentSessionId;
     if (!sessionId) {
-      sessionId = await createSession(trimmedMessage);
+      sessionId = await createSession(trimmedMessage || "📷 Photo de repas");
       setCurrentSessionId(sessionId);
     }
 
-    const newMessages: ChatMessage[] = [...messages, { role: "user", content: trimmedMessage }];
+    const imageToSend = pendingImage;
+    const newMessages: ChatMessage[] = [
+      ...messages,
+      {
+        role: "user",
+        content: trimmedMessage || "📷 Photo de repas",
+        imageUrl: imageToSend?.previewUrl,
+      },
+    ];
     setMessages(newMessages);
     setMessage("");
+    setPendingImage(null);
     setLoading(true);
 
     try {
+      const body: Record<string, string | undefined> = {
+        message: trimmedMessage || "Analyse cette photo de mon repas",
+        patientId: patientId ?? undefined,
+        practitionerId: practitionerIdFromDb ?? undefined,
+        sessionId: sessionId ?? undefined,
+      };
+
+      if (imageToSend) {
+        body.imageBase64 = imageToSend.base64;
+        body.imageMimeType = imageToSend.mimeType;
+      }
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: trimmedMessage,
-          patientId: patientId ?? undefined,
-          practitionerId: practitionerIdFromDb ?? undefined,
-          sessionId: sessionId ?? undefined,
-        }),
+        body: JSON.stringify(body),
       });
       const data = (await res.json()) as { response?: string; error?: string };
       const assistantReply =
@@ -546,8 +657,54 @@ export default function ChatPage() {
     }}>
       {renderTool()}
 
-      <div style={{ display: "flex", flex: 1, position: "relative" }}>
+      {/* Modale upsell photo */}
+      {showUpsellModal && (
+        <div
+          onClick={() => setShowUpsellModal(false)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
+            zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "white", borderRadius: 24, padding: 32,
+              width: "100%", maxWidth: 400, textAlign: "center",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+            }}
+          >
+            <div style={{ fontSize: 48, marginBottom: 16 }}>📸</div>
+            <h3 style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 700, color: "#0f172a" }}>
+              Analyse visuelle des repas
+            </h3>
+            <p style={{ margin: "0 0 20px", fontSize: 14, color: "#64748b", lineHeight: 1.6 }}>
+              L'analyse visuelle est une option avancée. Elle permet à votre jumeau de calculer précisément vos apports.
+            </p>
+            <div style={{
+              background: "#f0fdf4", borderRadius: 12, padding: "14px 18px",
+              marginBottom: 24, border: "1px solid #d1fae5",
+            }}>
+              <p style={{ margin: 0, fontSize: 13, color: "#065f46", lineHeight: 1.6 }}>
+                Cette option n'est pas encore activée par votre praticien sur votre compte. N'hésitez pas à lui en parler !
+              </p>
+            </div>
+            <button
+              onClick={() => setShowUpsellModal(false)}
+              style={{
+                width: "100%", height: 48, borderRadius: 24,
+                background: "linear-gradient(135deg, #34d399, #10b981)",
+                border: "none", color: "white", fontSize: 15, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              Compris !
+            </button>
+          </div>
+        </div>
+      )}
 
+      <div style={{ display: "flex", flex: 1, position: "relative" }}>
         {sidebarOpen && (
           <div onClick={() => setSidebarOpen(false)} style={{
             position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 20,
@@ -562,7 +719,6 @@ export default function ChatPage() {
           zIndex: 30, transition: "left 0.3s ease",
           overflowY: "auto", boxShadow: sidebarOpen ? "4px 0 24px rgba(0,0,0,0.1)" : "none",
         }}>
-          {/* Header sidebar */}
           <div style={{ padding: "20px 16px 16px", borderBottom: "1px solid #f1f5f9" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h2 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>Mon espace</h2>
@@ -570,8 +726,6 @@ export default function ChatPage() {
                 background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8",
               }}>×</button>
             </div>
-
-            {/* Nouvelle conversation */}
             <button
               onClick={() => { setMessages([]); setCurrentSessionId(null); setSidebarOpen(false); }}
               style={{
@@ -586,7 +740,6 @@ export default function ChatPage() {
             </button>
           </div>
 
-          {/* Outils bien-être */}
           <div style={{ padding: "16px" }}>
             <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.8px", textTransform: "uppercase" }}>
               🌿 Outils bien-être
@@ -621,7 +774,6 @@ export default function ChatPage() {
             </div>
           </div>
 
-          {/* Discussions récentes */}
           <div style={{ padding: "0 16px 16px", flex: 1 }}>
             <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.8px", textTransform: "uppercase" }}>
               💬 Discussions récentes
@@ -642,18 +794,6 @@ export default function ChatPage() {
                       border: `1.5px solid ${currentSessionId === session.id ? "#10b981" : "#e2e8f0"}`,
                       cursor: "pointer", transition: "all 0.15s",
                     }}
-                    onMouseEnter={(e) => {
-                      if (currentSessionId !== session.id) {
-                        e.currentTarget.style.background = "#f0fdf4";
-                        e.currentTarget.style.borderColor = "#d1fae5";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (currentSessionId !== session.id) {
-                        e.currentTarget.style.background = "#f8fafc";
-                        e.currentTarget.style.borderColor = "#e2e8f0";
-                      }
-                    }}
                   >
                     <p style={{
                       margin: 0, fontSize: 12, fontWeight: 600,
@@ -673,7 +813,6 @@ export default function ChatPage() {
           </div>
         </aside>
 
-        {/* Zone chat */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <header style={{
             background: "rgba(255,255,255,0.9)", backdropFilter: "blur(20px)",
@@ -694,16 +833,22 @@ export default function ChatPage() {
               </button>
 
               <div style={{ position: "relative" }}>
+                {/* Halo pulsation verte */}
                 <div style={{
-                  position: "absolute", inset: -4, borderRadius: "50%",
-                  background: "radial-gradient(circle, rgba(16,185,129,0.25), transparent 70%)",
-                  animation: "halo 2.5s ease-in-out infinite",
+                  position: "absolute", inset: -6, borderRadius: "50%",
+                  background: "radial-gradient(circle, rgba(16,185,129,0.3), transparent 70%)",
+                  animation: loading ? "glow-loading 1s ease-in-out infinite" : "glow-idle 3s ease-in-out infinite",
                 }} />
                 <div style={{
                   width: 46, height: 46, borderRadius: 23,
                   background: "linear-gradient(135deg, #6ee7b7, #10b981)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 22, boxShadow: "0 4px 14px rgba(16,185,129,0.3)", position: "relative",
+                  fontSize: 22,
+                  boxShadow: loading
+                    ? "0 0 20px rgba(16,185,129,0.6), 0 4px 14px rgba(16,185,129,0.3)"
+                    : "0 4px 14px rgba(16,185,129,0.3)",
+                  position: "relative",
+                  transition: "box-shadow 0.3s",
                 }}>🌿</div>
                 <div style={{
                   position: "absolute", bottom: 1, right: 1,
@@ -721,13 +866,15 @@ export default function ChatPage() {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
                   <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", animation: "pulse-dot 2s infinite" }} />
-                  <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600 }}>En ligne</span>
+                  <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600 }}>
+                    {loading ? "En train de réfléchir..." : "En ligne"}
+                  </span>
                 </div>
               </div>
             </div>
           </header>
 
-          <main style={{ maxWidth: 680, width: "100%", margin: "0 auto", padding: "28px 16px 160px", flex: 1 }}>
+          <main style={{ maxWidth: 680, width: "100%", margin: "0 auto", padding: "28px 16px 180px", flex: 1 }}>
             {messages.length === 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
@@ -799,40 +946,57 @@ export default function ChatPage() {
                         fontSize: 18, flexShrink: 0, boxShadow: "0 3px 10px rgba(16,185,129,0.25)",
                       }}>🌿</div>
                     )}
-                    <div style={{
-                      maxWidth: "78%", padding: "14px 20px",
-                      borderRadius: isUser ? "22px 22px 6px 22px" : "22px 22px 22px 6px",
-                      background: isUser ? "#10b981" : "white",
-                      color: isUser ? "white" : "#374151",
-                      fontSize: 15, lineHeight: 1.7,
-                      boxShadow: isUser ? "0 4px 16px rgba(16,185,129,0.35)" : "0 2px 16px rgba(0,0,0,0.06)",
-                      border: isUser ? "none" : "1px solid rgba(0,0,0,0.04)",
-                    }}>
-                      {chatMessage.content}
+                    <div style={{ maxWidth: "78%" }}>
+                      {chatMessage.imageUrl && (
+                        <div style={{ marginBottom: 8, display: "flex", justifyContent: "flex-end" }}>
+                          <img
+                            src={chatMessage.imageUrl}
+                            alt="Photo repas"
+                            style={{
+                              maxWidth: 200, maxHeight: 200, borderRadius: 16,
+                              objectFit: "cover", border: "2px solid rgba(16,185,129,0.3)",
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div style={{
+                        padding: "14px 20px",
+                        borderRadius: isUser ? "22px 22px 6px 22px" : "22px 22px 22px 6px",
+                        background: isUser ? "#10b981" : "white",
+                        color: isUser ? "white" : "#374151",
+                        fontSize: 15, lineHeight: 1.7,
+                        boxShadow: isUser ? "0 4px 16px rgba(16,185,129,0.35)" : "0 2px 16px rgba(0,0,0,0.06)",
+                        border: isUser ? "none" : "1px solid rgba(0,0,0,0.04)",
+                      }}>
+                        {chatMessage.content}
+                      </div>
                     </div>
                   </div>
                 );
               })}
 
+              {/* Animation pulsation verte pendant chargement */}
               {loading && (
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
                   <div style={{
                     width: 38, height: 38, borderRadius: 19,
                     background: "linear-gradient(135deg, #6ee7b7, #10b981)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 18, boxShadow: "0 3px 10px rgba(16,185,129,0.25)",
+                    fontSize: 18, boxShadow: "0 0 20px rgba(16,185,129,0.5)",
+                    animation: "glow-loading 1s ease-in-out infinite",
                   }}>🌿</div>
                   <div style={{
                     background: "white", borderRadius: "22px 22px 22px 6px",
-                    padding: "16px 22px", display: "flex", gap: 6, alignItems: "center",
+                    padding: "16px 22px",
                     boxShadow: "0 2px 16px rgba(0,0,0,0.06)",
+                    border: "1px solid rgba(16,185,129,0.2)",
                   }}>
-                    {[0, 200, 400].map((delay, i) => (
-                      <div key={i} style={{
-                        width: 9, height: 9, borderRadius: "50%", background: "#10b981",
-                        animation: `bounce 1.4s infinite ${delay}ms`,
-                      }} />
-                    ))}
+                    <div style={{
+                      width: 40, height: 12, borderRadius: 6,
+                      background: "linear-gradient(90deg, #d1fae5, #10b981, #d1fae5)",
+                      backgroundSize: "200% 100%",
+                      animation: "shimmer 1.5s ease-in-out infinite",
+                    }} />
                   </div>
                 </div>
               )}
@@ -840,6 +1004,7 @@ export default function ChatPage() {
             </div>
           </main>
 
+          {/* Zone de saisie */}
           <div style={{
             position: "fixed", bottom: 0, left: 0, right: 0,
             background: "rgba(248,250,252,0.92)",
@@ -849,12 +1014,72 @@ export default function ChatPage() {
             paddingBottom: "max(18px, env(safe-area-inset-bottom))",
             boxShadow: "0 -4px 24px rgba(0,0,0,0.04)",
           }}>
+            {/* Preview image en attente */}
+            {pendingImage && (
+              <div style={{ maxWidth: 680, margin: "0 auto 10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <img
+                    src={pendingImage.previewUrl}
+                    alt="Preview"
+                    style={{ width: 56, height: 56, borderRadius: 12, objectFit: "cover", border: "2px solid #10b981" }}
+                  />
+                  <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>Photo prête à envoyer</p>
+                  <button
+                    onClick={() => setPendingImage(null)}
+                    style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#94a3b8" }}
+                  >×</button>
+                </div>
+              </div>
+            )}
+
+            {/* Barre de compression */}
+            {imageCompressing && (
+              <div style={{ maxWidth: 680, margin: "0 auto 10px" }}>
+                <div style={{ height: 3, background: "#e2e8f0", borderRadius: 2, overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%", background: "#10b981", borderRadius: 2,
+                    width: `${compressionProgress}%`, transition: "width 0.1s",
+                  }} />
+                </div>
+                <p style={{ margin: "4px 0 0", fontSize: 11, color: "#94a3b8" }}>Compression en cours...</p>
+              </div>
+            )}
+
             <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", gap: 10, alignItems: "center" }}>
+              {/* Bouton photo */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleImageChange}
+                style={{ display: "none" }}
+              />
+              <button
+                onClick={handleImageClick}
+                style={{
+                  width: 44, height: 44, borderRadius: 22, flexShrink: 0,
+                  background: "white", border: "1.5px solid #e2e8f0",
+                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 20, transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "#10b981";
+                  e.currentTarget.style.background = "#f0fdf4";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#e2e8f0";
+                  e.currentTarget.style.background = "white";
+                }}
+                title="Envoyer une photo de repas"
+              >
+                📷
+              </button>
+
               <input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Posez votre question..."
+                placeholder={pendingImage ? "Ajoutez un commentaire (optionnel)..." : "Posez votre question..."}
                 style={{
                   flex: 1, height: 52, borderRadius: 26,
                   border: "1.5px solid #e2e8f0", padding: "0 22px",
@@ -873,15 +1098,15 @@ export default function ChatPage() {
               />
               <button
                 onClick={() => void send()}
-                disabled={loading || !message.trim()}
+                disabled={loading || (!message.trim() && !pendingImage)}
                 style={{
                   width: 52, height: 52, borderRadius: 26,
-                  background: loading || !message.trim() ? "#e2e8f0" : "linear-gradient(135deg, #34d399, #10b981)",
+                  background: loading || (!message.trim() && !pendingImage) ? "#e2e8f0" : "linear-gradient(135deg, #34d399, #10b981)",
                   border: "none",
-                  cursor: loading || !message.trim() ? "not-allowed" : "pointer",
+                  cursor: loading || (!message.trim() && !pendingImage) ? "not-allowed" : "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  color: loading || !message.trim() ? "#94a3b8" : "white",
-                  boxShadow: loading || !message.trim() ? "none" : "0 4px 16px rgba(16,185,129,0.4)",
+                  color: loading || (!message.trim() && !pendingImage) ? "#94a3b8" : "white",
+                  boxShadow: loading || (!message.trim() && !pendingImage) ? "none" : "0 4px 16px rgba(16,185,129,0.4)",
                   transition: "all 0.2s", flexShrink: 0,
                 }}
               >
@@ -898,9 +1123,17 @@ export default function ChatPage() {
       </div>
 
       <style>{`
-        @keyframes bounce {
-          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-          30% { transform: translateY(-8px); opacity: 1; }
+        @keyframes glow-idle {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.1); }
+        }
+        @keyframes glow-loading {
+          0%, 100% { opacity: 0.6; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.2); }
+        }
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
         }
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(12px); }
@@ -909,10 +1142,6 @@ export default function ChatPage() {
         @keyframes pulse-dot {
           0%, 100% { opacity: 1; transform: scale(1); }
           50% { opacity: 0.5; transform: scale(0.8); }
-        }
-        @keyframes halo {
-          0%, 100% { opacity: 0.6; transform: scale(1); }
-          50% { opacity: 1; transform: scale(1.15); }
         }
       `}</style>
     </div>
