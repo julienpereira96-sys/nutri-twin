@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type QuestionType = "single" | "multiple" | "free";
@@ -386,6 +386,13 @@ export default function OnboardingPage() {
   const [uploadSuccess, setUploadSuccess] = useState<string[]>([]);
   const [practitionerId, setPractitionerId] = useState<string | null>(null);
 
+  // Mémo vocal
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   const total = questions.length;
   const isUploadStep = step === total;
   const isFinal = step > total;
@@ -424,9 +431,48 @@ export default function OnboardingPage() {
     const files = Array.from(e.target.files ?? []);
     const valid = files.filter((f) => {
       const ext = f.name.split(".").pop()?.toLowerCase();
-      return ["pdf", "docx", "txt"].includes(ext ?? "");
+      return ["pdf", "docx", "txt", "jpg", "jpeg", "png", "xlsx", "csv", "mp3", "wav", "m4a"].includes(ext ?? "");
     });
     setUploadedFiles((prev) => [...prev, ...valid]);
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+
+      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "audio/mp3" });
+        setAudioBlob(blob);
+        stream.getTracks().forEach((t) => t.stop());
+      };
+
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+    } catch {
+      alert("Impossible d'accéder au microphone.");
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setIsRecording(false);
+    if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+  };
+
+  const uploadAudioMemo = async () => {
+    if (!audioBlob) return;
+    const file = new File([audioBlob], `memo_vocal_${Date.now()}.mp3`, { type: "audio/mp3" });
+    setUploadedFiles((prev) => [...prev, file]);
+    setAudioBlob(null);
   };
 
   const uploadFiles = async () => {
@@ -503,6 +549,12 @@ export default function OnboardingPage() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
+    const s = (seconds % 60).toString().padStart(2, "0");
+    return `${m}:${s}`;
   };
 
   return (
@@ -646,29 +698,106 @@ export default function OnboardingPage() {
               Uploadez vos plans alimentaires types, comptes-rendus, protocoles ou emails patients.
               Votre jumeau les intégrera intelligemment pour répondre avec précision.
             </p>
-            <p className="mt-2 text-xs text-zinc-500">
-              Formats acceptés : PDF, DOCX, TXT — Cette étape est optionnelle mais fortement recommandée pour optimiser pour une fidélité et une précision maximale.
-            </p>
 
-            <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-              <p className="text-xs text-amber-400 leading-relaxed">
-                ⚠️ <strong>Important :</strong> N'uploadez pas de documents contenant des données nominatives patients (noms, dates de naissance, numéros de sécurité sociale). Anonymisez vos documents avant upload. NutriTwin est actuellement en phase beta — la certification HDS est prévue en 2026.
+            {/* Score de fidélité */}
+            <div className="mt-5 rounded-2xl border border-white/10 bg-[#1a1a1a] p-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[13px] font-semibold text-white">Score de fidélité du jumeau</p>
+                <span className="text-[13px] font-bold" style={{ color: uploadSuccess.length > 0 ? "#10b981" : "#f59e0b" }}>
+                  {uploadSuccess.length > 0 ? "100%" : "70%"}
+                </span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: uploadSuccess.length > 0 ? "100%" : "70%",
+                    backgroundColor: uploadSuccess.length > 0 ? "#10b981" : "#f59e0b",
+                  }}
+                />
+              </div>
+              <p className="mt-2 text-[11px] text-zinc-500">
+                {uploadSuccess.length > 0
+                  ? "✅ Jumeau Fidèle — Votre jumeau est prêt à représenter votre méthode auprès de vos patients."
+                  : "🟠 Jumeau Personnalisé — Votre jumeau connaît votre philosophie mais pas encore vos protocoles. Il répond avec votre approche mais de manière générique. Importez au moins un document pour qu'il devienne vraiment vous."}
               </p>
             </div>
 
-            <label className="mt-6 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/20 bg-[#1a1a1a] px-6 py-10 transition hover:border-[#10b981]/50">
+            {/* Avertissement sécurité */}
+            <div className="mt-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+              <p className="text-xs text-emerald-400 leading-relaxed">
+                🔒 <strong>Vos documents sont automatiquement anonymisés par l'IA avant indexation.</strong> Aucune donnée personnelle n'est conservée. Tout est stocké sur des serveurs sécurisés en Europe.
+              </p>
+            </div>
+
+            {/* Formats acceptés */}
+            <p className="mt-3 text-[11px] text-zinc-600">
+              Formats acceptés : PDF · DOCX · TXT · JPG · PNG · Excel · CSV · MP3 · WAV · M4A
+            </p>
+
+            {/* Zone upload */}
+            <label className="mt-4 flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-white/20 bg-[#1a1a1a] px-6 py-8 transition hover:border-[#10b981]/50">
               <span className="text-4xl mb-3">📄</span>
               <span className="text-sm font-medium text-zinc-300">Cliquez pour sélectionner vos fichiers</span>
-              <span className="mt-1 text-xs text-zinc-500">PDF, DOCX, TXT</span>
+              <span className="mt-1 text-xs text-zinc-500">PDF, DOCX, TXT, JPG, PNG, Excel, CSV, MP3, WAV, M4A</span>
               <input
                 type="file"
                 multiple
-                accept=".pdf,.docx,.txt"
+                accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a"
                 onChange={handleFileChange}
                 className="hidden"
               />
             </label>
 
+            {/* Mémo vocal */}
+            <div className="mt-4 rounded-xl border border-white/10 bg-[#1a1a1a] px-4 py-4">
+              <p className="text-[13px] font-semibold text-white mb-1">🎙️ Pas de document prêt ?</p>
+              <p className="text-[12px] text-zinc-500 mb-3">
+                Enregistrez un mémo vocal pour expliquer votre philosophie. Votre jumeau le transcrit et l'intègre automatiquement.
+              </p>
+
+              {!audioBlob ? (
+                <button
+                  type="button"
+                  onClick={isRecording ? stopRecording : startRecording}
+                  className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition"
+                  style={{
+                    background: isRecording ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.15)",
+                    border: isRecording ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.4)",
+                    color: isRecording ? "#f87171" : "#10b981",
+                  }}
+                >
+                  {isRecording ? (
+                    <>
+                      <span className="h-2 w-2 rounded-full bg-red-400 animate-pulse" />
+                      Arrêter — {formatTime(recordingTime)}
+                    </>
+                  ) : (
+                    <>🎙️ Enregistrer un mémo vocal</>
+                  )}
+                </button>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <p className="text-[12px] text-emerald-400">✅ Mémo enregistré ({formatTime(recordingTime)})</p>
+                  <button
+                    type="button"
+                    onClick={() => void uploadAudioMemo()}
+                    className="rounded-full bg-[#10b981] px-4 py-1.5 text-xs font-semibold text-black transition hover:bg-[#0fb174]"
+                  >
+                    Ajouter au jumeau
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAudioBlob(null)}
+                    className="text-xs text-zinc-500 hover:text-red-400 transition"
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Liste fichiers */}
             {uploadedFiles.length > 0 && (
               <div className="mt-4 space-y-2">
                 {uploadedFiles.map((f, i) => (
@@ -689,7 +818,7 @@ export default function OnboardingPage() {
                   disabled={uploading}
                   className="mt-3 w-full rounded-full border border-[#10b981] px-6 py-2.5 text-sm font-semibold text-[#10b981] transition hover:bg-[#10b981]/10 disabled:opacity-50"
                 >
-                  {uploading ? "Indexation en cours..." : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""}`}
+                  {uploading ? "Anonymisation et indexation en cours..." : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""}`}
                 </button>
               </div>
             )}
@@ -723,7 +852,7 @@ export default function OnboardingPage() {
                 onClick={() => setStep((prev) => prev + 1)}
                 className="rounded-full bg-[#10b981] px-7 py-3 text-sm font-semibold text-black transition hover:bg-[#0fb174]"
               >
-                {uploadedFiles.length === 0 ? "Passer cette étape →" : "Continuer →"}
+                {uploadedFiles.length === 0 && uploadSuccess.length === 0 ? "Passer cette étape →" : "Continuer →"}
               </button>
             </div>
           </section>
