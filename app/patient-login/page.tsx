@@ -11,6 +11,7 @@ export default function PatientLoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -34,10 +35,26 @@ export default function PatientLoginPage() {
 
       router.push("/chat");
     } catch {
-      setError("Une erreur est survenue. Reessayez plus tard.");
+      setError("Une erreur est survenue. Réessayez plus tard.");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setError("Entrez votre email pour réinitialiser votre mot de passe.");
+      return;
+    }
+    setError("");
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/set-password`,
+    });
+    setResetSent(true);
   };
 
   return (
@@ -140,6 +157,18 @@ export default function PatientLoginPage() {
             <p style={{ margin: 0, fontSize: 13, color: "#ef4444" }}>{error}</p>
           )}
 
+          {resetSent && (
+            <div style={{
+              background: "rgba(16,185,129,0.08)", borderRadius: 10,
+              border: "1px solid rgba(16,185,129,0.2)",
+              padding: "10px 14px",
+            }}>
+              <p style={{ margin: 0, fontSize: 13, color: "#10b981" }}>
+                ✅ Un email de réinitialisation a été envoyé à {email}
+              </p>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
@@ -156,6 +185,18 @@ export default function PatientLoginPage() {
             }}
           >
             {loading ? "Connexion..." : "Accéder à mon espace"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void handleForgotPassword()}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              fontSize: 13, color: "#10b981", marginTop: 4,
+              textDecoration: "underline", textAlign: "center",
+            }}
+          >
+            Mot de passe oublié ?
           </button>
         </form>
 
