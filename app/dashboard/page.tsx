@@ -292,6 +292,7 @@ export default function DashboardPage() {
         dateTo = reportDateTo;
       }
 
+      // Journal de bord
       const { data: journalEntries } = await supabase
         .from("journal_entries")
         .select("date, mood, food_rating, emotions")
@@ -300,42 +301,80 @@ export default function DashboardPage() {
         .lte("date", dateTo)
         .order("date", { ascending: true });
 
-      if (!journalEntries || journalEntries.length === 0) {
-        setReportContent("Aucune entrée de journal sur cette période.");
+      // Conversations chat
+      const { data: chatMessages } = await supabase
+        .from("conversations")
+        .select("role, content, created_at")
+        .eq("patient_id", selectedPatientId)
+        .eq("practitioner_id", practitionerId!)
+        .gte("created_at", `${dateFrom}T00:00:00`)
+        .lte("created_at", `${dateTo}T23:59:59`)
+        .order("created_at", { ascending: true });
+
+      const hasJournal = journalEntries && journalEntries.length > 0;
+      const hasChat = chatMessages && chatMessages.length > 0;
+
+      if (!hasJournal && !hasChat) {
+        setReportContent("Aucune donnée disponible sur cette période.");
         setReportLoading(false);
         return;
       }
 
-      const moodLabels = ["Difficile", "Moyen", "Bien", "Très bien", "Excellent"];
-      const foodLabels = ["Difficile", "Bien", "Super"];
+      // Traitement journal
+      let journalSection = "";
+      if (hasJournal) {
+        const moodLabels = ["Difficile", "Moyen", "Bien", "Très bien", "Excellent"];
+        const foodLabels = ["Difficile", "Bien", "Super"];
+        const avgMood = (journalEntries.reduce((sum, e) => sum + e.mood, 0) / journalEntries.length).toFixed(1);
+        const avgFood = (journalEntries.reduce((sum, e) => sum + e.food_rating, 0) / journalEntries.length).toFixed(1);
+        const allEmotions = journalEntries.flatMap((e) => e.emotions as string[]);
+        const emotionCounts: Record<string, number> = {};
+        allEmotions.forEach((em) => { emotionCounts[em] = (emotionCounts[em] ?? 0) + 1; });
+        const topEmotions = Object.entries(emotionCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([em, count]) => `${em} (${count}x)`)
+          .join(", ");
+        const moodTrend = journalEntries.map((e) =>
+          `${e.date}: humeur ${moodLabels[e.mood - 1]}, alimentation ${foodLabels[e.food_rating - 1]}`
+        ).join("\n");
 
-      const avgMood = (journalEntries.reduce((sum, e) => sum + e.mood, 0) / journalEntries.length).toFixed(1);
-      const avgFood = (journalEntries.reduce((sum, e) => sum + e.food_rating, 0) / journalEntries.length).toFixed(1);
-
-      const allEmotions = journalEntries.flatMap((e) => e.emotions as string[]);
-      const emotionCounts: Record<string, number> = {};
-      allEmotions.forEach((em) => { emotionCounts[em] = (emotionCounts[em] ?? 0) + 1; });
-      const topEmotions = Object.entries(emotionCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([em, count]) => `${em} (${count}x)`)
-        .join(", ");
-
-      const moodTrend = journalEntries.map((e) =>
-        `${e.date}: humeur ${moodLabels[e.mood - 1]}, alimentation ${foodLabels[e.food_rating - 1]}`
-      ).join("\n");
-
-      const prompt = `Tu es un assistant pour un praticien en nutrition. Génère un compte rendu professionnel basé sur les données agrégées du journal de bord d'un patient sur la période du ${dateFrom} au ${dateTo}.
-
-DONNÉES :
-- Nombre d'entrées : ${journalEntries.length}
+        journalSection = `
+JOURNAL DE BORD (${journalEntries.length} entrées) :
 - Humeur moyenne : ${avgMood}/5
 - Alimentation moyenne : ${avgFood}/3
 - Émotions dominantes : ${topEmotions || "non renseignées"}
 - Évolution :
-${moodTrend}
+${moodTrend}`;
+      }
 
-Génère un compte rendu avec : vue d'ensemble, tendances, points positifs, axes de travail, questions pour la prochaine consultation. Ton professionnel et bienveillant. Sans markdown.`;
+      // Traitement conversations
+      let chatSection = "";
+      if (hasChat) {
+        const patientMessages = chatMessages
+          .filter((m) => m.role === "user")
+          .map((m) => m.content)
+          .join("\n- ");
+
+        chatSection = `
+CONVERSATIONS AVEC LE JUMEAU (${chatMessages.length} messages) :
+Messages du patient :
+- ${patientMessages}`;
+      }
+
+      const prompt = `Tu es un assistant pour un praticien en nutrition. Génère un compte rendu professionnel et synthétique basé sur les données d'un patient sur la période du ${dateFrom} au ${dateTo}.
+${journalSection}
+${chatSection}
+
+Génère un compte rendu structuré avec :
+1. Vue d'ensemble de la période
+2. État émotionnel et alimentaire (si journal disponible)
+3. Préoccupations et sujets abordés dans le chat (si conversations disponibles)
+4. Points positifs à valoriser
+5. Axes de travail pour la prochaine consultation
+6. Questions clés à poser au patient
+
+Ton professionnel, bienveillant et concis. Sans markdown.`;
 
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -349,6 +388,7 @@ Génère un compte rendu avec : vue d'ensemble, tendances, points positifs, axes
       setReportLoading(false);
     }
   };
+
 
   const sendInvite = async () => {
     if (!inviteEmail.trim()) return;
