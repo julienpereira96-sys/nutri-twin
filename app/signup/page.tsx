@@ -33,6 +33,10 @@ function SignupForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // RGPD
+  const [acceptCGU, setAcceptCGU] = useState(false);
+  const [acceptMarketing, setAcceptMarketing] = useState(false);
+
   const toggleSpecialty = (s: string) => {
     setSelectedSpecialties((prev) =>
       prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
@@ -62,6 +66,11 @@ function SignupForm() {
       return;
     }
 
+    if (!acceptCGU) {
+      setError("Vous devez accepter les CGU et la politique de confidentialité.");
+      return;
+    }
+
     setLoading(true);
     const finalSpecialty = allSpecialties.join(", ");
 
@@ -75,6 +84,7 @@ function SignupForm() {
             first_name: firstName.trim(),
             last_name: lastName.trim(),
             specialty: finalSpecialty,
+            marketing_consent: acceptMarketing,
           },
         },
       });
@@ -94,6 +104,7 @@ function SignupForm() {
             lastName: lastName.trim(),
             specialty: finalSpecialty,
             email: email.trim(),
+            marketingConsent: acceptMarketing,
           }),
         });
 
@@ -267,15 +278,55 @@ function SignupForm() {
                 </button>
               </div>
             </label>
+
+            {/* Cases RGPD */}
+            <div className="space-y-3 pt-2">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={acceptCGU}
+                  onChange={(e) => setAcceptCGU(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[#10b981]"
+                />
+                <span className="text-xs leading-relaxed text-zinc-400">
+                  J'accepte les{" "}
+                  <a href="/cgu" target="_blank" className="text-[#34d399] hover:underline">
+                    Conditions Générales d'Utilisation
+                  </a>
+                  {" "}et la{" "}
+                  <a href="/confidentialite" target="_blank" className="text-[#34d399] hover:underline">
+                    Politique de Confidentialité
+                  </a>
+                  {" "}*
+                </span>
+              </label>
+
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={acceptMarketing}
+                  onChange={(e) => setAcceptMarketing(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[#10b981]"
+                />
+                <span className="text-xs leading-relaxed text-zinc-400">
+                  Je souhaite recevoir par email les nouveautés de NutriTwin et des conseils pour optimiser l'utilisation de mon jumeau.
+                  <span className="mt-0.5 block text-zinc-600">
+                    Garanti sans spam : nous ne vous envoyons que l'essentiel pour votre activité.
+                  </span>
+                </span>
+              </label>
+
+              <p className="text-[11px] text-zinc-600">* Champ obligatoire</p>
+            </div>
           </div>
 
-          {error ? (
+          {error && (
             <p className="mt-4 text-sm text-red-400" role="alert">{error}</p>
-          ) : null}
+          )}
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !acceptCGU}
             className="mt-6 w-full rounded-full bg-[#10b981] py-3 text-sm font-semibold text-black transition hover:bg-[#34d399] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? "Création du compte..." : "Créer mon compte →"}

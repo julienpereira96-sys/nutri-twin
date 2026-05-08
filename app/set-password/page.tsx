@@ -29,6 +29,10 @@ export default function SetPasswordPage() {
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
 
+  // RGPD
+  const [acceptCGU, setAcceptCGU] = useState(false);
+  const [acceptData, setAcceptData] = useState(false);
+
   useEffect(() => {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -39,7 +43,6 @@ export default function SetPasswordPage() {
         setReady(true);
       }
     });
-    
   }, []);
 
   const handleSubmit = async () => {
@@ -55,6 +58,15 @@ export default function SetPasswordPage() {
       setError("Minimum 8 caractères.");
       return;
     }
+    if (!acceptCGU) {
+      setError("Vous devez accepter les CGU et la politique de confidentialité.");
+      return;
+    }
+    if (!acceptData) {
+      setError("Vous devez consentir au traitement de vos données nutritionnelles.");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
@@ -103,6 +115,8 @@ export default function SetPasswordPage() {
     background: "none", border: "none", cursor: "pointer",
     color: "#94a3b8", padding: 0, display: "flex",
   };
+
+  const isDisabled = loading || !password || !confirm || !firstName || !lastName || !acceptCGU || !acceptData;
 
   return (
     <div style={{
@@ -203,6 +217,43 @@ export default function SetPasswordPage() {
                   </button>
                 </div>
               </label>
+
+              {/* Cases RGPD */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={acceptCGU}
+                    onChange={(e) => setAcceptCGU(e.target.checked)}
+                    style={{ marginTop: 2, accentColor: "#10b981", width: 16, height: 16, flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
+                    J'accepte les{" "}
+                    <a href="/cgu" target="_blank" style={{ color: "#10b981", textDecoration: "underline" }}>
+                      Conditions Générales d'Utilisation
+                    </a>
+                    {" "}et la{" "}
+                    <a href="/confidentialite" target="_blank" style={{ color: "#10b981", textDecoration: "underline" }}>
+                      Politique de Confidentialité
+                    </a>
+                    {" "}*
+                  </span>
+                </label>
+
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={acceptData}
+                    onChange={(e) => setAcceptData(e.target.checked)}
+                    style={{ marginTop: 2, accentColor: "#10b981", width: 16, height: 16, flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
+                    Je consens au traitement de mes informations de nutrition et d'hygiène de vie pour permettre au jumeau numérique de mon praticien de m'accompagner au quotidien. *
+                  </span>
+                </label>
+
+                <p style={{ margin: 0, fontSize: 11, color: "#94a3b8" }}>* Champs obligatoires</p>
+              </div>
             </div>
 
             {error && (
@@ -211,19 +262,16 @@ export default function SetPasswordPage() {
 
             <button
               onClick={() => void handleSubmit()}
-              disabled={loading || !password || !confirm || !firstName || !lastName}
+              disabled={isDisabled}
               style={{
                 width: "100%", height: 48, marginTop: 20,
                 borderRadius: 24,
-                background: loading || !password || !confirm || !firstName || !lastName
-                  ? "#e2e8f0"
-                  : "linear-gradient(135deg, #34d399, #10b981)",
+                background: isDisabled ? "#e2e8f0" : "linear-gradient(135deg, #34d399, #10b981)",
                 border: "none",
-                color: loading || !password || !confirm || !firstName || !lastName ? "#94a3b8" : "white",
+                color: isDisabled ? "#94a3b8" : "white",
                 fontSize: 15, fontWeight: 600,
-                cursor: loading || !password || !confirm || !firstName || !lastName ? "not-allowed" : "pointer",
-                boxShadow: loading || !password || !confirm || !firstName || !lastName
-                  ? "none" : "0 4px 14px rgba(16,185,129,0.35)",
+                cursor: isDisabled ? "not-allowed" : "pointer",
+                boxShadow: isDisabled ? "none" : "0 4px 14px rgba(16,185,129,0.35)",
                 transition: "all 0.2s",
               }}
             >
