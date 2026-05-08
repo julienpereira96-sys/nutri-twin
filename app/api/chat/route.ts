@@ -1,6 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
+
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
 async function getRelevantDocuments(question: string, practitionerId: string): Promise<string> {
   try {
@@ -69,7 +71,7 @@ async function getConversationHistory(
   patientId: string,
   practitionerId: string,
   sessionId?: string
-): Promise<{ role: "user" | "assistant"; content: string }[]> {
+): Promise<{ role: "user" | "model"; parts: { text: string }[] }[]> {
   try {
     const supabase = createClient(
       process.env.SUPABASE_URL!,
@@ -91,7 +93,10 @@ async function getConversationHistory(
     const { data } = await query;
     if (!data || data.length === 0) return [];
 
-    return data as { role: "user" | "assistant"; content: string }[];
+    return data.map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
   } catch {
     return [];
   }
@@ -107,9 +112,10 @@ async function getPractitionerSystemPrompt(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
-    const query = supabase.from("practitioner_profiles").select("*").limit(1);
+
+    let query = supabase.from("practitioner_profiles").select("*").limit(1);
     if (practitionerId) {
-      query.eq("user_id", practitionerId);
+      query = query.eq("user_id", practitionerId);
     }
     const { data } = await query.single();
     if (!data) return getDefaultPrompt();
@@ -188,8 +194,6 @@ function getDefaultPrompt(): string {
 
 export async function POST(request: Request) {
   try {
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
     const { message, systemPrompt, patientId, practitionerId, sessionId } = await request.json() as {
       message: string;
       systemPrompt?: string;
@@ -200,27 +204,22 @@ export async function POST(request: Request) {
 
     const practitionerPrompt = await getPractitionerSystemPrompt(practitionerId, message, patientId);
 
-    // Récupérer l'historique de conversation
-    let conversationHistory: { role: "user" | "assistant"; content: string }[] = [];
+    let conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[] = [];
     if (patientId && practitionerId) {
       conversationHistory = await getConversationHistory(patientId, practitionerId, sessionId);
     }
 
-    // Construire les messages avec l'historique
-    const messages: { role: "user" | "assistant"; content: string }[] = [
-      ...conversationHistory,
-      { role: "user", content: message },
-    ];
-
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5",
-      max_tokens: 1024,
-      system: systemPrompt || practitionerPrompt,
-      messages,
+    const model = genAI.getGenerativeModel({
+      model: "gemini-3-flash",
+      systemInstruction: systemPrompt || practitionerPrompt,
     });
 
-    const textBlock = response.content.find((block) => block.type === "text");
-    const text = textBlock?.text ?? "Aucune reponse recue.";
+    const chat = model.startChat({
+      history: conversationHistory,
+    });
+
+    const result = await chat.sendMessage(message);
+    const text = result.response.text();
 
     if (patientId) {
       const supabase = createClient(
