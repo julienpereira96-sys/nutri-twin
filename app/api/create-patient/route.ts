@@ -13,11 +13,15 @@ export async function POST(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
+  const now = new Date().toISOString();
+
   const { error } = await supabase.from("patients").insert({
     user_id: userId,
     first_name: firstName,
     last_name: lastName,
     email,
+    rgpd_accepted_at: now,
+    rgpd_data_accepted_at: now,
   });
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
