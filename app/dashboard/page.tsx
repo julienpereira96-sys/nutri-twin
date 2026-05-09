@@ -15,9 +15,16 @@ type RealPatient = {
   lastMessageRole: string;
   totalMessages: number;
   age?: number;
+  sexe?: string;
+  taille?: number;
+  poids?: number;
   objective?: string;
   pathologies?: string;
   allergies?: string;
+  traitements?: string;
+  objectif_clinique?: string;
+  niveau_activite?: string;
+  regime_specifique?: string;
   notes?: string;
 };
 
@@ -167,7 +174,7 @@ export default function DashboardPage() {
 
     const { data: patientsData } = await supabase
       .from("patients")
-      .select("user_id, first_name, last_name, email, age, objective, pathologies, allergies, notes")
+      .select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, notes")
       .in("user_id", patientIds);
 
     if (!patientsData) {
@@ -209,6 +216,12 @@ export default function DashboardPage() {
           lastMessageRole: lastConv?.role ?? "",
           totalMessages: count ?? 0,
           age: p.age,
+          sexe: p.sexe,
+          taille: p.taille,
+          poids: p.poids,traitements: p.traitements,
+          objectif_clinique: p.objectif_clinique,
+          niveau_activite: p.niveau_activite,
+          regime_specifique: p.regime_specifique,
           objective: p.objective,
           pathologies: p.pathologies,
           allergies: p.allergies,
@@ -635,69 +648,77 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
       <main className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 p-4 sm:p-6 lg:grid-cols-[280px_minmax(0,1fr)_260px]">
 
         {/* Sidebar patients */}
-        <aside className="flex h-[calc(100vh-200px)] flex-col rounded-2xl border border-white/10 bg-[#121212]">
-          <div className="border-b border-white/10 px-4 py-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#10b981]/20">
-                <span className="text-lg">🍃</span>
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Mes patients</p>
-                <p className="text-xs text-zinc-400">Espace praticien</p>
-              </div>
-            </div>
-          </div>
+        <aside className="h-[calc(100vh-200px)] overflow-y-auto rounded-2xl border border-white/10 bg-[#121212] p-4">
+  {selectedPatient ? (
+    <>
+      {/* Avatar + nom */}
+      <div className="mb-4 flex flex-col items-center text-center">
+        <div className={`mb-3 flex h-16 w-16 items-center justify-center rounded-full text-sm font-bold text-white ${selectedPatient.avatarColor}`}>
+          {selectedPatient.initials}
+        </div>
+        <p className="text-lg font-semibold">{selectedPatient.firstName} {selectedPatient.lastName}</p>
+        <p className="text-xs text-zinc-400 mb-3">{selectedPatient.email}</p>
 
-          <div className="flex-1 space-y-2 overflow-y-auto p-3">
-            {loading ? (
-              <p className="text-center text-xs text-zinc-500 mt-4">Chargement...</p>
-            ) : patients.length === 0 ? (
-              <div className="mt-6 text-center px-2">
-                <p className="text-sm text-zinc-400">Aucun patient pour l'instant</p>
-                <p className="mt-2 text-xs text-zinc-500 leading-relaxed">
-                  {hasDocuments ? "Invitez votre premier patient !" : "Importez vos protocoles pour débloquer l'invitation de patients."}
-                </p>
-              </div>
-            ) : (
-              patients.map((patient) => {
-                const isSelected = patient.id === selectedPatientId;
-                return (
-                  <button key={patient.id} type="button" onClick={() => setSelectedPatientId(patient.id)}
-                    className={`w-full rounded-xl border p-3 text-left transition ${isSelected ? "border-[#10b981]/70 bg-[#10b981]/10" : "border-white/10 bg-[#171717] hover:border-white/20"}`}>
-                    <div className="flex items-start gap-3">
-                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${patient.avatarColor}`}>
-                        {patient.initials}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="truncate text-sm font-semibold">{patient.firstName}</p>
-                          <span className="text-[11px] text-zinc-500">{patient.lastMessageTime}</span>
-                        </div>
-                        <p className="truncate text-xs text-zinc-400">{patient.lastMessage}</p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
+        {/* Badges */}
+        <div className="flex flex-wrap justify-center gap-1.5">
+          {selectedPatient.allergies && selectedPatient.allergies.split(",").map((a) => (
+            <span key={a} className="rounded-full bg-red-500/15 border border-red-500/30 px-2 py-0.5 text-[10px] font-semibold text-red-400">
+              ⚠️ {a.trim()}
+            </span>
+          ))}
+          {selectedPatient.objectif_clinique && (
+            <span className="rounded-full bg-blue-500/15 border border-blue-500/30 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+              🎯 {selectedPatient.objectif_clinique}
+            </span>
+          )}
+          {selectedPatient.regime_specifique && (
+            <span className="rounded-full bg-violet-500/15 border border-violet-500/30 px-2 py-0.5 text-[10px] font-semibold text-violet-400">
+              🥗 {selectedPatient.regime_specifique}
+            </span>
+          )}
+          {selectedPatient.niveau_activite && (
+            <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+              ⚡ {selectedPatient.niveau_activite}
+            </span>
+          )}
+        </div>
+      </div>
 
-          <div className="border-t border-white/10 p-3">
-            {hasDocuments ? (
-              <button type="button" onClick={() => setShowInviteModal(true)} className="w-full rounded-full bg-[#10b981] px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-[#34d399]">
-                + Inviter un patient
-              </button>
-            ) : (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.08] p-3 text-center">
-                <p className="text-xs text-amber-400 font-semibold mb-1">Jumeau incomplet</p>
-                <p className="text-xs text-zinc-500 mb-2 leading-relaxed">Importez vos protocoles pour activer l'invitation de patients.</p>
-                <button onClick={() => void openJumeauModal()} className="inline-block rounded-full border border-amber-500/40 px-4 py-1.5 text-xs font-semibold text-amber-400 transition hover:bg-amber-500/10">
-                  Importer mes protocoles →
-                </button>
-              </div>
-            )}
-          </div>
-        </aside>
+      {/* Stats */}
+      <div className="space-y-3 rounded-xl border border-white/10 bg-[#181818] p-3 text-sm mb-3">
+        <InfoRow label="Messages totaux" value={String(selectedPatient.totalMessages)} />
+        <InfoRow label="Dernier message" value={selectedPatient.lastMessageTime || "—"} />
+        {selectedPatient.age && <InfoRow label="Âge" value={`${selectedPatient.age} ans`} />}
+        {selectedPatient.sexe && <InfoRow label="Sexe" value={selectedPatient.sexe} />}
+        {selectedPatient.taille && <InfoRow label="Taille" value={`${selectedPatient.taille} cm`} />}
+        {selectedPatient.poids && <InfoRow label="Poids" value={`${selectedPatient.poids} kg`} />}
+      </div>
+
+      {/* Infos médicales */}
+      <div className="space-y-3 rounded-xl border border-white/10 bg-[#181818] p-3 text-sm mb-3">
+        {selectedPatient.pathologies && <InfoRow label="Pathologies" value={selectedPatient.pathologies} />}
+        {selectedPatient.allergies && <InfoRow label="Allergies" value={selectedPatient.allergies} />}
+        {selectedPatient.traitements && <InfoRow label="Traitements" value={selectedPatient.traitements} />}
+        {selectedPatient.objectif_clinique && <InfoRow label="Objectif" value={selectedPatient.objectif_clinique} />}
+        {selectedPatient.niveau_activite && <InfoRow label="Activité" value={selectedPatient.niveau_activite} />}
+        {selectedPatient.regime_specifique && <InfoRow label="Régime" value={selectedPatient.regime_specifique} />}
+        {selectedPatient.notes && <InfoRow label="Notes" value={selectedPatient.notes} />}
+      </div>
+
+      <button onClick={openProfileModal} className="w-full rounded-xl border border-white/10 bg-[#181818] px-4 py-3 text-sm font-semibold text-zinc-300 transition hover:border-white/20 hover:text-white mb-3">
+        ✏️ Modifier le profil patient
+      </button>
+      <button onClick={() => { setShowReportModal(true); setReportContent(""); }} className="w-full rounded-xl bg-[#10b981]/10 border border-[#10b981]/30 px-4 py-3 text-sm font-semibold text-[#10b981] transition hover:bg-[#10b981]/20">
+        📊 Générer rapport journal
+      </button>
+    </>
+  ) : (
+    <div className="flex h-full items-center justify-center">
+      <p className="text-sm text-zinc-500">Sélectionnez un patient</p>
+    </div>
+  )}
+</aside>
+
 
         {/* Zone conversations */}
         <section className="flex h-[calc(100vh-200px)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111111]">
