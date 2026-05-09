@@ -1,6 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import OpenAI from "openai";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 
@@ -21,6 +20,12 @@ function chunkText(text: string, chunkSize = 500): string[] {
   }
   if (current.trim()) chunks.push(current.trim());
   return chunks;
+}
+
+async function getGeminiEmbedding(text: string): Promise<number[]> {
+  const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+  const result = await model.embedContent(text);
+  return result.embedding.values;
 }
 
 async function anonymizeText(text: string): Promise<string> {
@@ -76,7 +81,6 @@ async function extractTextFromAudio(buffer: Buffer, mimeType: string): Promise<s
 
 export async function POST(request: Request) {
   try {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -97,7 +101,6 @@ export async function POST(request: Request) {
       return Response.json({ error: "Format non supporté." }, { status: 400 });
     }
 
-    // Vérifier la taille
     const maxSizes: Record<string, number> = {
       pdf: 10, docx: 10, txt: 10,
       jpg: 5, jpeg: 5, png: 5,
@@ -136,7 +139,7 @@ export async function POST(request: Request) {
     } else if (["jpg", "jpeg", "png"].includes(fileType ?? "")) {
       const mimeType = fileType === "png" ? "image/png" : "image/jpeg";
       text = await extractTextFromImage(buffer, mimeType);
-    } else if (["xlsx"].includes(fileType ?? "")) {
+    } else if (fileType === "xlsx") {
       const workbook = XLSX.read(buffer, { type: "buffer" });
       const sheets = workbook.SheetNames.map((name) =>
         XLSX.utils.sheet_to_csv(workbook.Sheets[name])
@@ -162,15 +165,11 @@ export async function POST(request: Request) {
     // Anonymisation
     const anonymizedText = await anonymizeText(text);
 
-    // Chunking et indexation RAG
+    // Chunking et indexation RAG avec embeddings Gemini
     const chunks = chunkText(anonymizedText, 500);
 
     for (const chunk of chunks) {
-      const embeddingResponse = await openai.embeddings.create({
-        model: "text-embedding-3-small",
-        input: chunk,
-      });
-      const embedding = embeddingResponse.data[0]?.embedding;
+      const embedding = await getGeminiEmbedding(chunk);
 
       await supabase.from("documents").insert({
         practitioner_id: practitionerId,

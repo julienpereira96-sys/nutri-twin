@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
 import { Redis } from "@upstash/redis";
-import OpenAI from "openai";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 const redis = new Redis({
@@ -87,6 +86,15 @@ function createSupabaseClient() {
 }
 
 // ============================================================
+// EMBEDDINGS GEMINI
+// ============================================================
+async function getGeminiEmbedding(text: string): Promise<number[]> {
+  const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+  const result = await model.embedContent(text);
+  return result.embedding.values;
+}
+
+// ============================================================
 // REDIS — CACHE PLAN + PROFIL PRATICIEN
 // ============================================================
 type CachedPractitioner = {
@@ -105,7 +113,7 @@ async function getPractitionerFromCache(practitionerId: string): Promise<CachedP
 
 async function setPractitionerInCache(practitionerId: string, data: CachedPractitioner): Promise<void> {
   try {
-    await redis.set(`practitioner:${practitionerId}`, data, { ex: 3600 }); // TTL 1h
+    await redis.set(`practitioner:${practitionerId}`, data, { ex: 3600 });
   } catch {
     // Silencieux
   }
@@ -123,13 +131,10 @@ async function invalidatePractitionerCache(practitionerId: string): Promise<void
 // RÉCUPÉRER LE PLAN + PROFIL DU PRATICIEN (avec cache Redis)
 // ============================================================
 async function getPractitionerData(practitionerId: string): Promise<CachedPractitioner> {
-  // 1. Vérifier le cache Redis
   const cached = await getPractitionerFromCache(practitionerId);
   if (cached) return cached;
 
-  // 2. Sinon charger depuis Supabase
   const supabase = createSupabaseClient();
-
   const [practitionerResult, profileResult] = await Promise.all([
     supabase.from("practitioners").select("plan").eq("user_id", practitionerId).single(),
     supabase.from("practitioner_profiles").select("*").eq("user_id", practitionerId).single(),
@@ -140,10 +145,7 @@ async function getPractitionerData(practitionerId: string): Promise<CachedPracti
   const profile = profileResult.data as Record<string, string> | null;
 
   const data: CachedPractitioner = { plan: validPlan, profile };
-
-  // 3. Stocker dans Redis pour 1h
   await setPractitionerInCache(practitionerId, data);
-
   return data;
 }
 
@@ -152,17 +154,11 @@ async function getPractitionerData(practitionerId: string): Promise<CachedPracti
 // ============================================================
 async function getSemanticCache(
   question: string,
-  practitionerId: string,
-  openai: OpenAI
+  practitionerId: string
 ): Promise<string | null> {
   try {
     const supabase = createSupabaseClient();
-    const embeddingResponse = await openai.embeddings.create({
-      model: "text-embedding-3-small",
-      input: question,
-    });
-    const queryEmbedding = embeddingResponse.data[0]?.embedding;
-    if (!queryEmbedding) return null;
+    const queryEmbedding = await getGeminiEmbedding(question);
 
     const { data } = await supabase.rpc("match_cached_responses", {
       query_embedding: queryEmbedding,
@@ -182,17 +178,11 @@ async function getSemanticCache(
 async function saveToCache(
   question: string,
   response: string,
-  practitionerId: string,
-  openai: OpenAI
+  practitionerId: string
 ): Promise<void> {
   try {
     const supabase = createSupabaseClient();
-    const embeddingResponse = await openai.embeddings.create({
-      model: "text-embedding-3-small",
-      input: question,
-    });
-    const embedding = embeddingResponse.data[0]?.embedding;
-    if (!embedding) return;
+    const embedding = await getGeminiEmbedding(question);
 
     await supabase.from("cached_responses").insert({
       practitioner_id: practitionerId,
@@ -220,20 +210,14 @@ async function hasDocuments(practitionerId: string): Promise<boolean> {
 async function getRelevantDocuments(
   question: string,
   practitionerId: string,
-  ragChunks: number,
-  openai: OpenAI
+  ragChunks: number
 ): Promise<string> {
   try {
     const hasDocs = await hasDocuments(practitionerId);
     if (!hasDocs) return "";
 
     const supabase = createSupabaseClient();
-    const embeddingResponse = await openai.embeddings.create({
-      model: "text-embedding-3-small",
-      input: question,
-    });
-    const queryEmbedding = embeddingResponse.data[0]?.embedding;
-    if (!queryEmbedding) return "";
+    const queryEmbedding = await getGeminiEmbedding(question);
 
     const { data } = await supabase.rpc("match_documents", {
       query_embedding: queryEmbedding,
@@ -370,7 +354,7 @@ async function getConversationHistory(
 }
 
 // ============================================================
-// SYSTEM PROMPT COMPACT (depuis cache Redis)
+// SYSTEM PROMPT COMPACT
 // ============================================================
 function buildSystemPrompt(
   profile: Record<string, string> | null,
@@ -420,8 +404,6 @@ async function getDailyMessageCount(patientId: string): Promise<number> {
 // ============================================================
 export async function POST(request: Request) {
   try {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
     const {
       message,
       systemPrompt,
@@ -432,7 +414,7 @@ export async function POST(request: Request) {
       imageMimeType,
     } = await request.json() as ChatRequest;
 
-    // ── Plan + Profil depuis Redis (ou Supabase si cache miss) ──
+    // ── Plan + Profil depuis Redis ──
     const practitionerData = practitionerId
       ? await getPractitionerData(practitionerId)
       : { plan: "essentiel" as PlanType, profile: null };
@@ -454,7 +436,7 @@ export async function POST(request: Request) {
 
     // ── Semantic caching (pas pour les images) ──
     if (practitionerId && !systemPrompt && !imageBase64) {
-      const cached = await getSemanticCache(message, practitionerId, openai);
+      const cached = await getSemanticCache(message, practitionerId);
       if (cached) {
         return Response.json({ response: cached });
       }
@@ -463,7 +445,7 @@ export async function POST(request: Request) {
     // ── Contexte patient + documents ──
     const [patientContext, documentsContext] = await Promise.all([
       patientId ? getPatientProfile(patientId) : Promise.resolve(""),
-      practitionerId ? getRelevantDocuments(message, practitionerId, config.ragChunks, openai) : Promise.resolve(""),
+      practitionerId ? getRelevantDocuments(message, practitionerId, config.ragChunks) : Promise.resolve(""),
     ]);
 
     // ── System prompt ──
@@ -483,7 +465,7 @@ export async function POST(request: Request) {
 
     // ── Model routing ──
     const modelName = imageBase64
-      ? "gemini-3-flash" // Vision toujours sur Flash
+      ? "gemini-3-flash"
       : plan === "essentiel"
         ? config.model
         : isComplexMessage(message) ? "gemini-3-flash" : "gemini-3-flash-lite";
@@ -559,7 +541,7 @@ Max 150 mots. Sans markdown.`;
 
       // Cache sémantique (pas les images)
       if (practitionerId && !imageBase64) {
-        await saveToCache(message, text, practitionerId, openai);
+        await saveToCache(message, text, practitionerId);
       }
     }
 
@@ -570,5 +552,4 @@ Max 150 mots. Sans markdown.`;
   }
 }
 
-// Export pour invalider le cache quand le praticien met à jour son profil
 export { invalidatePractitionerCache };
