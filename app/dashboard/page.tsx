@@ -315,10 +315,20 @@ export default function DashboardPage() {
   };
 
   const uploadFiles = async () => {
-    console.log("practitionerId:", practitionerId);
-    console.log("uploadedFiles:", uploadedFiles.length);
-    console.log("documentType:", documentType);
-    if (uploadedFiles.length === 0 || !practitionerId) return;  
+    if (uploadedFiles.length === 0 || !documentType) return;
+
+    // Récupérer le practitionerId en temps réel si null
+    let pid = practitionerId;
+    if (!pid) {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+      pid = user?.id ?? null;
+    }
+    if (!pid) return;
+
     setUploading(true);
     setUploadErrors([]);
     setUploadSuccess([]);
@@ -326,17 +336,17 @@ export default function DashboardPage() {
     for (const file of uploadedFiles) {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("practitionerId", practitionerId);
-      formData.append("documentType", documentType ?? "protocole");
+      formData.append("practitionerId", pid);
+      formData.append("documentType", documentType);
 
       try {
         const res = await fetch("/api/upload-document", {
           method: "POST",
           body: formData,
         });
-        const data = await res.json() as { success?: boolean; error?: string; chunks?: number };
+        const data = await res.json() as { success?: boolean; error?: string };
         if (res.ok && data.success) {
-          setUploadSuccess((prev) => [...prev, `${file.name} — ${data.chunks} chunks indexés`]);
+          setUploadSuccess((prev) => [...prev, file.name]);
         } else {
           setUploadErrors((prev) => [...prev, `${file.name} : ${data.error ?? "Erreur"}`]);
         }
@@ -347,9 +357,11 @@ export default function DashboardPage() {
 
     setUploading(false);
     setUploadedFiles([]);
+    setDocumentType(null);
     setHasDocuments(true);
-    await loadDocuments(practitionerId);
+    await loadDocuments(pid);
   };
+
 
   const deleteDocument = async (docId: string, fileName: string) => {
     if (!practitionerId) return;
