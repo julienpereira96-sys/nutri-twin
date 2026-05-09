@@ -315,7 +315,10 @@ export default function DashboardPage() {
   };
 
   const uploadFiles = async () => {
-    if (uploadedFiles.length === 0 || !practitionerId) return;
+    console.log("practitionerId:", practitionerId);
+    console.log("uploadedFiles:", uploadedFiles.length);
+    console.log("documentType:", documentType);
+    if (uploadedFiles.length === 0 || !practitionerId) return;  
     setUploading(true);
     setUploadErrors([]);
     setUploadSuccess([]);
