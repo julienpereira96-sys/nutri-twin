@@ -45,6 +45,14 @@ const AVATAR_COLORS = [
 
 export default function DashboardPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  useEffect(() => {
+    window.history.pushState(null, "", window.location.pathname);
+    const handlePopState = () => {
+      window.history.pushState(null, "", window.location.pathname);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);  
 
   const [patients, setPatients] = useState<RealPatient[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
@@ -60,7 +68,7 @@ export default function DashboardPage() {
   const [practitionerId, setPractitionerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [practitionerName, setPractitionerName] = useState("");
-  const [hasDocuments, setHasDocuments] = useState(false);
+  const [hasDocuments, setHasDocuments] = useState<boolean | null>(null);
 
   // Documents
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -79,9 +87,9 @@ export default function DashboardPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fidelityScore = hasDocuments ? 100 : 70;
-  const fidelityColor = hasDocuments ? "#10b981" : "#f59e0b";
-  const fidelityLabel = hasDocuments ? "Jumeau Fidèle" : "Jumeau Personnalisé";
+  const fidelityScore = hasDocuments === true ? 100 : 70;
+  const fidelityColor = hasDocuments === true ? "#10b981" : "#f59e0b";
+  const fidelityLabel = hasDocuments === true ? "Jumeau Fidèle" : "Jumeau Personnalisé";
 
   // Profil patient
   const [editAge, setEditAge] = useState("");
@@ -585,7 +593,9 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
           </div>
 
           {/* Jauge de fidélité */}
-          <div className={`rounded-xl border px-4 py-3 ${!hasDocuments ? "border-amber-500/30 bg-amber-500/5" : "border-white/[0.06] bg-white/[0.02]"}`}>
+          {hasDocuments !== null && (
+          <div className={`rounded-xl border px-4 py-3 ${hasDocuments !== true ? "border-amber-500/30 bg-amber/5" : "border-white/[0.06] bg-white/[0.02]"}`}>
+
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-white">Statut du Jumeau :</span>
@@ -617,7 +627,8 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                 ✅ Votre jumeau est prêt à représenter votre méthode auprès de vos patients.
               </p>
             )}
-          </div>
+                    </div>
+        )}
         </div>
       </header>
 
@@ -815,7 +826,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
           }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>Améliorer mon jumeau 🍃</h2>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>Améliorer mon jumeau </h2>
                 <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>Gérez les documents qui enrichissent votre jumeau</p>
               </div>
               <button onClick={() => setShowJumeauModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
