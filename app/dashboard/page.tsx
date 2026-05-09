@@ -67,6 +67,7 @@ export default function DashboardPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState<string[]>([]);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+  const [documentType, setDocumentType] = useState<"protocole" | "patient" | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Mémo vocal
@@ -323,6 +324,7 @@ export default function DashboardPage() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("practitionerId", practitionerId);
+      formData.append("documentType", documentType ?? "protocole");
 
       try {
         const res = await fetch("/api/upload-document", {
@@ -937,16 +939,51 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                 Ajouter des documents
               </p>
 
-              {/* Avertissement sécurité */}
-              <div style={{
-                background: "rgba(16,185,129,0.05)", borderRadius: 10,
-                border: "1px solid rgba(16,185,129,0.15)",
-                padding: "10px 14px", marginBottom: 12,
-              }}>
-                <p style={{ margin: 0, fontSize: 11, color: "#34d399", lineHeight: 1.6 }}>
-                  🔒 Vos documents sont automatiquement anonymisés par l'IA avant indexation. Aucune donnée personnelle n'est conservée.
-                </p>
-              </div>
+              {/* Classification document */}
+<div style={{ marginBottom: 16 }}>
+  <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "white" }}>
+    Quel type de document uploadez-vous ?
+  </p>
+  <p style={{ margin: "0 0 12px", fontSize: 11, color: "#64748b" }}>
+    Cela détermine si vos documents seront anonymisés ou non.
+  </p>
+  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+    <button
+      type="button"
+      onClick={() => setDocumentType("protocole")}
+      style={{
+        borderRadius: 12, border: `2px solid ${documentType === "protocole" ? "#10b981" : "rgba(255,255,255,0.1)"}`,
+        background: documentType === "protocole" ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)",
+        padding: "12px", textAlign: "left", cursor: "pointer",
+      }}
+    >
+      <p style={{ margin: "0 0 4px", fontSize: 20 }}>📋</p>
+      <p style={{ margin: "0 0 4px", fontSize: 12, fontWeight: 700, color: "white" }}>Protocoles & méthodes</p>
+      <p style={{ margin: "0 0 6px", fontSize: 11, color: "#64748b" }}>Articles, plans alimentaires, guides nutritionnels</p>
+      <p style={{ margin: 0, fontSize: 11, color: "#10b981" }}>✓ Indexé tel quel</p>
+    </button>
+    <button
+      type="button"
+      onClick={() => setDocumentType("patient")}
+      style={{
+        borderRadius: 12, border: `2px solid ${documentType === "patient" ? "#10b981" : "rgba(255,255,255,0.1)"}`,
+        background: documentType === "patient" ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)",
+        padding: "12px", textAlign: "left", cursor: "pointer",
+      }}
+    >
+      <p style={{ margin: "0 0 4px", fontSize: 20 }}>🗂️</p>
+      <p style={{ margin: "0 0 4px", fontSize: 12, fontWeight: 700, color: "white" }}>Données patients</p>
+      <p style={{ margin: "0 0 6px", fontSize: 11, color: "#64748b" }}>Bilans, comptes-rendus, fiches patients</p>
+      <p style={{ margin: 0, fontSize: 11, color: "#60a5fa" }}>✓ Anonymisé avant indexation</p>
+    </button>
+  </div>
+  {!documentType && uploadedFiles.length > 0 && (
+    <p style={{ margin: 0, fontSize: 11, color: "#f59e0b" }}>
+      ⚠️ Veuillez sélectionner le type de document avant d'indexer.
+    </p>
+  )}
+</div>
+
 
               <input
                 ref={fileInputRef}
@@ -1055,7 +1092,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                   ))}
                   <button
                     onClick={() => void uploadFiles()}
-                    disabled={uploading}
+                    disabled={uploading || !documentType}
                     style={{
                       width: "100%", height: 44, borderRadius: 22,
                       background: uploading ? "rgba(255,255,255,0.05)" : "#10b981",

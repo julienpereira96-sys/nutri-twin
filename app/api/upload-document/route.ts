@@ -164,8 +164,11 @@ export async function POST(request: Request) {
       return Response.json({ error: "Impossible d'extraire le contenu du fichier." }, { status: 400 });
     }
 
-    // Anonymisation
-    const anonymizedText = await anonymizeText(text);
+    // Anonymisation selon le type de document
+const documentType = formData.get("documentType") as string | null;
+const shouldAnonymize = documentType === "patient";
+const anonymizedText = shouldAnonymize ? await anonymizeText(text) : text;
+
 
     // Chunking et indexation RAG avec embeddings Gemini
     const chunks = chunkText(anonymizedText, 500);
