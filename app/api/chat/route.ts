@@ -251,7 +251,7 @@ async function getPatientProfile(patientId: string): Promise<string> {
     const supabase = createSupabaseClient();
     const { data } = await supabase
       .from("patients")
-      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, brief_jumeau, notes, motivation, defi, aliments_aimes, aliments_detestes")
+      .select("first_name, last_name, age, objective, pathologies, allergies, notes")
       .eq("user_id", patientId)
       .single();
 
@@ -259,20 +259,10 @@ async function getPatientProfile(patientId: string): Promise<string> {
       first_name?: string;
       last_name?: string;
       age?: number;
-      sexe?: string;
-      taille?: number;
-      poids?: number;
       objective?: string;
       pathologies?: string;
       allergies?: string;
-      traitements?: string;
-      objectif_clinique?: string;
-      brief_jumeau?: string;
       notes?: string;
-      motivation?: string;
-      defi?: string;
-      aliments_aimes?: string;
-      aliments_detestes?: string;
     } | null;
 
     if (!patient) return "";
@@ -280,28 +270,12 @@ async function getPatientProfile(patientId: string): Promise<string> {
     const parts = [];
     if (patient.first_name) parts.push(`Prénom : ${patient.first_name}`);
     if (patient.age) parts.push(`Âge : ${patient.age} ans`);
-    if (patient.sexe) parts.push(`Sexe : ${patient.sexe}`);
-    if (patient.taille) parts.push(`Taille : ${patient.taille} cm`);
-    if (patient.poids) parts.push(`Poids : ${patient.poids} kg`);
+    if (patient.objective) parts.push(`Objectif : ${patient.objective}`);
     if (patient.pathologies) parts.push(`Pathologies : ${patient.pathologies}`);
     if (patient.allergies) parts.push(`Allergies : ${patient.allergies}`);
-    if (patient.traitements) parts.push(`Traitements : ${patient.traitements}`);
-    if (patient.objectif_clinique) parts.push(`Objectif clinique : ${patient.objectif_clinique}`);
-    if (patient.objective) parts.push(`Objectif personnel : ${patient.objective}`);
-    if (patient.motivation) parts.push(`État d'esprit : ${patient.motivation}`);
-    if (patient.defi) parts.push(`Plus gros défi : ${patient.defi}`);
-    if (patient.aliments_aimes) parts.push(`Aliments aimés : ${patient.aliments_aimes}`);
-    if (patient.aliments_detestes) parts.push(`Aliments détestés : ${patient.aliments_detestes}`);
-    if (patient.notes) parts.push(`Notes praticien : ${patient.notes}`);
+    if (patient.notes) parts.push(`Notes : ${patient.notes}`);
 
-    // Brief jumeau — instruction directe au modèle
-    const briefSection = patient.brief_jumeau
-      ? `\nINSTRUCTION SPÉCIFIQUE DU PRATICIEN POUR CE PATIENT :\n${patient.brief_jumeau}\n`
-      : "";
-
-    return parts.length > 0
-      ? `\nPROFIL DU PATIENT :\n${parts.join("\n")}\n${briefSection}`
-      : "";
+    return parts.length > 0 ? `\nPROFIL DU PATIENT :\n${parts.join("\n")}\n` : "";
   } catch {
     return "";
   }

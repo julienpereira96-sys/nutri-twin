@@ -83,7 +83,7 @@ export default function ChatPage() {
   const [patientId, setPatientId] = useState<string | null>(null);
   const [patientFirstName, setPatientFirstName] = useState<string>("");
   const [practitionerIdFromDb, setPractitionerIdFromDb] = useState<string | null>(null);
-  const [practitionerName, setPractitionerName] = useState<string | null>(null);
+  const [practitionerName, setPractitionerName] = useState("votre praticien");
   const [practitionerPlan, setPractitionerPlan] = useState<string>("essentiel");
 
   // Upload photo
@@ -862,9 +862,8 @@ export default function ChatPage() {
                 <div style={{ fontWeight: 700, fontSize: 15, color: "#0f172a" }}>Compagnon de suivi</div>
                 <div style={{ fontSize: 12, color: "#64748b" }}>
                   Jumeau numérique de{" "}
-                  <span style={{ color: "#10b981", fontWeight: 600 }}>{practitionerName ?? "votre praticien"}</span>
-                  </div>
-
+                  <span style={{ color: "#10b981", fontWeight: 600 }}>{practitionerName}</span>
+                </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
                   <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", animation: "pulse-dot 2s infinite" }} />
                   <span style={{ fontSize: 11, color: "#10b981", fontWeight: 600 }}>

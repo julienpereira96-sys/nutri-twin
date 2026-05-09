@@ -69,7 +69,15 @@ export async function POST(request: Request) {
     redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/set-password`,
   });
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  if (error) {
+    const errorMessage = error.message.includes("already registered")
+      ? "Un compte existe déjà pour cette adresse email."
+      : error.message.includes("invalid")
+      ? "Adresse email invalide."
+      : "Une erreur est survenue lors de l'envoi de l'invitation.";
+    return Response.json({ error: errorMessage }, { status: 500 });
+  }
+  
 
   if (data.user && practitionerId) {
     await supabase.from("patient_practitioner").insert({
