@@ -45,6 +45,7 @@ const AVATAR_COLORS = [
 
 export default function DashboardPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+
   useEffect(() => {
     window.history.pushState(null, "", window.location.pathname);
     const handlePopState = () => {
@@ -52,7 +53,7 @@ export default function DashboardPage() {
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, []);  
+  }, []);
 
   const [patients, setPatients] = useState<RealPatient[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
@@ -61,15 +62,27 @@ export default function DashboardPage() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showJumeauModal, setShowJumeauModal] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviting, setInviting] = useState(false);
-  const [inviteSuccess, setInviteSuccess] = useState(false);
-  const [inviteError, setInviteError] = useState("");
   const [practitionerId, setPractitionerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [practitionerName, setPractitionerName] = useState("");
   const [hasDocuments, setHasDocuments] = useState<boolean | null>(null);
   const [showFidelity, setShowFidelity] = useState(true);
+
+  // Invitation
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviting, setInviting] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState(false);
+  const [inviteError, setInviteError] = useState("");
+  const [inviteAge, setInviteAge] = useState("");
+  const [inviteSexe, setInviteSexe] = useState("");
+  const [inviteTaille, setInviteTaille] = useState("");
+  const [invitePoids, setInvitePoids] = useState("");
+  const [invitePathologies, setInvitePathologies] = useState("");
+  const [inviteAllergies, setInviteAllergies] = useState("");
+  const [inviteTraitements, setInviteTraitements] = useState("");
+  const [inviteObjectifClinique, setInviteObjectifClinique] = useState("");
+  const [inviteBriefJumeau, setInviteBriefJumeau] = useState("");
+  const [inviteNotes, setInviteNotes] = useState("");
 
   // Documents
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -233,7 +246,6 @@ export default function DashboardPage() {
         const hidden = localStorage.getItem("fidelity_hidden");
         if (hidden === "true") setShowFidelity(false);
       }
-      
 
       await loadPatients(pid);
     });
@@ -241,7 +253,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!selectedPatientId || !practitionerId) return;
-
     supabase
       .from("conversations")
       .select("id, role, content, created_at")
@@ -277,19 +288,16 @@ export default function DashboardPage() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       const chunks: BlobPart[] = [];
-
       mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunks, { type: "audio/mp3" });
         setAudioBlob(blob);
         stream.getTracks().forEach((t) => t.stop());
       };
-
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.start();
       setIsRecording(true);
       setRecordingTime(0);
-
       recordingIntervalRef.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
@@ -313,7 +321,6 @@ export default function DashboardPage() {
 
   const uploadFiles = async () => {
     if (uploadedFiles.length === 0 || !documentType) return;
-
     let pid = practitionerId;
     if (!pid) {
       const { data: { user } } = await supabase.auth.getUser();
@@ -332,10 +339,7 @@ export default function DashboardPage() {
       formData.append("documentType", documentType);
 
       try {
-        const res = await fetch("/api/upload-document", {
-          method: "POST",
-          body: formData,
-        });
+        const res = await fetch("/api/upload-document", { method: "POST", body: formData });
         const data = await res.json() as { success?: boolean; error?: string };
         if (res.ok && data.success) {
           setUploadSuccess((prev) => [...prev, file.name]);
@@ -356,19 +360,9 @@ export default function DashboardPage() {
 
   const deleteDocument = async (docId: string, fileName: string) => {
     if (!practitionerId) return;
-
-    await supabase
-      .from("documents")
-      .delete()
-      .eq("practitioner_id", practitionerId)
-      .eq("file_name", fileName);
-
+    await supabase.from("documents").delete().eq("practitioner_id", practitionerId).eq("file_name", fileName);
     await loadDocuments(practitionerId);
-
-    const { count } = await supabase
-      .from("documents")
-      .select("*", { count: "exact", head: true })
-      .eq("practitioner_id", practitionerId);
+    const { count } = await supabase.from("documents").select("*", { count: "exact", head: true }).eq("practitioner_id", practitionerId);
     setHasDocuments((count ?? 0) > 0);
   };
 
@@ -387,30 +381,24 @@ export default function DashboardPage() {
   const saveProfile = async () => {
     if (!selectedPatientId) return;
     setSavingProfile(true);
-
-    await supabase
-      .from("patients")
-      .update({
-        age: editAge ? parseInt(editAge) : null,
-        objective: editObjective || null,
-        pathologies: editPathologies || null,
-        allergies: editAllergies || null,
-        notes: editNotes || null,
-      })
-      .eq("user_id", selectedPatientId);
+    await supabase.from("patients").update({
+      age: editAge ? parseInt(editAge) : null,
+      objective: editObjective || null,
+      pathologies: editPathologies || null,
+      allergies: editAllergies || null,
+      notes: editNotes || null,
+    }).eq("user_id", selectedPatientId);
 
     setPatients((prev) => prev.map((p) => {
-      if (p.id === selectedPatientId) {
-        return {
-          ...p,
-          age: editAge ? parseInt(editAge) : undefined,
-          objective: editObjective || undefined,
-          pathologies: editPathologies || undefined,
-          allergies: editAllergies || undefined,
-          notes: editNotes || undefined,
-        };
-      }
-      return p;
+      if (p.id !== selectedPatientId) return p;
+      return {
+        ...p,
+        age: editAge ? parseInt(editAge) : undefined,
+        objective: editObjective || undefined,
+        pathologies: editPathologies || undefined,
+        allergies: editAllergies || undefined,
+        notes: editNotes || undefined,
+      };
     }));
 
     setSavingProfile(false);
@@ -479,35 +467,15 @@ export default function DashboardPage() {
         const allEmotions = journalEntries.flatMap((e) => e.emotions as string[]);
         const emotionCounts: Record<string, number> = {};
         allEmotions.forEach((em) => { emotionCounts[em] = (emotionCounts[em] ?? 0) + 1; });
-        const topEmotions = Object.entries(emotionCounts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 5)
-          .map(([em, count]) => `${em} (${count}x)`)
-          .join(", ");
-        const moodTrend = journalEntries.map((e) =>
-          `${e.date}: humeur ${moodLabels[e.mood - 1]}, alimentation ${foodLabels[e.food_rating - 1]}`
-        ).join("\n");
-
-        journalSection = `
-JOURNAL DE BORD (${journalEntries.length} entrées) :
-- Humeur moyenne : ${avgMood}/5
-- Alimentation moyenne : ${avgFood}/3
-- Émotions dominantes : ${topEmotions || "non renseignées"}
-- Évolution :
-${moodTrend}`;
+        const topEmotions = Object.entries(emotionCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([em, count]) => `${em} (${count}x)`).join(", ");
+        const moodTrend = journalEntries.map((e) => `${e.date}: humeur ${moodLabels[e.mood - 1]}, alimentation ${foodLabels[e.food_rating - 1]}`).join("\n");
+        journalSection = `\nJOURNAL DE BORD (${journalEntries.length} entrées) :\n- Humeur moyenne : ${avgMood}/5\n- Alimentation moyenne : ${avgFood}/3\n- Émotions dominantes : ${topEmotions || "non renseignées"}\n- Évolution :\n${moodTrend}`;
       }
 
       let chatSection = "";
       if (hasChat) {
-        const patientMessages = chatMessages
-          .filter((m) => m.role === "user")
-          .map((m) => m.content)
-          .join("\n- ");
-
-        chatSection = `
-CONVERSATIONS AVEC LE JUMEAU (${chatMessages.length} messages) :
-Messages du patient :
-- ${patientMessages}`;
+        const patientMessages = chatMessages.filter((m) => m.role === "user").map((m) => m.content).join("\n- ");
+        chatSection = `\nCONVERSATIONS AVEC LE JUMEAU (${chatMessages.length} messages) :\nMessages du patient :\n- ${patientMessages}`;
       }
 
       const prompt = `Tu es un assistant pour un praticien en nutrition. Génère un compte rendu professionnel et synthétique basé sur les données d'un patient sur la période du ${dateFrom} au ${dateTo}.
@@ -537,6 +505,21 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
     }
   };
 
+  const resetInviteForm = () => {
+    setInviteEmail("");
+    setInviteAge("");
+    setInviteSexe("");
+    setInviteTaille("");
+    setInvitePoids("");
+    setInvitePathologies("");
+    setInviteAllergies("");
+    setInviteTraitements("");
+    setInviteObjectifClinique("");
+    setInviteBriefJumeau("");
+    setInviteNotes("");
+    setInviteError("");
+  };
+
   const sendInvite = async () => {
     if (!inviteEmail.trim()) return;
     setInviting(true);
@@ -545,14 +528,27 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
       const res = await fetch("/api/invite-patient", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: inviteEmail.trim(), practitionerId: practitionerId ?? "" }),
+        body: JSON.stringify({
+          email: inviteEmail.trim(),
+          practitionerId: practitionerId ?? "",
+          age: inviteAge ? parseInt(inviteAge) : null,
+          sexe: inviteSexe || null,
+          taille: inviteTaille ? parseInt(inviteTaille) : null,
+          poids: invitePoids ? parseFloat(invitePoids) : null,
+          pathologies: invitePathologies || null,
+          allergies: inviteAllergies || null,
+          traitements: inviteTraitements || null,
+          objectif_clinique: inviteObjectifClinique || null,
+          brief_jumeau: inviteBriefJumeau || null,
+          notes: inviteNotes || null,
+        }),
       });
       const data = await res.json() as { error?: string };
       if (!res.ok) {
         setInviteError(data.error ?? "Une erreur est survenue.");
       } else {
         setInviteSuccess(true);
-        setInviteEmail("");
+        resetInviteForm();
         if (practitionerId) await loadPatients(practitionerId);
       }
     } catch {
@@ -590,61 +586,45 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                 {patients.length} patient{patients.length > 1 ? "s" : ""} actif{patients.length > 1 ? "s" : ""} · {totalMessages} messages au total
               </p>
             </div>
-            <button
-              onClick={() => void openJumeauModal()}
-              className="rounded-full bg-[#10b981] px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-[#34d399]"
-            >
+            <button onClick={() => void openJumeauModal()} className="rounded-full bg-[#10b981] px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-[#34d399]">
               Améliorer mon jumeau
             </button>
           </div>
 
-          {/* Jauge de fidélité */}
           {hasDocuments !== null && showFidelity && (
-          <div className={`rounded-xl border px-4 py-3 ${hasDocuments !== true ? "border-amber-500/30 bg-amber/5" : "border-white/[0.06] bg-white/[0.02]"}`}>
-
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-white">Statut du Jumeau :</span>
-                <span className="text-sm font-bold" style={{ color: fidelityColor }}>{fidelityLabel}</span>
+            <div className={`rounded-xl border px-4 py-3 ${hasDocuments !== true ? "border-amber-500/30 bg-amber-500/5" : "border-white/[0.06] bg-white/[0.02]"}`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-white">Statut du Jumeau :</span>
+                  <span className="text-sm font-bold" style={{ color: fidelityColor }}>{fidelityLabel}</span>
+                </div>
+                <span className="text-sm font-bold" style={{ color: fidelityColor }}>{fidelityScore}%</span>
               </div>
-              <span className="text-sm font-bold" style={{ color: fidelityColor }}>{fidelityScore}%</span>
-            </div>
-            <div className="h-2 w-full rounded-full bg-white/10">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${fidelityScore}%`, backgroundColor: fidelityColor }}
-              />
-            </div>
-            {!hasDocuments && (
-              <div className="mt-2.5 flex items-start justify-between gap-4">
-                <p className="text-xs text-amber-300 leading-relaxed">
-                  ⚠️ Votre jumeau connaît votre philosophie mais pas encore vos protocoles. Il répond de manière générique. Importez au moins un document pour qu'il devienne vraiment vous.
-                </p>
-                <button
-                  onClick={() => void openJumeauModal()}
-                  className="shrink-0 rounded-full border border-amber-500/50 px-3 py-1.5 text-xs font-semibold text-amber-400 transition hover:bg-amber-500/10"
-                >
-                  Importer →
-                </button>
+              <div className="h-2 w-full rounded-full bg-white/10">
+                <div className="h-full rounded-full transition-all duration-700" style={{ width: `${fidelityScore}%`, backgroundColor: fidelityColor }} />
               </div>
-            )}
-            {hasDocuments === true && (
-  <div className="mt-2 flex items-center justify-between">
-    <p className="text-xs text-emerald-400 font-medium">
-      ✅ Votre jumeau est prêt à représenter votre méthode auprès de vos patients.
-    </p>
-    <button
-      onClick={() => { localStorage.setItem("fidelity_hidden", "true"); setShowFidelity(false); }}
-      className="shrink-0 ml-4 text-[11px] text-zinc-600 hover:text-zinc-400 transition"
-    >
-      Masquer →
-    </button>
-  </div>
-)}
+              {hasDocuments === false && (
+                <div className="mt-2.5 flex items-start justify-between gap-4">
+                  <p className="text-xs text-amber-300 leading-relaxed">
+                    ⚠️ Votre jumeau connaît votre philosophie mais pas encore vos protocoles. Il répond de manière générique. Importez au moins un document pour qu'il devienne vraiment vous.
+                  </p>
+                  <button onClick={() => void openJumeauModal()} className="shrink-0 rounded-full border border-amber-500/50 px-3 py-1.5 text-xs font-semibold text-amber-400 transition hover:bg-amber-500/10">
+                    Importer →
+                  </button>
+                </div>
+              )}
+              {hasDocuments === true && (
+                <div className="mt-2 flex items-center justify-between">
+                  <p className="text-xs text-emerald-400 font-medium">✅ Votre jumeau est prêt à représenter votre méthode auprès de vos patients.</p>
+                  <button onClick={() => { localStorage.setItem("fidelity_hidden", "true"); setShowFidelity(false); }} className="shrink-0 ml-4 text-[11px] text-zinc-600 hover:text-zinc-400 transition">
+                    Masquer →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
-      </div>
-    </header>
+      </header>
 
       <main className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 p-4 sm:p-6 lg:grid-cols-[280px_minmax(0,1fr)_260px]">
 
@@ -676,16 +656,8 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
               patients.map((patient) => {
                 const isSelected = patient.id === selectedPatientId;
                 return (
-                  <button
-                    key={patient.id}
-                    type="button"
-                    onClick={() => setSelectedPatientId(patient.id)}
-                    className={`w-full rounded-xl border p-3 text-left transition ${
-                      isSelected
-                        ? "border-[#10b981]/70 bg-[#10b981]/10"
-                        : "border-white/10 bg-[#171717] hover:border-white/20"
-                    }`}
-                  >
+                  <button key={patient.id} type="button" onClick={() => setSelectedPatientId(patient.id)}
+                    className={`w-full rounded-xl border p-3 text-left transition ${isSelected ? "border-[#10b981]/70 bg-[#10b981]/10" : "border-white/10 bg-[#171717] hover:border-white/20"}`}>
                     <div className="flex items-start gap-3">
                       <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${patient.avatarColor}`}>
                         {patient.initials}
@@ -706,23 +678,14 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
 
           <div className="border-t border-white/10 p-3">
             {hasDocuments ? (
-              <button
-                type="button"
-                onClick={() => setShowInviteModal(true)}
-                className="w-full rounded-full bg-[#10b981] px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-[#34d399]"
-              >
+              <button type="button" onClick={() => setShowInviteModal(true)} className="w-full rounded-full bg-[#10b981] px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-[#34d399]">
                 + Inviter un patient
               </button>
             ) : (
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.08] p-3 text-center">
                 <p className="text-xs text-amber-400 font-semibold mb-1">Jumeau incomplet</p>
-                <p className="text-xs text-zinc-500 mb-2 leading-relaxed">
-                  Importez vos protocoles pour activer l'invitation de patients.
-                </p>
-                <button
-                  onClick={() => void openJumeauModal()}
-                  className="inline-block rounded-full border border-amber-500/40 px-4 py-1.5 text-xs font-semibold text-amber-400 transition hover:bg-amber-500/10"
-                >
+                <p className="text-xs text-zinc-500 mb-2 leading-relaxed">Importez vos protocoles pour activer l'invitation de patients.</p>
+                <button onClick={() => void openJumeauModal()} className="inline-block rounded-full border border-amber-500/40 px-4 py-1.5 text-xs font-semibold text-amber-400 transition hover:bg-amber-500/10">
                   Importer mes protocoles →
                 </button>
               </div>
@@ -739,10 +702,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                   <p className="text-lg font-semibold">{selectedPatient.firstName} {selectedPatient.lastName}</p>
                   <p className="text-sm text-zinc-400">{selectedPatient.email}</p>
                 </div>
-                <button
-                  onClick={() => { setShowReportModal(true); setReportContent(""); }}
-                  className="rounded-full border border-[#10b981]/50 px-3 py-1.5 text-xs font-semibold text-[#10b981] transition hover:bg-[#10b981]/10"
-                >
+                <button onClick={() => { setShowReportModal(true); setReportContent(""); }} className="rounded-full border border-[#10b981]/50 px-3 py-1.5 text-xs font-semibold text-[#10b981] transition hover:bg-[#10b981]/10">
                   📊 Rapport IA
                 </button>
               </div>
@@ -755,9 +715,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                     return (
                       <div key={message.id} className={`flex ${isPatient ? "justify-start" : "justify-end"}`}>
                         <div className="max-w-[82%]">
-                          <div className={`rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
-                            isPatient ? "rounded-bl-md bg-[#2a2a2a] text-zinc-100" : "rounded-br-md bg-[#10b981] text-black"
-                          }`}>
+                          <div className={`rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${isPatient ? "rounded-bl-md bg-[#2a2a2a] text-zinc-100" : "rounded-br-md bg-[#10b981] text-black"}`}>
                             {message.content}
                           </div>
                           <div className={`mt-1 text-[11px] ${isPatient ? "text-zinc-500" : "text-right text-zinc-500"}`}>
@@ -788,7 +746,6 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                 <p className="text-lg font-semibold">{selectedPatient.firstName} {selectedPatient.lastName}</p>
                 <p className="text-xs text-zinc-400">{selectedPatient.email}</p>
               </div>
-
               <div className="space-y-3 rounded-xl border border-white/10 bg-[#181818] p-3 text-sm mb-4">
                 <InfoRow label="Messages totaux" value={String(selectedPatient.totalMessages)} />
                 <InfoRow label="Dernier message" value={selectedPatient.lastMessageTime || "—"} />
@@ -798,18 +755,10 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                 {selectedPatient.allergies && <InfoRow label="Allergies" value={selectedPatient.allergies} />}
                 {selectedPatient.notes && <InfoRow label="Notes" value={selectedPatient.notes} />}
               </div>
-
-              <button
-                onClick={openProfileModal}
-                className="w-full rounded-xl border border-white/10 bg-[#181818] px-4 py-3 text-sm font-semibold text-zinc-300 transition hover:border-white/20 hover:text-white mb-3"
-              >
+              <button onClick={openProfileModal} className="w-full rounded-xl border border-white/10 bg-[#181818] px-4 py-3 text-sm font-semibold text-zinc-300 transition hover:border-white/20 hover:text-white mb-3">
                 ✏️ Modifier le profil patient
               </button>
-
-              <button
-                onClick={() => { setShowReportModal(true); setReportContent(""); }}
-                className="w-full rounded-xl bg-[#10b981]/10 border border-[#10b981]/30 px-4 py-3 text-sm font-semibold text-[#10b981] transition hover:bg-[#10b981]/20"
-              >
+              <button onClick={() => { setShowReportModal(true); setReportContent(""); }} className="w-full rounded-xl bg-[#10b981]/10 border border-[#10b981]/30 px-4 py-3 text-sm font-semibold text-[#10b981] transition hover:bg-[#10b981]/20">
                 📊 Générer rapport journal
               </button>
             </>
@@ -823,36 +772,17 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
 
       {/* MODALE MON JUMEAU */}
       {showJumeauModal && (
-        <div
-          onClick={(e) => { if (e.target === e.currentTarget) setShowJumeauModal(false); }}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
-            zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 20,
-          }}
-        >
-          <div style={{
-            background: "#0d0d0d", borderRadius: 24, padding: 28,
-            width: "100%", maxWidth: 560,
-            border: "1px solid rgba(255,255,255,0.08)",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
-            maxHeight: "90vh", overflowY: "auto",
-          }}>
+        <div onClick={(e) => { if (e.target === e.currentTarget) setShowJumeauModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 560, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>Améliorer mon jumeau </h2>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>Améliorer mon jumeau</h2>
                 <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>Gérez les documents qui enrichissent votre jumeau</p>
               </div>
               <button onClick={() => setShowJumeauModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
             </div>
 
-            {/* Score de fidélité */}
-            <div style={{
-              background: hasDocuments ? "rgba(16,185,129,0.05)" : "rgba(245,158,11,0.08)",
-              borderRadius: 16,
-              border: `1px solid ${hasDocuments ? "rgba(16,185,129,0.2)" : "rgba(245,158,11,0.3)"}`,
-              padding: "16px", marginBottom: 20,
-            }}>
+            <div style={{ background: hasDocuments ? "rgba(16,185,129,0.05)" : "rgba(245,158,11,0.08)", borderRadius: 16, border: `1px solid ${hasDocuments ? "rgba(16,185,129,0.2)" : "rgba(245,158,11,0.3)"}`, padding: "16px", marginBottom: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                 <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>Score de fidélité</span>
                 <span style={{ fontSize: 16, fontWeight: 800, color: fidelityColor }}>{fidelityScore}%</span>
@@ -861,23 +791,17 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                 <div style={{ height: "100%", borderRadius: 4, backgroundColor: fidelityColor, width: `${fidelityScore}%`, transition: "width 0.7s" }} />
               </div>
               <p style={{ margin: "10px 0 0", fontSize: 13, color: hasDocuments ? "#10b981" : "#f59e0b", fontWeight: 500 }}>
-                {hasDocuments
-                  ? "✅ Jumeau Fidèle — Votre jumeau est prêt à vous représenter parfaitement."
-                  : "⚠️ Jumeau Personnalisé — Votre jumeau connaît votre philosophie mais répond de manière générique. Importez au moins un document pour qu'il devienne vraiment vous."}
+                {hasDocuments ? "✅ Jumeau Fidèle — Votre jumeau est prêt à vous représenter parfaitement." : "⚠️ Jumeau Personnalisé — Importez au moins un document pour qu'il devienne vraiment vous."}
               </p>
             </div>
 
-            {/* Documents existants */}
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>
-                Documents indexés ({documents.length})
-              </p>
+              <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>Documents indexés ({documents.length})</p>
               {loadingDocs ? (
                 <p style={{ fontSize: 13, color: "#64748b" }}>Chargement...</p>
               ) : documents.length === 0 ? (
                 <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", padding: "20px", textAlign: "center" }}>
                   <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Aucun document indexé</p>
-                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "#475569" }}>Votre jumeau utilise uniquement vos réponses au questionnaire</p>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -890,76 +814,41 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                           <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{new Date(doc.created_at).toLocaleDateString("fr-FR")}</p>
                         </div>
                       </div>
-                      <button
-                        onClick={() => void deleteDocument(doc.id, doc.file_name)}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#64748b", flexShrink: 0, marginLeft: 8, padding: "4px 8px", borderRadius: 6, transition: "color 0.2s" }}
-                        onMouseEnter={(e) => e.currentTarget.style.color = "#f87171"}
-                        onMouseLeave={(e) => e.currentTarget.style.color = "#64748b"}
-                      >✕</button>
+                      <button onClick={() => void deleteDocument(doc.id, doc.file_name)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#64748b", flexShrink: 0, marginLeft: 8, padding: "4px 8px", borderRadius: 6, transition: "color 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.color = "#f87171"} onMouseLeave={(e) => e.currentTarget.style.color = "#64748b"}>✕</button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Classification document */}
             <div style={{ marginBottom: 16 }}>
               <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: "white" }}>Quel type de document uploadez-vous ?</p>
               <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>Cela détermine si vos documents seront anonymisés ou non.</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-                <button
-                  type="button"
-                  onClick={() => setDocumentType("protocole")}
-                  style={{
-                    borderRadius: 12, border: `2px solid ${documentType === "protocole" ? "#10b981" : "rgba(255,255,255,0.1)"}`,
-                    background: documentType === "protocole" ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)",
-                    padding: "14px", textAlign: "left", cursor: "pointer",
-                  }}
-                >
+                <button type="button" onClick={() => setDocumentType("protocole")} style={{ borderRadius: 12, border: `2px solid ${documentType === "protocole" ? "#10b981" : "rgba(255,255,255,0.1)"}`, background: documentType === "protocole" ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)", padding: "14px", textAlign: "left", cursor: "pointer" }}>
                   <p style={{ margin: "0 0 6px", fontSize: 22 }}>📋</p>
                   <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "white" }}>Protocoles & méthodes</p>
                   <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>Articles, plans alimentaires, guides nutritionnels</p>
                   <p style={{ margin: 0, fontSize: 12, color: "#10b981", fontWeight: 600 }}>✓ Indexé tel quel</p>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setDocumentType("patient")}
-                  style={{
-                    borderRadius: 12, border: `2px solid ${documentType === "patient" ? "#10b981" : "rgba(255,255,255,0.1)"}`,
-                    background: documentType === "patient" ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)",
-                    padding: "14px", textAlign: "left", cursor: "pointer",
-                  }}
-                >
+                <button type="button" onClick={() => setDocumentType("patient")} style={{ borderRadius: 12, border: `2px solid ${documentType === "patient" ? "#10b981" : "rgba(255,255,255,0.1)"}`, background: documentType === "patient" ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)", padding: "14px", textAlign: "left", cursor: "pointer" }}>
                   <p style={{ margin: "0 0 6px", fontSize: 22 }}>🗂️</p>
                   <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "white" }}>Données patients</p>
                   <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>Bilans, comptes-rendus, fiches patients</p>
                   <p style={{ margin: 0, fontSize: 12, color: "#60a5fa", fontWeight: 600 }}>✓ Anonymisé avant indexation</p>
                 </button>
               </div>
-              {!documentType && uploadedFiles.length > 0 && (
-                <p style={{ margin: 0, fontSize: 12, color: "#f59e0b" }}>⚠️ Veuillez sélectionner le type de document avant d'indexer.</p>
-              )}
+              {!documentType && uploadedFiles.length > 0 && <p style={{ margin: 0, fontSize: 12, color: "#f59e0b" }}>⚠️ Veuillez sélectionner le type de document avant d'indexer.</p>}
             </div>
 
-            {/* Zone upload */}
             <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a" onChange={handleFileChange} style={{ display: "none" }} />
 
-            <label
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                borderRadius: 12, border: "2px dashed rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.01)",
-                padding: "20px", cursor: "pointer", transition: "border-color 0.2s", marginBottom: 12,
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = "rgba(16,185,129,0.4)"}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"}
-            >
+            <label onClick={() => fileInputRef.current?.click()} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 12, border: "2px dashed rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.01)", padding: "20px", cursor: "pointer", transition: "border-color 0.2s", marginBottom: 12 }} onMouseEnter={(e) => e.currentTarget.style.borderColor = "rgba(16,185,129,0.4)"} onMouseLeave={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"}>
               <span style={{ fontSize: 32, marginBottom: 8 }}>📄</span>
               <span style={{ fontSize: 14, fontWeight: 500, color: "#94a3b8" }}>Cliquez pour sélectionner</span>
               <span style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>PDF · DOCX · TXT · JPG · PNG · Excel · CSV · MP3 · WAV · M4A</span>
             </label>
 
-            {/* Mémo vocal */}
             <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 12, border: "1.5px solid rgba(16,185,129,0.2)", padding: "14px 16px", marginBottom: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                 <span style={{ fontSize: 22 }}>🎙️</span>
@@ -969,21 +858,8 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                 </div>
               </div>
               {!audioBlob ? (
-                <button
-                  type="button"
-                  onClick={isRecording ? stopRecording : startRecording}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 8, borderRadius: 20,
-                    padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none",
-                    background: isRecording ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.2)",
-                    color: isRecording ? "#f87171" : "#10b981",
-                  }}
-                >
-                  {isRecording ? (
-                    <><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", animation: "pulse 1s infinite" }} />Arrêter — {formatTime(recordingTime)}</>
-                  ) : (
-                    <>🎙️ Enregistrer un mémo vocal</>
-                  )}
+                <button type="button" onClick={isRecording ? stopRecording : startRecording} style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 20, padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: isRecording ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.2)", color: isRecording ? "#f87171" : "#10b981" }}>
+                  {isRecording ? <><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", animation: "pulse 1s infinite" }} />Arrêter — {formatTime(recordingTime)}</> : <>🎙️ Enregistrer un mémo vocal</>}
                 </button>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -994,7 +870,6 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
               )}
             </div>
 
-            {/* Fichiers sélectionnés */}
             {uploadedFiles.length > 0 && (
               <div style={{ marginBottom: 12 }}>
                 {uploadedFiles.map((f, i) => (
@@ -1003,21 +878,10 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                     <button onClick={() => setUploadedFiles((prev) => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", marginLeft: 8 }}>✕</button>
                   </div>
                 ))}
-
                 <div style={{ background: "rgba(245,158,11,0.08)", borderRadius: 10, border: "1px solid rgba(245,158,11,0.2)", padding: "10px 14px", marginBottom: 10 }}>
                   <p style={{ margin: 0, fontSize: 12, color: "#f59e0b" }}>⏳ L'indexation peut prendre 30 secondes à 2 minutes. Ne fermez pas cette fenêtre.</p>
                 </div>
-
-                <button
-                  onClick={() => void uploadFiles()}
-                  disabled={uploading || !documentType}
-                  style={{
-                    width: "100%", height: 48, borderRadius: 24,
-                    background: uploading ? "rgba(255,255,255,0.05)" : !documentType ? "rgba(255,255,255,0.05)" : "#10b981",
-                    border: "none", color: uploading || !documentType ? "#64748b" : "black",
-                    fontSize: 15, fontWeight: 600, cursor: uploading || !documentType ? "not-allowed" : "pointer",
-                  }}
-                >
+                <button onClick={() => void uploadFiles()} disabled={uploading || !documentType} style={{ width: "100%", height: 48, borderRadius: 24, background: uploading || !documentType ? "rgba(255,255,255,0.05)" : "#10b981", border: "none", color: uploading || !documentType ? "#64748b" : "black", fontSize: 15, fontWeight: 600, cursor: uploading || !documentType ? "not-allowed" : "pointer" }}>
                   {uploading ? "⏳ Indexation en cours..." : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""} →`}
                 </button>
               </div>
@@ -1026,17 +890,13 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
             {uploadSuccess.length > 0 && (
               <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", padding: "12px 14px", marginBottom: 8 }}>
                 <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 700, color: "#10b981" }}>✅ Documents indexés :</p>
-                {uploadSuccess.map((s, i) => (
-                  <p key={i} style={{ margin: "0 0 2px", fontSize: 12, color: "#10b981" }}>• {s}</p>
-                ))}
+                {uploadSuccess.map((s, i) => <p key={i} style={{ margin: "0 0 2px", fontSize: 12, color: "#10b981" }}>• {s}</p>)}
               </div>
             )}
 
             {uploadErrors.length > 0 && (
               <div style={{ marginBottom: 8 }}>
-                {uploadErrors.map((e, i) => (
-                  <p key={i} style={{ margin: "0 0 4px", fontSize: 12, color: "#f87171" }}>❌ {e}</p>
-                ))}
+                {uploadErrors.map((e, i) => <p key={i} style={{ margin: "0 0 4px", fontSize: 12, color: "#f87171" }}>❌ {e}</p>)}
               </div>
             )}
           </div>
@@ -1061,22 +921,15 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
               ].map(({ label, value, onChange, placeholder, type }) => (
                 <div key={label}>
                   <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
-                  <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-                    style={{ width: "100%", height: 44, borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
-                    onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                    onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                  <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={{ width: "100%", height: 44, borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box" }} onFocus={(e) => e.target.style.borderColor = "#10b981"} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
                 </div>
               ))}
               <div>
                 <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Notes personnalisées</p>
-                <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Informations importantes sur ce patient..." rows={3}
-                  style={{ width: "100%", borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "12px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "'Inter', sans-serif" }}
-                  onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Informations importantes sur ce patient..." rows={3} style={{ width: "100%", borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "12px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "'Inter', sans-serif" }} onFocus={(e) => e.target.style.borderColor = "#10b981"} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
               </div>
             </div>
-            <button onClick={() => void saveProfile()} disabled={savingProfile}
-              style={{ width: "100%", height: 48, borderRadius: 24, background: profileSaved ? "rgba(16,185,129,0.2)" : "#10b981", border: profileSaved ? "1px solid #10b981" : "none", color: profileSaved ? "#10b981" : "black", fontSize: 15, fontWeight: 600, cursor: savingProfile ? "not-allowed" : "pointer", marginTop: 20, transition: "all 0.2s" }}>
+            <button onClick={() => void saveProfile()} disabled={savingProfile} style={{ width: "100%", height: 48, borderRadius: 24, background: profileSaved ? "rgba(16,185,129,0.2)" : "#10b981", border: profileSaved ? "1px solid #10b981" : "none", color: profileSaved ? "#10b981" : "black", fontSize: 15, fontWeight: 600, cursor: savingProfile ? "not-allowed" : "pointer", marginTop: 20, transition: "all 0.2s" }}>
               {profileSaved ? "✅ Profil sauvegardé !" : savingProfile ? "Sauvegarde..." : "Sauvegarder le profil"}
             </button>
           </div>
@@ -1096,8 +949,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
               <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Période</p>
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
                 {[{ value: "week", label: "Cette semaine" }, { value: "month", label: "Ce mois" }, { value: "custom", label: "Personnalisée" }].map((option) => (
-                  <button key={option.value} onClick={() => setReportPeriod(option.value as ReportPeriod)}
-                    style={{ flex: 1, height: 36, borderRadius: 8, border: `1.5px solid ${reportPeriod === option.value ? "#10b981" : "rgba(255,255,255,0.1)"}`, background: reportPeriod === option.value ? "rgba(16,185,129,0.15)" : "transparent", color: reportPeriod === option.value ? "#10b981" : "#94a3b8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  <button key={option.value} onClick={() => setReportPeriod(option.value as ReportPeriod)} style={{ flex: 1, height: 36, borderRadius: 8, border: `1.5px solid ${reportPeriod === option.value ? "#10b981" : "rgba(255,255,255,0.1)"}`, background: reportPeriod === option.value ? "rgba(16,185,129,0.15)" : "transparent", color: reportPeriod === option.value ? "#10b981" : "#94a3b8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {option.label}
                   </button>
                 ))}
@@ -1116,8 +968,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
               )}
             </div>
             {!reportContent && (
-              <button onClick={() => void generateReport()} disabled={reportLoading || (reportPeriod === "custom" && (!reportDateFrom || !reportDateTo))}
-                style={{ width: "100%", height: 48, borderRadius: 24, background: reportLoading ? "#1a1a1a" : "#10b981", border: "none", color: reportLoading ? "#4a4a4a" : "black", fontSize: 15, fontWeight: 600, cursor: reportLoading ? "not-allowed" : "pointer", marginBottom: 16 }}>
+              <button onClick={() => void generateReport()} disabled={reportLoading || (reportPeriod === "custom" && (!reportDateFrom || !reportDateTo))} style={{ width: "100%", height: 48, borderRadius: 24, background: reportLoading ? "#1a1a1a" : "#10b981", border: "none", color: reportLoading ? "#4a4a4a" : "black", fontSize: 15, fontWeight: 600, cursor: reportLoading ? "not-allowed" : "pointer", marginBottom: 16 }}>
                 {reportLoading ? "Génération en cours... 🤖" : "Générer le rapport IA"}
               </button>
             )}
@@ -1139,26 +990,84 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
       {/* Modale invitation */}
       {showInviteModal && (
         <div onClick={(e) => { if (e.target === e.currentTarget) setShowInviteModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#121212", borderRadius: 20, padding: 28, width: "100%", maxWidth: 420, border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", position: "relative" }}>
-            <button onClick={() => { setShowInviteModal(false); setInviteEmail(""); setInviteError(""); setInviteSuccess(false); }} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
-            <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: "white" }}>Inviter un patient</h2>
-            <p style={{ margin: "0 0 20px", fontSize: 14, color: "#94a3b8" }}>Votre patient recevra un email pour accéder à son espace personnalisé.</p>
+          <div style={{ background: "#121212", borderRadius: 20, padding: 28, width: "100%", maxWidth: 520, border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", maxHeight: "90vh", overflowY: "auto", position: "relative" }}>
+            <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteSuccess(false); }} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
+
+            <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 700, color: "white" }}>Inviter un patient</h2>
+            <p style={{ margin: "0 0 24px", fontSize: 14, color: "#94a3b8" }}>Votre patient recevra un email pour accéder à son espace personnalisé.</p>
+
             {inviteSuccess ? (
               <div style={{ background: "rgba(16,185,129,0.15)", border: "1px solid #10b981", borderRadius: 12, padding: "16px 18px", textAlign: "center", color: "#10b981", fontWeight: 600, fontSize: 15 }}>
                 ✅ Invitation envoyée ! La fenêtre se ferme automatiquement...
               </div>
             ) : (
               <>
-                <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void sendInvite(); }} placeholder="email@patient.fr"
-                  style={{ width: "100%", height: 48, borderRadius: 12, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box" }}
-                  onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Email *</p>
+                  <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="email@patient.fr" style={{ width: "100%", height: 44, borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box" }} onFocus={(e) => e.target.style.borderColor = "#10b981"} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                </div>
+
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 16, marginBottom: 14 }}>
+                  <p style={{ margin: "0 0 4px", fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.8px" }}>Profil médical</p>
+                  <p style={{ margin: "0 0 14px", fontSize: 12, color: "#475569" }}>Le patient pourra confirmer ou corriger ces informations lors de sa première connexion.</p>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                    <div>
+                      <p style={{ margin: "0 0 4px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Âge</p>
+                      <input type="number" value={inviteAge} onChange={(e) => setInviteAge(e.target.value)} placeholder="Ex: 34" style={{ width: "100%", height: 40, borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} onFocus={(e) => e.target.style.borderColor = "#10b981"} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                    </div>
+                    <div>
+                      <p style={{ margin: "0 0 4px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
+                      <select value={inviteSexe} onChange={(e) => setInviteSexe(e.target.value)} style={{ width: "100%", height: 40, borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: inviteSexe ? "white" : "#64748b", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
+                        <option value="">Sélectionner</option>
+                        <option value="Femme">Femme</option>
+                        <option value="Homme">Homme</option>
+                        <option value="Autre">Autre</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                    <div>
+                      <p style={{ margin: "0 0 4px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Taille (cm)</p>
+                      <input type="number" value={inviteTaille} onChange={(e) => setInviteTaille(e.target.value)} placeholder="Ex: 168" style={{ width: "100%", height: 40, borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} onFocus={(e) => e.target.style.borderColor = "#10b981"} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                    </div>
+                    <div>
+                      <p style={{ margin: "0 0 4px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Poids (kg)</p>
+                      <input type="number" value={invitePoids} onChange={(e) => setInvitePoids(e.target.value)} placeholder="Ex: 72" style={{ width: "100%", height: 40, borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} onFocus={(e) => e.target.style.borderColor = "#10b981"} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                    </div>
+                  </div>
+
+                  {[
+                    { label: "Pathologies diagnostiquées", value: invitePathologies, onChange: setInvitePathologies, placeholder: "Ex: Diabète type 2, hypothyroïdie" },
+                    { label: "Allergies & intolérances", value: inviteAllergies, onChange: setInviteAllergies, placeholder: "Ex: Gluten, lactose, arachides" },
+                    { label: "Traitements en cours", value: inviteTraitements, onChange: setInviteTraitements, placeholder: "Ex: Metformine 500mg, Lévothyrox" },
+                    { label: "Objectif clinique", value: inviteObjectifClinique, onChange: setInviteObjectifClinique, placeholder: "Ex: Stabilisation glycémie, perte masse grasse" },
+                  ].map(({ label, value, onChange, placeholder }) => (
+                    <div key={label} style={{ marginBottom: 10 }}>
+                      <p style={{ margin: "0 0 4px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
+                      <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={{ width: "100%", height: 40, borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} onFocus={(e) => e.target.style.borderColor = "#10b981"} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                    </div>
+                  ))}
+
+                  <div style={{ marginBottom: 10 }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 12, fontWeight: 600, color: "#10b981" }}>🎯 Brief pour le jumeau (optionnel)</p>
+                    <p style={{ margin: "0 0 6px", fontSize: 11, color: "#475569" }}>Une consigne spécifique pour personnaliser les réponses du jumeau pour ce patient.</p>
+                    <textarea value={inviteBriefJumeau} onChange={(e) => setInviteBriefJumeau(e.target.value)} placeholder="Ex: Sois très encourageant sur le sport, mais ferme sur l'hydratation." rows={3} style={{ width: "100%", borderRadius: 10, border: "1.5px solid rgba(16,185,129,0.3)", background: "#1a1a1a", color: "white", padding: "10px 12px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "'Inter', sans-serif" }} onFocus={(e) => e.target.style.borderColor = "#10b981"} onBlur={(e) => e.target.style.borderColor = "rgba(16,185,129,0.3)"} />
+                  </div>
+
+                  <div>
+                    <p style={{ margin: "0 0 4px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Notes internes</p>
+                    <textarea value={inviteNotes} onChange={(e) => setInviteNotes(e.target.value)} placeholder="Notes visibles uniquement par vous..." rows={2} style={{ width: "100%", borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "10px 12px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "'Inter', sans-serif" }} onFocus={(e) => e.target.style.borderColor = "#10b981"} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                  </div>
+                </div>
+
                 {inviteError && <p style={{ margin: "8px 0 0", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
-                <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                  <button onClick={() => { setShowInviteModal(false); setInviteEmail(""); setInviteError(""); }} style={{ flex: 1, height: 44, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>Annuler</button>
-                  <button onClick={() => void sendInvite()} disabled={inviting || !inviteEmail.trim()}
-                    style={{ flex: 1, height: 44, borderRadius: 12, background: inviting || !inviteEmail.trim() ? "#1a1a1a" : "#10b981", border: "none", color: inviting || !inviteEmail.trim() ? "#4a4a4a" : "black", cursor: inviting || !inviteEmail.trim() ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}>
-                    {inviting ? "Envoi..." : "Envoyer"}
+
+                <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                  <button onClick={() => { setShowInviteModal(false); resetInviteForm(); }} style={{ flex: 1, height: 44, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>Annuler</button>
+                  <button onClick={() => void sendInvite()} disabled={inviting || !inviteEmail.trim()} style={{ flex: 1, height: 44, borderRadius: 12, background: inviting || !inviteEmail.trim() ? "#1a1a1a" : "#10b981", border: "none", color: inviting || !inviteEmail.trim() ? "#4a4a4a" : "black", cursor: inviting || !inviteEmail.trim() ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}>
+                    {inviting ? "Envoi..." : "Envoyer l'invitation →"}
                   </button>
                 </div>
               </>

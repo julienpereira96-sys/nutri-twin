@@ -8,7 +8,33 @@ const PLAN_LIMITS: Record<string, number> = {
 };
 
 export async function POST(request: Request) {
-  const { email, practitionerId } = await request.json() as { email: string; practitionerId: string };
+  const {
+    email,
+    practitionerId,
+    age,
+    sexe,
+    taille,
+    poids,
+    pathologies,
+    allergies,
+    traitements,
+    objectif_clinique,
+    brief_jumeau,
+    notes,
+  } = await request.json() as {
+    email: string;
+    practitionerId: string;
+    age?: number | null;
+    sexe?: string | null;
+    taille?: number | null;
+    poids?: number | null;
+    pathologies?: string | null;
+    allergies?: string | null;
+    traitements?: string | null;
+    objectif_clinique?: string | null;
+    brief_jumeau?: string | null;
+    notes?: string | null;
+  };
 
   const supabase = createClient(
     process.env.SUPABASE_URL!,
@@ -50,6 +76,22 @@ export async function POST(request: Request) {
       patient_id: data.user.id,
       practitioner_id: practitionerId,
     });
+
+    // Sauvegarder les infos pré-remplies par le praticien
+    await supabase.from("patients").upsert({
+      user_id: data.user.id,
+      email,
+      age: age ?? null,
+      sexe: sexe ?? null,
+      taille: taille ?? null,
+      poids: poids ?? null,
+      pathologies: pathologies ?? null,
+      allergies: allergies ?? null,
+      traitements: traitements ?? null,
+      objectif_clinique: objectif_clinique ?? null,
+      brief_jumeau: brief_jumeau ?? null,
+      notes: notes ?? null,
+    }, { onConflict: "user_id" });
   }
 
   return Response.json({ success: true });
