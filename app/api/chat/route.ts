@@ -13,7 +13,7 @@ const redis = new Redis({
 // ============================================================
 const PLAN_CONFIG = {
   essentiel: {
-    model: "gemini-3-flash-lite",
+    model: "gemini-3.1-flash-lite",
     maxOutputTokens: 200,
     historyLimit: 20,
     ragChunks: 5,
@@ -21,7 +21,7 @@ const PLAN_CONFIG = {
     isFounder: false,
   },
   pro: {
-    model: "gemini-3-flash",
+    model: "gemini-3-flash-preview",
     maxOutputTokens: 500,
     historyLimit: 100,
     ragChunks: 5,
@@ -29,7 +29,7 @@ const PLAN_CONFIG = {
     isFounder: false,
   },
   cabinet: {
-    model: "gemini-3-flash",
+    model: "gemini-3-flash-preview",
     maxOutputTokens: 500,
     historyLimit: 100,
     ragChunks: 5,
@@ -37,7 +37,7 @@ const PLAN_CONFIG = {
     isFounder: false,
   },
   fondateur: {
-    model: "gemini-3-flash",
+    model: "gemini-3-flash-preview",
     maxOutputTokens: 500,
     historyLimit: 100,
     ragChunks: 5,
@@ -289,7 +289,7 @@ async function summarizeOldMessages(
       .map((m) => m.content.slice(0, 150))
       .join(" | ");
 
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-lite" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
     const result = await model.generateContent(
       `Résume en 5 lignes maximum les points clés de ces échanges patient-nutritionniste. 
       Garde uniquement les faits importants : objectifs, écarts, progrès, préoccupations.
@@ -465,10 +465,10 @@ export async function POST(request: Request) {
 
     // ── Model routing ──
     const modelName = imageBase64
-      ? "gemini-3-flash"
+      ? "gemini-3-flash-preview"
       : plan === "essentiel"
         ? config.model
-        : isComplexMessage(message) ? "gemini-3-flash" : "gemini-3-flash-lite";
+        : isComplexMessage(message) ? "gemini-3-flash-preview" : "gemini-3.1-flash-lite";
 
     const model = genAI.getGenerativeModel({
       model: modelName,
