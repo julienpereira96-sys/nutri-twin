@@ -21,6 +21,8 @@ export async function POST(request: Request) {
     objectif_clinique,
     brief_jumeau,
     notes,
+    niveau_activite,
+    regime_specifique,
   } = await request.json() as {
     email: string;
     practitionerId: string;
@@ -34,6 +36,8 @@ export async function POST(request: Request) {
     objectif_clinique?: string | null;
     brief_jumeau?: string | null;
     notes?: string | null;
+    niveau_activite?: string | null;
+    regime_specifique?: string | null;
   };
 
   const supabase = createClient(
@@ -99,6 +103,9 @@ export async function POST(request: Request) {
       objectif_clinique: objectif_clinique ?? null,
       brief_jumeau: brief_jumeau ?? null,
       notes: notes ?? null,
+      niveau_activite: niveau_activite ?? null,
+      regime_specifique: regime_specifique ?? null,
+
     }, { onConflict: "user_id" });
   }
 
