@@ -69,6 +69,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [practitionerName, setPractitionerName] = useState("");
   const [hasDocuments, setHasDocuments] = useState<boolean | null>(null);
+  const [showFidelity, setShowFidelity] = useState(true);
 
   // Documents
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -228,6 +229,11 @@ export default function DashboardPage() {
         .select("*", { count: "exact", head: true })
         .eq("practitioner_id", pid);
       setHasDocuments((count ?? 0) > 0);
+      if ((count ?? 0) > 0) {
+        const hidden = localStorage.getItem("fidelity_hidden");
+        if (hidden === "true") setShowFidelity(false);
+      }
+      
 
       await loadPatients(pid);
     });
@@ -593,7 +599,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
           </div>
 
           {/* Jauge de fidélité */}
-          {hasDocuments !== null && (
+          {hasDocuments !== null && showFidelity && (
           <div className={`rounded-xl border px-4 py-3 ${hasDocuments !== true ? "border-amber-500/30 bg-amber/5" : "border-white/[0.06] bg-white/[0.02]"}`}>
 
             <div className="flex items-center justify-between mb-2">
@@ -622,15 +628,23 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                 </button>
               </div>
             )}
-            {hasDocuments && (
-              <p className="mt-2 text-xs text-emerald-400 font-medium">
-                ✅ Votre jumeau est prêt à représenter votre méthode auprès de vos patients.
-              </p>
-            )}
-                    </div>
-        )}
+            {hasDocuments === true && (
+  <div className="mt-2 flex items-center justify-between">
+    <p className="text-xs text-emerald-400 font-medium">
+      ✅ Votre jumeau est prêt à représenter votre méthode auprès de vos patients.
+    </p>
+    <button
+      onClick={() => { localStorage.setItem("fidelity_hidden", "true"); setShowFidelity(false); }}
+      className="shrink-0 ml-4 text-[11px] text-zinc-600 hover:text-zinc-400 transition"
+    >
+      Masquer →
+    </button>
+  </div>
+)}
         </div>
-      </header>
+      )}
+      </div>
+    </header>
 
       <main className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 p-4 sm:p-6 lg:grid-cols-[280px_minmax(0,1fr)_260px]">
 
