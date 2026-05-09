@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type RealPatient = {
   id: string;
@@ -44,6 +44,8 @@ const AVATAR_COLORS = [
 ];
 
 export default function DashboardPage() {
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+
   const [patients, setPatients] = useState<RealPatient[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -81,7 +83,7 @@ export default function DashboardPage() {
   const fidelityColor = hasDocuments ? "#10b981" : "#f59e0b";
   const fidelityLabel = hasDocuments ? "Jumeau Fidèle" : "Jumeau Personnalisé";
 
-  // Profil patient éditable
+  // Profil patient
   const [editAge, setEditAge] = useState("");
   const [editObjective, setEditObjective] = useState("");
   const [editPathologies, setEditPathologies] = useState("");
@@ -109,17 +111,12 @@ export default function DashboardPage() {
 
   const loadDocuments = async (pid: string) => {
     setLoadingDocs(true);
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
     const { data } = await supabase
       .from("documents")
       .select("id, file_name, file_type, created_at")
       .eq("practitioner_id", pid)
       .order("created_at", { ascending: false });
 
-    // Dédupliquer par file_name
     const seen = new Set<string>();
     const unique = (data as Document[] ?? []).filter((d) => {
       if (seen.has(d.file_name)) return false;
@@ -132,11 +129,6 @@ export default function DashboardPage() {
   };
 
   const loadPatients = async (pid: string) => {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
     const { data: relations } = await supabase
       .from("patient_practitioner")
       .select("patient_id")
@@ -209,11 +201,6 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) return;
       const pid = data.user.id;
@@ -241,11 +228,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!selectedPatientId || !practitionerId) return;
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
     supabase
       .from("conversations")
       .select("id, role, content, created_at")
@@ -262,6 +244,7 @@ export default function DashboardPage() {
     setUploadedFiles([]);
     setUploadSuccess([]);
     setUploadErrors([]);
+    setDocumentType(null);
     if (practitionerId) await loadDocuments(practitionerId);
   };
 
@@ -317,13 +300,8 @@ export default function DashboardPage() {
   const uploadFiles = async () => {
     if (uploadedFiles.length === 0 || !documentType) return;
 
-    // Récupérer le practitionerId en temps réel si null
     let pid = practitionerId;
     if (!pid) {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
       const { data: { user } } = await supabase.auth.getUser();
       pid = user?.id ?? null;
     }
@@ -362,13 +340,8 @@ export default function DashboardPage() {
     await loadDocuments(pid);
   };
 
-
   const deleteDocument = async (docId: string, fileName: string) => {
     if (!practitionerId) return;
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
 
     await supabase
       .from("documents")
@@ -400,11 +373,6 @@ export default function DashboardPage() {
   const saveProfile = async () => {
     if (!selectedPatientId) return;
     setSavingProfile(true);
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
 
     await supabase
       .from("patients")
@@ -445,11 +413,6 @@ export default function DashboardPage() {
     setReportContent("");
 
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-
       const now = new Date();
       let dateFrom = "";
       let dateTo = now.toISOString().split("T")[0];
@@ -606,52 +569,51 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 px-4 py-4 sm:px-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-bold tracking-tight sm:text-xl">
+              <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
                 {practitionerName ? `Bonjour ${practitionerName.split(" ")[0]} 👋` : "Dashboard NutriTwin"}
               </h1>
-              <p className="text-xs text-zinc-400 sm:text-sm">
+              <p className="text-sm text-zinc-400 mt-0.5">
                 {patients.length} patient{patients.length > 1 ? "s" : ""} actif{patients.length > 1 ? "s" : ""} · {totalMessages} messages au total
               </p>
             </div>
             <button
               onClick={() => void openJumeauModal()}
-              className="rounded-full bg-[#10b981] px-4 py-2 text-sm font-semibold text-black transition hover:bg-[#34d399]"
+              className="rounded-full bg-[#10b981] px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-[#34d399]"
             >
-              Mon jumeau 🍃
+              Améliorer mon jumeau 🍃
             </button>
           </div>
 
           {/* Jauge de fidélité */}
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-            <div className="flex items-center justify-between mb-1.5">
+          <div className={`rounded-xl border px-4 py-3 ${!hasDocuments ? "border-amber-500/30 bg-amber-500/5" : "border-white/[0.06] bg-white/[0.02]"}`}>
+            <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <span className="text-[12px] font-semibold text-white">Statut du Jumeau :</span>
-                <span className="text-[12px] font-semibold" style={{ color: fidelityColor }}>{fidelityLabel}</span>
+                <span className="text-sm font-bold text-white">Statut du Jumeau :</span>
+                <span className="text-sm font-bold" style={{ color: fidelityColor }}>{fidelityLabel}</span>
               </div>
-              <span className="text-[12px] font-bold" style={{ color: fidelityColor }}>{fidelityScore}%</span>
+              <span className="text-sm font-bold" style={{ color: fidelityColor }}>{fidelityScore}%</span>
             </div>
-            <div className="h-1.5 w-full rounded-full bg-white/10">
+            <div className="h-2 w-full rounded-full bg-white/10">
               <div
                 className="h-full rounded-full transition-all duration-700"
                 style={{ width: `${fidelityScore}%`, backgroundColor: fidelityColor }}
               />
             </div>
             {!hasDocuments && (
-              <div className="mt-2 flex items-center justify-between">
-                <p className="text-[11px] text-zinc-500">
-                  Votre jumeau connaît votre philosophie mais pas encore vos protocoles. Il répond de manière générique.
+              <div className="mt-2.5 flex items-start justify-between gap-4">
+                <p className="text-xs text-amber-300 leading-relaxed">
+                  ⚠️ Votre jumeau connaît votre philosophie mais pas encore vos protocoles. Il répond de manière générique. Importez au moins un document pour qu'il devienne vraiment vous.
                 </p>
                 <button
                   onClick={() => void openJumeauModal()}
-                  className="ml-4 shrink-0 text-[11px] font-semibold transition hover:opacity-80"
-                  style={{ color: fidelityColor }}
+                  className="shrink-0 rounded-full border border-amber-500/50 px-3 py-1.5 text-xs font-semibold text-amber-400 transition hover:bg-amber-500/10"
                 >
-                  Importer mes protocoles →
+                  Importer →
                 </button>
               </div>
             )}
             {hasDocuments && (
-              <p className="mt-1.5 text-[11px] text-emerald-500">
+              <p className="mt-2 text-xs text-emerald-400 font-medium">
                 ✅ Votre jumeau est prêt à représenter votre méthode auprès de vos patients.
               </p>
             )}
@@ -662,14 +624,14 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
       <main className="mx-auto grid w-full max-w-[1600px] grid-cols-1 gap-4 p-4 sm:p-6 lg:grid-cols-[280px_minmax(0,1fr)_260px]">
 
         {/* Sidebar patients */}
-        <aside className="flex h-[calc(100vh-180px)] flex-col rounded-2xl border border-white/10 bg-[#121212]">
+        <aside className="flex h-[calc(100vh-200px)] flex-col rounded-2xl border border-white/10 bg-[#121212]">
           <div className="border-b border-white/10 px-4 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#10b981]/20">
                 <span className="text-lg">🍃</span>
               </div>
               <div>
-                <p className="font-semibold">Mes patients</p>
+                <p className="font-semibold text-sm">Mes patients</p>
                 <p className="text-xs text-zinc-400">Espace praticien</p>
               </div>
             </div>
@@ -679,10 +641,10 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
             {loading ? (
               <p className="text-center text-xs text-zinc-500 mt-4">Chargement...</p>
             ) : patients.length === 0 ? (
-              <div className="mt-6 text-center">
+              <div className="mt-6 text-center px-2">
                 <p className="text-sm text-zinc-400">Aucun patient pour l'instant</p>
-                <p className="mt-2 text-xs text-zinc-500">
-                  {hasDocuments ? "Invitez votre premier patient !" : "Importez vos protocoles pour débloquer l'invitation."}
+                <p className="mt-2 text-xs text-zinc-500 leading-relaxed">
+                  {hasDocuments ? "Invitez votre premier patient !" : "Importez vos protocoles pour débloquer l'invitation de patients."}
                 </p>
               </div>
             ) : (
@@ -728,13 +690,13 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
               </button>
             ) : (
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.08] p-3 text-center">
-                <p className="text-[11px] text-amber-400 mb-2">Statut du Jumeau : Incomplet</p>
-                <p className="text-[10px] text-zinc-500 mb-2">
+                <p className="text-xs text-amber-400 font-semibold mb-1">Jumeau incomplet</p>
+                <p className="text-xs text-zinc-500 mb-2 leading-relaxed">
                   Importez vos protocoles pour activer l'invitation de patients.
                 </p>
                 <button
                   onClick={() => void openJumeauModal()}
-                  className="inline-block rounded-full border border-amber-500/40 px-4 py-1.5 text-[11px] font-semibold text-amber-400 transition hover:bg-amber-500/10"
+                  className="inline-block rounded-full border border-amber-500/40 px-4 py-1.5 text-xs font-semibold text-amber-400 transition hover:bg-amber-500/10"
                 >
                   Importer mes protocoles →
                 </button>
@@ -744,7 +706,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
         </aside>
 
         {/* Zone conversations */}
-        <section className="flex h-[calc(100vh-180px)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111111]">
+        <section className="flex h-[calc(100vh-200px)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111111]">
           {selectedPatient ? (
             <>
               <div className="border-b border-white/10 px-5 py-4 flex items-center justify-between">
@@ -791,7 +753,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
         </section>
 
         {/* Fiche patient */}
-        <aside className="h-[calc(100vh-180px)] overflow-y-auto rounded-2xl border border-white/10 bg-[#121212] p-4">
+        <aside className="h-[calc(100vh-200px)] overflow-y-auto rounded-2xl border border-white/10 bg-[#121212] p-4">
           {selectedPatient ? (
             <>
               <div className="mb-4 flex flex-col items-center text-center">
@@ -834,9 +796,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
         </aside>
       </main>
 
-      {/* ══════════════════════════════════════════════ */}
-      {/* MODALE MON JUMEAU 🍃                          */}
-      {/* ══════════════════════════════════════════════ */}
+      {/* MODALE MON JUMEAU */}
       {showJumeauModal && (
         <div
           onClick={(e) => { if (e.target === e.currentTarget) setShowJumeauModal(false); }}
@@ -853,324 +813,220 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
             boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
             maxHeight: "90vh", overflowY: "auto",
           }}>
-            {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>
-                  Mon jumeau 🍃
-                </h2>
-                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>
-                  Gérez les documents qui enrichissent votre jumeau
-                </p>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>Améliorer mon jumeau 🍃</h2>
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>Gérez les documents qui enrichissent votre jumeau</p>
               </div>
-              <button onClick={() => setShowJumeauModal(false)} style={{
-                background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8",
-              }}>×</button>
+              <button onClick={() => setShowJumeauModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
             </div>
 
             {/* Score de fidélité */}
             <div style={{
-              background: "rgba(255,255,255,0.02)", borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.06)",
-              padding: "14px 16px", marginBottom: 20,
+              background: hasDocuments ? "rgba(16,185,129,0.05)" : "rgba(245,158,11,0.08)",
+              borderRadius: 16,
+              border: `1px solid ${hasDocuments ? "rgba(16,185,129,0.2)" : "rgba(245,158,11,0.3)"}`,
+              padding: "16px", marginBottom: 20,
             }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: "white" }}>Score de fidélité</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: fidelityColor }}>{fidelityScore}%</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>Score de fidélité</span>
+                <span style={{ fontSize: 16, fontWeight: 800, color: fidelityColor }}>{fidelityScore}%</span>
               </div>
-              <div style={{ height: 6, background: "rgba(255,255,255,0.08)", borderRadius: 3 }}>
-                <div style={{
-                  height: "100%", borderRadius: 3, backgroundColor: fidelityColor,
-                  width: `${fidelityScore}%`, transition: "width 0.7s",
-                }} />
+              <div style={{ height: 8, background: "rgba(255,255,255,0.08)", borderRadius: 4 }}>
+                <div style={{ height: "100%", borderRadius: 4, backgroundColor: fidelityColor, width: `${fidelityScore}%`, transition: "width 0.7s" }} />
               </div>
-              <p style={{ margin: "8px 0 0", fontSize: 11, color: "#64748b" }}>
+              <p style={{ margin: "10px 0 0", fontSize: 13, color: hasDocuments ? "#10b981" : "#f59e0b", fontWeight: 500 }}>
                 {hasDocuments
-                  ? "✅ Jumeau Fidèle — Votre jumeau est prêt à représenter votre méthode."
-                  : "🟠 Jumeau Personnalisé — Importez des documents pour atteindre 100%"}
+                  ? "✅ Jumeau Fidèle — Votre jumeau est prêt à vous représenter parfaitement."
+                  : "⚠️ Jumeau Personnalisé — Votre jumeau connaît votre philosophie mais répond de manière générique. Importez au moins un document pour qu'il devienne vraiment vous."}
               </p>
             </div>
 
             {/* Documents existants */}
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>
+              <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>
                 Documents indexés ({documents.length})
               </p>
               {loadingDocs ? (
-                <p style={{ fontSize: 12, color: "#64748b" }}>Chargement...</p>
+                <p style={{ fontSize: 13, color: "#64748b" }}>Chargement...</p>
               ) : documents.length === 0 ? (
-                <div style={{
-                  background: "rgba(255,255,255,0.02)", borderRadius: 12,
-                  border: "1px dashed rgba(255,255,255,0.08)",
-                  padding: "20px", textAlign: "center",
-                }}>
+                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", padding: "20px", textAlign: "center" }}>
                   <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Aucun document indexé</p>
-                  <p style={{ margin: "4px 0 0", fontSize: 11, color: "#475569" }}>
-                    Votre jumeau utilise uniquement vos réponses au questionnaire
-                  </p>
+                  <p style={{ margin: "4px 0 0", fontSize: 12, color: "#475569" }}>Votre jumeau utilise uniquement vos réponses au questionnaire</p>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {documents.map((doc) => (
-                    <div key={doc.id} style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      background: "rgba(255,255,255,0.02)", borderRadius: 10,
-                      border: "1px solid rgba(255,255,255,0.06)",
-                      padding: "10px 14px",
-                    }}>
+                    <div key={doc.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                         <span style={{ fontSize: 18, flexShrink: 0 }}>{fileTypeIcon(doc.file_type)}</span>
                         <div style={{ minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 13, color: "white", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {doc.file_name}
-                          </p>
-                          <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>
-                            {new Date(doc.created_at).toLocaleDateString("fr-FR")}
-                          </p>
+                          <p style={{ margin: 0, fontSize: 13, color: "white", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.file_name}</p>
+                          <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{new Date(doc.created_at).toLocaleDateString("fr-FR")}</p>
                         </div>
                       </div>
                       <button
                         onClick={() => void deleteDocument(doc.id, doc.file_name)}
-                        style={{
-                          background: "none", border: "none", cursor: "pointer",
-                          fontSize: 14, color: "#64748b", flexShrink: 0, marginLeft: 8,
-                          padding: "4px 8px", borderRadius: 6,
-                          transition: "color 0.2s",
-                        }}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#64748b", flexShrink: 0, marginLeft: 8, padding: "4px 8px", borderRadius: 6, transition: "color 0.2s" }}
                         onMouseEnter={(e) => e.currentTarget.style.color = "#f87171"}
                         onMouseLeave={(e) => e.currentTarget.style.color = "#64748b"}
-                      >
-                        ✕
-                      </button>
+                      >✕</button>
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+
+            {/* Classification document */}
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: "white" }}>Quel type de document uploadez-vous ?</p>
+              <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>Cela détermine si vos documents seront anonymisés ou non.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => setDocumentType("protocole")}
+                  style={{
+                    borderRadius: 12, border: `2px solid ${documentType === "protocole" ? "#10b981" : "rgba(255,255,255,0.1)"}`,
+                    background: documentType === "protocole" ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)",
+                    padding: "14px", textAlign: "left", cursor: "pointer",
+                  }}
+                >
+                  <p style={{ margin: "0 0 6px", fontSize: 22 }}>📋</p>
+                  <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "white" }}>Protocoles & méthodes</p>
+                  <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>Articles, plans alimentaires, guides nutritionnels</p>
+                  <p style={{ margin: 0, fontSize: 12, color: "#10b981", fontWeight: 600 }}>✓ Indexé tel quel</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDocumentType("patient")}
+                  style={{
+                    borderRadius: 12, border: `2px solid ${documentType === "patient" ? "#10b981" : "rgba(255,255,255,0.1)"}`,
+                    background: documentType === "patient" ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)",
+                    padding: "14px", textAlign: "left", cursor: "pointer",
+                  }}
+                >
+                  <p style={{ margin: "0 0 6px", fontSize: 22 }}>🗂️</p>
+                  <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "white" }}>Données patients</p>
+                  <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>Bilans, comptes-rendus, fiches patients</p>
+                  <p style={{ margin: 0, fontSize: 12, color: "#60a5fa", fontWeight: 600 }}>✓ Anonymisé avant indexation</p>
+                </button>
+              </div>
+              {!documentType && uploadedFiles.length > 0 && (
+                <p style={{ margin: 0, fontSize: 12, color: "#f59e0b" }}>⚠️ Veuillez sélectionner le type de document avant d'indexer.</p>
               )}
             </div>
 
             {/* Zone upload */}
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>
-                Ajouter des documents
-              </p>
+            <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a" onChange={handleFileChange} style={{ display: "none" }} />
 
-              {/* Classification document */}
-<div style={{ marginBottom: 16 }}>
-  <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "white" }}>
-    Quel type de document uploadez-vous ?
-  </p>
-  <p style={{ margin: "0 0 12px", fontSize: 11, color: "#64748b" }}>
-    Cela détermine si vos documents seront anonymisés ou non.
-  </p>
-  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-    <button
-      type="button"
-      onClick={() => setDocumentType("protocole")}
-      style={{
-        borderRadius: 12, border: `2px solid ${documentType === "protocole" ? "#10b981" : "rgba(255,255,255,0.1)"}`,
-        background: documentType === "protocole" ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)",
-        padding: "12px", textAlign: "left", cursor: "pointer",
-      }}
-    >
-      <p style={{ margin: "0 0 4px", fontSize: 20 }}>📋</p>
-      <p style={{ margin: "0 0 4px", fontSize: 12, fontWeight: 700, color: "white" }}>Protocoles & méthodes</p>
-      <p style={{ margin: "0 0 6px", fontSize: 11, color: "#64748b" }}>Articles, plans alimentaires, guides nutritionnels</p>
-      <p style={{ margin: 0, fontSize: 11, color: "#10b981" }}>✓ Indexé tel quel</p>
-    </button>
-    <button
-      type="button"
-      onClick={() => setDocumentType("patient")}
-      style={{
-        borderRadius: 12, border: `2px solid ${documentType === "patient" ? "#10b981" : "rgba(255,255,255,0.1)"}`,
-        background: documentType === "patient" ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)",
-        padding: "12px", textAlign: "left", cursor: "pointer",
-      }}
-    >
-      <p style={{ margin: "0 0 4px", fontSize: 20 }}>🗂️</p>
-      <p style={{ margin: "0 0 4px", fontSize: 12, fontWeight: 700, color: "white" }}>Données patients</p>
-      <p style={{ margin: "0 0 6px", fontSize: 11, color: "#64748b" }}>Bilans, comptes-rendus, fiches patients</p>
-      <p style={{ margin: 0, fontSize: 11, color: "#60a5fa" }}>✓ Anonymisé avant indexation</p>
-    </button>
-  </div>
-  {!documentType && uploadedFiles.length > 0 && (
-    <p style={{ margin: 0, fontSize: 11, color: "#f59e0b" }}>
-      ⚠️ Veuillez sélectionner le type de document avant d'indexer.
-    </p>
-  )}
-</div>
+            <label
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                borderRadius: 12, border: "2px dashed rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.01)",
+                padding: "20px", cursor: "pointer", transition: "border-color 0.2s", marginBottom: 12,
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = "rgba(16,185,129,0.4)"}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"}
+            >
+              <span style={{ fontSize: 32, marginBottom: 8 }}>📄</span>
+              <span style={{ fontSize: 14, fontWeight: 500, color: "#94a3b8" }}>Cliquez pour sélectionner</span>
+              <span style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>PDF · DOCX · TXT · JPG · PNG · Excel · CSV · MP3 · WAV · M4A</span>
+            </label>
 
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a"
-                onChange={handleFileChange}
-                style={{ display: "none" }}
-              />
-
-              <label
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  display: "flex", flexDirection: "column", alignItems: "center",
-                  justifyContent: "center", borderRadius: 12,
-                  border: "2px dashed rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.01)",
-                  padding: "20px", cursor: "pointer",
-                  transition: "border-color 0.2s",
-                  marginBottom: 12,
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = "rgba(16,185,129,0.4)"}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"}
-              >
-                <span style={{ fontSize: 28, marginBottom: 8 }}>📄</span>
-                <span style={{ fontSize: 13, fontWeight: 500, color: "#94a3b8" }}>Cliquez pour sélectionner</span>
-                <span style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>
-                  PDF · DOCX · TXT · JPG · PNG · Excel · CSV · MP3 · WAV · M4A
-                </span>
-              </label>
-
-              {/* Mémo vocal */}
-              <div style={{
-                background: "rgba(255,255,255,0.02)", borderRadius: 12,
-                border: "1px solid rgba(255,255,255,0.06)",
-                padding: "12px 14px", marginBottom: 12,
-              }}>
-                <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "white" }}>🎙️ Mémo vocal</p>
-                <p style={{ margin: "0 0 10px", fontSize: 11, color: "#64748b" }}>
-                  Enregistrez votre philosophie à l'oral — transcription automatique.
-                </p>
-                {!audioBlob ? (
-                  <button
-                    type="button"
-                    onClick={isRecording ? stopRecording : startRecording}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      borderRadius: 20, padding: "8px 16px", fontSize: 12, fontWeight: 600,
-                      cursor: "pointer", border: "none",
-                      background: isRecording ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.15)",
-                      color: isRecording ? "#f87171" : "#10b981",
-                    }}
-                  >
-                    {isRecording ? (
-                      <>
-                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", animation: "pulse 1s infinite" }} />
-                        Arrêter — {formatTime(recordingTime)}
-                      </>
-                    ) : (
-                      <>🎙️ Enregistrer</>
-                    )}
-                  </button>
-                ) : (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <p style={{ margin: 0, fontSize: 12, color: "#10b981" }}>✅ {formatTime(recordingTime)}</p>
-                    <button
-                      onClick={uploadAudioMemo}
-                      style={{
-                        borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 600,
-                        background: "#10b981", border: "none", color: "black", cursor: "pointer",
-                      }}
-                    >
-                      Ajouter
-                    </button>
-                    <button
-                      onClick={() => setAudioBlob(null)}
-                      style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 14 }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
+            {/* Mémo vocal */}
+            <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 12, border: "1.5px solid rgba(16,185,129,0.2)", padding: "14px 16px", marginBottom: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <span style={{ fontSize: 22 }}>🎙️</span>
+                <div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "white" }}>Pas de document prêt ?</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>Enregistrez un mémo vocal — transcription automatique.</p>
+                </div>
               </div>
-
-              {/* Fichiers sélectionnés */}
-              {uploadedFiles.length > 0 && (
-                <div style={{ marginBottom: 12 }}>
-                  {uploadedFiles.map((f, i) => (
-                    <div key={i} style={{
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "8px 12px", borderRadius: 8,
-                      background: "rgba(255,255,255,0.02)",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                      marginBottom: 6,
-                    }}>
-                      <span style={{ fontSize: 12, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {f.name}
-                      </span>
-                      <button
-                        onClick={() => setUploadedFiles((prev) => prev.filter((_, j) => j !== i))}
-                        style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", marginLeft: 8 }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => void uploadFiles()}
-                    disabled={uploading || !documentType}
-                    style={{
-                      width: "100%", height: 44, borderRadius: 22,
-                      background: uploading ? "rgba(255,255,255,0.05)" : "#10b981",
-                      border: "none", color: uploading ? "#64748b" : "black",
-                      fontSize: 14, fontWeight: 600, cursor: uploading ? "not-allowed" : "pointer",
-                      marginTop: 8,
-                    }}
-                  >
-                    {uploading ? "Anonymisation et indexation en cours..." : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""}`}
-                  </button>
-                </div>
-              )}
-
-              {uploadSuccess.length > 0 && (
-                <div style={{ marginBottom: 8 }}>
-                  {uploadSuccess.map((s, i) => (
-                    <p key={i} style={{ margin: "0 0 4px", fontSize: 11, color: "#10b981" }}>✅ {s}</p>
-                  ))}
-                </div>
-              )}
-
-              {uploadErrors.length > 0 && (
-                <div style={{ marginBottom: 8 }}>
-                  {uploadErrors.map((e, i) => (
-                    <p key={i} style={{ margin: "0 0 4px", fontSize: 11, color: "#f87171" }}>❌ {e}</p>
-                  ))}
+              {!audioBlob ? (
+                <button
+                  type="button"
+                  onClick={isRecording ? stopRecording : startRecording}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 8, borderRadius: 20,
+                    padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none",
+                    background: isRecording ? "rgba(239,68,68,0.15)" : "rgba(16,185,129,0.2)",
+                    color: isRecording ? "#f87171" : "#10b981",
+                  }}
+                >
+                  {isRecording ? (
+                    <><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", animation: "pulse 1s infinite" }} />Arrêter — {formatTime(recordingTime)}</>
+                  ) : (
+                    <>🎙️ Enregistrer un mémo vocal</>
+                  )}
+                </button>
+              ) : (
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "#10b981" }}>✅ {formatTime(recordingTime)}</p>
+                  <button onClick={uploadAudioMemo} style={{ borderRadius: 20, padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "#10b981", border: "none", color: "black", cursor: "pointer" }}>Ajouter</button>
+                  <button onClick={() => setAudioBlob(null)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 16 }}>✕</button>
                 </div>
               )}
             </div>
+
+            {/* Fichiers sélectionnés */}
+            {uploadedFiles.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                {uploadedFiles.map((f, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                    <button onClick={() => setUploadedFiles((prev) => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", marginLeft: 8 }}>✕</button>
+                  </div>
+                ))}
+
+                <div style={{ background: "rgba(245,158,11,0.08)", borderRadius: 10, border: "1px solid rgba(245,158,11,0.2)", padding: "10px 14px", marginBottom: 10 }}>
+                  <p style={{ margin: 0, fontSize: 12, color: "#f59e0b" }}>⏳ L'indexation peut prendre 30 secondes à 2 minutes. Ne fermez pas cette fenêtre.</p>
+                </div>
+
+                <button
+                  onClick={() => void uploadFiles()}
+                  disabled={uploading || !documentType}
+                  style={{
+                    width: "100%", height: 48, borderRadius: 24,
+                    background: uploading ? "rgba(255,255,255,0.05)" : !documentType ? "rgba(255,255,255,0.05)" : "#10b981",
+                    border: "none", color: uploading || !documentType ? "#64748b" : "black",
+                    fontSize: 15, fontWeight: 600, cursor: uploading || !documentType ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {uploading ? "⏳ Indexation en cours..." : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""} →`}
+                </button>
+              </div>
+            )}
+
+            {uploadSuccess.length > 0 && (
+              <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", padding: "12px 14px", marginBottom: 8 }}>
+                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 700, color: "#10b981" }}>✅ Documents indexés :</p>
+                {uploadSuccess.map((s, i) => (
+                  <p key={i} style={{ margin: "0 0 2px", fontSize: 12, color: "#10b981" }}>• {s}</p>
+                ))}
+              </div>
+            )}
+
+            {uploadErrors.length > 0 && (
+              <div style={{ marginBottom: 8 }}>
+                {uploadErrors.map((e, i) => (
+                  <p key={i} style={{ margin: "0 0 4px", fontSize: 12, color: "#f87171" }}>❌ {e}</p>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* Modale profil patient */}
       {showProfileModal && (
-        <div
-          onClick={(e) => { if (e.target === e.currentTarget) setShowProfileModal(false); }}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
-            zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 20,
-          }}
-        >
-          <div style={{
-            background: "#121212", borderRadius: 20, padding: 28,
-            width: "100%", maxWidth: 460,
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-            maxHeight: "85vh", overflowY: "auto",
-          }}>
+        <div onClick={(e) => { if (e.target === e.currentTarget) setShowProfileModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#121212", borderRadius: 20, padding: 28, width: "100%", maxWidth: 460, border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", maxHeight: "85vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>
-                ✏️ Profil — {selectedPatient?.firstName}
-              </h2>
-              <button onClick={() => setShowProfileModal(false)} style={{
-                background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8",
-              }}>×</button>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>✏️ Profil — {selectedPatient?.firstName}</h2>
+              <button onClick={() => setShowProfileModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
             </div>
-
-            <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>
-              Ces informations enrichissent les réponses du jumeau numérique pour ce patient.
-            </p>
-
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Ces informations enrichissent les réponses du jumeau numérique pour ce patient.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {[
                 { label: "Âge", value: editAge, onChange: setEditAge, placeholder: "Ex: 34", type: "number" },
@@ -1180,57 +1036,22 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
               ].map(({ label, value, onChange, placeholder, type }) => (
                 <div key={label}>
                   <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
-                  <input
-                    type={type}
-                    value={value}
-                    onChange={(e) => onChange(e.target.value)}
-                    placeholder={placeholder}
-                    style={{
-                      width: "100%", height: 44, borderRadius: 10,
-                      border: "1.5px solid rgba(255,255,255,0.1)",
-                      background: "#1a1a1a", color: "white",
-                      padding: "0 14px", fontSize: 14, outline: "none",
-                      boxSizing: "border-box",
-                    }}
+                  <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+                    style={{ width: "100%", height: 44, borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
                     onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                    onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
-                  />
+                    onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
                 </div>
               ))}
               <div>
                 <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Notes personnalisées</p>
-                <textarea
-                  value={editNotes}
-                  onChange={(e) => setEditNotes(e.target.value)}
-                  placeholder="Informations importantes sur ce patient..."
-                  rows={3}
-                  style={{
-                    width: "100%", borderRadius: 10,
-                    border: "1.5px solid rgba(255,255,255,0.1)",
-                    background: "#1a1a1a", color: "white",
-                    padding: "12px 14px", fontSize: 14, outline: "none",
-                    boxSizing: "border-box", resize: "none",
-                    fontFamily: "'Inter', sans-serif",
-                  }}
+                <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Informations importantes sur ce patient..." rows={3}
+                  style={{ width: "100%", borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "12px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "'Inter', sans-serif" }}
                   onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
-                />
+                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
               </div>
             </div>
-
-            <button
-              onClick={() => void saveProfile()}
-              disabled={savingProfile}
-              style={{
-                width: "100%", height: 48, borderRadius: 24,
-                background: profileSaved ? "rgba(16,185,129,0.2)" : "#10b981",
-                border: profileSaved ? "1px solid #10b981" : "none",
-                color: profileSaved ? "#10b981" : "black",
-                fontSize: 15, fontWeight: 600,
-                cursor: savingProfile ? "not-allowed" : "pointer",
-                marginTop: 20, transition: "all 0.2s",
-              }}
-            >
+            <button onClick={() => void saveProfile()} disabled={savingProfile}
+              style={{ width: "100%", height: 48, borderRadius: 24, background: profileSaved ? "rgba(16,185,129,0.2)" : "#10b981", border: profileSaved ? "1px solid #10b981" : "none", color: profileSaved ? "#10b981" : "black", fontSize: 15, fontWeight: 600, cursor: savingProfile ? "not-allowed" : "pointer", marginTop: 20, transition: "all 0.2s" }}>
               {profileSaved ? "✅ Profil sauvegardé !" : savingProfile ? "Sauvegarde..." : "Sauvegarder le profil"}
             </button>
           </div>
@@ -1239,113 +1060,51 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
 
       {/* Modale rapport */}
       {showReportModal && (
-        <div
-          onClick={(e) => { if (e.target === e.currentTarget) setShowReportModal(false); }}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
-            zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 20,
-          }}
-        >
-          <div style={{
-            background: "#121212", borderRadius: 20, padding: 28,
-            width: "100%", maxWidth: 560,
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-            maxHeight: "85vh", overflowY: "auto",
-          }}>
+        <div onClick={(e) => { if (e.target === e.currentTarget) setShowReportModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#121212", borderRadius: 20, padding: 28, width: "100%", maxWidth: 560, border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", maxHeight: "85vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>
-                📊 Rapport journal — {selectedPatient?.firstName}
-              </h2>
-              <button onClick={() => setShowReportModal(false)} style={{
-                background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8",
-              }}>×</button>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>📊 Rapport — {selectedPatient?.firstName}</h2>
+              <button onClick={() => setShowReportModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
             </div>
-
-            <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b" }}>
-              Ce rapport est généré à partir des données agrégées du journal et des conversations. Le contenu personnel reste confidentiel.
-            </p>
-
+            <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b" }}>Rapport généré à partir du journal et des conversations. Contenu personnel confidentiel.</p>
             <div style={{ marginBottom: 20 }}>
               <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Période</p>
               <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                {[
-                  { value: "week", label: "Cette semaine" },
-                  { value: "month", label: "Ce mois" },
-                  { value: "custom", label: "Personnalisée" },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setReportPeriod(option.value as ReportPeriod)}
-                    style={{
-                      flex: 1, height: 36, borderRadius: 8,
-                      border: `1.5px solid ${reportPeriod === option.value ? "#10b981" : "rgba(255,255,255,0.1)"}`,
-                      background: reportPeriod === option.value ? "rgba(16,185,129,0.15)" : "transparent",
-                      color: reportPeriod === option.value ? "#10b981" : "#94a3b8",
-                      fontSize: 12, fontWeight: 600, cursor: "pointer",
-                    }}
-                  >
+                {[{ value: "week", label: "Cette semaine" }, { value: "month", label: "Ce mois" }, { value: "custom", label: "Personnalisée" }].map((option) => (
+                  <button key={option.value} onClick={() => setReportPeriod(option.value as ReportPeriod)}
+                    style={{ flex: 1, height: 36, borderRadius: 8, border: `1.5px solid ${reportPeriod === option.value ? "#10b981" : "rgba(255,255,255,0.1)"}`, background: reportPeriod === option.value ? "rgba(16,185,129,0.15)" : "transparent", color: reportPeriod === option.value ? "#10b981" : "#94a3b8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     {option.label}
                   </button>
                 ))}
               </div>
-
               {reportPeriod === "custom" && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
                     <p style={{ margin: "0 0 6px", fontSize: 12, color: "#94a3b8" }}>Du</p>
-                    <input type="date" value={reportDateFrom} onChange={(e) => setReportDateFrom(e.target.value)}
-                      style={{ width: "100%", height: 40, borderRadius: 8, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                    <input type="date" value={reportDateFrom} onChange={(e) => setReportDateFrom(e.target.value)} style={{ width: "100%", height: 40, borderRadius: 8, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                   </div>
                   <div>
                     <p style={{ margin: "0 0 6px", fontSize: 12, color: "#94a3b8" }}>Au</p>
-                    <input type="date" value={reportDateTo} onChange={(e) => setReportDateTo(e.target.value)}
-                      style={{ width: "100%", height: 40, borderRadius: 8, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                    <input type="date" value={reportDateTo} onChange={(e) => setReportDateTo(e.target.value)} style={{ width: "100%", height: 40, borderRadius: 8, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
                   </div>
                 </div>
               )}
             </div>
-
             {!reportContent && (
-              <button
-                onClick={() => void generateReport()}
-                disabled={reportLoading || (reportPeriod === "custom" && (!reportDateFrom || !reportDateTo))}
-                style={{
-                  width: "100%", height: 48, borderRadius: 24,
-                  background: reportLoading ? "#1a1a1a" : "#10b981",
-                  border: "none", color: reportLoading ? "#4a4a4a" : "black",
-                  fontSize: 15, fontWeight: 600, cursor: reportLoading ? "not-allowed" : "pointer",
-                  marginBottom: 16,
-                }}
-              >
+              <button onClick={() => void generateReport()} disabled={reportLoading || (reportPeriod === "custom" && (!reportDateFrom || !reportDateTo))}
+                style={{ width: "100%", height: 48, borderRadius: 24, background: reportLoading ? "#1a1a1a" : "#10b981", border: "none", color: reportLoading ? "#4a4a4a" : "black", fontSize: 15, fontWeight: 600, cursor: reportLoading ? "not-allowed" : "pointer", marginBottom: 16 }}>
                 {reportLoading ? "Génération en cours... 🤖" : "Générer le rapport IA"}
               </button>
             )}
-
             {reportContent && (
-              <div style={{
-                background: "#0f0f0f", borderRadius: 16, padding: "20px",
-                border: "1px solid rgba(255,255,255,0.08)",
-                fontSize: 14, color: "#e2e8f0", lineHeight: 1.8,
-                whiteSpace: "pre-wrap",
-              }}>
+              <div style={{ background: "#0f0f0f", borderRadius: 16, padding: "20px", border: "1px solid rgba(255,255,255,0.08)", fontSize: 14, color: "#e2e8f0", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
                 {reportContent}
               </div>
             )}
-
             {reportContent && (
               <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                <button onClick={() => setReportContent("")} style={{
-                  flex: 1, height: 44, borderRadius: 12,
-                  background: "transparent", border: "1px solid rgba(255,255,255,0.15)",
-                  color: "#94a3b8", cursor: "pointer", fontSize: 14,
-                }}>Nouvelle période</button>
-                <button onClick={() => void navigator.clipboard.writeText(reportContent)} style={{
-                  flex: 1, height: 44, borderRadius: 12,
-                  background: "#10b981", border: "none",
-                  color: "black", cursor: "pointer", fontSize: 14, fontWeight: 600,
-                }}>📋 Copier</button>
+                <button onClick={() => setReportContent("")} style={{ flex: 1, height: 44, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>Nouvelle période</button>
+                <button onClick={() => void navigator.clipboard.writeText(reportContent)} style={{ flex: 1, height: 44, borderRadius: 12, background: "#10b981", border: "none", color: "black", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>📋 Copier</button>
               </div>
             )}
           </div>
@@ -1354,87 +1113,26 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
 
       {/* Modale invitation */}
       {showInviteModal && (
-        <div
-          onClick={(e) => { if (e.target === e.currentTarget) setShowInviteModal(false); }}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
-            zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 20,
-          }}
-        >
-          <div style={{
-            background: "#121212", borderRadius: 20, padding: 28,
-            width: "100%", maxWidth: 420,
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-            position: "relative",
-          }}>
-            <button
-              onClick={() => { setShowInviteModal(false); setInviteEmail(""); setInviteError(""); setInviteSuccess(false); }}
-              style={{
-                position: "absolute", top: 16, right: 16,
-                background: "none", border: "none", cursor: "pointer",
-                fontSize: 22, color: "#94a3b8",
-              }}
-            >×</button>
-
-            <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: "white" }}>
-              Inviter un patient
-            </h2>
-            <p style={{ margin: "0 0 20px", fontSize: 14, color: "#94a3b8" }}>
-              Votre patient recevra un email pour accéder à son espace personnalisé.
-            </p>
-
+        <div onClick={(e) => { if (e.target === e.currentTarget) setShowInviteModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#121212", borderRadius: 20, padding: 28, width: "100%", maxWidth: 420, border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", position: "relative" }}>
+            <button onClick={() => { setShowInviteModal(false); setInviteEmail(""); setInviteError(""); setInviteSuccess(false); }} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
+            <h2 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 700, color: "white" }}>Inviter un patient</h2>
+            <p style={{ margin: "0 0 20px", fontSize: 14, color: "#94a3b8" }}>Votre patient recevra un email pour accéder à son espace personnalisé.</p>
             {inviteSuccess ? (
-              <div style={{
-                background: "rgba(16,185,129,0.15)", border: "1px solid #10b981",
-                borderRadius: 12, padding: "16px 18px", textAlign: "center",
-                color: "#10b981", fontWeight: 600, fontSize: 15,
-              }}>
+              <div style={{ background: "rgba(16,185,129,0.15)", border: "1px solid #10b981", borderRadius: 12, padding: "16px 18px", textAlign: "center", color: "#10b981", fontWeight: 600, fontSize: 15 }}>
                 ✅ Invitation envoyée ! La fenêtre se ferme automatiquement...
               </div>
             ) : (
               <>
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") void sendInvite(); }}
-                  placeholder="email@patient.fr"
-                  style={{
-                    width: "100%", height: 48, borderRadius: 12,
-                    border: "1.5px solid rgba(255,255,255,0.1)",
-                    background: "#1a1a1a", color: "white",
-                    padding: "0 16px", fontSize: 15, outline: "none",
-                    boxSizing: "border-box",
-                  }}
+                <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void sendInvite(); }} placeholder="email@patient.fr"
+                  style={{ width: "100%", height: 48, borderRadius: 12, border: "1.5px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box" }}
                   onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
-                />
-                {inviteError && (
-                  <p style={{ margin: "8px 0 0", fontSize: 13, color: "#f87171" }}>{inviteError}</p>
-                )}
+                  onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                {inviteError && <p style={{ margin: "8px 0 0", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
                 <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-                  <button
-                    onClick={() => { setShowInviteModal(false); setInviteEmail(""); setInviteError(""); }}
-                    style={{
-                      flex: 1, height: 44, borderRadius: 12,
-                      background: "transparent", border: "1px solid rgba(255,255,255,0.15)",
-                      color: "#94a3b8", cursor: "pointer", fontSize: 14,
-                    }}
-                  >Annuler</button>
-                  <button
-                    onClick={() => void sendInvite()}
-                    disabled={inviting || !inviteEmail.trim()}
-                    style={{
-                      flex: 1, height: 44, borderRadius: 12,
-                      background: inviting || !inviteEmail.trim() ? "#1a1a1a" : "#10b981",
-                      border: "none",
-                      color: inviting || !inviteEmail.trim() ? "#4a4a4a" : "black",
-                      cursor: inviting || !inviteEmail.trim() ? "not-allowed" : "pointer",
-                      fontSize: 14, fontWeight: 600, transition: "all 0.2s",
-                    }}
-                  >
+                  <button onClick={() => { setShowInviteModal(false); setInviteEmail(""); setInviteError(""); }} style={{ flex: 1, height: 44, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.15)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>Annuler</button>
+                  <button onClick={() => void sendInvite()} disabled={inviting || !inviteEmail.trim()}
+                    style={{ flex: 1, height: 44, borderRadius: 12, background: inviting || !inviteEmail.trim() ? "#1a1a1a" : "#10b981", border: "none", color: inviting || !inviteEmail.trim() ? "#4a4a4a" : "black", cursor: inviting || !inviteEmail.trim() ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}>
                     {inviting ? "Envoi..." : "Envoyer"}
                   </button>
                 </div>
