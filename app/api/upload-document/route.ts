@@ -82,34 +82,6 @@ async function extractTextFromAudio(buffer: Buffer, mimeType: string): Promise<s
   return result.response.text();
 }
 
-async function extractTextFromPDF(arrayBuffer: ArrayBuffer): Promise<string> {
-  try {
-    const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs" as string);
-    const pdf = await (pdfjsLib as unknown as {
-      getDocument: (opts: { data: Uint8Array }) => { promise: Promise<{
-        numPages: number;
-        getPage: (n: number) => Promise<{
-          getTextContent: () => Promise<{ items: { str: string }[] }>;
-        }>;
-      }> };
-    }).getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-
-    const pages: string[] = [];
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      pages.push(content.items.map((item) => item.str).join(" "));
-    }
-    return pages.join("\n\n");
-  } catch {
-    // Fallback : essayer avec pdf-parse
-    const pdfModule = await import("pdf-parse");
-    const parsePdf = (pdfModule as unknown as { default: (buf: Buffer) => Promise<{ text: string }> }).default ?? pdfModule;
-    const parsed = await parsePdf(Buffer.from(arrayBuffer));
-    return parsed.text;
-  }
-}
-
 export async function POST(request: Request) {
   try {
     const supabase = createClient(
@@ -159,7 +131,9 @@ export async function POST(request: Request) {
     if (fileType === "txt") {
       text = buffer.toString("utf-8");
     } else if (fileType === "pdf") {
-      text = await extractTextFromPDF(arrayBuffer);
+      const { extractText } = await import("unpdf");
+      const { text: pdfText } = await extractText(new Uint8Array(arrayBuffer), { mergePages: true });
+      text = pdfText;
     } else if (fileType === "docx") {
       const mammoth = await import("mammoth");
       const result = await mammoth.extractRawText({ buffer });
