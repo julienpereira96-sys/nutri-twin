@@ -173,7 +173,7 @@ export async function POST(request: Request) {
     for (const chunk of chunks) {
       const embedding = await getGeminiEmbedding(chunk);
 
-      await supabase.from("documents").insert({
+      const { error: insertError } = await supabase.from("documents").insert({
         practitioner_id: practitionerId,
         file_name: file.name,
         file_type: fileType,
@@ -181,9 +181,13 @@ export async function POST(request: Request) {
         embedding,
         storage_path: storagePath,
       });
+
+      if (insertError) {
+        console.error("Erreur insert document:", insertError.message);
+      }
     }
 
-    return Response.json({ success: true, chunks: chunks.length });
+    return Response.json({ success: true });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Erreur inconnue";
     return Response.json({ error: msg }, { status: 500 });
