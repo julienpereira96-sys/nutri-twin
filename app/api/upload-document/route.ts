@@ -27,6 +27,7 @@ async function getGeminiEmbedding(text: string): Promise<number[]> {
   const result = await model.embedContent({
     content: { parts: [{ text }], role: "user" },
     taskType: "RETRIEVAL_DOCUMENT",
+    outputDimensionality: 768,
   } as never);
   return result.embedding.values;
 }
@@ -96,6 +97,17 @@ export async function POST(request: Request) {
     if (!file || !practitionerId) {
       return Response.json({ error: "Fichier ou practitionerId manquant." }, { status: 400 });
     }
+
+    // Vérifier si le document existe déjà
+const { count } = await supabase
+.from("documents")
+.select("*", { count: "exact", head: true })
+.eq("practitioner_id", practitionerId)
+.eq("file_name", file.name);
+
+if ((count ?? 0) > 0) {
+return Response.json({ error: `${file.name} est déjà indexé. Supprimez-le d'abord si vous voulez le remplacer.` }, { status: 400 });
+}
 
     const fileType = file.name.split(".").pop()?.toLowerCase();
     const allowedTypes = ["pdf", "docx", "txt", "jpg", "jpeg", "png", "xlsx", "csv", "mp3", "wav", "m4a"];

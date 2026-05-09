@@ -580,7 +580,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
               onClick={() => void openJumeauModal()}
               className="rounded-full bg-[#10b981] px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-[#34d399]"
             >
-              Améliorer mon jumeau 🍃
+              Améliorer mon jumeau
             </button>
           </div>
 

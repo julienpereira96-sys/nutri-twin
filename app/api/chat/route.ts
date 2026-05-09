@@ -90,7 +90,11 @@ function createSupabaseClient() {
 // ============================================================
 async function getGeminiEmbedding(text: string): Promise<number[]> {
   const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
-  const result = await model.embedContent(text);
+  const result = await model.embedContent({
+    content: { parts: [{ text }], role: "user" },
+    taskType: "RETRIEVAL_DOCUMENT",
+    outputDimensionality: 768,
+  } as never);
   return result.embedding.values;
 }
 
