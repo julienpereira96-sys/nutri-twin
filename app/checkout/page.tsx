@@ -60,20 +60,20 @@ const stripeAppearance = {
     colorDanger: "#ef4444",
     fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
     borderRadius: "12px",
-    colorInputBackground: "#161616",
-    colorInputText: "#ffffff",
-    colorInputPlaceholder: "#4b5563",
-    colorInputBorder: "rgba(255,255,255,0.1)",
   },
   rules: {
     ".Input": {
       border: "1px solid rgba(255,255,255,0.1)",
       boxShadow: "none",
       backgroundColor: "#161616",
+      color: "#ffffff",
     },
     ".Input:focus": {
       border: `1px solid ${emerald}`,
       boxShadow: `0 0 0 2px ${emerald}25`,
+    },
+    ".Input::placeholder": {
+      color: "#4b5563",
     },
     ".Label": {
       color: "#9ca3af",
@@ -130,15 +130,12 @@ const { error: submitError, setupIntent } = await stripe.confirmSetup({
     payment_method_data: {
       billing_details: {
         email: user?.email ?? "",
-        phone: "",
-        name: "",
+        name: "NutriTwin User",
       },
-    },
+    },    
   },
   redirect: "if_required",
 });
-
-
 
       if (submitError) {
         setError(submitError.message || "Une erreur est survenue.");
@@ -179,7 +176,7 @@ const { error: submitError, setupIntent } = await stripe.confirmSetup({
           billingDetails: {
             email: "never",
             phone: "never",
-            name: "never",
+            name: "auto",
           },
         },
         wallets: {
