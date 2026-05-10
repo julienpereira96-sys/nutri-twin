@@ -33,7 +33,7 @@ function PaymentSuccessContent() {
         </p>
 
         {/* Titre calibrage — centré avec emoji à gauche des deux lignes */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 28 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 12, marginBottom: 28, paddingLeft: 8 }}>
           <span style={{ fontSize: 28 }}>🧬</span>
           <div style={{ textAlign: "left" }}>
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "white", lineHeight: 1.2 }}>
@@ -120,7 +120,7 @@ function PaymentSuccessContent() {
           }
         `}</style>
 
-        <Link href="/onboarding" className="calibrage-btn">
+<Link href="/onboarding" className="calibrage-btn" style={{ marginTop: 12 }}>
           Initialiser le calibrage →
         </Link>
 
