@@ -105,13 +105,21 @@ function PaymentForm({ plan }: { plan: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
   const handleSubmit = async () => {
     if (!stripe || !elements) return;
     setLoading(true);
     setError("");
 
     try {
-      // Confirmer le SetupIntent
       const { error: submitError, setupIntent } = await stripe.confirmSetup({
         elements,
         confirmParams: { return_url: window.location.href },
@@ -125,7 +133,6 @@ function PaymentForm({ plan }: { plan: string }) {
       }
 
       if (setupIntent?.payment_method) {
-        // Créer l'abonnement
         const res = await fetch("/api/create-subscription", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -153,19 +160,19 @@ function PaymentForm({ plan }: { plan: string }) {
   return (
     <div>
       <PaymentElement options={{
-  layout: "tabs",
-  fields: {
-    billingDetails: {
-      email: "never",
-      phone: "never",
-      name: "auto",
-    },
-  },
-  wallets: {
-    applePay: "auto",
-    googlePay: "auto",
-  },
-}} />
+        layout: "tabs",
+        fields: {
+          billingDetails: {
+            email: "never",
+            phone: "never",
+            name: "auto",
+          },
+        },
+        wallets: {
+          applePay: "auto",
+          googlePay: "auto",
+        },
+      }} />
       {error && (
         <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-[13px] text-red-400">
           {error}
