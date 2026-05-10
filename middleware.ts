@@ -65,6 +65,14 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
+   // /patient-onboarding — besoin d'être connecté (patient)
+   if (path.startsWith("/patient-onboarding")) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/patient-login", request.url));
+    }
+    return supabaseResponse;
+  }
+
   // /chat — besoin d'être connecté (patient)
   if (path.startsWith("/chat")) {
     if (!user) {

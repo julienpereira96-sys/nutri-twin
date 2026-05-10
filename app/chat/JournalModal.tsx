@@ -119,14 +119,16 @@ Note : ${currentEntry.content || "aucune note"}
 
 Réponds de manière bienveillante, encourageante et personnalisée en 2-3 phrases. Sans markdown. Comme si tu étais leur praticien de confiance.`;
 
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: prompt,
-          practitionerId: practitionerId ?? undefined,
-        }),
-      });
+const res = await fetch("/api/chat", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    message: prompt,
+    patientId: patientId ?? undefined,
+    practitionerId: practitionerId ?? undefined,
+  }),
+});
+
       const aiData = (await res.json()) as { response?: string };
       const aiResponse = aiData.response ?? "Merci pour ce partage. 🌿";
 

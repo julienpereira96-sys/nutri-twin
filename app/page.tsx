@@ -54,7 +54,7 @@ function AnimatedChat() {
   }, [done]);
 
   return (
-    <div className="relative w-full ml-8" style={{ maxWidth: 460 }}>
+    <div className="relative mx-auto lg:ml-8 w-full lg:w-[460px]">
       <div className="absolute -inset-4 rounded-[2rem] bg-emerald-500/[0.07] blur-2xl" />
       <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[#0d0d0d] shadow-2xl shadow-black/60">
         <div className="flex items-center gap-3 border-b border-white/[0.06] bg-[#111111] px-4 py-3">
@@ -72,7 +72,7 @@ function AnimatedChat() {
           <div className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-400 ring-1 ring-emerald-500/20">21h14</div>
         </div>
 
-        <div className="px-4 pt-4 pb-2" style={{ minHeight: 410 }}>
+        <div className="px-4 pt-4 pb-2" style={{ height: 470, overflowY: "hidden" }}>
           <div className="space-y-3">
             {messages.map((msg, i) => (
               <div key={i} style={{
@@ -143,24 +143,19 @@ function AnimatedChat() {
 }
 
 function StaticDashboard() {
-  const [showReport, setShowReport] = useState(false);
-  const [cursorX, setCursorX] = useState(0);
-  const [cursorY, setCursorY] = useState(0);
-  const [showCursor, setShowCursor] = useState(false);
-  const [clicking, setClicking] = useState(false);
-  const [animated, setAnimated] = useState(false);
+  const [showReport, setShowReport] = useState(true);
   const reportBtnRef = useRef<HTMLButtonElement>(null);
   const dashRef = useRef<HTMLDivElement>(null);
 
   const julieConversation = [
-    { role: "patient", text: "Je rentre épuisée du travail, j'ai rien préparé ce soir. J'ai envie de commander." },
-    { role: "ai", text: "Bonsoir Julie, c'est normal après une longue journée. Qu'est-ce que vous avez dans votre frigo ?" },
-    { role: "patient", text: "Des œufs, du fromage, des légumes surgelés je crois." },
-    { role: "ai", text: "Parfait. Une omelette aux légumes c'est 10 minutes, rassasiant et dans votre plan." },
-    { role: "patient", text: "Oui mais j'ai vraiment pas le courage de cuisiner ce soir..." },
-    { role: "ai", text: "Je comprends. Alors juste des œufs brouillés, 3 minutes, avec du pain. Simple et suffisant." },
-    { role: "patient", text: "C'est vrai, je vais faire ça. Merci 😊" },
-    { role: "ai", text: "Vous pouvez ! Et dites-moi comment c'était 🌿" },
+    { role: "patient", text: "Bonjour, j'ai fait mes 3 repas aujourd'hui comme convenu 🎉" },
+    { role: "ai", text: "Bravo Julie ! C'est exactement ce que Catherine préconise. Comment vous sentez-vous ?" },
+    { role: "patient", text: "Beaucoup mieux, moins de fringales en fin de journée." },
+    { role: "ai", text: "C'est le signe que votre glycémie se stabilise. Continuez comme ça cette semaine." },
+    { role: "patient", text: "J'ai un repas d'affaires jeudi, je fais comment ?" },
+    { role: "ai", text: "Priorisez les protéines et légumes, évitez le pain en entrée. Un verre de vin max si vous le souhaitez, pas de culpabilité 😊" },
+    { role: "patient", text: "Super, merci ! Je me sens vraiment accompagnée 💚" },
+    { role: "ai", text: "C'est tout l'objectif. Catherine verra votre progression à votre prochain rendez-vous !" },
   ];
 
   const reportSections = [
@@ -172,41 +167,11 @@ function StaticDashboard() {
     { icon: "🔔", title: "Alerte", color: "#ef4444", bg: "rgba(239,68,68,0.06)", border: "rgba(239,68,68,0.15)", content: "2 entrées avec humeur à 3/10 en milieu de mois. Sentiment de découragement exprimé. À explorer en consultation." },
   ];
 
-  useEffect(() => {
-    if (animated) return;
-    const t1 = setTimeout(() => {
-      if (!reportBtnRef.current || !dashRef.current) return;
-      const btn = reportBtnRef.current.getBoundingClientRect();
-      const dash = dashRef.current.getBoundingClientRect();
-      setCursorX(btn.left - dash.left + btn.width / 2);
-      setCursorY(btn.top - dash.top + btn.height / 2);
-      setShowCursor(true);
-    }, 2000);
-    const t2 = setTimeout(() => setClicking(true), 3500);
-    const t3 = setTimeout(() => { setClicking(false); setShowReport(true); }, 3900);
-    const t4 = setTimeout(() => { setShowCursor(false); setAnimated(true); }, 4500);
-    return () => [t1, t2, t3, t4].forEach(clearTimeout);
-  }, [animated]);
-
   return (
     <div>
       {/* Desktop */}
       <div ref={dashRef} className="relative mx-auto hidden lg:block" style={{ maxWidth: 1100 }}>
         <div className="absolute -inset-x-10 -top-8 -bottom-8 bg-gradient-to-b from-transparent via-emerald-500/[0.04] to-transparent blur-3xl" />
-
-        {showCursor && (
-          <div style={{
-            position: "absolute", left: cursorX, top: cursorY, zIndex: 100,
-            transform: `translate(-50%, -50%) scale(${clicking ? 0.75 : 1})`,
-            transition: "left 1.2s cubic-bezier(0.16,1,0.3,1), top 1.2s cubic-bezier(0.16,1,0.3,1), transform 0.15s ease",
-            pointerEvents: "none",
-          }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-              <path d="M4 2L4 18L8.5 14L11.5 21L13.5 20L10.5 13L16 13L4 2Z" fill="white" stroke="rgba(0,0,0,0.3)" strokeWidth="1" />
-            </svg>
-          </div>
-        )}
-
         <div className="relative rounded-3xl border border-white/[0.08] bg-[#0d0d0d] p-2 shadow-2xl shadow-black/50">
           <div className="flex items-center gap-2 rounded-t-2xl bg-[#161616] px-4 py-3 border-b border-white/[0.06]">
             <div className="flex gap-1.5">
@@ -228,29 +193,36 @@ function StaticDashboard() {
             borderRadius: "0 0 20px 20px",
             overflow: "hidden",
           }}>
-            <div style={{ background: "#111111", borderRight: "1px solid rgba(255,255,255,0.06)", padding: 12 }}>
+            {/* Sidebar patients */}
+            <div style={{ background: "#111111", borderRight: "1px solid rgba(255,255,255,0.06)", padding: 12, display: "flex", flexDirection: "column", height: "100%" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 12, marginBottom: 4 }}>
                 <div style={{ width: 24, height: 24, borderRadius: 8, background: "rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>🍃</div>
                 <span style={{ fontSize: 11, fontWeight: 600, color: "#d1d5db" }}>Mes patients</span>
               </div>
-              {[
-                { initials: "SM", name: "Sophie M.", msg: "Merci, ça m'aide 💚", time: "21:14", color: "#f43f5e", active: false },
-                { initials: "JP", name: "Julie P.", msg: "Je vais essayer 😊", time: "19:47", color: "#8b5cf6", active: true },
-                { initials: "TR", name: "Thomas R.", msg: "Super conseil !", time: "Hier", color: "#3b82f6", active: false },
-                { initials: "MD", name: "Marc D.", msg: "Je me sens mieux", time: "Lun", color: "#f59e0b", active: false },
-              ].map((p, i) => (
-                <div key={i} style={{ marginBottom: 6, borderRadius: 10, padding: "8px 10px", background: p.active ? "rgba(16,185,129,0.1)" : "transparent", border: p.active ? "1px solid rgba(16,185,129,0.2)" : "1px solid transparent" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: p.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "white", flexShrink: 0 }}>{p.initials}</div>
-                    <span style={{ fontSize: 11, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: p.active ? emerald : "#d1d5db" }}>{p.name}</span>
-                    <span style={{ fontSize: 9, color: "#4b5563", flexShrink: 0 }}>{p.time}</span>
+              <div style={{ flex: 1, overflowY: "auto" }}>
+                {[
+                  { initials: "SM", name: "Sophie M.", msg: "Merci, ça m'aide 💚", time: "21:14", color: "#f43f5e", active: false },
+                  { initials: "JP", name: "Julie P.", msg: "Je vais essayer 😊", time: "19:47", color: "#8b5cf6", active: true },
+                  { initials: "TR", name: "Thomas R.", msg: "Super conseil !", time: "Hier", color: "#3b82f6", active: false },
+                  { initials: "MD", name: "Marc D.", msg: "Je me sens mieux", time: "Lun", color: "#f59e0b", active: false },
+                  { initials: "CL", name: "Claire L.", msg: "Bonne journée !", time: "Dim", color: "#ec4899", active: false },
+                  { initials: "AB", name: "Alice B.", msg: "Merci du suivi", time: "Sam", color: "#14b8a6", active: false },
+                  { initials: "RK", name: "Romain V.", msg: "À bientôt 👋", time: "Ven", color: "#f97316", active: false },
+                ].map((p, i) => (
+                  <div key={i} style={{ marginBottom: 6, borderRadius: 10, padding: "8px 10px", background: p.active ? "rgba(16,185,129,0.1)" : "transparent", border: p.active ? "1px solid rgba(16,185,129,0.2)" : "1px solid transparent" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: p.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "white", flexShrink: 0 }}>{p.initials}</div>
+                      <span style={{ fontSize: 11, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: p.active ? emerald : "#d1d5db" }}>{p.name}</span>
+                      <span style={{ fontSize: 9, color: "#4b5563", flexShrink: 0 }}>{p.time}</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 10, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 30 }}>{p.msg}</p>
                   </div>
-                  <p style={{ margin: 0, fontSize: 10, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 30 }}>{p.msg}</p>
-                </div>
-              ))}
-              <div style={{ marginTop: 12, borderRadius: 20, background: emerald, padding: "6px 0", textAlign: "center", fontSize: 10, fontWeight: 600, color: "black" }}>+ Inviter un patient</div>
+                ))}
+              </div>
+              <div style={{ borderRadius: 20, background: emerald, padding: "6px 0", textAlign: "center", fontSize: 10, fontWeight: 600, color: "black", marginTop: 8 }}>+ Inviter un patient</div>
             </div>
 
+            {/* Zone conversation */}
             <div style={{ background: "#0d0d0d", display: "flex", flexDirection: "column" }}>
               <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -281,6 +253,7 @@ function StaticDashboard() {
               </div>
             </div>
 
+            {/* Panneau rapport */}
             <div style={{ background: showReport ? "#0f0f0f" : "#111111", borderLeft: "1px solid rgba(255,255,255,0.06)", padding: 16, overflowY: "auto", transition: "background 0.3s" }}>
               {!showReport ? (
                 <div>
@@ -416,15 +389,13 @@ export default function Home() {
       </div>
 
       <header className="fixed top-0 z-50 w-full border-b border-white/[0.04] bg-[#070707]/80 backdrop-blur-2xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-500/20">
-              <span className="text-sm">🍃</span>
-            </div>
-            <span className="text-[15px] tracking-tight">Nutri<strong>Twin</strong></span>
-          </div>
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
+      <div className="flex items-center gap-2">
+      <img src="/logo.svg" alt="NutriTwin" className="h-7 sm:h-10 w-auto relative" />
+        <span className="text-[15px] tracking-tight">Nutri<strong>Twin</strong></span>
+        </div>
 
-          <nav className="hidden items-center gap-8 md:flex">
+          <nav className="hidden items-center gap-8 lg:flex">
             {[
               { label: "Concept", href: "#concept" },
               { label: "Sécurité", href: "#securite" },
@@ -441,7 +412,7 @@ export default function Home() {
               Se connecter
             </Link>
             <button
-              className="flex md:hidden h-9 w-9 items-center justify-center rounded-lg border border-white/10"
+              className="flex lg:hidden h-8 w-8 items-center justify-center rounded-lg border border-white/10"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               <svg className="size-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -455,7 +426,7 @@ export default function Home() {
         </div>
 
         {mobileMenuOpen && (
-          <div className="border-t border-white/[0.06] bg-[#0a0a0a] px-4 py-2 md:hidden">
+          <div className="border-t border-white/[0.06] bg-[#0a0a0a] px-4 py-2 lg:hidden">
             {[
               { label: "Concept", href: "#concept" },
               { label: "Sécurité", href: "#securite" },
@@ -482,11 +453,13 @@ export default function Home() {
         )}
       </header>
 
-      <main className="relative z-10 pt-14 sm:pt-16">
+      <main className="relative z-10 pt-14 sm:pt-16 lg:pt-0">
 
-        <section className="mx-auto max-w-7xl px-4 pb-16 pt-16 sm:px-6 sm:pb-24 sm:pt-24 lg:px-8 lg:pt-32">
-          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
-            <div>
+      <section className="mx-auto max-w-7xl px-4 pb-16 pt-16 sm:pb-24 sm:pt-24 lg:px-8 lg:pt-32">
+  <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
+    <div className="w-full text-center lg:text-left">
+
+
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-1.5 ring-1 ring-emerald-500/20">
                 <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: emerald }}>
@@ -494,7 +467,7 @@ export default function Home() {
                 </span>
               </div>
 
-              <h1 className="font-black leading-[1.05] tracking-tight" style={{ fontSize: "clamp(36px, 5vw, 60px)" }}>
+              <h1 className="font-black leading-[1.30] lg:leading-[1.05] tracking-tight" style={{ fontSize: "clamp(32px, 5vw, 60px)" }}>
                 <span className="block text-white">Le suivi ne s'arrête</span>
                 <span className="block text-white">pas à la porte</span>
                 <span className="block text-white">du cabinet,</span>
@@ -502,19 +475,19 @@ export default function Home() {
                 <span className="block" style={{ color: emerald }}>non plus.</span>
               </h1>
 
-              <div className="mt-3 h-px w-10 rounded-full" style={{ backgroundColor: emerald }} />
+              <div className="mt-3 h-px w-10 rounded-full mx-auto lg:mx-0" style={{ backgroundColor: emerald }} />
 
-              <p className="mt-5 text-[15px] leading-relaxed text-zinc-400">
-                NutriTwin crée votre jumeau numérique, une IA<br />
-                entraînée sur vos méthodes qui conseille vos patients,<br />
-                avec votre style,{" "}
-                <span className="text-white font-medium">disponible 24h/24.</span>
-              </p>
+              <p className="mt-5 lg:mt-5 mt-8 text-[15px] leading-relaxed text-zinc-400">
+  <span className="hidden lg:inline">NutriTwin crée votre jumeau numérique, une IA<br />entraînée sur vos méthodes qui conseille vos patients,<br />avec votre style,{" "}</span>
+  <span className="lg:hidden">NutriTwin crée votre jumeau numérique, une IA<br />entraînée sur vos méthodes qui conseille<br />vos patients, avec votre style,<br /></span>
+  <span className="text-white font-medium">disponible 24h/24.</span>
+</p>
 
-              <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+
+              <div className="mt-8 flex flex-col items-center gap-3 lg:items-start lg:flex-row">
                 <a
                   href="#tarifs"
-                  className="inline-flex h-[48px] items-center justify-center gap-2 rounded-full px-7 text-[14px] font-semibold text-black transition active:scale-95"
+                  className="inline-flex h-[48px] items-center justify-center gap-2 rounded-full px-24 text-[14px] font-semibold text-black transition active:scale-95"
                   style={{ backgroundColor: emerald }}
                 >
                   Commencer ici
@@ -523,14 +496,14 @@ export default function Home() {
                   </svg>
                 </a>
               </div>
-              <p className="mt-3 text-[11px] text-zinc-600">
+              <p className="mt-3 text-[11px] text-zinc-500">
                 14 jours gratuits · Sans engagement · Annulable à tout moment
               </p>
             </div>
 
-            <div className="w-full">
-              <AnimatedChat />
-            </div>
+            <div className="w-full flex justify-center lg:justify-start overflow-hidden">
+  <AnimatedChat />
+</div>
           </div>
         </section>
 
@@ -573,8 +546,8 @@ export default function Home() {
                         <div className="h-1 w-2.5 rounded-full bg-red-400" />
                       </div>
                       <div>
-                        <p className="text-[13px] font-semibold text-zinc-200 mb-0.5">{item.title}</p>
-                        <p className="text-[12px] leading-relaxed" style={{ color: "#9ca3af" }}>{item.desc}</p>
+                        <p className="text-[14px] font-semibold text-zinc-200 mb-0.5">{item.title}</p>
+                        <p className="text-[13px] leading-relaxed" style={{ color: "#9ca3af" }}>{item.desc}</p>
                       </div>
                     </div>
                   ))}
@@ -602,8 +575,8 @@ export default function Home() {
                         </svg>
                       </div>
                       <div>
-                        <p className="text-[13px] font-semibold text-white mb-0.5">{item.title}</p>
-                        <p className="text-[12px] leading-relaxed" style={{ color: "#d1d5db" }}>{item.desc}</p>
+                        <p className="text-[14px] font-semibold text-white mb-0.5">{item.title}</p>
+                        <p className="text-[13px] leading-relaxed" style={{ color: "#d1d5db" }}>{item.desc}</p>
                       </div>
                     </div>
                   ))}
@@ -655,14 +628,14 @@ export default function Home() {
                     <span className="text-[48px] font-black leading-none tracking-tighter" style={{ color: "rgba(255,255,255,0.12)" }}>{step.num}</span>
                   </div>
                   <h3 className="mb-2 text-[17px] font-bold text-white">{step.title}</h3>
-                  <p className="text-[13px] leading-relaxed" style={{ color: "#9ca3af" }}>{step.desc}</p>
+                  <p className="text-[14px] leading-relaxed" style={{ color: "#9ca3af" }}>{step.desc}</p>
                 </div>
               ))}
             </div>
 
             <div className="mx-auto mt-10 max-w-xl text-center px-4">
               <p className="text-[15px] leading-relaxed" style={{ color: "#9ca3af" }}>
-                Bien plus qu'un chatbot générique, une extension de votre expertise,<br />
+              Bien plus qu'un chatbot générique,<span className="hidden sm:inline"> une extension de votre expertise,</span><span className="sm:hidden"><br />une extension de votre expertise,</span><br />
                 <span className="text-white font-semibold">configurée une seule fois, active à vie.</span>
               </p>
             </div>
@@ -716,8 +689,8 @@ export default function Home() {
                   <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl text-xl" style={{ background: "rgba(16,185,129,0.10)", boxShadow: "0 0 0 1px rgba(16,185,129,0.25)" }}>
                     {item.icon}
                   </div>
-                  <h3 className="mb-2 text-[15px] font-bold text-white">{item.title}</h3>
-                  <p className="text-[13px] leading-relaxed" style={{ color: "#9ca3af" }}>{item.desc}</p>
+                  <h3 className="mb-2 text-[16px] font-bold text-white">{item.title}</h3>
+                  <p className="text-[14px] leading-relaxed" style={{ color: "#9ca3af" }}>{item.desc}</p>
                 </div>
               ))}
             </div>
@@ -743,9 +716,10 @@ export default function Home() {
             <div className="mx-auto mb-10 max-w-lg text-center">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/[0.05] px-4 py-2">
                 <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                <span className="text-[12px] font-medium text-emerald-400">
-                  14 jours gratuits · Sans engagement · Annulable à tout moment
-                </span>
+                <span className="text-[10px] sm:text-[12px] font-medium text-emerald-400">
+  14 jours gratuits · Sans engagement · Annulable à tout moment
+</span>
+
               </div>
             </div>
 
@@ -766,23 +740,24 @@ export default function Home() {
       </main>
 
       <footer className="border-t border-white/[0.04] py-10" style={{ background: "#040404" }}>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-500/20">
-                <span className="text-xs">🍃</span>
-              </div>
-              <span className="text-[14px] tracking-tight">Nutri<strong>Twin</strong></span>
-            </div>
-            <nav className="flex flex-wrap gap-x-6 gap-y-2 text-[12px] text-zinc-600">
-              <Link href="/cgu" className="transition hover:text-white">CGU</Link>
-              <Link href="/confidentialite" className="transition hover:text-white">Confidentialité</Link>
-              <Link href="/login" className="transition hover:text-white">Espace praticien</Link>
-            </nav>
-            <p className="text-[12px] text-zinc-700">© {new Date().getFullYear()} NutriTwin</p>
-          </div>
-        </div>
-      </footer>
+  <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+  <div className="flex flex-wrap items-center justify-between gap-3 sm:flex-nowrap">
+  <div className="hidden sm:flex flex-1" />
+  <nav className="flex items-center gap-4 sm:gap-8">
+    <Link href="/cgu" className="text-[12px] sm:text-[13px] font-medium text-zinc-300 transition hover:text-white">CGU</Link>
+    <Link href="/confidentialite" className="text-[12px] sm:text-[13px] font-medium text-zinc-300 transition hover:text-white">Confidentialité</Link>
+    <Link href="/login" className="text-[12px] sm:text-[13px] font-medium text-zinc-300 transition hover:text-white">Espace praticien</Link>
+  </nav>
+  <div className="hidden sm:flex flex-1 justify-end">
+    <p className="text-[13px] text-zinc-400">© 2026 NutriTwin</p>
+  </div>
+  <p className="sm:hidden text-[12px] text-zinc-400">© 2026 NutriTwin</p>
+</div>
+
+  </div>
+</footer>
+
+
     </div>
   );
 }
@@ -806,9 +781,10 @@ function FounderSection() {
     <section className="py-16 sm:py-24" style={{ background: "#070707" }}>
       <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
         <div className="rounded-2xl border p-8 sm:p-12" style={{ borderColor: `${amber}30`, background: `rgba(245,158,11,0.04)` }}>
-          <h2 className="font-black tracking-tight text-white mb-2" style={{ fontSize: "clamp(28px, 4vw, 48px)" }}>
-            Prêt à vous dédoubler ?
-          </h2>
+        <h2 className="font-black tracking-tight text-white mb-2 text-[26px] sm:text-[clamp(28px,4vw,48px)]">
+  Prêt à vous dédoubler ?
+</h2>
+
           <h3 className="text-[22px] sm:text-[26px] font-black tracking-tight mb-6" style={{ color: amber }}>
             Devenez Fondateur NutriTwin
           </h3>
@@ -850,11 +826,29 @@ function PricingCard({ name, price, badge, description, features, plan, featured
   name: string; price: string; badge?: string; description: string; features: string[]; plan: string; featured: boolean;
 }) {
   return (
-    <div className="relative flex flex-col rounded-2xl p-6 sm:p-8 transition-all" style={{
+    <div className="relative flex flex-col rounded-2xl p-6 sm:p-8 transition-all duration-300 group" style={{
       background: featured ? "linear-gradient(180deg, rgba(16,185,129,0.07), #080808)" : "#0d0d0d",
       border: featured ? "1px solid rgba(16,185,129,0.30)" : "1px solid rgba(255,255,255,0.08)",
       boxShadow: featured ? "0 20px 40px rgba(16,185,129,0.05)" : "none",
-    }}>
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.border = `1px solid ${featured ? "rgba(16,185,129,0.8)" : "rgba(255,255,255,0.35)"}`;
+      e.currentTarget.style.boxShadow = featured
+        ? "0 0 0 1px rgba(16,185,129,0.3), 0 30px 80px rgba(16,185,129,0.25), 0 0 40px rgba(16,185,129,0.1) inset"
+        : "0 0 0 1px rgba(255,255,255,0.15), 0 30px 60px rgba(255,255,255,0.08)";
+      e.currentTarget.style.transform = "translateY(-6px) scale(1.01)";
+      e.currentTarget.style.background = featured
+        ? "linear-gradient(180deg, rgba(16,185,129,0.12), #080808)"
+        : "linear-gradient(180deg, rgba(255,255,255,0.04), #0d0d0d)";
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.border = featured ? "1px solid rgba(16,185,129,0.30)" : "1px solid rgba(255,255,255,0.08)";
+      e.currentTarget.style.boxShadow = featured ? "0 20px 40px rgba(16,185,129,0.05)" : "none";
+      e.currentTarget.style.transform = "translateY(0) scale(1)";
+      e.currentTarget.style.background = featured ? "linear-gradient(180deg, rgba(16,185,129,0.07), #080808)" : "#0d0d0d";
+    }}
+    
+    >
       {featured && (
         <>
           <div className="absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
@@ -863,9 +857,9 @@ function PricingCard({ name, price, badge, description, features, plan, featured
           </div>
         </>
       )}
-      <p className="mb-1 text-[12px] font-semibold text-zinc-400">{name}</p>
+      <p className="mb-1 text-[14px] font-bold text-white">{name}</p>
       <div className="mb-3 flex items-baseline gap-1">
-        <span className="text-[38px] font-black tracking-tight text-white">{price}</span>
+        <span className="text-[42px] font-black tracking-tight text-white">{price}</span>
         <span className="text-[12px] text-zinc-600">/mois</span>
       </div>
       <p className="mb-5 text-[12px] leading-relaxed text-zinc-500">{description}</p>
@@ -879,8 +873,15 @@ function PricingCard({ name, price, badge, description, features, plan, featured
           </li>
         ))}
       </ul>
-      <Link href={`/signup?plan=${plan}`} className="inline-flex h-[42px] w-full items-center justify-center rounded-xl text-[13px] font-semibold transition active:scale-95" style={featured ? { backgroundColor: emerald, color: "black" } : { border: "1px solid rgba(255,255,255,0.08)", color: "#d1d5db" }}>
-        Commencer l'essai gratuit
+      <Link
+        href={`/signup?plan=${plan}`}
+        className="inline-flex h-[46px] w-full items-center justify-center rounded-xl text-[13px] font-semibold transition active:scale-95 mt-2"
+        style={featured
+          ? { backgroundColor: emerald, color: "black", boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }
+          : { border: "1.5px solid rgba(255,255,255,0.12)", color: "#d1d5db", background: "rgba(255,255,255,0.03)" }
+        }
+      >
+        Commencer l'essai gratuit →
       </Link>
     </div>
   );

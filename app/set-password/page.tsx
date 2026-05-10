@@ -96,7 +96,7 @@ export default function SetPasswordPage() {
       });
     }
 
-    router.push("/chat");
+    router.push("/patient-onboarding");
   };
 
   const inputStyle = {
