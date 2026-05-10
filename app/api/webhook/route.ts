@@ -1,91 +1,87 @@
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-  const body = await request.text();
-  const signature = request.headers.get("stripe-signature")!;
 
-  let event: Stripe.Event;
-
-  try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET!
-    );
-  } catch {
-    return new Response("Webhook signature invalide", { status: 400 });
-  }
-
-  const supabase = createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return cookieStore.getAll(); },
+        setAll(cookiesToSet: { name: string; value: string; options: Record<string, unknown> }[]) {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          );
+        },
+      },
+    }
   );
 
-  // Ancien flow — Checkout Sessions
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const plan = session.metadata?.plan ?? "pro";
-    const customerId = session.customer as string;
-    const userId = session.metadata?.userId;
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
-    if (userId) {
-      await supabase
-        .from("practitioners")
-        .update({
-          stripe_customer_id: customerId,
-          plan,
-          subscription_status: "active",
-        })
-        .eq("user_id", userId);
+  const { paymentMethodId, plan } = await request.json() as {
+    paymentMethodId: string;
+    plan: string;
+  };
+
+  const priceMap: Record<string, string> = {
+    essentiel: process.env.STRIPE_PRICE_ESSENTIEL!,
+    pro: process.env.STRIPE_PRICE_PRO!,
+    cabinet: process.env.STRIPE_PRICE_CABINET!,
+    fondateur: process.env.STRIPE_PRICE_FONDATEUR!,
+  };
+
+  try {
+    const { data: practitioner } = await supabase
+      .from("practitioners")
+      .select("stripe_customer_id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!practitioner?.stripe_customer_id) {
+      return NextResponse.json({ error: "Customer Stripe introuvable" }, { status: 400 });
     }
 
-    if (plan === "fondateur") {
-      await supabase.rpc("decrement_founder_counter");
-    }
-  }
+    // Attacher la carte au customer
+    await stripe.paymentMethods.attach(paymentMethodId, {
+      customer: practitioner.stripe_customer_id,
+    });
 
-  // Nouveau flow — SetupIntent + Subscription
-  if (event.type === "customer.subscription.created") {
-    const subscription = event.data.object as Stripe.Subscription;
-    const customerId = subscription.customer as string;
-    const plan = subscription.metadata?.plan ?? "pro";
-    const status = subscription.status;
+    // Définir comme méthode par défaut
+    await stripe.customers.update(practitioner.stripe_customer_id, {
+      invoice_settings: { default_payment_method: paymentMethodId },
+    });
 
+    // Créer l'abonnement avec période d'essai
+    const subscription = await stripe.subscriptions.create({
+      customer: practitioner.stripe_customer_id,
+      items: [{ price: priceMap[plan] }],
+      trial_period_days: 14,
+      payment_settings: {
+        payment_method_types: ["card"],
+        save_default_payment_method: "on_subscription",
+      },
+      metadata: { userId: user.id, plan },
+    });
+
+    // Mettre à jour directement dans Supabase sans attendre le webhook
     await supabase
       .from("practitioners")
       .update({
         plan,
-        subscription_status: status,
+        subscription_status: subscription.status,
       })
-      .eq("stripe_customer_id", customerId);
+      .eq("user_id", user.id);
 
-    if (plan === "fondateur") {
-      await supabase.rpc("decrement_founder_counter");
-    }
+    return NextResponse.json({ subscriptionId: subscription.id, status: subscription.status });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  if (event.type === "customer.subscription.updated") {
-    const subscription = event.data.object as Stripe.Subscription;
-    const customerId = subscription.customer as string;
-    const status = subscription.status;
-
-    await supabase
-      .from("practitioners")
-      .update({ subscription_status: status })
-      .eq("stripe_customer_id", customerId);
-  }
-
-  if (event.type === "customer.subscription.deleted") {
-    const subscription = event.data.object as Stripe.Subscription;
-    const customerId = subscription.customer as string;
-
-    await supabase
-      .from("practitioners")
-      .update({ subscription_status: "cancelled", plan: null })
-      .eq("stripe_customer_id", customerId);
-  }
-
-  return new Response("OK", { status: 200 });
 }
