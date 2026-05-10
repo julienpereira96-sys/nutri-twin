@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
+  // Ancien flow — Checkout Sessions
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
     const plan = session.metadata?.plan ?? "pro";
@@ -45,14 +46,24 @@ export async function POST(request: Request) {
     }
   }
 
-  if (event.type === "customer.subscription.deleted") {
+  // Nouveau flow — SetupIntent + Subscription
+  if (event.type === "customer.subscription.created") {
     const subscription = event.data.object as Stripe.Subscription;
     const customerId = subscription.customer as string;
+    const plan = subscription.metadata?.plan ?? "pro";
+    const status = subscription.status;
 
     await supabase
       .from("practitioners")
-      .update({ subscription_status: "cancelled" })
+      .update({
+        plan,
+        subscription_status: status,
+      })
       .eq("stripe_customer_id", customerId);
+
+    if (plan === "fondateur") {
+      await supabase.rpc("decrement_founder_counter");
+    }
   }
 
   if (event.type === "customer.subscription.updated") {
@@ -63,6 +74,16 @@ export async function POST(request: Request) {
     await supabase
       .from("practitioners")
       .update({ subscription_status: status })
+      .eq("stripe_customer_id", customerId);
+  }
+
+  if (event.type === "customer.subscription.deleted") {
+    const subscription = event.data.object as Stripe.Subscription;
+    const customerId = subscription.customer as string;
+
+    await supabase
+      .from("practitioners")
+      .update({ subscription_status: "cancelled", plan: null })
       .eq("stripe_customer_id", customerId);
   }
 
