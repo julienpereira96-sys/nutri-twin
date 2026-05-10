@@ -171,12 +171,12 @@ const { error: submitError, setupIntent } = await stripe.confirmSetup({
   return (
     <div>
       <PaymentElement options={{
-        layout: "tabs",
+        layout: "accordion",
         fields: {
           billingDetails: {
             email: "never",
             phone: "never",
-            name: "auto",
+            name: "never",
           },
         },
         wallets: {
@@ -342,9 +342,10 @@ function CheckoutForm() {
           </div>
 
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest mb-6 text-zinc-500">
-              Informations de paiement
-            </p>
+          <p className="text-[11px] font-semibold uppercase tracking-widest mb-6" style={{ color: emerald }}>
+  Informations de paiement
+</p>
+
 
             {error ? (
               <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.05] p-8 text-center">
