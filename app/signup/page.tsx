@@ -133,15 +133,17 @@ function SignupForm() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-12 sm:px-6">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#10b981]/20">
-            <span className="text-2xl">🍃</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">NutriTwin</h1>
-          <p className="mt-2 text-sm text-zinc-400">Créez votre compte praticien</p>
+      <div className="mb-8 text-center">
+  <div className="relative mx-auto mb-3 w-fit">
+    <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
+    <img src="/logo.svg" alt="NutriTwin" className="h-14 w-auto relative mx-auto" />
+  </div>
+  <h1 className="text-[22px] tracking-tight text-white">Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
+  <p className="mt-2 text-sm text-zinc-400">Créez votre compte praticien</p>
+
           {plan && (
             <p className="mt-1 text-xs font-semibold" style={{ color: "#10b981" }}>
-              Plan {plan.charAt(0).toUpperCase() + plan.slice(1)} sélectionné
+              {plan === "pro" ? "Plan Professionnel sélectionné" : `Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)} sélectionné`}
             </p>
           )}
         </div>
@@ -309,14 +311,13 @@ function SignupForm() {
                   className="mt-0.5 h-4 w-4 shrink-0 accent-[#10b981]"
                 />
                 <span className="text-xs leading-relaxed text-zinc-400">
-                  Je souhaite recevoir par email les nouveautés de NutriTwin et des conseils pour optimiser l'utilisation de mon jumeau.
-                  <span className="mt-0.5 block text-zinc-600">
-                    Garanti sans spam : nous ne vous envoyons que l'essentiel pour votre activité.
+                  Je souhaite recevoir par mail l'essentiel de NutriTwin : actus et conseils d'optimisation.{" "}
+                  <span className="text-zinc-200">Garanti sans spam.</span>
                   </span>
-                </span>
+
               </label>
 
-              <p className="text-[11px] text-zinc-600">* Champ obligatoire</p>
+              <p className="text-[11px] text-zinc-200">* Champ obligatoire</p>
             </div>
           </div>
 
@@ -332,7 +333,7 @@ function SignupForm() {
             {loading ? "Création du compte..." : "Créer mon compte →"}
           </button>
 
-          <p className="mt-4 text-center text-xs text-zinc-500">
+          <p className="mt-4 text-center text-xs text-zinc-400">
             Un code de vérification vous sera envoyé par email
           </p>
 

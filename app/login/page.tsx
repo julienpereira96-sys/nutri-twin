@@ -58,13 +58,14 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-12 sm:px-6">
-        <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[#10b981]/20">
-            <span className="text-2xl">🍃</span>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">NutriTwin</h1>
-          <p className="mt-2 text-sm text-zinc-400">Connexion praticien</p>
-        </div>
+      <div className="mb-8 text-center">
+  <div className="relative mx-auto mb-3 w-fit">
+    <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
+    <img src="/logo.svg" alt="NutriTwin" className="h-14 w-auto relative mx-auto" />
+  </div>
+  <h1 className="text-[22px] tracking-tight text-white">Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
+  <p className="mt-2 text-sm text-zinc-400">Connexion praticien</p>
+</div>
 
         <form
           onSubmit={onSubmit}
