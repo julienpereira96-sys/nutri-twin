@@ -84,7 +84,6 @@ try {
     body: JSON.stringify({ email: email.trim() }),
   });
   const checkData = await checkRes.json();
-console.log("Check email result:", checkData);
 if (checkData.exists) {
   setError("Un compte existe déjà avec cette adresse email. Connectez-vous pour finaliser votre abonnement.");
   setLoading(false);
