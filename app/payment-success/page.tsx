@@ -21,6 +21,17 @@ function PaymentSuccessContent() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+  
+  useEffect(() => {
+    window.history.pushState(null, "", window.location.href);
+    window.onpopstate = () => {
+      window.history.pushState(null, "", window.location.href);
+    };
+    return () => {
+      window.onpopstate = null;
+    };
+  }, []);
+  
 
   return (
     <div style={{
