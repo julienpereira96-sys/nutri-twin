@@ -28,9 +28,14 @@ export default function LoginPage() {
       });
   
       if (signInError) {
-        setError(signInError.message);
+        if (signInError.message.includes("Invalid login credentials")) {
+          setError("Email ou mot de passe incorrect. Vérifiez vos informations.");
+        } else {
+          setError(signInError.message);
+        }
         return;
       }
+      
   
       const { data: { user } } = await supabase.auth.getUser();
       const { data: practitioner } = await supabase
