@@ -236,9 +236,13 @@ function CheckoutForm() {
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || "Erreur lors du chargement du paiement.");
+        if (data.error?.includes("No such customer")) {
+          setError("Session expirée. Veuillez vous reconnecter.");
+        } else {
+          setError(data.error || "Erreur lors du chargement du paiement.");
+        }
         return;
-      }
+      }      
 
       const data = await res.json();
       setClientSecret(data.clientSecret);
