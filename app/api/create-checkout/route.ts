@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     // Créer un SetupIntent pour collecter la carte
     const setupIntent = await stripe.setupIntents.create({
       customer: customerId,
-      payment_method_types: ["card", "link"],
+      payment_method_types: ["card"],
       metadata: {
         userId: userId || user?.id || "",
         plan,
