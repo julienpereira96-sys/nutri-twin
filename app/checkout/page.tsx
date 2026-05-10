@@ -120,11 +120,22 @@ function PaymentForm({ plan }: { plan: string }) {
     setError("");
 
     try {
-      const { error: submitError, setupIntent } = await stripe.confirmSetup({
-        elements,
-        confirmParams: { return_url: window.location.href },
-        redirect: "if_required",
-      });
+      const supabase = createSupabaseBrowserClient();
+const { data: { user } } = await supabase.auth.getUser();
+
+const { error: submitError, setupIntent } = await stripe.confirmSetup({
+  elements,
+  confirmParams: {
+    return_url: window.location.href,
+    payment_method_data: {
+      billing_details: {
+        email: user?.email ?? "",
+      },
+    },
+  },
+  redirect: "if_required",
+});
+
 
       if (submitError) {
         setError(submitError.message || "Une erreur est survenue.");
