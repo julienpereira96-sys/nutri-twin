@@ -6,8 +6,17 @@ import { useSearchParams } from "next/navigation";
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams();
-  const sessionId = searchParams.get("session_id");
-  const [countdown, setCountdown] = useState(10);
+  const [countdown, setCountdown] = useState(15);
+
+  useEffect(() => {
+    window.history.pushState(null, "", window.location.href);
+    window.onpopstate = () => {
+      window.history.pushState(null, "", window.location.href);
+    };
+    return () => {
+      window.onpopstate = null;
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -21,17 +30,6 @@ function PaymentSuccessContent() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
-  
-  useEffect(() => {
-    window.history.pushState(null, "", window.location.href);
-    window.onpopstate = () => {
-      window.history.pushState(null, "", window.location.href);
-    };
-    return () => {
-      window.onpopstate = null;
-    };
-  }, []);
-  
 
   return (
     <div style={{
@@ -43,7 +41,9 @@ function PaymentSuccessContent() {
       padding: 20,
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
-      <div style={{ textAlign: "center", maxWidth: 480 }}>
+      <div style={{ textAlign: "center", maxWidth: 520 }}>
+
+        {/* Icône succès */}
         <div style={{
           width: 80, height: 80, borderRadius: 40,
           background: "linear-gradient(135deg, #6ee7b7, #10b981)",
@@ -53,29 +53,63 @@ function PaymentSuccessContent() {
         }}>
           ✓
         </div>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "white", margin: "0 0 12px" }}>
+
+        {/* Titre */}
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: "white", margin: "0 0 8px" }}>
           Paiement confirmé !
         </h1>
-        <p style={{ fontSize: 16, color: "#10b981", fontWeight: 600, margin: "0 0 8px" }}>
+        <p style={{ fontSize: 15, color: "#10b981", fontWeight: 600, margin: "0 0 32px" }}>
           14 jours gratuits — aucun débit aujourd'hui
         </p>
-        <p style={{ fontSize: 15, color: "#94a3b8", lineHeight: 1.7, margin: "0 0 32px" }}>
-          Bienvenue dans NutriTwin ! Configurez maintenant votre jumeau numérique en quelques minutes.
-        </p>
+
+        {/* Bloc conseil */}
         <div style={{
-          background: "rgba(16,185,129,0.08)",
+          background: "rgba(16,185,129,0.05)",
           border: "1px solid rgba(16,185,129,0.2)",
-          borderRadius: 16,
-          padding: "20px 24px",
-          marginBottom: 32,
+          borderRadius: 20,
+          padding: "24px 28px",
+          marginBottom: 28,
+          textAlign: "left",
         }}>
-          <p style={{ margin: 0, fontSize: 14, color: "#94a3b8" }}>
-            Redirection automatique dans
+          <p style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: "white" }}>
+            🧬 Votre jumeau sera aussi précis que vos réponses
           </p>
-          <p style={{ margin: "8px 0 0", fontSize: 48, fontWeight: 700, color: "#10b981" }}>
-            {countdown}
+          <p style={{ margin: "0 0 16px", fontSize: 14, color: "#94a3b8", lineHeight: 1.7 }}>
+            Vous allez configurer votre jumeau numérique. C'est l'étape la plus importante — prenez le temps de bien le faire.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {[
+              "Prévoyez 15 à 20 minutes sans interruption",
+              "Répondez comme si vous parliez à un confrère",
+              "Plus vous êtes précis, plus votre jumeau vous ressemble vraiment",
+            ].map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 10, flexShrink: 0,
+                  background: "rgba(16,185,129,0.2)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 11, color: "#10b981", fontWeight: 700, marginTop: 1,
+                }}>✓</div>
+                <p style={{ margin: 0, fontSize: 14, color: "#d1d5db", lineHeight: 1.5 }}>{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Countdown */}
+        <div style={{
+          background: "rgba(255,255,255,0.03)",
+          border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: 16,
+          padding: "16px 24px",
+          marginBottom: 24,
+        }}>
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>
+            Redirection automatique dans <strong style={{ color: "#10b981" }}>{countdown}s</strong>
           </p>
         </div>
+
+        {/* Bouton */}
         <Link
           href="/onboarding"
           style={{
@@ -86,14 +120,14 @@ function PaymentSuccessContent() {
             borderRadius: 26,
             background: "linear-gradient(135deg, #34d399, #10b981)",
             color: "black",
-            fontWeight: 600,
+            fontWeight: 700,
             fontSize: 15,
             padding: "0 32px",
             textDecoration: "none",
             boxShadow: "0 4px 16px rgba(16,185,129,0.4)",
           }}
         >
-          Configurer mon jumeau numérique →
+          Créer mon jumeau numérique →
         </Link>
       </div>
     </div>
