@@ -45,20 +45,27 @@ export async function POST(request: Request) {
       .eq("user_id", userId || user?.id)
       .single();
 
-    if (practitioner?.stripe_customer_id) {
-      customerId = practitioner.stripe_customer_id;
-    } else {
-      const customer = await stripe.customers.create({
-        email: user?.email,
-        metadata: { userId: userId || user?.id || "" },
-      });
-      customerId = customer.id;
-
-      await supabase
-        .from("practitioners")
-        .update({ stripe_customer_id: customerId })
-        .eq("user_id", userId || user?.id);
-    }
+      if (practitioner?.stripe_customer_id) {
+        try {
+          await stripe.customers.retrieve(practitioner.stripe_customer_id);
+          customerId = practitioner.stripe_customer_id;
+        } catch {
+          customerId = undefined;
+        }
+      }
+      
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: user?.email,
+          metadata: { userId: userId || user?.id || "" },
+        });
+        customerId = customer.id;
+      
+        await supabase
+          .from("practitioners")
+          .update({ stripe_customer_id: customerId })
+          .eq("user_id", userId || user?.id);
+      }      
 
     // Créer un SetupIntent pour collecter la carte
     const setupIntent = await stripe.setupIntents.create({
@@ -78,3 +85,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+
