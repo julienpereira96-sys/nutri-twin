@@ -130,7 +130,10 @@ const { error: submitError, setupIntent } = await stripe.confirmSetup({
     payment_method_data: {
       billing_details: {
         email: user?.email ?? "",
-        name: "NutriTwin User",
+        name: user?.user_metadata?.first_name 
+          ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}` 
+          : user?.email ?? "",
+        phone: "",
       },
     },    
   },
@@ -176,7 +179,7 @@ const { error: submitError, setupIntent } = await stripe.confirmSetup({
           billingDetails: {
             email: "never",
             phone: "never",
-            name: "auto",
+            name: "never",
           },
         },
         wallets: {
