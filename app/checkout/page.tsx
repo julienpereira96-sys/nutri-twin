@@ -190,9 +190,11 @@ function PaymentForm({ plan }: { plan: string }) {
 
 <div className="mt-5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
   <p className="text-[12px] text-zinc-400 text-center leading-relaxed">
-    className="text-white" En démarrant votre essai, vous autorisez NutriTwin à débiter votre carte à l'issue de la période d'essai. <strong className="text-white">Annulable à tout moment.</strong>
+    En démarrant votre essai, vous autorisez NutriTwin à débiter votre carte à l'issue de la période d'essai.{" "}
+    <strong className="text-white">Annulable à tout moment.</strong>
   </p>
 </div>
+
 
       {error && (
         <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-[13px] text-red-400">
