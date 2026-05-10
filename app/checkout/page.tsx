@@ -130,11 +130,14 @@ const { error: submitError, setupIntent } = await stripe.confirmSetup({
     payment_method_data: {
       billing_details: {
         email: user?.email ?? "",
+        phone: "",
+        name: "",
       },
     },
   },
   redirect: "if_required",
 });
+
 
 
       if (submitError) {
