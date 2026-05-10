@@ -19,26 +19,37 @@ export default function LoginPage() {
     event.preventDefault();
     setError("");
     setLoading(true);
-
+  
     try {
       const supabase = createSupabaseBrowserClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
-
+  
       if (signInError) {
         setError(signInError.message);
         return;
       }
-
-      router.push("/dashboard");
+  
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: practitioner } = await supabase
+        .from("practitioners")
+        .select("plan")
+        .eq("user_id", user?.id)
+        .single();
+  
+      if (!practitioner?.plan) {
+        router.push(`/checkout?plan=pro`);
+      } else {
+        router.push("/dashboard");
+      }
     } catch {
       setError("Une erreur est survenue. Réessayez plus tard.");
     } finally {
       setLoading(false);
     }
-  };
+  };  
 
   const handleForgotPassword = async () => {
     if (!email.trim()) {

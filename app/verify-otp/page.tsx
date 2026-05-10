@@ -22,6 +22,16 @@ function VerifyOTPForm() {
   const supabase = createSupabaseBrowserClient();
 
   useEffect(() => {
+    window.history.pushState(null, "", window.location.href);
+    window.onpopstate = () => {
+      window.history.pushState(null, "", window.location.href);
+    };
+    return () => {
+      window.onpopstate = null;
+    };
+  }, []);  
+
+  useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(c => c - 1), 1000);
       return () => clearTimeout(timer);
@@ -96,15 +106,14 @@ function VerifyOTPForm() {
 
   return (
     <div className="min-h-screen bg-[#070707] flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="flex justify-center mb-8">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-500/15 ring-1 ring-emerald-500/20">
-              <span className="text-sm">🍃</span>
-            </div>
-            <span className="text-[15px] tracking-tight text-white">Nutri<strong>Twin</strong></span>
-          </Link>
-        </div>
+  <div className="w-full max-w-md">
+    <div className="mb-8 text-center">
+      <div className="relative mx-auto mb-3 w-fit">
+        <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
+        <img src="/logo.svg" alt="NutriTwin" className="h-14 w-auto relative mx-auto" />
+      </div>
+      <h1 className="text-[22px] tracking-tight text-white">Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
+    </div>
 
         <div className="rounded-2xl border border-white/[0.08] bg-[#0d0d0d] p-8">
           <div className="text-center mb-8">
@@ -118,9 +127,10 @@ function VerifyOTPForm() {
             <p className="text-[13px] font-semibold mt-1" style={{ color: emerald }}>
               {email}
             </p>
-            <p className="text-[11px] text-zinc-600 mt-2">
-              Si vous ne le voyez pas, vérifiez vos spams.
-            </p>
+            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5">
+  <span className="text-sm">⚠️</span>
+  <p className="text-[11px] font-medium text-amber-400">Si vous ne le voyez pas, vérifiez vos spams.</p>
+</div>
           </div>
 
           <div className="flex justify-center gap-3 mb-6">
@@ -166,10 +176,10 @@ function VerifyOTPForm() {
           </button>
 
           <div className="mt-5 text-center">
-            <p className="text-[13px] text-zinc-500">
+            <p className="text-[13px] text-zinc-400">
               Vous n'avez pas reçu le code ?{" "}
               {countdown > 0 ? (
-                <span className="text-zinc-600">Renvoyer dans {countdown}s</span>
+                <span className="text-zinc-500">Renvoyer dans {countdown}s</span>
               ) : (
                 <button
                   onClick={handleResend}
@@ -184,14 +194,14 @@ function VerifyOTPForm() {
           </div>
 
           <div className="mt-4 text-center">
-            <Link href="/signup" className="text-[12px] text-zinc-600 hover:text-zinc-400 transition">
+            <Link href="/signup" className="text-[12px] text-zinc-500 hover:text-zinc-400 transition">
               ← Modifier mon email
             </Link>
           </div>
         </div>
 
-        <p className="mt-6 text-center text-[11px] text-zinc-700">
-          Le code expire dans 1 heure
+        <p className="mt-6 text-center text-[11px] text-zinc-500">
+          Le code expire dans 10 minutes
         </p>
       </div>
     </div>

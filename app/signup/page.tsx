@@ -5,6 +5,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { FormEvent, useState, Suspense } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
+const emerald = "#10b981";
+
 const specialties = [
   "Nutritionniste",
   "Diététicien / Diététicienne",
@@ -72,11 +74,26 @@ function SignupForm() {
     }
 
     setLoading(true);
-    const finalSpecialty = allSpecialties.join(", ");
+const finalSpecialty = allSpecialties.join(", ");
 
-    try {
-      const supabase = createSupabaseBrowserClient();
-      const { data, error: signUpError } = await supabase.auth.signUp({
+try {
+  // Vérifier si l'email existe déjà
+  const checkRes = await fetch("/api/check-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email.trim() }),
+  });
+  const checkData = await checkRes.json();
+console.log("Check email result:", checkData);
+if (checkData.exists) {
+  setError("Un compte existe déjà avec cette adresse email. Connectez-vous pour finaliser votre abonnement.");
+  setLoading(false);
+  return;
+}
+
+  const supabase = createSupabaseBrowserClient();
+  const { data, error: signUpError } = await supabase.auth.signUp({
+    
         email: email.trim(),
         password,
         options: {
@@ -88,12 +105,18 @@ function SignupForm() {
           },
         },
       });
-
+    
       if (signUpError) {
         setError(signUpError.message);
         return;
       }
-
+    
+      // Si l'utilisateur existe déjà, Supabase retourne une session null et identities vide
+      if (data.user && data.user.identities && data.user.identities.length === 0) {
+        setError("Un compte existe déjà avec cette adresse email. Connectez-vous pour finaliser l'inscription ou réinitialisez votre mot de passe.");
+        return;
+      }
+    
       if (data.user) {
         await fetch("/api/create-practitioner", {
           method: "POST",
@@ -107,14 +130,14 @@ function SignupForm() {
             marketingConsent: acceptMarketing,
           }),
         });
-
+    
         router.push(`/verify-otp?email=${encodeURIComponent(email.trim())}&plan=${plan}`);
       }
     } catch {
       setError("Une erreur est survenue. Réessayez plus tard.");
     } finally {
       setLoading(false);
-    }
+    }    
   };
 
   const EyeIcon = () => (
@@ -322,8 +345,15 @@ function SignupForm() {
           </div>
 
           {error && (
-            <p className="mt-4 text-sm text-red-400" role="alert">{error}</p>
-          )}
+          <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
+          <p className="text-sm text-red-400" role="alert">{error}</p>
+          {error.includes("compte existe déjà") && (
+              <Link href="/login" className="mt-2 inline-block text-[12px] font-semibold transition hover:opacity-80" style={{ color: emerald }}>
+                → Se connecter et finaliser mon abonnement
+              </Link>
+            )}
+          </div>
+        )}
 
           <button
             type="submit"

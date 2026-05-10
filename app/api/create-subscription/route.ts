@@ -23,10 +23,11 @@ export async function POST(request: Request) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
-  const { plan, userId } = await request.json() as {
-    plan: "essentiel" | "pro" | "cabinet" | "fondateur";
-    userId: string;
+  const { paymentMethodId, plan } = await request.json() as {
+    paymentMethodId: string;
+    plan: string;
   };
 
   const priceMap: Record<string, string> = {
@@ -37,43 +38,40 @@ export async function POST(request: Request) {
   };
 
   try {
-    // Créer ou récupérer le customer Stripe
-    let customerId: string | undefined;
     const { data: practitioner } = await supabase
       .from("practitioners")
       .select("stripe_customer_id")
-      .eq("user_id", userId || user?.id)
+      .eq("user_id", user.id)
       .single();
 
-    if (practitioner?.stripe_customer_id) {
-      customerId = practitioner.stripe_customer_id;
-    } else {
-      const customer = await stripe.customers.create({
-        email: user?.email,
-        metadata: { userId: userId || user?.id || "" },
-      });
-      customerId = customer.id;
-
-      await supabase
-        .from("practitioners")
-        .update({ stripe_customer_id: customerId })
-        .eq("user_id", userId || user?.id);
+    if (!practitioner?.stripe_customer_id) {
+      return NextResponse.json({ error: "Customer Stripe introuvable" }, { status: 400 });
     }
 
-    // Créer un SetupIntent pour collecter la carte
-    const setupIntent = await stripe.setupIntents.create({
-      customer: customerId,
-      payment_method_types: ["card", "link"],
-      metadata: {
-        userId: userId || user?.id || "",
-        plan,
-        priceId: priceMap[plan],
-      },
+    // Attacher la carte au customer
+    await stripe.paymentMethods.attach(paymentMethodId, {
+      customer: practitioner.stripe_customer_id,
     });
 
-    return NextResponse.json({ clientSecret: setupIntent.client_secret });
+    // Définir comme méthode par défaut
+    await stripe.customers.update(practitioner.stripe_customer_id, {
+      invoice_settings: { default_payment_method: paymentMethodId },
+    });
+
+    // Créer l'abonnement avec période d'essai
+    const subscription = await stripe.subscriptions.create({
+      customer: practitioner.stripe_customer_id,
+      items: [{ price: priceMap[plan] }],
+      trial_period_days: 14,
+      payment_settings: {
+        payment_method_types: ["card"],
+        save_default_payment_method: "on_subscription",
+      },
+      metadata: { userId: user.id, plan },
+    });
+
+    return NextResponse.json({ subscriptionId: subscription.id, status: subscription.status });
   } catch (error) {
-    console.error("Stripe error:", JSON.stringify(error, null, 2));
     const message = error instanceof Error ? error.message : String(error);
     return NextResponse.json({ error: message }, { status: 500 });
   }
