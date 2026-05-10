@@ -121,24 +121,24 @@ function PaymentForm({ plan }: { plan: string }) {
 
     try {
       const supabase = createSupabaseBrowserClient();
-const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
 
-const { error: submitError, setupIntent } = await stripe.confirmSetup({
-  elements,
-  confirmParams: {
-    return_url: window.location.href,
-    payment_method_data: {
-      billing_details: {
-        email: user?.email ?? "",
-        name: user?.user_metadata?.first_name 
-          ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}` 
-          : user?.email ?? "",
-        phone: "",
-      },
-    },    
-  },
-  redirect: "if_required",
-});
+      const { error: submitError, setupIntent } = await stripe.confirmSetup({
+        elements,
+        confirmParams: {
+          return_url: window.location.href,
+          payment_method_data: {
+            billing_details: {
+              email: user?.email ?? "",
+              name: user?.user_metadata?.first_name
+                ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
+                : user?.email ?? "",
+              phone: "",
+            },
+          },
+        },
+        redirect: "if_required",
+      });
 
       if (submitError) {
         setError(submitError.message || "Une erreur est survenue.");
@@ -187,15 +187,23 @@ const { error: submitError, setupIntent } = await stripe.confirmSetup({
           googlePay: "auto",
         },
       }} />
+
+      <div className="mt-5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] px-4 py-3">
+        <p className="text-[12px] text-emerald-300 text-center leading-relaxed">
+          🎁 <strong>14 jours gratuits</strong> — aucun débit aujourd'hui. En démarrant votre essai, vous autorisez NutriTwin à débiter votre carte à l'issue de la période d'essai. <strong>Annulable à tout moment.</strong>
+        </p>
+      </div>
+
       {error && (
         <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-[13px] text-red-400">
           {error}
         </div>
       )}
+
       <button
         onClick={handleSubmit}
         disabled={loading || !stripe}
-        className="mt-6 w-full h-[52px] rounded-xl text-[15px] font-semibold text-black transition active:scale-95 disabled:opacity-50"
+        className="mt-5 w-full h-[52px] rounded-xl text-[15px] font-semibold text-black transition active:scale-95 disabled:opacity-50"
         style={{ backgroundColor: emerald }}
       >
         {loading ? (
@@ -207,8 +215,12 @@ const { error: submitError, setupIntent } = await stripe.confirmSetup({
           "Commencer mon essai gratuit →"
         )}
       </button>
-      <p className="mt-3 text-[11px] text-zinc-600 text-center">
-        Aucun débit pendant 14 jours · Annulable à tout moment
+
+      <p className="mt-4 text-[10px] text-zinc-700 text-center leading-relaxed">
+        En confirmant, vous acceptez nos{" "}
+        <Link href="/cgu" className="underline hover:text-zinc-500 transition">CGU</Link>
+        {" "}et notre{" "}
+        <Link href="/confidentialite" className="underline hover:text-zinc-500 transition">politique de confidentialité</Link>.
       </p>
     </div>
   );
@@ -245,7 +257,7 @@ function CheckoutForm() {
           setError(data.error || "Erreur lors du chargement du paiement.");
         }
         return;
-      }      
+      }
 
       const data = await res.json();
       setClientSecret(data.clientSecret);
@@ -349,10 +361,9 @@ function CheckoutForm() {
           </div>
 
           <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest mb-6" style={{ color: emerald }}>
-  Informations de paiement
-</p>
-
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-6" style={{ color: emerald }}>
+              Informations de paiement
+            </p>
 
             {error ? (
               <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.05] p-8 text-center">
@@ -375,14 +386,6 @@ function CheckoutForm() {
                 </div>
               </div>
             )}
-
-            <p className="mt-4 text-[10px] text-zinc-700 text-center leading-relaxed">
-              En confirmant votre abonnement, vous acceptez nos{" "}
-              <Link href="/cgu" className="underline hover:text-zinc-500 transition">CGU</Link>
-              {" "}et notre{" "}
-              <Link href="/confidentialite" className="underline hover:text-zinc-500 transition">politique de confidentialité</Link>.
-              Votre abonnement se renouvelle automatiquement chaque mois.
-            </p>
           </div>
         </div>
       </div>
