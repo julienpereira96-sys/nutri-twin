@@ -8,9 +8,6 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 });
 
-// ============================================================
-// PLAN CONFIG
-// ============================================================
 const PLAN_CONFIG = {
   essentiel: {
     model: "gemini-3.1-flash-lite",
@@ -58,9 +55,6 @@ type ChatRequest = {
   imageMimeType?: string;
 };
 
-// ============================================================
-// MOTS-CLÉS POUR MODEL ROUTING
-// ============================================================
 const COMPLEX_KEYWORDS = [
   "faim", "manger", "repas", "aliment", "calorie", "régime", "poids",
   "maigrir", "grossir", "sport", "exercice", "santé", "maladie", "diabète",
@@ -85,9 +79,6 @@ function createSupabaseClient() {
   );
 }
 
-// ============================================================
-// EMBEDDINGS GEMINI
-// ============================================================
 async function getGeminiEmbedding(text: string): Promise<number[]> {
   const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
   const result = await model.embedContent({
@@ -98,9 +89,6 @@ async function getGeminiEmbedding(text: string): Promise<number[]> {
   return result.embedding.values;
 }
 
-// ============================================================
-// REDIS — CACHE PLAN + PROFIL PRATICIEN
-// ============================================================
 type CachedPractitioner = {
   plan: PlanType;
   profile: Record<string, string> | null;
@@ -118,22 +106,15 @@ async function getPractitionerFromCache(practitionerId: string): Promise<CachedP
 async function setPractitionerInCache(practitionerId: string, data: CachedPractitioner): Promise<void> {
   try {
     await redis.set(`practitioner:${practitionerId}`, data, { ex: 3600 });
-  } catch {
-    // Silencieux
-  }
+  } catch {}
 }
 
 async function invalidatePractitionerCache(practitionerId: string): Promise<void> {
   try {
     await redis.del(`practitioner:${practitionerId}`);
-  } catch {
-    // Silencieux
-  }
+  } catch {}
 }
 
-// ============================================================
-// RÉCUPÉRER LE PLAN + PROFIL DU PRATICIEN (avec cache Redis)
-// ============================================================
 async function getPractitionerData(practitionerId: string): Promise<CachedPractitioner> {
   const cached = await getPractitionerFromCache(practitionerId);
   if (cached) return cached;
@@ -153,24 +134,16 @@ async function getPractitionerData(practitionerId: string): Promise<CachedPracti
   return data;
 }
 
-// ============================================================
-// SEMANTIC CACHE
-// ============================================================
-async function getSemanticCache(
-  question: string,
-  practitionerId: string
-): Promise<string | null> {
+async function getSemanticCache(question: string, practitionerId: string): Promise<string | null> {
   try {
     const supabase = createSupabaseClient();
     const queryEmbedding = await getGeminiEmbedding(question);
-
     const { data } = await supabase.rpc("match_cached_responses", {
       query_embedding: queryEmbedding,
       practitioner_id: practitionerId,
       similarity_threshold: 0.88,
       match_count: 1,
     });
-
     const results = data as { response: string; similarity: number }[] | null;
     if (results && results.length > 0) return results[0].response;
     return null;
@@ -179,29 +152,19 @@ async function getSemanticCache(
   }
 }
 
-async function saveToCache(
-  question: string,
-  response: string,
-  practitionerId: string
-): Promise<void> {
+async function saveToCache(question: string, response: string, practitionerId: string): Promise<void> {
   try {
     const supabase = createSupabaseClient();
     const embedding = await getGeminiEmbedding(question);
-
     await supabase.from("cached_responses").insert({
       practitioner_id: practitionerId,
       question,
       response,
       embedding,
     } as never);
-  } catch {
-    // Silencieux
-  }
+  } catch {}
 }
 
-// ============================================================
-// RAG
-// ============================================================
 async function hasDocuments(practitionerId: string): Promise<boolean> {
   const supabase = createSupabaseClient();
   const { count } = await supabase
@@ -211,18 +174,13 @@ async function hasDocuments(practitionerId: string): Promise<boolean> {
   return (count ?? 0) > 0;
 }
 
-async function getRelevantDocuments(
-  question: string,
-  practitionerId: string,
-  ragChunks: number
-): Promise<string> {
+async function getRelevantDocuments(question: string, practitionerId: string, ragChunks: number): Promise<string> {
   try {
     const hasDocs = await hasDocuments(practitionerId);
     if (!hasDocs) return "";
 
     const supabase = createSupabaseClient();
     const queryEmbedding = await getGeminiEmbedding(question);
-
     const { data } = await supabase.rpc("match_documents", {
       query_embedding: queryEmbedding,
       practitioner_id: practitionerId,
@@ -232,20 +190,13 @@ async function getRelevantDocuments(
     const results = data as { content: string; similarity: number }[] | null;
     if (!results || results.length === 0) return "";
 
-    const relevant = results
-      .filter((d) => d.similarity > 0.5)
-      .map((d) => d.content)
-      .join("\n\n");
-
+    const relevant = results.filter((d) => d.similarity > 0.5).map((d) => d.content).join("\n\n");
     return relevant ? `\nDOCUMENTS DE RÉFÉRENCE DU PRATICIEN :\n${relevant}\n` : "";
   } catch {
     return "";
   }
 }
 
-// ============================================================
-// PROFIL PATIENT
-// ============================================================
 async function getPatientProfile(patientId: string): Promise<string> {
   try {
     const supabase = createSupabaseClient();
@@ -303,31 +254,22 @@ async function getPatientProfile(patientId: string): Promise<string> {
       patient.brief_jumeau ? `BRIEF INITIAL : ${patient.brief_jumeau}` : "",
       patient.practitioner_instruction ? `⚡ MURMURE ACTIF DU PRATICIEN (priorité absolue) : ${patient.practitioner_instruction}` : "",
     ].filter(Boolean).join("\n");
-    
+
     const briefFinal = briefSection
       ? `\nINSTRUCTIONS SPÉCIFIQUES DU PRATICIEN POUR CE PATIENT :\n${briefSection}\n`
       : "";
 
     return parts.length > 0
-      ? `\nPROFIL DU PATIENT :\n${parts.join("\n")}\n{brieffinal}`
+      ? `\nPROFIL DU PATIENT :\n${parts.join("\n")}\n${briefFinal}`
       : "";
   } catch {
     return "";
   }
 }
 
-// ============================================================
-// HISTORIQUE + RÉSUMÉ AUTOMATIQUE
-// ============================================================
-async function summarizeOldMessages(
-  messages: { role: string; content: string }[]
-): Promise<string> {
+async function summarizeOldMessages(messages: { role: string; content: string }[]): Promise<string> {
   try {
-    const patientMessages = messages
-      .filter((m) => m.role === "user")
-      .map((m) => m.content.slice(0, 150))
-      .join(" | ");
-
+    const patientMessages = messages.filter((m) => m.role === "user").map((m) => m.content.slice(0, 150)).join(" | ");
     const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
     const result = await model.generateContent(
       `Résume en 5 lignes maximum les points clés de ces échanges patient-nutritionniste. 
@@ -336,11 +278,7 @@ async function summarizeOldMessages(
     );
     return `[RÉSUMÉ DES ÉCHANGES PRÉCÉDENTS : ${result.response.text()}]`;
   } catch {
-    const patientMessages = messages
-      .filter((m) => m.role === "user")
-      .slice(0, 10)
-      .map((m) => m.content.slice(0, 100))
-      .join(" | ");
+    const patientMessages = messages.filter((m) => m.role === "user").slice(0, 10).map((m) => m.content.slice(0, 100)).join(" | ");
     return `[RÉSUMÉ : ${patientMessages}]`;
   }
 }
@@ -361,9 +299,7 @@ async function getConversationHistory(
       .order("created_at", { ascending: true })
       .limit(historyLimit + 50);
 
-    if (sessionId) {
-      query = query.eq("session_id", sessionId);
-    }
+    if (sessionId) query = query.eq("session_id", sessionId);
 
     const { data } = await query;
     const messages = data as { role: string; content: string; created_at: string }[] | null;
@@ -373,7 +309,6 @@ async function getConversationHistory(
       const oldMessages = messages.slice(0, messages.length - historyLimit);
       const recentMessages = messages.slice(messages.length - historyLimit);
       const summary = await summarizeOldMessages(oldMessages);
-
       return [
         { role: "user" as const, parts: [{ text: summary }] },
         ...recentMessages.map((m) => ({
@@ -392,9 +327,6 @@ async function getConversationHistory(
   }
 }
 
-// ============================================================
-// SYSTEM PROMPT COMPACT
-// ============================================================
 function buildSystemPrompt(
   profile: Record<string, string> | null,
   patientContext: string,
@@ -427,9 +359,6 @@ function getDefaultPrompt(): string {
   return "Tu es un assistant nutritionniste. Réponds sans markdown, en phrases simples, max 150 mots.";
 }
 
-// ============================================================
-// QUOTA JOURNALIER
-// ============================================================
 async function getDailyMessageCount(patientId: string): Promise<number> {
   const supabase = createSupabaseClient();
   const today = new Date().toISOString().split("T")[0];
@@ -442,9 +371,6 @@ async function getDailyMessageCount(patientId: string): Promise<number> {
   return count ?? 0;
 }
 
-// ============================================================
-// POST HANDLER
-// ============================================================
 export async function POST(request: Request) {
   try {
     const {
@@ -457,7 +383,6 @@ export async function POST(request: Request) {
       imageMimeType,
     } = await request.json() as ChatRequest;
 
-    // ── Plan + Profil depuis Redis ──
     const practitionerData = practitionerId
       ? await getPractitionerData(practitionerId)
       : { plan: "essentiel" as PlanType, profile: null };
@@ -465,7 +390,6 @@ export async function POST(request: Request) {
     const plan = practitionerData.plan;
     const config = PLAN_CONFIG[plan];
 
-    // ── Quota journalier ──
     if (patientId) {
       const dailyCount = await getDailyMessageCount(patientId);
       if (dailyCount >= config.dailyMessageLimit) {
@@ -477,36 +401,24 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── Semantic caching (pas pour les images) ──
     if (practitionerId && !systemPrompt && !imageBase64) {
       const cached = await getSemanticCache(message, practitionerId);
-      if (cached) {
-        return Response.json({ response: cached });
-      }
+      if (cached) return Response.json({ response: cached });
     }
 
-    // ── Contexte patient + documents ──
     const [patientContext, documentsContext] = await Promise.all([
       patientId ? getPatientProfile(patientId) : Promise.resolve(""),
       practitionerId ? getRelevantDocuments(message, practitionerId, config.ragChunks) : Promise.resolve(""),
     ]);
 
-    // ── System prompt ──
     const practitionerPrompt = systemPrompt ||
       buildSystemPrompt(practitionerData.profile, patientContext, documentsContext);
 
-    // ── Historique ──
     let conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[] = [];
     if (patientId && practitionerId) {
-      conversationHistory = await getConversationHistory(
-        patientId,
-        practitionerId,
-        config.historyLimit,
-        sessionId
-      );
+      conversationHistory = await getConversationHistory(patientId, practitionerId, config.historyLimit, sessionId);
     }
 
-    // ── Model routing ──
     const modelName = imageBase64
       ? "gemini-3-flash-preview"
       : plan === "essentiel"
@@ -524,7 +436,6 @@ export async function POST(request: Request) {
 
     const chat = model.startChat({ history: conversationHistory });
 
-    // ── Envoi message ou image ──
     let result;
     if (imageBase64 && imageMimeType) {
       const visionPrompt = `Tu reçois une photo de repas d'un patient en suivi nutritionnel.
@@ -538,19 +449,27 @@ ${message ? `\nMessage du patient : "${message}"` : ""}
 Max 150 mots. Sans markdown.`;
 
       result = await chat.sendMessage([
-        {
-          inlineData: {
-            data: imageBase64,
-            mimeType: imageMimeType as "image/jpeg" | "image/png" | "image/webp",
-          },
-        },
+        { inlineData: { data: imageBase64, mimeType: imageMimeType as "image/jpeg" | "image/png" | "image/webp" } },
         { text: visionPrompt },
       ]);
     } else {
       result = await chat.sendMessage(message);
     }
 
-    const text = result.response.text();
+    let text = result.response.text();
+
+    // ── Parser le statut émotionnel ──
+    let emotionalStatus = "green";
+    let emotionalInsight = "";
+    const statusMatch = text.match(/\|\|\|([\s\S]*?)\|\|\|/);
+    if (statusMatch) {
+      try {
+        const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string };
+        emotionalStatus = parsed.status;
+        emotionalInsight = parsed.reason;
+      } catch { /* silencieux */ }
+      text = text.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
+    }
 
     // ── Sauvegarde en base ──
     const supabase = createSupabaseClient();
@@ -572,6 +491,15 @@ Max 150 mots. Sans markdown.`;
         },
       ]);
 
+      // ── Mettre à jour le statut émotionnel ──
+      await supabase
+        .from("patients")
+        .update({
+          emotional_status: emotionalStatus,
+          emotional_insight: emotionalInsight,
+        })
+        .eq("user_id", patientId);
+
       if (sessionId) {
         await supabase
           .from("conversations_sessions")
@@ -582,7 +510,6 @@ Max 150 mots. Sans markdown.`;
           .eq("id", sessionId);
       }
 
-      // Cache sémantique (pas les images)
       if (practitionerId && !imageBase64) {
         await saveToCache(message, text, practitionerId);
       }
