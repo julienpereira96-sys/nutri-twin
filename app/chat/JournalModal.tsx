@@ -20,18 +20,18 @@ const foodRatings = [
 ];
 
 const emotionTags = [
-  { label: "Stress", positive: false },
-  { label: "Fatigue", positive: false },
-  { label: "Tristesse", positive: false },
-  { label: "Anxiété", positive: false },
-  { label: "Frustration", positive: false },
-  { label: "Solitude", positive: false },
-  { label: "Sérénité", positive: true },
-  { label: "Motivation", positive: true },
-  { label: "Fierté", positive: true },
-  { label: "Gratitude", positive: true },
-  { label: "Énergie", positive: true },
-  { label: "Légèreté", positive: true },
+  { emoji: "😤", label: "Stress", positive: false },
+  { emoji: "😴", label: "Fatigue", positive: false },
+  { emoji: "😔", label: "Tristesse", positive: false },
+  { emoji: "😰", label: "Anxiété", positive: false },
+  { emoji: "😠", label: "Frustration", positive: false },
+  { emoji: "🥺", label: "Solitude", positive: false },
+  { emoji: "😌", label: "Sérénité", positive: true },
+  { emoji: "💪", label: "Motivation", positive: true },
+  { emoji: "🎉", label: "Fierté", positive: true },
+  { emoji: "🙏", label: "Gratitude", positive: true },
+  { emoji: "⚡", label: "Énergie", positive: true },
+  { emoji: "🌿", label: "Légèreté", positive: true },
 ];
 
 const getMoodColor = (value: number) => {
@@ -410,26 +410,26 @@ Réponds de manière bienveillante, encourageante et personnalisée en 2-3 phras
                 Émotions du jour
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {emotionTags.map((tag) => {
-                  const selected = currentEntry.emotions.includes(tag.label);
-                  const activeColor = tag.positive ? "#10b981" : "#f43f5e";
-                  return (
-                    <button key={tag.label} onClick={() => toggleEmotion(tag.label)}
-                      style={{
-                        padding: "6px 14px", borderRadius: 20,
-                        border: `1px solid ${selected ? activeColor : "rgba(255,255,255,0.08)"}`,
-                        background: selected ? `${activeColor}12` : "rgba(255,255,255,0.03)",
-                        backdropFilter: "blur(8px)",
-                        cursor: "pointer", fontSize: 12,
-                        color: selected ? activeColor : "#64748b",
-                        fontWeight: selected ? 600 : 400,
-                        transition: "all 0.2s",
-                        boxShadow: selected ? `0 0 8px ${activeColor}30` : "none",
-                      }}>
-                      {tag.label}
-                    </button>
-                  );
-                })}
+              {emotionTags.map((tag) => {
+  const selected = currentEntry.emotions.includes(tag.label);
+  return (
+    <button key={tag.label} onClick={() => toggleEmotion(tag.label)}
+      style={{
+        padding: "6px 14px", borderRadius: 20,
+        border: `1px solid ${selected ? "#10b981" : "rgba(255,255,255,0.08)"}`,
+        background: selected ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)",
+        backdropFilter: "blur(8px)",
+        cursor: "pointer", fontSize: 12,
+        color: selected ? "#10b981" : "#64748b",
+        fontWeight: selected ? 600 : 400,
+        transition: "all 0.2s",
+        boxShadow: selected ? "0 0 8px rgba(16,185,129,0.3)" : "none",
+        display: "flex", alignItems: "center", gap: 5,
+      }}>
+      <span>{tag.emoji}</span> {tag.label}
+    </button>
+  );
+})}
 
                 {/* Émotions personnalisées */}
                 {currentEntry.emotions.filter((e) => !emotionTags.map((t) => t.label).includes(e)).map((e) => (
@@ -475,7 +475,7 @@ Réponds de manière bienveillante, encourageante et personnalisée en 2-3 phras
                 <textarea
                   value={currentEntry.content}
                   onChange={(e) => setCurrentEntry({ ...currentEntry, content: e.target.value })}
-                  placeholder="Un moment fort aujourd'hui ? Une pensée pour votre jumeau numérique..."
+                  placeholder="Écrivez librement... Un repas, une émotion, une victoire, un moment difficile. Ce journal est pour vous."
                   rows={4}
                   style={{
                     width: "100%", borderRadius: 16,
