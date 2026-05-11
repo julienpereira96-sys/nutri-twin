@@ -485,11 +485,19 @@ export default function Home() {
 
 
               <div className="mt-8 flex flex-col items-center gap-3 lg:items-start lg:flex-row">
-                <a
-                  href="#tarifs"
-                  className="inline-flex h-[48px] items-center justify-center gap-2 rounded-full px-24 text-[14px] font-semibold text-black transition active:scale-95"
-                  style={{ backgroundColor: emerald }}
-                >
+              <a
+  href="#tarifs"
+  className="inline-flex h-[48px] items-center justify-center gap-2 rounded-full px-25 text-[14px] font-semibold text-black transition active:scale-95"
+  style={{ backgroundColor: emerald }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
+    e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.boxShadow = "none";
+    e.currentTarget.style.transform = "translateY(0) scale(1)";
+  }}
+>
                   Commencer ici
                   <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -743,10 +751,10 @@ export default function Home() {
   <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
   <div className="flex flex-wrap items-center justify-between gap-3 sm:flex-nowrap">
   <div className="hidden sm:flex flex-1" />
-  <nav className="flex items-center gap-4 sm:gap-8">
-    <Link href="/cgu" className="text-[12px] sm:text-[13px] font-medium text-zinc-300 transition hover:text-white">CGU</Link>
-    <Link href="/confidentialite" className="text-[12px] sm:text-[13px] font-medium text-zinc-300 transition hover:text-white">Confidentialité</Link>
-    <Link href="/login" className="text-[12px] sm:text-[13px] font-medium text-zinc-300 transition hover:text-white">Espace praticien</Link>
+  <nav className="flex items-center gap-4 sm:gap-8 ml-14">
+    <Link href="/cgu" className="text-[13px] font-medium text-white transition-colors hover:text-zinc-300">CGU</Link>
+    <Link href="/confidentialite" className="text-[13px] font-medium text-white transition-colors hover:text-zinc-300">Confidentialité</Link>
+    <Link href="/login" className="text-[13px] font-medium text-white transition-colors hover:text-zinc-300">Espace praticien</Link>
   </nav>
   <div className="hidden sm:flex flex-1 justify-end">
     <p className="text-[13px] text-zinc-400">© 2026 NutriTwin</p>
@@ -810,7 +818,18 @@ function FounderSection() {
               <div className="h-2 rounded-full transition-all duration-1000" style={{ width: inView ? `${((10 - count) / 10) * 100}%` : "0%", background: `linear-gradient(90deg, ${amber}, #fbbf24)` }} />
             </div>
           </div>
-          <Link href="/signup?plan=fondateur" className="inline-flex h-[48px] sm:h-[52px] items-center justify-center rounded-full px-8 sm:px-10 text-[14px] sm:text-[15px] font-semibold text-black transition hover:opacity-90 active:scale-95" style={{ backgroundColor: amber }}>
+          <Link href="/signup?plan=fondateur"
+  className="inline-flex h-[48px] sm:h-[52px] items-center justify-center rounded-full px-8 sm:px-10 text-[14px] sm:text-[15px] font-semibold text-black transition active:scale-95"
+  style={{ backgroundColor: amber }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)";
+    e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.boxShadow = "none";
+    e.currentTarget.style.transform = "translateY(0) scale(1)";
+  }}
+>
             Je veux devenir Fondateur →
           </Link>
           <p className="mt-4 text-[11px] text-zinc-600">
@@ -885,7 +904,18 @@ function PricingCard({ name, price, badge, description, features, plan, featured
     ? { backgroundColor: emerald, color: "black", boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }
     : { border: "1.5px solid rgba(255,255,255,0.12)", color: "#d1d5db", background: "rgba(255,255,255,0.03)" }
   }
+  onMouseEnter={(e) => {
+    e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+    e.currentTarget.style.boxShadow = featured
+      ? "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"
+      : "0 0 0 1px rgba(255,255,255,0.2), 0 8px 20px rgba(255,255,255,0.05)";
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.transform = "translateY(0) scale(1)";
+    e.currentTarget.style.boxShadow = featured ? "0 4px 14px rgba(16,185,129,0.3)" : "none";
+  }}
 >
+
   Commencer l'essai gratuit →
 </Link>
 
