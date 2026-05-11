@@ -251,7 +251,7 @@ async function getPatientProfile(patientId: string): Promise<string> {
     const supabase = createSupabaseClient();
     const { data } = await supabase
       .from("patients")
-      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, brief_jumeau, notes, motivation, defi, aliments_aimes, aliments_detestes, niveau_activite, regime_specifique")
+      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, brief_jumeau, practitioner_instruction, notes, motivation, defi, aliments_aimes, aliments_detestes, niveau_activite, regime_specifique")
       .eq("user_id", patientId)
       .single();
 
@@ -275,6 +275,7 @@ async function getPatientProfile(patientId: string): Promise<string> {
       aliments_detestes?: string;
       niveau_activite?: string;
       regime_specifique?: string;
+      practitioner_instruction?: string;
     } | null;
 
     if (!patient) return "";
@@ -298,12 +299,17 @@ async function getPatientProfile(patientId: string): Promise<string> {
     if (patient.aliments_detestes) parts.push(`Aliments détestés : ${patient.aliments_detestes}`);
     if (patient.notes) parts.push(`Notes praticien : ${patient.notes}`);
 
-    const briefSection = patient.brief_jumeau
-      ? `\nINSTRUCTION SPÉCIFIQUE DU PRATICIEN POUR CE PATIENT :\n${patient.brief_jumeau}\n`
+    const briefSection = [
+      patient.brief_jumeau ? `BRIEF INITIAL : ${patient.brief_jumeau}` : "",
+      patient.practitioner_instruction ? `⚡ MURMURE ACTIF DU PRATICIEN (priorité absolue) : ${patient.practitioner_instruction}` : "",
+    ].filter(Boolean).join("\n");
+    
+    const briefFinal = briefSection
+      ? `\nINSTRUCTIONS SPÉCIFIQUES DU PRATICIEN POUR CE PATIENT :\n${briefSection}\n`
       : "";
 
     return parts.length > 0
-      ? `\nPROFIL DU PATIENT :\n${parts.join("\n")}\n${briefSection}`
+      ? `\nPROFIL DU PATIENT :\n${parts.join("\n")}\n{brieffinal}`
       : "";
   } catch {
     return "";
@@ -410,7 +416,11 @@ MON APPROCHE : ${profile.approche_libre||"bienveillant et personnalisé"}
 
 EXEMPLES : craquage="${profile.situation1||"Un écart, on repart."}" | régime="${profile.situation2||"Trouvons ce qui vous convient."}" | décroche="${profile.situation3||"Je suis là."}" | médical="${profile.situation4||"Parlons-en avec votre médecin."}" | victoire="${profile.situation5||"Bravo !"}" | détresse="${profile.situation6||"Vous n'êtes pas seul(e)."}"
 ${patientContext}${documentsContext}
-RÈGLES ABSOLUES : sans markdown | phrases simples et aérées | max 150 mots | tu ES ce praticien | utilise le prénom du patient`;
+RÈGLES ABSOLUES : sans markdown | phrases simples et aérées | max 150 mots | tu ES ce praticien | utilise le prénom du patient
+
+À la toute fin de ta réponse, ajoute TOUJOURS sur une nouvelle ligne ce JSON (invisible pour le patient, sera retiré avant affichage) :
+|||{"status":"green","reason":"bref résumé en 8 mots max"}|||
+Status = "red" si détresse/découragement sévère, "orange" si difficulté/anxiété modérée, "green" si tout va bien.`;
 }
 
 function getDefaultPrompt(): string {
