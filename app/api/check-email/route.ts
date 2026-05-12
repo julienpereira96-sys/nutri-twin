@@ -10,9 +10,20 @@ export async function POST(request: Request) {
   );
 
   const { data } = await supabase.auth.admin.listUsers();
-  const exists = data?.users?.some(
+  const user = data?.users?.find(
     (u) => u.email?.toLowerCase() === email.trim().toLowerCase()
   );
 
-  return NextResponse.json({ exists: !!exists });
+  if (!user) return NextResponse.json({ exists: false, hasPlan: false });
+
+  const { data: practitioner } = await supabase
+    .from("practitioners")
+    .select("plan")
+    .eq("user_id", user.id)
+    .single();
+
+  return NextResponse.json({
+    exists: true,
+    hasPlan: !!practitioner?.plan,
+  });
 }

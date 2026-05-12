@@ -14,115 +14,144 @@ function PaymentSuccessContent() {
       padding: 20,
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
-      <div style={{ textAlign: "center", maxWidth: 520, width: "100%" }}>
+      <div style={{ maxWidth: 500, width: "100%" }}>
 
-        {/* Icône succès */}
-        <div style={{
-          width: 72, height: 72, borderRadius: 36,
-          background: "linear-gradient(135deg, #6ee7b7, #10b981)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 32, margin: "0 auto 12px",
-          boxShadow: "0 8px 30px rgba(16,185,129,0.4)",
-        }}>
-          ✓
-        </div>
-
-        {/* Paiement confirmé — gros et proche de la coche */}
-        <p style={{ margin: "0 0 24px", fontSize: 22, fontWeight: 800, color: "#10b981" }}>
-          Paiement confirmé
-        </p>
-
-        {/* Titre calibrage — centré avec emoji à gauche des deux lignes */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-start", gap: 12, marginBottom: 28, paddingLeft: 8 }}>
-          <span style={{ fontSize: 28 }}>🧬</span>
-          <div style={{ textAlign: "left" }}>
-            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "white", lineHeight: 1.2 }}>
-              Calibrage de votre<br />Jumeau Numérique
-            </h1>
-          </div>
-        </div>
-
-        {/* Bloc conseil */}
+        {/* Encadré unique */}
         <div style={{
           background: "rgba(16,185,129,0.05)",
           border: "1px solid rgba(16,185,129,0.2)",
-          borderRadius: 20,
-          padding: "28px",
-          marginBottom: 20,
-          textAlign: "center",
+          borderRadius: 24,
+          overflow: "hidden",
         }}>
-          <p style={{ margin: "0 0 24px", fontSize: 14, color: "#94a3b8", lineHeight: 1.8, textAlign: "center" }}>
-            Le succès de votre jumeau repose sur la profondeur de son empreinte. Prenez ce moment pour poser les fondations de votre double numérique.
-          </p>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, textAlign: "left" }}>
-            {[
-              { label: "Immersion totale", desc: "Accordez-vous 15 minutes de calme pour une fidélité maximale." },
-              { label: "Rigueur scientifique", desc: "Répondez avec la précision que vous exigeriez d'un confrère." },
-              { label: "Nuances", desc: "Plus vos réponses sont détaillées, plus votre jumeau capture votre expertise unique." },
-            ].map((item, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                <div style={{
-                  width: 22, height: 22, borderRadius: 11, flexShrink: 0,
-                  background: "rgba(16,185,129,0.2)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 11, color: "#10b981", fontWeight: 700, marginTop: 2,
-                }}>✓</div>
-                <p style={{ margin: 0, fontSize: 14, color: "#d1d5db", lineHeight: 1.6 }}>
-                  <strong style={{ color: "white" }}>{item.label}</strong> — {item.desc}
-                </p>
-              </div>
-            ))}
+          {/* Header dégradé */}
+          <div style={{
+            background: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05))",
+            padding: "32px 28px 28px",
+            borderBottom: "1px solid rgba(16,185,129,0.1)",
+            textAlign: "center",
+          }}>
+            {/* Icône coche */}
+            <div style={{
+              width: 72, height: 72, borderRadius: 36,
+              background: "linear-gradient(135deg, #6ee7b7, #10b981)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 16px",
+              boxShadow: "0 8px 30px rgba(16,185,129,0.4)",
+            }}>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <path d="M5 13l4 4L19 7" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+
+            <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 500, color: "#6ee7b7", letterSpacing: "0.05em" }}>
+              Abonnement activé
+            </p>
+            <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#10b981" }}>
+              Paiement confirmé
+            </h2>
+          </div>
+
+          {/* Corps */}
+          <div style={{ padding: "28px" }}>
+
+            {/* Prochaine étape */}
+            <div style={{ textAlign: "center", marginBottom: 40 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#4b5563", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                Prochaine étape
+              </p>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "white", lineHeight: 1.3 }}>
+                 La configuration de votre<br />Jumeau Numérique
+              </h3>
+            </div>
+
+            {/* Phrase mise en avant */}
+<div style={{
+  background: "rgba(16,185,129,0.08)",
+  border: "1px solid rgba(16,185,129,0.25)",
+  borderRadius: 14,
+  padding: "14px 18px",
+  marginBottom: 50,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 10,
+}}>
+  <span style={{
+    width: 8, height: 8, borderRadius: "50%",
+    background: "#10b981", flexShrink: 0,
+    boxShadow: "0 0 0 0 rgba(16,185,129,0.4)",
+    animation: "pulse 2s infinite",
+  }} />
+  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#10b981", lineHeight: 1.7, textAlign: "center"}}>
+    Vos réponses permettront à l'IA de reproduire votre manière de penser, conseiller et décider.
+  </p>
+</div>
+
+<style>{`
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
+    100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+  }
+`}</style>
+
+
+            {/* 3 points */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 50 }}>
+              {[
+                { emoji: "⏱️", label: "Temps estimé", desc: "15 minutes suffisent pour calibrer votre jumeau." },
+                { emoji: "🎯", label: "Répondez naturellement", desc: "Comme si vous parliez à un confrère de confiance." },
+                { emoji: "🧬", label: "Plus vous êtes précis", desc: "Meilleur sera le résultat final." },
+              ].map((item, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                    background: "rgba(16,185,129,0.1)",
+                    border: "1px solid rgba(16,185,129,0.2)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 15,
+                  }}>{item.emoji}</div>
+                  <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.6, textAlign: "left" }}>
+                    <strong style={{ color: "white" }}>{item.label}</strong> — {item.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Bouton */}
+            <Link
+              href="/onboarding"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+                height: 52,
+                borderRadius: 12,
+                background: "linear-gradient(135deg, #34d399, #10b981)",
+                color: "black",
+                fontWeight: 700,
+                fontSize: 15,
+                textDecoration: "none",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                boxSizing: "border-box",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
+                e.currentTarget.style.transform = "translateY(-2px) scale(1.01)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = "none";
+                e.currentTarget.style.transform = "translateY(0) scale(1)";
+              }}
+            >
+              Commencer la programmation →
+            </Link>
+
           </div>
         </div>
-
-        {/* Bouton en dehors de l'encadré */}
-        <style>{`
-          @keyframes scanLine {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
-          }
-          .calibrage-btn {
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            height: 54px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, #34d399, #10b981);
-            color: black;
-            font-weight: 700;
-            font-size: 15px;
-            text-decoration: none;
-            box-shadow: 0 0 20px rgba(16,185,129,0.4), 0 0 40px rgba(16,185,129,0.15);
-            transition: box-shadow 0.3s ease, transform 0.2s ease;
-            border: none;
-            cursor: pointer;
-          }
-          .calibrage-btn:hover {
-            box-shadow: 0 0 30px rgba(16,185,129,0.6), 0 0 60px rgba(16,185,129,0.25);
-            transform: translateY(-1px);
-          }
-          .calibrage-btn:active {
-            transform: scale(0.98);
-          }
-          .calibrage-btn::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 40%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
-            animation: scanLine 2.5s ease-in-out infinite;
-          }
-        `}</style>
-
-<Link href="/onboarding" className="calibrage-btn" style={{ marginTop: 12 }}>
-          Initialiser le calibrage →
-        </Link>
 
       </div>
     </div>

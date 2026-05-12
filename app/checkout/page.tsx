@@ -189,7 +189,7 @@ function PaymentForm({ plan }: { plan: string }) {
       }} />
 
 <div className="mt-5 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-  <p className="text-[12px] text-zinc-400 text-center leading-relaxed">
+  <p className="text-[12px] text-zinc-500 text-center leading-relaxed">
     En démarrant votre essai, vous autorisez NutriTwin à débiter votre carte à l'issue de la période d'essai.{" "}
     <strong className="text-white">Annulable à tout moment.</strong>
   </p>
@@ -202,12 +202,23 @@ function PaymentForm({ plan }: { plan: string }) {
         </div>
       )}
 
-      <button
-        onClick={handleSubmit}
-        disabled={loading || !stripe}
-        className="mt-5 w-full h-[52px] rounded-xl text-[15px] font-semibold text-black transition active:scale-95 disabled:opacity-50"
-        style={{ backgroundColor: emerald }}
-      >
+<button
+  onClick={handleSubmit}
+  disabled={loading || !stripe}
+  className="mt-6 w-full h-[52px] rounded-xl text-[15px] font-semibold text-black transition active:scale-95 disabled:opacity-50 cursor-pointer"
+  style={{ backgroundColor: emerald }}
+  onMouseEnter={(e) => {
+    if (!loading && stripe) {
+      e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
+      e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+    }
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.boxShadow = "none";
+    e.currentTarget.style.transform = "translateY(0) scale(1)";
+  }}
+>
+
         {loading ? (
           <span className="flex items-center justify-center gap-2">
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />
@@ -218,7 +229,7 @@ function PaymentForm({ plan }: { plan: string }) {
         )}
       </button>
 
-      <p className="mt-4 text-[10px] text-zinc-700 text-center leading-relaxed">
+      <p className="mt-4 text-[12px] text-zinc-500 text-center leading-relaxed">
         En confirmant, vous acceptez nos{" "}
         <Link href="/cgu" className="underline hover:text-zinc-500 transition">CGU</Link>
         {" "}et notre{" "}

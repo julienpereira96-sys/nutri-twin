@@ -84,11 +84,15 @@ try {
     body: JSON.stringify({ email: email.trim() }),
   });
   const checkData = await checkRes.json();
-if (checkData.exists) {
-  setError("Un compte existe déjà avec cette adresse email. Connectez-vous pour finaliser votre abonnement.");
-  setLoading(false);
-  return;
-}
+  if (checkData.exists) {
+    setError(
+      checkData.hasPlan
+        ? "Un compte existe déjà avec cette adresse email."
+        : "Un compte existe déjà avec cette adresse email. Connectez-vous pour finaliser votre abonnement."
+    );
+    setLoading(false);
+    return;
+  }  
 
   const supabase = createSupabaseBrowserClient();
   const { data, error: signUpError } = await supabase.auth.signUp({
@@ -347,17 +351,17 @@ if (checkData.exists) {
           <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
           <p className="text-sm text-red-400" role="alert">{error}</p>
           {error.includes("compte existe déjà") && (
-              <Link href="/login" className="mt-2 inline-block text-[12px] font-semibold transition hover:opacity-80" style={{ color: emerald }}>
-                → Se connecter et finaliser mon abonnement
-              </Link>
-            )}
+  <Link href="/login" className="mt-2 inline-block text-[12px] font-semibold transition hover:opacity-80" style={{ color: emerald }}>
+    {error.includes("finaliser") ? "→ Se connecter et finaliser mon abonnement" : "→ Se connecter"}
+  </Link>
+)}
           </div>
         )}
 
 <button
   type="submit"
   disabled={loading || !acceptCGU}
-  className="mt-6 w-full rounded-full bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+  className="mt-6 w-full rounded-xl bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
   onMouseEnter={(e) => {
     if (!loading && acceptCGU) {
       e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";

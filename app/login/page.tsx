@@ -12,21 +12,26 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Modale mot de passe oublié
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState("");
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     setLoading(true);
-  
+
     try {
       const supabase = createSupabaseBrowserClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
-  
+
       if (signInError) {
         if (signInError.message.includes("Invalid login credentials")) {
           setError("Email ou mot de passe incorrect. Vérifiez vos informations.");
@@ -35,15 +40,14 @@ export default function LoginPage() {
         }
         return;
       }
-      
-  
+
       const { data: { user } } = await supabase.auth.getUser();
       const { data: practitioner } = await supabase
         .from("practitioners")
         .select("plan")
         .eq("user_id", user?.id)
         .single();
-  
+
       if (!practitioner?.plan) {
         router.push(`/checkout?plan=pro`);
       } else {
@@ -54,39 +58,43 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };  
+  };
 
   const handleForgotPassword = async () => {
-    if (!email.trim()) {
-      setError("Entrez votre email pour réinitialiser votre mot de passe.");
+    if (!forgotEmail.trim()) {
+      setResetError("Entrez votre adresse email.");
       return;
     }
-    setError("");
+    setResetError("");
     setResetLoading(true);
     const supabase = createSupabaseBrowserClient();
-    await supabase.auth.resetPasswordForEmail(email.trim(), {
+    await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setResetSent(true);
     setResetLoading(false);
   };
 
+  const closeModal = () => {
+    setShowForgotModal(false);
+    setForgotEmail("");
+    setResetSent(false);
+    setResetError("");
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-12 sm:px-6">
-      <div className="mb-8 text-center">
-  <div className="relative mx-auto mb-3 w-fit">
-    <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
-    <img src="/logo.svg" alt="NutriTwin" className="h-14 w-auto relative mx-auto" />
-  </div>
-  <h1 className="text-[22px] tracking-tight text-white">Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
-  <p className="mt-2 text-sm text-zinc-400">Connexion praticien</p>
-</div>
+        <div className="mb-8 text-center">
+          <div className="relative mx-auto mb-3 w-fit">
+            <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
+            <img src="/logo.svg" alt="NutriTwin" className="h-14 w-auto relative mx-auto" />
+          </div>
+          <h1 className="text-[22px] tracking-tight text-white">Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
+          <p className="mt-2 text-sm text-zinc-400">Connexion praticien</p>
+        </div>
 
-        <form
-          onSubmit={onSubmit}
-          className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8"
-        >
+        <form onSubmit={onSubmit} className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
           <div className="space-y-4">
             <label className="block">
               <span className="text-sm font-medium text-zinc-300">Email</span>
@@ -137,40 +145,107 @@ export default function LoginPage() {
             <p className="mt-4 text-sm text-red-400" role="alert">{error}</p>
           )}
 
-          {resetSent && (
-            <div className="mt-4 rounded-xl border border-[#10b981]/20 bg-[#10b981]/08 px-4 py-3">
-              <p className="text-sm text-[#10b981]">
-                ✅ Un email de réinitialisation a été envoyé à {email}
-              </p>
-            </div>
-          )}
-
           <button
             type="submit"
             disabled={loading}
-            className="mt-6 w-full rounded-full bg-[#10b981] py-3 text-sm font-semibold text-black transition hover:bg-[#34d399] disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-6 w-full rounded-xl bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+            onMouseEnter={(e) => {
+              if (!loading) {
+                e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
+                e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = "none";
+              e.currentTarget.style.transform = "translateY(0) scale(1)";
+            }}
           >
             {loading ? "Connexion..." : "Se connecter"}
           </button>
 
           <button
             type="button"
-            onClick={() => void handleForgotPassword()}
-            disabled={resetLoading}
-            className="mt-3 w-full text-center text-sm text-zinc-500 hover:text-[#10b981] transition underline cursor-pointer disabled:opacity-50"
+            onClick={() => setShowForgotModal(true)}
+            className="mt-3 w-full text-center text-sm text-zinc-500 hover:text-[#10b981] transition cursor-pointer"
           >
-            {resetLoading ? "Envoi en cours..." : "Mot de passe oublié ?"}
+            Mot de passe oublié ?
           </button>
 
           <p className="mt-6 text-center text-sm text-zinc-400">
             Pas encore de compte ?{" "}
             <Link href="/#tarifs" className="font-medium text-[#34d399] hover:underline">
-  S'inscrire
-</Link>
-
+              S'inscrire
+            </Link>
           </p>
         </form>
       </div>
+
+      {/* Modale mot de passe oublié */}
+      {showForgotModal && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) closeModal(); }}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+        >
+          <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 420, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
+            
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Réinitialiser le mot de passe</h2>
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>Entrez votre email pour recevoir un lien</p>
+              </div>
+              <button onClick={closeModal} style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", fontSize: 18, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+            </div>
+
+            {resetSent ? (
+              <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 14, padding: "20px", textAlign: "center" }}>
+                <p style={{ fontSize: 28, marginBottom: 10 }}>✅</p>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "white" }}>Email envoyé !</p>
+                <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b" }}>
+                  Vérifiez votre boîte mail à <strong style={{ color: "#10b981" }}>{forgotEmail}</strong>
+                </p>
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Pensez à vérifier vos spams.</p>
+                <button onClick={closeModal} style={{ marginTop: 16, height: 40, borderRadius: 20, padding: "0 20px", background: "#10b981", border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  Fermer
+                </button>
+              </div>
+            ) : (
+              <>
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Adresse email</p>
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") void handleForgotPassword(); }}
+                    placeholder="vous@cabinet.fr"
+                    autoFocus
+                    style={{ width: "100%", height: 48, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
+                    onFocus={(e) => e.target.style.borderColor = "#10b981"}
+                    onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+                  />
+                </div>
+
+                {resetError && (
+                  <p style={{ margin: "0 0 12px", fontSize: 13, color: "#f87171" }}>{resetError}</p>
+                )}
+
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={closeModal} style={{ flex: 1, height: 44, borderRadius: 10, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>
+                    Annuler
+                  </button>
+                  <button
+                    onClick={() => void handleForgotPassword()}
+                    disabled={resetLoading}
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: resetLoading ? "rgba(255,255,255,0.05)" : "#10b981", border: "none", color: resetLoading ? "#64748b" : "black", fontSize: 14, fontWeight: 600, cursor: resetLoading ? "not-allowed" : "pointer" }}
+                  >
+                    {resetLoading ? "Envoi en cours..." : "Envoyer le lien →"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -219,7 +219,7 @@ function StaticDashboard() {
                   </div>
                 ))}
               </div>
-              <div style={{ borderRadius: 20, background: emerald, padding: "6px 0", textAlign: "center", fontSize: 10, fontWeight: 600, color: "black", marginTop: 8 }}>+ Inviter un patient</div>
+              <div style={{ borderRadius: 8, background: emerald, padding: "6px 0", textAlign: "center", fontSize: 10, fontWeight: 600, color: "black", marginTop: 8 }}>+ Inviter un patient</div>
             </div>
 
             {/* Zone conversation */}
@@ -408,7 +408,7 @@ export default function Home() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link href="/login" className="text-[13px] font-medium transition-colors" style={{ color: emerald }}>
+            <Link href="/login" className="text-[14px] font-medium transition-colors" style={{ color: emerald }}>
               Se connecter
             </Link>
             <button
@@ -444,7 +444,7 @@ export default function Home() {
             <a
               href="#tarifs"
               onClick={() => setMobileMenuOpen(false)}
-              className="mt-3 mb-2 flex h-11 w-full items-center justify-center rounded-full text-[14px] font-semibold text-black"
+              className="mt-3 mb-2 flex h-11 w-full items-center justify-center rounded-xl text-[14px] font-semibold text-black"
               style={{ backgroundColor: emerald }}
             >
               Commencer ici
@@ -487,7 +487,7 @@ export default function Home() {
               <div className="mt-8 flex flex-col items-center gap-3 lg:items-start lg:flex-row">
               <a
   href="#tarifs"
-  className="inline-flex h-[48px] items-center justify-center gap-2 rounded-full px-25 text-[14px] font-semibold text-black transition active:scale-95"
+  className="inline-flex h-[48px] items-center justify-center gap-2 rounded-xl px-25 text-[14px] font-semibold text-black transition active:scale-95"
   style={{ backgroundColor: emerald }}
   onMouseEnter={(e) => {
     e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
@@ -819,7 +819,7 @@ function FounderSection() {
             </div>
           </div>
           <Link href="/signup?plan=fondateur"
-  className="inline-flex h-[48px] sm:h-[52px] items-center justify-center rounded-full px-8 sm:px-10 text-[14px] sm:text-[15px] font-semibold text-black transition active:scale-95"
+  className="inline-flex h-[48px] sm:h-[52px] items-center justify-center rounded-xl px-8 sm:px-10 text-[14px] sm:text-[15px] font-semibold text-black transition active:scale-95"
   style={{ backgroundColor: amber }}
   onMouseEnter={(e) => {
     e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)";
@@ -899,7 +899,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       window.location.href = `/checkout?plan=${plan}`;
     }
   }}
-  className="inline-flex h-[46px] w-full items-center justify-center rounded-xl text-[13px] font-semibold transition active:scale-95 mt-2"
+  className="inline-flex h-[50px] w-full items-center justify-center rounded-xl text-[13px] font-semibold transition active:scale-95 mt-2"
   style={featured
     ? { backgroundColor: emerald, color: "black", boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }
     : { border: "1.5px solid rgba(255,255,255,0.12)", color: "#d1d5db", background: "rgba(255,255,255,0.03)" }

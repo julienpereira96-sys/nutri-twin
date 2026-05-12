@@ -351,8 +351,9 @@ ${patientContext}${documentsContext}
 RÈGLES ABSOLUES : sans markdown | phrases simples et aérées | max 150 mots | tu ES ce praticien | utilise le prénom du patient
 
 À la toute fin de ta réponse, ajoute TOUJOURS sur une nouvelle ligne ce JSON (invisible pour le patient, sera retiré avant affichage) :
-|||{"status":"green","reason":"bref résumé en 8 mots max"}|||
-Status = "red" si détresse/découragement sévère, "orange" si difficulté/anxiété modérée, "green" si tout va bien.`;
+|||{"status":"green","reason":"bref résumé en 8 mots max","victory":""}|||
+Status = "red" si détresse/découragement sévère, "orange" si difficulté/anxiété modérée, "green" si tout va bien.
+Victory = une phrase courte si le patient vient de franchir une étape positive significative (ex: "A géré un buffet sans stress", "7 jours sans grignotage nocturne"), sinon laisse vide "".`;
 }
 
 function getDefaultPrompt(): string {
@@ -460,16 +461,19 @@ Max 150 mots. Sans markdown.`;
 
     // ── Parser le statut émotionnel ──
     let emotionalStatus = "green";
-    let emotionalInsight = "";
-    const statusMatch = text.match(/\|\|\|([\s\S]*?)\|\|\|/);
-    if (statusMatch) {
-      try {
-        const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string };
-        emotionalStatus = parsed.status;
-        emotionalInsight = parsed.reason;
-      } catch { /* silencieux */ }
-      text = text.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
-    }
+let emotionalInsight = "";
+let victoryText = "";
+const statusMatch = text.match(/\|\|\|([\s\S]*?)\|\|\|/);
+if (statusMatch) {
+  try {
+    const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string; victory?: string };
+    emotionalStatus = parsed.status;
+    emotionalInsight = parsed.reason;
+    victoryText = parsed.victory ?? "";
+  } catch { /* silencieux */ }
+  text = text.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
+}
+
 
     // ── Sauvegarde en base ──
     const supabase = createSupabaseClient();
@@ -493,12 +497,14 @@ Max 150 mots. Sans markdown.`;
 
       // ── Mettre à jour le statut émotionnel ──
       await supabase
-        .from("patients")
-        .update({
-          emotional_status: emotionalStatus,
-          emotional_insight: emotionalInsight,
-        })
-        .eq("user_id", patientId);
+  .from("patients")
+  .update({
+    emotional_status: emotionalStatus,
+    emotional_insight: emotionalInsight,
+    ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString() } : {}),
+  })
+  .eq("user_id", patientId);
+
 
       if (sessionId) {
         await supabase
