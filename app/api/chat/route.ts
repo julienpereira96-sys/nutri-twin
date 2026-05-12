@@ -265,6 +265,51 @@ const briefFinal = briefSection
   ? `\nINSTRUCTIONS SPÉCIFIQUES DU PRATICIEN POUR CE PATIENT :\n${briefSection}\n`
   : "";
 
+  // Injecter journal : 3 dernières entrées détaillées + synthèse 7 jours
+try {
+  const supabaseJournal = createSupabaseClient();
+  
+  const { data: recentEntries } = await supabaseJournal
+    .from("journal_entries")
+    .select("date, mood, food_rating, emotions, content")
+    .eq("patient_id", patientId)
+    .order("date", { ascending: false })
+    .limit(3);
+
+  const { data: weekEntries } = await supabaseJournal
+    .from("journal_entries")
+    .select("mood, food_rating")
+    .eq("patient_id", patientId)
+    .order("date", { ascending: false })
+    .limit(7);
+
+  if (recentEntries && recentEntries.length > 0) {
+    // Synthèse 7 jours
+    let weekSummary = "";
+    if (weekEntries && weekEntries.length >= 3) {
+      const avgMood = (weekEntries.reduce((sum, e) => sum + e.mood, 0) / weekEntries.length).toFixed(1);
+      const avgFood = (weekEntries.reduce((sum, e) => sum + e.food_rating, 0) / weekEntries.length).toFixed(1);
+      const firstMood = weekEntries[weekEntries.length - 1].mood;
+      const lastMood = weekEntries[0].mood;
+      const trend = lastMood > firstMood ? "en hausse" : lastMood < firstMood ? "en baisse" : "stable";
+      weekSummary = `Synthèse 7 jours : humeur moyenne ${avgMood}/10 (${trend}), alimentation moyenne ${avgFood}/3.`;
+    }
+
+    // 3 dernières entrées détaillées
+    const detailedEntries = recentEntries.map((e) => {
+      const moodLabel = e.mood <= 3 ? "difficile" : e.mood <= 6 ? "moyen" : e.mood <= 8 ? "bien" : "excellent";
+      const foodLabel = e.food_rating === 1 ? "difficile" : e.food_rating === 2 ? "bien" : "excellent";
+      const emotions = (e.emotions as string[])?.join(", ") || "non renseignées";
+      const note = e.content ? ` — "${e.content}"` : "";
+      return `  • ${e.date} : humeur ${moodLabel} (${e.mood}/10), alimentation ${foodLabel}, émotions : ${emotions}${note}`;
+    }).join("\n");
+
+    parts.push(`\nJOURNAL DU PATIENT :\n${weekSummary}\nDernières entrées :\n${detailedEntries}\nUtilise ces données subtilement pour adapter ton ton et tes conseils, sans jamais citer explicitement le journal.`);
+  }
+} catch {
+  // Silencieux
+}
+
     return parts.length > 0
       ? `\nPROFIL DU PATIENT :\n${parts.join("\n")}\n${briefFinal}`
       : "";

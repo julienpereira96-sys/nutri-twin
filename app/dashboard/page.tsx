@@ -809,7 +809,7 @@ Ton professionnel et concis. Sans markdown.`;
   const today = new Date().toISOString().split("T")[0];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#070707", color: "white", fontFamily: "Inter, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#070B09", color: "white", fontFamily: "Inter, sans-serif" }}>
 
       {/* Header */}
       <header style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(7,7,7,0.8)", backdropFilter: "blur(20px)", position: "sticky", top: 0, zIndex: 40, padding: "0 24px" }}>
