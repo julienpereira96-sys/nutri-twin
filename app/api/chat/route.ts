@@ -528,91 +528,109 @@ export async function POST(request: Request) {
 
     const chat = model.startChat({ history: conversationHistory });
 
-    let result;
-    if (imageBase64 && imageMimeType) {
-      const visionPrompt = `Tu reçois une photo de repas d'un patient en suivi nutritionnel.
-${patientContext}${documentsContext}
-Analyse :
-1. Identifie les aliments visibles et les proportions approximatives
-2. Croise avec le protocole du praticien et le profil patient
-3. Signale tout écart (allergies, intolérances, consignes spécifiques)
-4. Réponds en tant que jumeau numérique — ton bienveillant, jamais culpabilisant
-${message ? `\nMessage du patient : "${message}"` : ""}
-Max 150 mots. Sans markdown.`;
-
-      result = await chat.sendMessage([
-        { inlineData: { data: imageBase64, mimeType: imageMimeType as "image/jpeg" | "image/png" | "image/webp" } },
-        { text: visionPrompt },
-      ]);
-    } else {
-      result = await chat.sendMessage(message);
-    }
-
-    let text = result.response.text();
-
-    // ── Parser le statut émotionnel ──
-    let emotionalStatus = "green";
-let emotionalInsight = "";
-let victoryText = "";
-const statusMatch = text.match(/\|\|\|([\s\S]*?)\|\|\|/);
-if (statusMatch) {
-  try {
-    const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string; victory?: string };
-    emotionalStatus = parsed.status;
-    emotionalInsight = parsed.reason;
-    victoryText = parsed.victory ?? "";
-  } catch { /* silencieux */ }
-  text = text.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
-}
-
-
-    // ── Sauvegarde en base ──
-    const supabase = createSupabaseClient();
-    if (patientId) {
-      await supabase.from("conversations").insert([
-        {
-          patient_id: patientId,
-          practitioner_id: practitionerId,
-          role: "user",
-          content: imageBase64 ? `📷 ${message || "Photo de repas"}` : message,
-          session_id: sessionId ?? null,
-        },
-        {
-          patient_id: patientId,
-          practitioner_id: practitionerId,
-          role: "assistant",
-          content: text,
-          session_id: sessionId ?? null,
-        },
-      ]);
-
-      // ── Mettre à jour le statut émotionnel ──
-      await supabase
-  .from("patients")
-  .update({
-    emotional_status: emotionalStatus,
-    emotional_insight: emotionalInsight,
-    ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString() } : {}),
-  })
-  .eq("user_id", patientId);
-
-
-      if (sessionId) {
-        await supabase
-          .from("conversations_sessions")
-          .update({
-            last_message: text.slice(0, 100),
-            last_message_at: new Date().toISOString(),
-          })
-          .eq("id", sessionId);
-      }
-
-      if (practitionerId && !imageBase64) {
-        await saveToCache(message, text, practitionerId);
-      }
-    }
-
-    return Response.json({ response: text });
+        // ── Envoi message ou image ──
+        let result;
+        if (imageBase64 && imageMimeType) {
+          const visionPrompt = `Tu reçois une photo de repas d'un patient en suivi nutritionnel.
+    ${patientContext}${documentsContext}
+    Analyse :
+    1. Identifie les aliments visibles et les proportions approximatives
+    2. Croise avec le protocole du praticien et le profil patient
+    3. Signale tout écart (allergies, intolérances, consignes spécifiques)
+    4. Réponds en tant que jumeau numérique — ton bienveillant, jamais culpabilisant
+    ${message ? `\nMessage du patient : "${message}"` : ""}
+    Max 150 mots. Sans markdown.`;
+    
+          result = await chat.sendMessageStream([
+            { inlineData: { data: imageBase64, mimeType: imageMimeType as "image/jpeg" | "image/png" | "image/webp" } },
+            { text: visionPrompt },
+          ]);
+        } else {
+          result = await chat.sendMessageStream(message);
+        }
+    
+        // ── Stream vers le client ──
+        const encoder = new TextEncoder();
+        const supabase = createSupabaseClient();
+    
+        const stream = new ReadableStream({
+          async start(controller) {
+            let fullText = "";
+    
+            try {
+              for await (const chunk of result.stream) {
+                const chunkText = chunk.text();
+                fullText += chunkText;
+                controller.enqueue(encoder.encode(chunkText));
+              }
+            } catch {
+              controller.close();
+              return;
+            }
+    
+            // ── Parser le statut émotionnel ──
+            let emotionalStatus = "green";
+            let emotionalInsight = "";
+            let victoryText = "";
+            const statusMatch = fullText.match(/\|\|\|([\s\S]*?)\|\|\|/);
+            if (statusMatch) {
+              try {
+                const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string; victory?: string };
+                emotionalStatus = parsed.status;
+                emotionalInsight = parsed.reason;
+                victoryText = parsed.victory ?? "";
+              } catch { /* silencieux */ }
+              fullText = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
+            }
+    
+            // ── Sauvegarde en base ──
+            if (patientId) {
+              await supabase.from("conversations").insert([
+                {
+                  patient_id: patientId,
+                  practitioner_id: practitionerId,
+                  role: "user",
+                  content: imageBase64 ? `📷 ${message || "Photo de repas"}` : message,
+                  session_id: sessionId ?? null,
+                },
+                {
+                  patient_id: patientId,
+                  practitioner_id: practitionerId,
+                  role: "assistant",
+                  content: fullText,
+                  session_id: sessionId ?? null,
+                },
+              ]);
+    
+              await supabase.from("patients").update({
+                emotional_status: emotionalStatus,
+                emotional_insight: emotionalInsight,
+                ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString() } : {}),
+              }).eq("user_id", patientId);
+    
+              if (sessionId) {
+                await supabase.from("conversations_sessions").update({
+                  last_message: fullText.slice(0, 100),
+                  last_message_at: new Date().toISOString(),
+                }).eq("id", sessionId);
+              }
+    
+              if (practitionerId && !imageBase64) {
+                await saveToCache(message, fullText, practitionerId);
+              }
+            }
+    
+            controller.close();
+          },
+        });
+    
+        return new Response(stream, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Transfer-Encoding": "chunked",
+            "X-Content-Type-Options": "nosniff",
+          },
+        });    
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
     return Response.json({ response: "Erreur: " + errorMessage }, { status: 500 });
