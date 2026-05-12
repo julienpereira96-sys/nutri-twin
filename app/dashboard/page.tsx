@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -34,6 +36,8 @@ type RealPatient = {
   practitioner_instruction?: string;
   emotional_status?: string;
   emotional_insight?: string;
+  latest_victory?: string;
+  private_notes?: string;
 };
 
 type Conversation = {
@@ -83,6 +87,7 @@ export default function DashboardPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const [activeTab, setActiveTab] = useState<ActiveTab>("patients");
   const [searchQuery, setSearchQuery] = useState("");
+  const [discretMode, setDiscretMode] = useState(false);
 
   useEffect(() => {
     window.history.pushState(null, "", window.location.pathname);
@@ -109,6 +114,15 @@ export default function DashboardPage() {
   // Murmure
   const [murmureText, setMurmureText] = useState("");
   const [savingMurmure, setSavingMurmure] = useState(false);
+
+  // Notes privées
+  const [privateNotes, setPrivateNotes] = useState("");
+  const [savingPrivateNotes, setSavingPrivateNotes] = useState(false);
+  const [privateNotesSaved, setPrivateNotesSaved] = useState(false);
+
+  // Victoire
+  const [sendingVictory, setSendingVictory] = useState<string | null>(null);
+  const [victorySent, setVictorySent] = useState<string | null>(null);
 
   // Invitation
   const [inviteEmail, setInviteEmail] = useState("");
@@ -147,7 +161,6 @@ export default function DashboardPage() {
 
   const fidelityScore = hasDocuments === true ? 100 : 70;
   const fidelityColor = hasDocuments === true ? emerald : amber;
-  const fidelityLabel = hasDocuments === true ? "Jumeau Fidèle" : "Jumeau Personnalisé";
 
   // Profil patient
   const [editAge, setEditAge] = useState("");
@@ -211,7 +224,6 @@ export default function DashboardPage() {
     if (data) {
       setMonthlyStats(data as MonthlyStats);
     } else {
-      // Calculer en temps réel si pas de stats en cache
       const { count: totalMessages } = await supabase
         .from("conversations")
         .select("*", { count: "exact", head: true })
@@ -222,7 +234,6 @@ export default function DashboardPage() {
         .from("conversations")
         .select("*", { count: "exact", head: true })
         .eq("practitioner_id", pid)
-        .gte("created_at", `${month}-01T00:00:00`)
         .gte("created_at", `${month}-01T21:00:00`);
 
       const msgs = totalMessages ?? 0;
@@ -251,7 +262,7 @@ export default function DashboardPage() {
 
     const { data: patientsData } = await supabase
       .from("patients")
-      .select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, notes, brief_jumeau, practitioner_instruction, emotional_status, emotional_insight")
+      .select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, notes, brief_jumeau, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes")
       .in("user_id", patientIds);
 
     if (!patientsData) {
@@ -307,6 +318,8 @@ export default function DashboardPage() {
           practitioner_instruction: p.practitioner_instruction,
           emotional_status: p.emotional_status ?? "green",
           emotional_insight: p.emotional_insight ?? "",
+          latest_victory: p.latest_victory ?? "",
+          private_notes: p.private_notes ?? "",
         };
       })
     );
@@ -352,6 +365,11 @@ export default function DashboardPage() {
       .eq("practitioner_id", practitionerId)
       .order("created_at", { ascending: true })
       .then(({ data }) => setConversations((data as Conversation[]) ?? []));
+
+    // Charger les notes privées
+    const patient = patients.find((p) => p.id === selectedPatientId);
+    setPrivateNotes(patient?.private_notes ?? "");
+    setPrivateNotesSaved(false);
   }, [selectedPatientId, practitionerId]);
 
   const filteredPatients = patients.filter((p) =>
@@ -360,6 +378,7 @@ export default function DashboardPage() {
 
   const redPatients = patients.filter((p) => p.emotional_status === "red");
   const orangePatients = patients.filter((p) => p.emotional_status === "orange");
+  const victoryPatients = patients.filter((p) => p.latest_victory);
 
   const openMurmureModal = () => {
     const patient = patients.find((p) => p.id === selectedPatientId);
@@ -380,6 +399,41 @@ export default function DashboardPage() {
     ));
     setSavingMurmure(false);
     setShowMurmureModal(false);
+  };
+
+  const savePrivateNotes = async () => {
+    if (!selectedPatientId) return;
+    setSavingPrivateNotes(true);
+    await supabase
+      .from("patients")
+      .update({ private_notes: privateNotes || null })
+      .eq("user_id", selectedPatientId);
+    setPatients((prev) => prev.map((p) =>
+      p.id === selectedPatientId ? { ...p, private_notes: privateNotes } : p
+    ));
+    setSavingPrivateNotes(false);
+    setPrivateNotesSaved(true);
+    setTimeout(() => setPrivateNotesSaved(false), 2000);
+  };
+
+  const sendVictory = async (patientId: string, victoryText: string) => {
+    if (!practitionerId) return;
+    setSendingVictory(patientId);
+    try {
+      await fetch("/api/send-victory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId, practitionerId, victoryText }),
+      });
+      setPatients((prev) => prev.map((p) =>
+        p.id === patientId ? { ...p, latest_victory: "" } : p
+      ));
+      setVictorySent(patientId);
+      setTimeout(() => setVictorySent(null), 3000);
+    } catch {
+      // silencieux
+    }
+    setSendingVictory(null);
   };
 
   const generatePatternInsight = async () => {
@@ -408,9 +462,9 @@ export default function DashboardPage() {
       return;
     }
 
-    const journalData = journalEntries?.map((e) =>
-      `${e.date}: humeur=${e.mood}/5, alimentation=${e.food_rating}/3, émotions=${(e.emotions as string[])?.join(",")}`
-    ).join("\n") ?? "";
+    const journalData = `| Date | Humeur | Alimentation | Émotions |
+| :--- | :--- | :--- | :--- |
+${journalEntries?.map((e) => `| ${e.date} | ${e.mood}/10 | ${e.food_rating}/3 | ${(e.emotions as string[])?.join(", ")} |`).join("\n") ?? ""}`;
 
     const chatData = chatMessages?.filter((m) => m.role === "user")
       .slice(0, 20)
@@ -425,12 +479,7 @@ ${journalData}
 Messages du patient (extraits) :
 ${chatData}
 
-Génère 3 insights sous forme de phrases courtes et percutantes, comme :
-- "Corrélation détectée : quand le score alimentaire chute le vendredi, l'humeur baisse le lundi."
-- "Pattern identifié : les échanges nocturnes (+21h) correspondent à des pics de découragement."
-- "Signal positif : la régularité du journal est corrélée à de meilleures semaines alimentaires."
-
-Sois précis, factuel, médical. 3 insights maximum. Sans markdown.`;
+Génère 3 insights sous forme de phrases courtes et percutantes. Sois précis, factuel, médical. 3 insights maximum. Sans markdown.`;
 
     try {
       const res = await fetch("/api/chat", {
@@ -444,6 +493,29 @@ Sois précis, factuel, médical. 3 insights maximum. Sans markdown.`;
       setPatternInsight("Erreur lors de l'analyse.");
     }
     setPatternLoading(false);
+  };
+
+  const exportPDF = async () => {
+    if (!selectedPatient || !reportContent) return;
+    const res = await fetch("/api/generate-pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        patientId: selectedPatient.id,
+        practitionerId,
+        reportContent,
+        patientName: `${selectedPatient.firstName} ${selectedPatient.lastName}`,
+        practitionerName,
+      }),
+    });
+    const html = await res.text();
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `rapport_${selectedPatient.firstName}_${selectedPatient.lastName}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const openJumeauModal = async () => {
@@ -645,37 +717,27 @@ Sois précis, factuel, médical. 3 insights maximum. Sans markdown.`;
 
       let journalSection = "";
       if (hasJournal) {
-        const moodLabels = ["Difficile", "Moyen", "Bien", "Très bien", "Excellent"];
-        const foodLabels = ["Difficile", "Bien", "Super"];
         const avgMood = (journalEntries.reduce((sum, e) => sum + e.mood, 0) / journalEntries.length).toFixed(1);
         const avgFood = (journalEntries.reduce((sum, e) => sum + e.food_rating, 0) / journalEntries.length).toFixed(1);
         const allEmotions = journalEntries.flatMap((e) => e.emotions as string[]);
         const emotionCounts: Record<string, number> = {};
         allEmotions.forEach((em) => { emotionCounts[em] = (emotionCounts[em] ?? 0) + 1; });
         const topEmotions = Object.entries(emotionCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([em, count]) => `${em} (${count}x)`).join(", ");
-        const moodTrend = journalEntries.map((e) => `${e.date}: humeur ${moodLabels[e.mood - 1]}, alimentation ${foodLabels[e.food_rating - 1]}`).join("\n");
-        journalSection = `\nJOURNAL DE BORD (${journalEntries.length} entrées) :\n- Humeur moyenne : ${avgMood}/5\n- Alimentation moyenne : ${avgFood}/3\n- Émotions dominantes : ${topEmotions || "non renseignées"}\n- Évolution :\n${moodTrend}`;
+        journalSection = `\nJOURNAL DE BORD (${journalEntries.length} entrées) :\n- Humeur moyenne : ${avgMood}/10\n- Alimentation moyenne : ${avgFood}/3\n- Émotions dominantes : ${topEmotions || "non renseignées"}`;
       }
 
       let chatSection = "";
       if (hasChat) {
         const patientMessages = chatMessages.filter((m) => m.role === "user").map((m) => m.content).join("\n- ");
-        chatSection = `\nCONVERSATIONS AVEC LE JUMEAU (${chatMessages.length} messages) :\nMessages du patient :\n- ${patientMessages}`;
+        chatSection = `\nCONVERSATIONS (${chatMessages.length} messages) :\n- ${patientMessages}`;
       }
 
-      const prompt = `Tu es un assistant pour un praticien en nutrition. Génère un compte rendu professionnel et synthétique basé sur les données d'un patient sur la période du ${dateFrom} au ${dateTo}.
+      const prompt = `Génère un compte rendu professionnel pour un praticien en nutrition. Période du ${dateFrom} au ${dateTo}.
 ${journalSection}
 ${chatSection}
 
-Génère un compte rendu structuré avec :
-1. Vue d'ensemble de la période
-2. État émotionnel et alimentaire (si journal disponible)
-3. Préoccupations et sujets abordés dans le chat (si conversations disponibles)
-4. Points positifs à valoriser
-5. Axes de travail pour la prochaine consultation
-6. Questions clés à poser au patient
-
-Ton professionnel, bienveillant et concis. Sans markdown.`;
+Structure : 1. Vue d'ensemble 2. État émotionnel et alimentaire 3. Sujets abordés 4. Points positifs 5. Axes de travail 6. Questions clés à poser.
+Ton professionnel et concis. Sans markdown.`;
 
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -768,13 +830,12 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {/* Onglets */}
             {(["patients", "radar", "valeur", "patterns"] as ActiveTab[]).map((tab) => {
               const labels: Record<ActiveTab, string> = {
-                patients: "Patients",
+                patients: "Suivi",
                 radar: "Radar",
-                valeur: "Valeur",
-                patterns: "Patterns",
+                valeur: "Impact",
+                patterns: "Insights",
               };
               const isActive = activeTab === tab;
               return (
@@ -783,12 +844,41 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                 </button>
               );
             })}
+
+            {/* Mode discret */}
+            <button onClick={() => setDiscretMode(!discretMode)} style={{ height: 36, borderRadius: 8, padding: "0 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: `1px solid ${discretMode ? "rgba(245,158,11,0.4)" : "rgba(255,255,255,0.08)"}`, background: discretMode ? "rgba(245,158,11,0.1)" : "transparent", color: discretMode ? amber : "#64748b", transition: "all 0.2s" }}>
+              {discretMode ? "🔒 Discret" : "👁 Discret"}
+            </button>
+
             <button onClick={() => void openJumeauModal()} style={{ height: 36, borderRadius: 8, padding: "0 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: emerald, color: "black" }}>
               Mon Jumeau
             </button>
           </div>
         </div>
       </header>
+
+      {/* Bandeau victoires */}
+      {victoryPatients.length > 0 && (
+        <div style={{ background: "rgba(16,185,129,0.08)", borderBottom: "1px solid rgba(16,185,129,0.2)", padding: "10px 24px" }}>
+          <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: emerald, letterSpacing: "0.1em", textTransform: "uppercase" }}>🏆 Victoires détectées</span>
+            {victoryPatients.map((p) => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 20, padding: "4px 12px" }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: emerald, filter: discretMode ? "blur(4px)" : "none" }}>{p.firstName}</span>
+                <span style={{ fontSize: 11, color: "#94a3b8", filter: discretMode ? "blur(4px)" : "none" }}>— {p.latest_victory}</span>
+                {victorySent === p.id ? (
+                  <span style={{ fontSize: 11, color: emerald }}>✅ Envoyé !</span>
+                ) : (
+                  <button onClick={() => void sendVictory(p.id, p.latest_victory ?? "")} disabled={sendingVictory === p.id}
+                    style={{ height: 22, borderRadius: 11, padding: "0 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "none", background: emerald, color: "black" }}>
+                    {sendingVictory === p.id ? "..." : "Envoyer un bravo"}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Bandeau alertes */}
       {(redPatients.length > 0 || orangePatients.length > 0) && (
@@ -799,16 +889,16 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
               <button key={p.id} onClick={() => { setSelectedPatientId(p.id); setActiveTab("patients"); }}
                 style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 20, padding: "4px 12px", cursor: "pointer" }}>
                 <span style={{ fontSize: 10 }}>🔴</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: coral }}>{p.firstName}</span>
-                {p.emotional_insight && <span style={{ fontSize: 11, color: "#94a3b8" }}>— {p.emotional_insight}</span>}
+                <span style={{ fontSize: 12, fontWeight: 600, color: coral, filter: discretMode ? "blur(4px)" : "none" }}>{p.firstName}</span>
+                {p.emotional_insight && <span style={{ fontSize: 11, color: "#94a3b8", filter: discretMode ? "blur(4px)" : "none" }}>— {p.emotional_insight}</span>}
               </button>
             ))}
             {orangePatients.map((p) => (
               <button key={p.id} onClick={() => { setSelectedPatientId(p.id); setActiveTab("patients"); }}
                 style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 20, padding: "4px 12px", cursor: "pointer" }}>
                 <span style={{ fontSize: 10 }}>🟠</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: amber }}>{p.firstName}</span>
-                {p.emotional_insight && <span style={{ fontSize: 11, color: "#94a3b8" }}>— {p.emotional_insight}</span>}
+                <span style={{ fontSize: 12, fontWeight: 600, color: amber, filter: discretMode ? "blur(4px)" : "none" }}>{p.firstName}</span>
+                {p.emotional_insight && <span style={{ fontSize: 11, color: "#94a3b8", filter: discretMode ? "blur(4px)" : "none" }}>— {p.emotional_insight}</span>}
               </button>
             ))}
           </div>
@@ -817,20 +907,15 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
 
       <main style={{ maxWidth: 1600, margin: "0 auto", padding: "24px" }}>
 
-        {/* ═══ VUE PATIENTS ═══ */}
+        {/* ═══ VUE SUIVI ═══ */}
         {activeTab === "patients" && (
-          <div style={{ display: "grid", gridTemplateColumns: "280px minmax(0,1fr) 280px", gap: 16, height: "calc(100vh - 160px)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "280px minmax(0,1fr) 300px", gap: 16, height: "calc(100vh - 160px)" }}>
 
             {/* Sidebar patients */}
             <div style={{ display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
               <div style={{ padding: "16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                <input
-                  type="text"
-                  placeholder="Rechercher un patient..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  style={{ width: "100%", height: 36, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-                />
+                <input type="text" placeholder="Rechercher..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ width: "100%", height: 36, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
               </div>
 
               <div style={{ flex: 1, overflowY: "auto", padding: 8 }}>
@@ -844,23 +929,20 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                   const isRed = patient.emotional_status === "red";
                   return (
                     <button key={patient.id} onClick={() => setSelectedPatientId(patient.id)}
-                      style={{
-                        width: "100%", borderRadius: 10, padding: "10px 12px", textAlign: "left", cursor: "pointer", marginBottom: 4,
-                        background: isSelected ? "rgba(16,185,129,0.08)" : "transparent",
-                        border: isSelected ? "1px solid rgba(16,185,129,0.2)" : "1px solid transparent",
-                        boxShadow: isRed && !isSelected ? "0 0 0 1px rgba(244,63,94,0.2), 0 0 12px rgba(244,63,94,0.08)" : "none",
-                        transition: "all 0.2s",
-                      }}>
+                      style={{ width: "100%", borderRadius: 10, padding: "10px 12px", textAlign: "left", cursor: "pointer", marginBottom: 4, background: isSelected ? "rgba(16,185,129,0.08)" : "transparent", border: isSelected ? "1px solid rgba(16,185,129,0.2)" : "1px solid transparent", boxShadow: isRed && !isSelected ? "0 0 0 1px rgba(244,63,94,0.2)" : "none", transition: "all 0.2s" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div style={{ width: 32, height: 32, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "white", flexShrink: 0 }}>
                           {patient.initials}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: isSelected ? emerald : "white" }}>{patient.firstName}</span>
-                            <span style={{ fontSize: 10, color: statusColor }}>●</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: isSelected ? emerald : "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{patient.firstName}</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              {patient.latest_victory && <span style={{ fontSize: 10 }}>🏆</span>}
+                              <span style={{ fontSize: 10, color: statusColor }}>●</span>
+                            </div>
                           </div>
-                          <p style={{ margin: 0, fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <p style={{ margin: 0, fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
                             {patient.emotional_insight || patient.lastMessage}
                           </p>
                         </div>
@@ -887,8 +969,8 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                         {selectedPatient.initials}
                       </div>
                       <div>
-                        <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "white" }}>{selectedPatient.firstName} {selectedPatient.lastName}</p>
-                        <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{selectedPatient.email}</p>
+                        <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{selectedPatient.firstName} {selectedPatient.lastName}</p>
+                        <p style={{ margin: 0, fontSize: 12, color: "#64748b", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{selectedPatient.email}</p>
                       </div>
                     </div>
                     <button onClick={() => { setShowReportModal(true); setReportContent(""); }}
@@ -905,7 +987,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                       return (
                         <div key={message.id} style={{ display: "flex", justifyContent: isPatient ? "flex-start" : "flex-end" }}>
                           <div style={{ maxWidth: "78%" }}>
-                            <div style={{ borderRadius: 14, borderBottomRightRadius: isPatient ? 14 : 4, borderBottomLeftRadius: isPatient ? 4 : 14, padding: "10px 14px", fontSize: 14, lineHeight: 1.6, background: isPatient ? "rgba(255,255,255,0.06)" : emerald, color: isPatient ? "#e2e8f0" : "black" }}>
+                            <div style={{ borderRadius: 14, borderBottomRightRadius: isPatient ? 14 : 4, borderBottomLeftRadius: isPatient ? 4 : 14, padding: "10px 14px", fontSize: 14, lineHeight: 1.6, background: isPatient ? "rgba(255,255,255,0.06)" : emerald, color: isPatient ? "#e2e8f0" : "black", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
                               {message.content}
                             </div>
                             <p style={{ margin: "4px 0 0", fontSize: 10, color: "#4b5563", textAlign: isPatient ? "left" : "right" }}>
@@ -932,17 +1014,35 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                     <div style={{ width: 56, height: 56, borderRadius: "50%", background: selectedPatient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: "white", margin: "0 auto 10px" }}>
                       {selectedPatient.initials}
                     </div>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{selectedPatient.firstName} {selectedPatient.lastName}</p>
-                    <p style={{ margin: "2px 0 8px", fontSize: 12, color: "#64748b" }}>{selectedPatient.email}</p>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{selectedPatient.firstName} {selectedPatient.lastName}</p>
+                    <p style={{ margin: "2px 0 8px", fontSize: 12, color: "#64748b", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{selectedPatient.email}</p>
 
-                    {/* Statut émotionnel */}
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 20, padding: "4px 12px", background: `${getStatusColor(selectedPatient.emotional_status)}15`, border: `1px solid ${getStatusColor(selectedPatient.emotional_status)}30` }}>
                       <span style={{ fontSize: 10 }}>{getStatusEmoji(selectedPatient.emotional_status)}</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: getStatusColor(selectedPatient.emotional_status) }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: getStatusColor(selectedPatient.emotional_status), filter: discretMode ? "blur(4px)" : "none" }}>
                         {selectedPatient.emotional_insight || (selectedPatient.emotional_status === "green" ? "Adhésion positive" : selectedPatient.emotional_status === "orange" ? "Vigilance modérée" : "Attention requise")}
                       </span>
                     </div>
                   </div>
+
+                  {/* Victoire détectée */}
+                  {selectedPatient.latest_victory && (
+                    <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                        <span style={{ fontSize: 14 }}>🏆</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: emerald }}>Victoire détectée</span>
+                      </div>
+                      <p style={{ margin: "0 0 8px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5, filter: discretMode ? "blur(4px)" : "none" }}>{selectedPatient.latest_victory}</p>
+                      {victorySent === selectedPatient.id ? (
+                        <p style={{ margin: 0, fontSize: 11, color: emerald }}>✅ Message envoyé !</p>
+                      ) : (
+                        <button onClick={() => void sendVictory(selectedPatient.id, selectedPatient.latest_victory ?? "")} disabled={sendingVictory === selectedPatient.id}
+                          style={{ height: 28, borderRadius: 6, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "none", background: emerald, color: "black" }}>
+                          {sendingVictory === selectedPatient.id ? "Envoi..." : "Envoyer un bravo →"}
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Badges */}
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14, justifyContent: "center" }}>
@@ -951,9 +1051,6 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                     ))}
                     {selectedPatient.objectif_clinique && (
                       <span style={{ borderRadius: 20, background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.25)", padding: "2px 8px", fontSize: 10, fontWeight: 600, color: "#60a5fa" }}>🎯 {selectedPatient.objectif_clinique}</span>
-                    )}
-                    {selectedPatient.regime_specifique && (
-                      <span style={{ borderRadius: 20, background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", padding: "2px 8px", fontSize: 10, fontWeight: 600, color: "#a78bfa" }}>🥗 {selectedPatient.regime_specifique}</span>
                     )}
                   </div>
 
@@ -983,6 +1080,24 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                     </div>
                   )}
 
+                  {/* Notes privées */}
+                  <div style={{ marginBottom: 10 }}>
+                    <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Notes privées</p>
+                    <textarea
+                      value={privateNotes}
+                      onChange={(e) => setPrivateNotes(e.target.value)}
+                      placeholder="Notes visibles uniquement par vous..."
+                      rows={3}
+                      style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "white", padding: "8px 10px", fontSize: 12, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.5 }}
+                      onFocus={(e) => e.target.style.borderColor = "rgba(16,185,129,0.3)"}
+                      onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.08)"}
+                    />
+                    <button onClick={() => void savePrivateNotes()} disabled={savingPrivateNotes}
+                      style={{ marginTop: 4, height: 28, borderRadius: 6, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "none", background: privateNotesSaved ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)", color: privateNotesSaved ? emerald : "#94a3b8" }}>
+                      {privateNotesSaved ? "✅ Sauvegardé" : savingPrivateNotes ? "..." : "Sauvegarder"}
+                    </button>
+                  </div>
+
                   {/* Boutons */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <button onClick={openMurmureModal} style={{ height: 38, borderRadius: 8, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: emerald, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
@@ -1010,7 +1125,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
           <div>
             <div style={{ marginBottom: 20 }}>
               <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Radar émotionnel</h2>
-              <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Statut IA de vos patients mis à jour à chaque message</p>
+              <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Statut IA mis à jour à chaque message patient</p>
             </div>
             {patients.length === 0 ? (
               <p style={{ textAlign: "center", color: "#64748b", marginTop: 60 }}>Aucun patient</p>
@@ -1023,38 +1138,48 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
                   const statusColor = getStatusColor(patient.emotional_status);
                   const isRed = patient.emotional_status === "red";
                   return (
-                    <button key={patient.id} onClick={() => { setSelectedPatientId(patient.id); setActiveTab("patients"); }}
-                      style={{
-                        textAlign: "left", borderRadius: 16, padding: "20px", cursor: "pointer",
-                        background: isRed ? "rgba(244,63,94,0.05)" : "rgba(255,255,255,0.02)",
-                        border: `1px solid ${isRed ? "rgba(244,63,94,0.25)" : "rgba(255,255,255,0.06)"}`,
-                        boxShadow: isRed ? "0 0 24px rgba(244,63,94,0.12)" : "none",
-                        transition: "all 0.3s",
-                      }}>
+                    <div key={patient.id} style={{ borderRadius: 16, padding: "20px", background: isRed ? "rgba(244,63,94,0.05)" : "rgba(255,255,255,0.02)", border: `1px solid ${isRed ? "rgba(244,63,94,0.25)" : "rgba(255,255,255,0.06)"}`, boxShadow: isRed ? "0 0 24px rgba(244,63,94,0.12)" : "none", transition: "all 0.3s" }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <button onClick={() => { setSelectedPatientId(patient.id); setActiveTab("patients"); }} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                           <div style={{ width: 40, height: 40, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "white" }}>
                             {patient.initials}
                           </div>
-                          <div>
-                            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "white" }}>{patient.firstName} {patient.lastName}</p>
+                          <div style={{ textAlign: "left" }}>
+                            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "white", filter: discretMode ? "blur(4px)" : "none" }}>{patient.firstName} {patient.lastName}</p>
                             <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{patient.totalMessages} messages</p>
                           </div>
-                        </div>
+                        </button>
                         <span style={{ fontSize: 18 }}>{getStatusEmoji(patient.emotional_status)}</span>
                       </div>
+
                       {patient.emotional_insight && (
-                        <p style={{ margin: 0, fontSize: 12, color: statusColor, lineHeight: 1.5, fontStyle: "italic" }}>
+                        <p style={{ margin: "0 0 10px", fontSize: 12, color: statusColor, lineHeight: 1.5, fontStyle: "italic", filter: discretMode ? "blur(4px)" : "none" }}>
                           "{patient.emotional_insight}"
                         </p>
                       )}
+
+                      {/* Victoire */}
+                      {patient.latest_victory && (
+                        <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 8, padding: "8px 10px", marginBottom: 10, border: "1px solid rgba(16,185,129,0.2)" }}>
+                          <p style={{ margin: "0 0 6px", fontSize: 11, color: emerald, fontWeight: 600 }}>🏆 {patient.latest_victory}</p>
+                          {victorySent === patient.id ? (
+                            <p style={{ margin: 0, fontSize: 11, color: emerald }}>✅ Message envoyé !</p>
+                          ) : (
+                            <button onClick={() => void sendVictory(patient.id, patient.latest_victory ?? "")} disabled={sendingVictory === patient.id}
+                              style={{ height: 24, borderRadius: 6, padding: "0 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "none", background: emerald, color: "black" }}>
+                              {sendingVictory === patient.id ? "..." : "Envoyer un bravo →"}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
                       {patient.practitioner_instruction && (
-                        <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                           <span style={{ fontSize: 10 }}>🎙️</span>
                           <span style={{ fontSize: 10, color: emerald }}>Murmure actif</span>
                         </div>
                       )}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -1062,32 +1187,20 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
           </div>
         )}
 
-        {/* ═══ VUE VALEUR PRODUITE ═══ */}
+        {/* ═══ VUE IMPACT ═══ */}
         {activeTab === "valeur" && (
           <div>
             <div style={{ marginBottom: 24 }}>
-              <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Valeur produite</h2>
+              <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Impact de votre jumeau</h2>
               <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Ce que votre jumeau a accompli ce mois-ci</p>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16, marginBottom: 24 }}>
               {[
-                {
-                  icon: "💬", label: "Messages gérés", value: monthlyStats?.messages_geres ?? 0, unit: "messages",
-                  desc: "Questions répondues à votre place", color: emerald,
-                },
-                {
-                  icon: "🌙", label: "Crises nocturnes", value: monthlyStats?.crises_nocturnes ?? 0, unit: "interventions",
-                  desc: "Moments où votre jumeau était là pour eux", color: "#8b5cf6",
-                },
-                {
-                  icon: "⏱️", label: "Temps économisé", value: monthlyStats?.temps_economise_heures ?? 0, unit: "heures",
-                  desc: "Estimé à 1,2 min par message géré", color: amber,
-                },
-                {
-                  icon: "🔄", label: "Questions répétitives", value: `${monthlyStats?.questions_repetitives_pct ?? 0}%`, unit: "",
-                  desc: "Absorbées par le jumeau sans vous", color: "#06b6d4",
-                },
+                { icon: "💬", label: "Messages gérés", value: monthlyStats?.messages_geres ?? 0, unit: "messages", desc: "Questions répondues à votre place", color: emerald },
+                { icon: "🌙", label: "Crises nocturnes", value: monthlyStats?.crises_nocturnes ?? 0, unit: "interventions", desc: "Moments où votre jumeau était là pour eux", color: "#8b5cf6" },
+                { icon: "⏱️", label: "Temps économisé", value: monthlyStats?.temps_economise_heures ?? 0, unit: "heures", desc: "Estimé à 1,2 min par message géré", color: amber },
+                { icon: "🔄", label: "Questions répétitives", value: `${monthlyStats?.questions_repetitives_pct ?? 0}%`, unit: "", desc: "Absorbées par le jumeau sans vous", color: "#06b6d4" },
               ].map((stat, i) => (
                 <div key={i} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "24px", backdropFilter: "blur(20px)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
@@ -1103,8 +1216,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
               ))}
             </div>
 
-            {/* Message synthèse */}
-            <div style={{ background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 16, padding: "24px", backdropFilter: "blur(20px)" }}>
+            <div style={{ background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 16, padding: "24px" }}>
               <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "white" }}>🧬 Synthèse du mois</p>
               <p style={{ margin: 0, fontSize: 14, color: "#94a3b8", lineHeight: 1.8 }}>
                 Ce mois-ci, votre jumeau a répondu à <strong style={{ color: "white" }}>{monthlyStats?.messages_geres ?? 0} questions</strong>, géré <strong style={{ color: "white" }}>{monthlyStats?.crises_nocturnes ?? 0} moments difficiles</strong> en dehors de vos heures de consultation, et vous a économisé environ <strong style={{ color: "white" }}>{monthlyStats?.temps_economise_heures ?? 0} heures</strong> de suivi.
@@ -1115,21 +1227,20 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
           </div>
         )}
 
-        {/* ═══ VUE PATTERNS ═══ */}
+        {/* ═══ VUE INSIGHTS ═══ */}
         {activeTab === "patterns" && (
           <div>
             <div style={{ marginBottom: 24 }}>
-              <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Patterns comportementaux</h2>
+              <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Insights comportementaux</h2>
               <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>L'IA détecte ce que l'œil humain ne voit pas</p>
             </div>
 
-            {/* Sélecteur patient */}
             <div style={{ marginBottom: 20 }}>
               <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Analyser le patient</p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {patients.map((p) => (
                   <button key={p.id} onClick={() => setSelectedPatientId(p.id)}
-                    style={{ height: 36, borderRadius: 8, padding: "0 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: selectedPatientId === p.id ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)", color: selectedPatientId === p.id ? emerald : "#64748b", transition: "all 0.2s" }}>
+                    style={{ height: 36, borderRadius: 8, padding: "0 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", background: selectedPatientId === p.id ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)", color: selectedPatientId === p.id ? emerald : "#64748b", transition: "all 0.2s", filter: discretMode ? "blur(4px)" : "none" }}>
                     {p.firstName} {p.lastName}
                   </button>
                 ))}
@@ -1146,7 +1257,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
             )}
 
             {patternInsight && (
-              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "24px", backdropFilter: "blur(20px)" }}>
+              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "24px" }}>
                 <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 700, color: emerald, letterSpacing: "0.08em", textTransform: "uppercase" }}>
                   🧬 Insights — {selectedPatient?.firstName}
                 </p>
@@ -1186,18 +1297,15 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
             </div>
 
             <div style={{ background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "#10b981", lineHeight: 1.6 }}>
-                ⚡ Cette consigne sera injectée en priorité absolue dans chaque réponse du jumeau pour ce patient, jusqu'à ce que vous la supprimiez.
+              <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.6 }}>
+                ⚡ Cette consigne sera injectée en priorité absolue dans chaque réponse du jumeau pour ce patient.
               </p>
             </div>
 
-            <textarea
-              value={murmureText}
-              onChange={(e) => setMurmureText(e.target.value)}
-              placeholder="Ex: Sois plus doux cette semaine, elle traverse une période difficile au travail. Mets l'accent sur les petites victoires."
+            <textarea value={murmureText} onChange={(e) => setMurmureText(e.target.value)}
+              placeholder="Ex: Sois plus doux cette semaine, elle traverse une période difficile au travail."
               rows={5}
-              style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.6 }}
-            />
+              style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.6 }} />
 
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               {murmureText && (
@@ -1335,11 +1443,20 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
               </div>
             )}
 
-            {uploadSuccess.length > 0 && (
-              <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", padding: "12px 14px" }}>
-                {uploadSuccess.map((s, i) => <p key={i} style={{ margin: "0 0 2px", fontSize: 12, color: emerald }}>✅ {s}</p>)}
-              </div>
-            )}
+{uploadSuccess.length > 0 && (
+  <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", padding: "12px 14px" }}>
+    {uploadSuccess.map((s, i) => <p key={i} style={{ margin: "0 0 2px", fontSize: 12, color: emerald }}>✅ {s}</p>)}
+  </div>
+)}
+
+{/* Badge RGPD — ajoute ici */}
+<div style={{ marginTop: 20, padding: "12px 14px", borderRadius: 12, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "flex-start", gap: 10 }}>
+  <span style={{ fontSize: 16, flexShrink: 0 }}>🔒</span>
+  <p style={{ margin: 0, fontSize: 11, color: "#64748b", lineHeight: 1.7 }}>
+    <strong style={{ color: "#94a3b8" }}>Chiffrement de bout en bout</strong> · Données traitées en Europe (RGPD) · L'IA n'est pas entraînée sur vos données privées.
+  </p>
+</div>
+
           </div>
         </div>
       )}
@@ -1377,7 +1494,7 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
               </div>
             </div>
             <button onClick={() => void saveProfile()} disabled={savingProfile}
-              style={{ width: "100%", height: 48, borderRadius: 24, background: profileSaved ? "rgba(16,185,129,0.2)" : emerald, border: profileSaved ? `1px solid ${emerald}` : "none", color: profileSaved ? emerald : "black", fontSize: 15, fontWeight: 600, cursor: "pointer", marginTop: 20 }}>
+              style={{ width: "100%", height: 48, borderRadius: 12, background: profileSaved ? "rgba(16,185,129,0.2)" : emerald, border: profileSaved ? `1px solid ${emerald}` : "none", color: profileSaved ? emerald : "black", fontSize: 15, fontWeight: 600, cursor: "pointer", marginTop: 20 }}>
               {profileSaved ? "✅ Sauvegardé !" : savingProfile ? "Sauvegarde..." : "Sauvegarder"}
             </button>
           </div>
@@ -1451,19 +1568,20 @@ Ton professionnel, bienveillant et concis. Sans markdown.`;
 
             {!reportContent && (
               <button onClick={() => void generateReport()} disabled={reportLoading || (reportPeriod === "custom" && (!reportDateFrom || !reportDateTo))}
-                style={{ width: "100%", height: 48, borderRadius: 24, background: reportLoading ? "#1a1a1a" : emerald, border: "none", color: reportLoading ? "#4a4a4a" : "black", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}>
+                style={{ width: "100%", height: 48, borderRadius: 12, background: reportLoading ? "#1a1a1a" : emerald, border: "none", color: reportLoading ? "#4a4a4a" : "black", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}>
                 {reportLoading ? "Génération en cours... 🤖" : "Générer le rapport IA"}
               </button>
             )}
 
             {reportContent && (
               <>
-                <div style={{ background: "#0a0a0a", borderRadius: 16, padding: "20px", border: "1px solid rgba(255,255,255,0.06)", fontSize: 14, color: "#e2e8f0", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
+                <div style={{ background: "#0a0a0a", borderRadius: 16, padding: "20px", border: "1px solid rgba(255,255,255,0.06)", fontSize: 14, color: "#e2e8f0", lineHeight: 1.8, whiteSpace: "pre-wrap", marginBottom: 16 }}>
                   {reportContent}
                 </div>
-                <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+                <div style={{ display: "flex", gap: 10 }}>
                   <button onClick={() => setReportContent("")} style={{ flex: 1, height: 44, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>Nouvelle période</button>
-                  <button onClick={() => void navigator.clipboard.writeText(reportContent)} style={{ flex: 1, height: 44, borderRadius: 12, background: emerald, border: "none", color: "black", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>📋 Copier</button>
+                  <button onClick={() => void navigator.clipboard.writeText(reportContent)} style={{ flex: 1, height: 44, borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "none", color: "white", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>📋 Copier</button>
+                  <button onClick={() => void exportPDF()} style={{ flex: 1, height: 44, borderRadius: 12, background: emerald, border: "none", color: "black", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>📄 PDF</button>
                 </div>
               </>
             )}
