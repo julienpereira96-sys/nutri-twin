@@ -493,11 +493,6 @@ export async function POST(request: Request) {
       }
     }
 
-    if (practitionerId && !systemPrompt && !imageBase64) {
-      const cached = await getSemanticCache(message, practitionerId);
-      if (cached) return Response.json({ response: cached });
-    }
-
     const [patientContext, documentsContext] = await Promise.all([
       patientId ? getPatientProfile(patientId) : Promise.resolve(""),
       practitionerId ? getRelevantDocuments(message, practitionerId, config.ragChunks) : Promise.resolve(""),
@@ -613,10 +608,6 @@ export async function POST(request: Request) {
                   last_message: fullText.slice(0, 100),
                   last_message_at: new Date().toISOString(),
                 }).eq("id", sessionId);
-              }
-    
-              if (practitionerId && !imageBase64) {
-                await saveToCache(message, fullText, practitionerId);
               }
             }
     

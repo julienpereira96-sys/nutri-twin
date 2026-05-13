@@ -654,7 +654,7 @@ export default function ChatPage() {
                   );
                 })}
 
-{loading && (
+                {loading && (
   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
     <div style={{ position: "relative", flexShrink: 0 }}>
       <div style={{ position: "absolute", inset: -6, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.3), transparent 70%)", animation: "glow-loading 1s ease-in-out infinite" }} />
