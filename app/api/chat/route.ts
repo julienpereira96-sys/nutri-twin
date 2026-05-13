@@ -65,7 +65,7 @@ const COMPLEX_KEYWORDS = [
   "j'ai mangé", "j'ai craqué", "je me sens", "j'ai mal", "pourquoi",
   "comment", "que faire", "conseil", "aide", "problème",
   "peur", "honte", "marre", "ras-le-bol", "abandon", "nul", "nulle",
-  "échec", "honte", "culpabilité", "désespoir", "craquer", "pleurer",
+  "échec", "culpabilité", "désespoir", "craquer", "pleurer",
 ];
 
 function isComplexMessage(message: string): boolean {
@@ -136,44 +136,24 @@ async function getPractitionerData(practitionerId: string): Promise<CachedPracti
   return data;
 }
 
-async function getSemanticCache(question: string, practitionerId: string): Promise<string | null> {
-  try {
-    const supabase = createSupabaseClient();
-    const queryEmbedding = await getGeminiEmbedding(question);
-    const { data } = await supabase.rpc("match_cached_responses", {
-      query_embedding: queryEmbedding,
-      practitioner_id: practitionerId,
-      similarity_threshold: 0.88,
-      match_count: 1,
-    });
-    const results = data as { response: string; similarity: number }[] | null;
-    if (results && results.length > 0) return results[0].response;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-async function saveToCache(question: string, response: string, practitionerId: string): Promise<void> {
-  try {
-    const supabase = createSupabaseClient();
-    const embedding = await getGeminiEmbedding(question);
-    await supabase.from("cached_responses").insert({
-      practitioner_id: practitionerId,
-      question,
-      response,
-      embedding,
-    } as never);
-  } catch {}
-}
-
 async function hasDocuments(practitionerId: string): Promise<boolean> {
-  const supabase = createSupabaseClient();
-  const { count } = await supabase
-    .from("documents")
-    .select("*", { count: "exact", head: true })
-    .eq("practitioner_id", practitionerId);
-  return (count ?? 0) > 0;
+  try {
+    const cacheKey = `has_docs:${practitionerId}`;
+    const cached = await redis.get<boolean>(cacheKey);
+    if (cached !== null) return cached;
+
+    const supabase = createSupabaseClient();
+    const { count } = await supabase
+      .from("documents")
+      .select("*", { count: "exact", head: true })
+      .eq("practitioner_id", practitionerId);
+
+    const result = (count ?? 0) > 0;
+    await redis.set(cacheKey, result, { ex: 3600 });
+    return result;
+  } catch {
+    return false;
+  }
 }
 
 async function getRelevantDocuments(question: string, practitionerId: string, ragChunks: number): Promise<string> {
@@ -199,8 +179,59 @@ async function getRelevantDocuments(question: string, practitionerId: string, ra
   }
 }
 
+async function getFreshJournal(patientId: string): Promise<string> {
+  try {
+    const supabase = createSupabaseClient();
+
+    const { data: recentEntries } = await supabase
+      .from("journal_entries")
+      .select("date, mood, food_rating, emotions, content")
+      .eq("patient_id", patientId)
+      .order("date", { ascending: false })
+      .limit(3);
+
+    const { data: weekEntries } = await supabase
+      .from("journal_entries")
+      .select("mood, food_rating")
+      .eq("patient_id", patientId)
+      .order("date", { ascending: false })
+      .limit(7);
+
+    if (!recentEntries?.length) return "";
+
+    let weekSummary = "";
+    if (weekEntries && weekEntries.length >= 3) {
+      const avgMood = (weekEntries.reduce((sum, e) => sum + e.mood, 0) / weekEntries.length).toFixed(1);
+      const avgFood = (weekEntries.reduce((sum, e) => sum + e.food_rating, 0) / weekEntries.length).toFixed(1);
+      const firstMood = weekEntries[weekEntries.length - 1].mood;
+      const lastMood = weekEntries[0].mood;
+      const trend = lastMood > firstMood ? "en hausse" : lastMood < firstMood ? "en baisse" : "stable";
+      weekSummary = `Synthèse 7 jours : humeur moyenne ${avgMood}/10 (${trend}), alimentation moyenne ${avgFood}/3.`;
+    }
+
+    const detailedEntries = recentEntries.map((e) => {
+      const moodLabel = e.mood <= 3 ? "difficile" : e.mood <= 6 ? "moyen" : e.mood <= 8 ? "bien" : "excellent";
+      const foodLabel = e.food_rating === 1 ? "difficile" : e.food_rating === 2 ? "bien" : "excellent";
+      const emotions = (e.emotions as string[])?.join(", ") || "non renseignées";
+      const note = e.content ? ` — "${e.content}"` : "";
+      return `  • ${e.date} : humeur ${moodLabel} (${e.mood}/10), alimentation ${foodLabel}, émotions : ${emotions}${note}`;
+    }).join("\n");
+
+    return `\nJOURNAL DU PATIENT :\n${weekSummary}\nDernières entrées :\n${detailedEntries}\nUtilise ces données subtilement pour adapter ton ton et tes conseils, sans jamais citer explicitement le journal.`;
+  } catch {
+    return "";
+  }
+}
+
 async function getPatientProfile(patientId: string): Promise<string> {
   try {
+    const cacheKey = `patient_profile:${patientId}`;
+    const cached = await redis.get<string>(cacheKey);
+    if (cached) {
+      const journalContext = await getFreshJournal(patientId);
+      return cached + journalContext;
+    }
+
     const supabase = createSupabaseClient();
     const { data } = await supabase
       .from("patients")
@@ -209,26 +240,12 @@ async function getPatientProfile(patientId: string): Promise<string> {
       .single();
 
     const patient = data as {
-      first_name?: string;
-      last_name?: string;
-      age?: number;
-      sexe?: string;
-      taille?: number;
-      poids?: number;
-      objective?: string;
-      pathologies?: string;
-      allergies?: string;
-      traitements?: string;
-      objectif_clinique?: string;
-      brief_jumeau?: string;
-      notes?: string;
-      motivation?: string;
-      defi?: string;
-      aliments_aimes?: string;
-      aliments_detestes?: string;
-      niveau_activite?: string;
-      regime_specifique?: string;
-      practitioner_instruction?: string;
+      first_name?: string; last_name?: string; age?: number; sexe?: string;
+      taille?: number; poids?: number; objective?: string; pathologies?: string;
+      allergies?: string; traitements?: string; objectif_clinique?: string;
+      brief_jumeau?: string; notes?: string; motivation?: string; defi?: string;
+      aliments_aimes?: string; aliments_detestes?: string; niveau_activite?: string;
+      regime_specifique?: string; practitioner_instruction?: string;
     } | null;
 
     if (!patient) return "";
@@ -253,66 +270,28 @@ async function getPatientProfile(patientId: string): Promise<string> {
     if (patient.notes) parts.push(`Notes praticien : ${patient.notes}`);
 
     const instructionDate = (patient as { instruction_updated_at?: string }).instruction_updated_at
-  ? `(mis à jour le ${new Date((patient as { instruction_updated_at?: string }).instruction_updated_at!).toLocaleDateString("fr-FR")})`
-  : "";
+      ? `(mis à jour le ${new Date((patient as { instruction_updated_at?: string }).instruction_updated_at!).toLocaleDateString("fr-FR")})`
+      : "";
 
-const briefSection = [
-  patient.brief_jumeau ? `CONTEXTE DE DÉPART : ${patient.brief_jumeau}` : "",
-  patient.practitioner_instruction ? `⚡ CONSIGNE ACTUELLE DU PRATICIEN ${instructionDate} : ${patient.practitioner_instruction}` : "",
-].filter(Boolean).join("\n");
+    const briefSection = [
+      patient.brief_jumeau ? `CONTEXTE DE DÉPART : ${patient.brief_jumeau}` : "",
+      patient.practitioner_instruction ? `⚡ CONSIGNE ACTUELLE DU PRATICIEN ${instructionDate} : ${patient.practitioner_instruction}` : "",
+    ].filter(Boolean).join("\n");
 
-const briefFinal = briefSection
-  ? `\nINSTRUCTIONS SPÉCIFIQUES DU PRATICIEN POUR CE PATIENT :\n${briefSection}\n`
-  : "";
+    const briefFinal = briefSection
+      ? `\nINSTRUCTIONS SPÉCIFIQUES DU PRATICIEN POUR CE PATIENT :\n${briefSection}\n`
+      : "";
 
-  // Injecter journal : 3 dernières entrées détaillées + synthèse 7 jours
-try {
-  const supabaseJournal = createSupabaseClient();
-  
-  const { data: recentEntries } = await supabaseJournal
-    .from("journal_entries")
-    .select("date, mood, food_rating, emotions, content")
-    .eq("patient_id", patientId)
-    .order("date", { ascending: false })
-    .limit(3);
-
-  const { data: weekEntries } = await supabaseJournal
-    .from("journal_entries")
-    .select("mood, food_rating")
-    .eq("patient_id", patientId)
-    .order("date", { ascending: false })
-    .limit(7);
-
-  if (recentEntries && recentEntries.length > 0) {
-    // Synthèse 7 jours
-    let weekSummary = "";
-    if (weekEntries && weekEntries.length >= 3) {
-      const avgMood = (weekEntries.reduce((sum, e) => sum + e.mood, 0) / weekEntries.length).toFixed(1);
-      const avgFood = (weekEntries.reduce((sum, e) => sum + e.food_rating, 0) / weekEntries.length).toFixed(1);
-      const firstMood = weekEntries[weekEntries.length - 1].mood;
-      const lastMood = weekEntries[0].mood;
-      const trend = lastMood > firstMood ? "en hausse" : lastMood < firstMood ? "en baisse" : "stable";
-      weekSummary = `Synthèse 7 jours : humeur moyenne ${avgMood}/10 (${trend}), alimentation moyenne ${avgFood}/3.`;
-    }
-
-    // 3 dernières entrées détaillées
-    const detailedEntries = recentEntries.map((e) => {
-      const moodLabel = e.mood <= 3 ? "difficile" : e.mood <= 6 ? "moyen" : e.mood <= 8 ? "bien" : "excellent";
-      const foodLabel = e.food_rating === 1 ? "difficile" : e.food_rating === 2 ? "bien" : "excellent";
-      const emotions = (e.emotions as string[])?.join(", ") || "non renseignées";
-      const note = e.content ? ` — "${e.content}"` : "";
-      return `  • ${e.date} : humeur ${moodLabel} (${e.mood}/10), alimentation ${foodLabel}, émotions : ${emotions}${note}`;
-    }).join("\n");
-
-    parts.push(`\nJOURNAL DU PATIENT :\n${weekSummary}\nDernières entrées :\n${detailedEntries}\nUtilise ces données subtilement pour adapter ton ton et tes conseils, sans jamais citer explicitement le journal.`);
-  }
-} catch {
-  // Silencieux
-}
-
-    return parts.length > 0
+    const staticProfile = parts.length > 0
       ? `\nPROFIL DU PATIENT :\n${parts.join("\n")}\n${briefFinal}`
       : "";
+
+    if (staticProfile) {
+      await redis.set(cacheKey, staticProfile, { ex: 3600 });
+    }
+
+    const journalContext = await getFreshJournal(patientId);
+    return staticProfile + journalContext;
   } catch {
     return "";
   }
@@ -444,7 +423,7 @@ JSON TECHNIQUE OBLIGATOIRE — À ajouter en toute fin de réponse, invisible po
 |||{"status":"green","reason":"résumé état en 8 mots max","victory":""}|||
 - status : "red" si détresse/découragement sévère, "orange" si difficulté modérée, "green" si tout va bien
 - reason : phrase courte décrivant l'état émotionnel du patient
-- victory : UNE phrase UNIQUEMENT si le patient rapporte un changement de comportement MAJEUR ou une réussite sur un défi difficile (ex: première semaine sans grignotage nocturne, gestion réussie d'un repas stressant). Laisser vide "" dans tous les autres cas. Ne pas en créer artificiellement.`;
+- victory : UNE phrase UNIQUEMENT si le patient rapporte un changement de comportement MAJEUR ou une réussite sur un défi difficile. Laisser vide "" dans tous les autres cas.`;
 }
 
 function getDefaultPrompt(): string {
@@ -523,105 +502,105 @@ export async function POST(request: Request) {
 
     const chat = model.startChat({ history: conversationHistory });
 
-        // ── Envoi message ou image ──
-        let result;
-        if (imageBase64 && imageMimeType) {
-          const visionPrompt = `Tu reçois une photo de repas d'un patient en suivi nutritionnel.
-    ${patientContext}${documentsContext}
-    Analyse :
-    1. Identifie les aliments visibles et les proportions approximatives
-    2. Croise avec le protocole du praticien et le profil patient
-    3. Signale tout écart (allergies, intolérances, consignes spécifiques)
-    4. Réponds en tant que jumeau numérique — ton bienveillant, jamais culpabilisant
-    ${message ? `\nMessage du patient : "${message}"` : ""}
-    Max 150 mots. Sans markdown.`;
-    
-          result = await chat.sendMessageStream([
-            { inlineData: { data: imageBase64, mimeType: imageMimeType as "image/jpeg" | "image/png" | "image/webp" } },
-            { text: visionPrompt },
-          ]);
-        } else {
-          result = await chat.sendMessageStream(message);
+    let result;
+    if (imageBase64 && imageMimeType) {
+      const visionPrompt = `Tu reçois une photo de repas d'un patient en suivi nutritionnel.
+${patientContext}${documentsContext}
+Analyse :
+1. Identifie les aliments visibles et les proportions approximatives
+2. Croise avec le protocole du praticien et le profil patient
+3. Signale tout écart (allergies, intolérances, consignes spécifiques)
+4. Réponds en tant que jumeau numérique — ton bienveillant, jamais culpabilisant
+${message ? `\nMessage du patient : "${message}"` : ""}
+Max 150 mots. Sans markdown.`;
+
+      result = await chat.sendMessageStream([
+        { inlineData: { data: imageBase64, mimeType: imageMimeType as "image/jpeg" | "image/png" | "image/webp" } },
+        { text: visionPrompt },
+      ]);
+    } else {
+      result = await chat.sendMessageStream(message);
+    }
+
+    const encoder = new TextEncoder();
+    const supabase = createSupabaseClient();
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        let fullText = "";
+
+        try {
+          for await (const chunk of result.stream) {
+            const chunkText = chunk.text();
+            fullText += chunkText;
+            controller.enqueue(encoder.encode(chunkText));
+            await new Promise(resolve => setTimeout(resolve, 15));
+          }          
+        } catch {
+          controller.close();
+          return;
         }
-    
-        // ── Stream vers le client ──
-        const encoder = new TextEncoder();
-        const supabase = createSupabaseClient();
-    
-        const stream = new ReadableStream({
-          async start(controller) {
-            let fullText = "";
-    
-            try {
-              for await (const chunk of result.stream) {
-                const chunkText = chunk.text();
-                fullText += chunkText;
-                controller.enqueue(encoder.encode(chunkText));
-              }
-            } catch {
-              controller.close();
-              return;
-            }
-    
-            // ── Parser le statut émotionnel ──
-            let emotionalStatus = "green";
-            let emotionalInsight = "";
-            let victoryText = "";
-            const statusMatch = fullText.match(/\|\|\|([\s\S]*?)\|\|\|/);
-            if (statusMatch) {
-              try {
-                const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string; victory?: string };
-                emotionalStatus = parsed.status;
-                emotionalInsight = parsed.reason;
-                victoryText = parsed.victory ?? "";
-              } catch { /* silencieux */ }
-              fullText = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
-            }
-    
-            // ── Sauvegarde en base ──
-            if (patientId) {
-              await supabase.from("conversations").insert([
-                {
-                  patient_id: patientId,
-                  practitioner_id: practitionerId,
-                  role: "user",
-                  content: imageBase64 ? `📷 ${message || "Photo de repas"}` : message,
-                  session_id: sessionId ?? null,
-                },
-                {
-                  patient_id: patientId,
-                  practitioner_id: practitionerId,
-                  role: "assistant",
-                  content: fullText,
-                  session_id: sessionId ?? null,
-                },
-              ]);
-    
-              await supabase.from("patients").update({
-                emotional_status: emotionalStatus,
-                emotional_insight: emotionalInsight,
-                ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString() } : {}),
-              }).eq("user_id", patientId);
-    
-              if (sessionId) {
-                await supabase.from("conversations_sessions").update({
-                  last_message: fullText.slice(0, 100),
-                  last_message_at: new Date().toISOString(),
-                }).eq("id", sessionId);
-              }
-            }
-    
-            controller.close();
-          },
-        });
-    
-        return new Response(stream, {
-          headers: {
-            "Content-Type": "text/plain; charset=utf-8",
-            "Transfer-Encoding": "chunked",
-            "X-Content-Type-Options": "nosniff",
-          },
-        });    
+
+        let emotionalStatus = "green";
+        let emotionalInsight = "";
+        let victoryText = "";
+        const statusMatch = fullText.match(/\|\|\|([\s\S]*?)\|\|\|/);
+        if (statusMatch) {
+          try {
+            const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string; victory?: string };
+            emotionalStatus = parsed.status;
+            emotionalInsight = parsed.reason;
+            victoryText = parsed.victory ?? "";
+          } catch { /* silencieux */ }
+          fullText = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
+        }
+
+        if (patientId) {
+          await supabase.from("conversations").insert([
+            {
+              patient_id: patientId,
+              practitioner_id: practitionerId,
+              role: "user",
+              content: imageBase64 ? `📷 ${message || "Photo de repas"}` : message,
+              session_id: sessionId ?? null,
+            },
+            {
+              patient_id: patientId,
+              practitioner_id: practitionerId,
+              role: "assistant",
+              content: fullText,
+              session_id: sessionId ?? null,
+            },
+          ]);
+
+          await supabase.from("patients").update({
+            emotional_status: emotionalStatus,
+            emotional_insight: emotionalInsight,
+            ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString() } : {}),
+          }).eq("user_id", patientId);
+
+          if (sessionId) {
+            await supabase.from("conversations_sessions").update({
+              last_message: fullText.slice(0, 100),
+              last_message_at: new Date().toISOString(),
+            }).eq("id", sessionId);
+          }
+        }
+
+        controller.close();
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Transfer-Encoding": "chunked",
+        "X-Content-Type-Options": "nosniff",
+        "X-Accel-Buffering": "no",
+        "Cache-Control": "no-cache, no-transform",
+      },
+    });
+
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Erreur inconnue";
     return Response.json({ response: "Erreur: " + errorMessage }, { status: 500 });

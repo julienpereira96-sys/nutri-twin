@@ -1,9 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { Redis } from "@upstash/redis";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 function chunkText(text: string, chunkSize = 500): string[] {
   const words = text.split(" ");
@@ -98,16 +103,15 @@ export async function POST(request: Request) {
       return Response.json({ error: "Fichier ou practitionerId manquant." }, { status: 400 });
     }
 
-    // Vérifier si le document existe déjà
-const { count } = await supabase
-.from("documents")
-.select("*", { count: "exact", head: true })
-.eq("practitioner_id", practitionerId)
-.eq("file_name", file.name);
+    const { count } = await supabase
+      .from("documents")
+      .select("*", { count: "exact", head: true })
+      .eq("practitioner_id", practitionerId)
+      .eq("file_name", file.name);
 
-if ((count ?? 0) > 0) {
-return Response.json({ error: `${file.name} est déjà indexé. Supprimez-le d'abord si vous voulez le remplacer.` }, { status: 400 });
-}
+    if ((count ?? 0) > 0) {
+      return Response.json({ error: `${file.name} est déjà indexé. Supprimez-le d'abord si vous voulez le remplacer.` }, { status: 400 });
+    }
 
     const fileType = file.name.split(".").pop()?.toLowerCase();
     const allowedTypes = ["pdf", "docx", "txt", "jpg", "jpeg", "png", "xlsx", "csv", "mp3", "wav", "m4a"];
@@ -130,14 +134,12 @@ return Response.json({ error: `${file.name} est déjà indexé. Supprimez-le d'a
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload vers Supabase Storage
     const storagePath = `${practitionerId}/${Date.now()}_${file.name}`;
     await supabase.storage.from("documents").upload(storagePath, buffer, {
       contentType: file.type,
       upsert: false,
     });
 
-    // Extraction du texte selon le type
     let text = "";
 
     if (fileType === "txt") {
@@ -176,13 +178,10 @@ return Response.json({ error: `${file.name} est déjà indexé. Supprimez-le d'a
       return Response.json({ error: "Impossible d'extraire le contenu du fichier." }, { status: 400 });
     }
 
-    // Anonymisation selon le type de document
-const documentType = formData.get("documentType") as string | null;
-const shouldAnonymize = documentType === "patient";
-const anonymizedText = shouldAnonymize ? await anonymizeText(text) : text;
+    const documentType = formData.get("documentType") as string | null;
+    const shouldAnonymize = documentType === "patient";
+    const anonymizedText = shouldAnonymize ? await anonymizeText(text) : text;
 
-
-    // Chunking et indexation RAG avec embeddings Gemini
     const chunks = chunkText(anonymizedText, 500);
 
     for (const chunk of chunks) {
@@ -201,6 +200,11 @@ const anonymizedText = shouldAnonymize ? await anonymizeText(text) : text;
         console.error("Erreur insert document:", insertError.message);
       }
     }
+
+    // Invalider le cache has_docs
+    try {
+      await redis.del(`has_docs:${practitionerId}`);
+    } catch { /* silencieux */ }
 
     return Response.json({ success: true });
   } catch (error: unknown) {
