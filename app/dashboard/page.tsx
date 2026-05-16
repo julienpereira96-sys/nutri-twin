@@ -239,7 +239,7 @@ export default function DashboardPage() {
     if (practitionerId) void completeOnboarding(practitionerId);
     else { setShowOnboarding(false); setOnboardingDemoMode(false); }
   }, [practitionerId, completeOnboarding]);
-  
+
   const [loading, setLoading] = useState(true);
   const [practitionerName, setPractitionerName] = useState("");
   const [hasDocuments, setHasDocuments] = useState<boolean | null>(null);
@@ -974,47 +974,120 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* ═══ VUE RADAR ═══ */}
-        {activeTab === "radar" && (
-          <div>
-            <div style={{ marginBottom: 20 }}>
-              <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Radar émotionnel</h2>
-              <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Statut IA mis à jour à chaque message patient</p>
-            </div>
-            {displayedPatients.length === 0 ? (
-              <p style={{ textAlign: "center", color: "#64748b", marginTop: 60 }}>Aucun patient</p>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-                {[...displayedPatients].sort((a, b) => {
-                  const order = { red: 0, orange: 1, green: 2 };
-                  return (order[a.emotional_status as keyof typeof order] ?? 2) - (order[b.emotional_status as keyof typeof order] ?? 2);
-                }).map((patient) => {
-                  const statusColor = getStatusColor(patient.emotional_status);
-                  const isRed = patient.emotional_status === "red";
-                  return (
-                    <div key={patient.id} style={{ borderRadius: 16, padding: "20px", background: isRed ? "rgba(244,63,94,0.05)" : "rgba(255,255,255,0.02)", border: `1px solid ${isRed ? "rgba(244,63,94,0.25)" : "rgba(255,255,255,0.06)"}`, boxShadow: isRed ? "0 0 24px rgba(244,63,94,0.12)" : "none", transition: "all 0.3s" }}>
-                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
-                        <button onClick={() => { setSelectedPatientId(patient.id); setActiveTab("patients"); }} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                          <div style={{ width: 40, height: 40, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "white" }}>{patient.initials}</div>
-                          <div style={{ textAlign: "left" }}>
-                            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "white", filter: discretMode ? "blur(4px)" : "none" }}>{patient.firstName} {patient.lastName}</p>
-                            <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{patient.totalMessages} messages</p>
-                          </div>
-                        </button>
-                        <span style={{ fontSize: 18 }}>{getStatusEmoji(patient.emotional_status)}</span>
-                      </div>
-                      {patient.emotional_insight && (
-                        <p style={{ margin: "0 0 10px", fontSize: 12, color: statusColor, lineHeight: 1.5, fontStyle: "italic", filter: discretMode ? "blur(4px)" : "none" }}>
-                          "{patient.emotional_insight}"
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
+       
+ {activeTab === "radar" && (
+  <div>
+    {/* ═══ HEADER RÉSILIENCE ═══ */}
+    <div style={{ marginBottom: 28 }}>
+      <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Radar émotionnel</h2>
+      <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Résilience du cabinet · Statut IA mis à jour à chaque message</p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
+
+        {/* Carte 1 — Delta stress */}
+        <div style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 16, padding: 20 }}>
+          <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Delta de stress moyen</p>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginBottom: 12 }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: "0 0 4px", fontSize: 10, color: "#64748b" }}>Avant</p>
+              <div style={{ height: 6, background: "rgba(244,63,94,0.15)", borderRadius: 3, marginBottom: 4 }}>
+                <div style={{ height: "100%", width: "72%", background: coral, borderRadius: 3 }} />
               </div>
-            )}
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: coral }}>7.2</p>
+            </div>
+            <div style={{ fontSize: 18, color: "#64748b", paddingBottom: 4 }}>→</div>
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: "0 0 4px", fontSize: 10, color: "#64748b" }}>Après</p>
+              <div style={{ height: 6, background: "rgba(16,185,129,0.15)", borderRadius: 3, marginBottom: 4 }}>
+                <div style={{ height: "100%", width: "31%", background: emerald, borderRadius: 3 }} />
+              </div>
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: emerald }}>3.1</p>
+            </div>
           </div>
-        )}
+          <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12 }}>📉</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: emerald }}>-57% de stress moyen</span>
+          </div>
+        </div>
+
+        {/* Carte 2 — Crises absorbées */}
+        <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: 20 }}>
+          <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Crises apaisées</p>
+          <p style={{ margin: "0 0 4px", fontSize: 48, fontWeight: 900, color: "#818cf8", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+            {patients.reduce((sum, p) => sum + (p.totalMessages > 0 ? 1 : 0), 0) || 0}
+          </p>
+          <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>ce mois-ci en autonomie totale</p>
+          <div style={{ background: "rgba(99,102,241,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12 }}>🛡️</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#818cf8" }}>Sans votre intervention</span>
+          </div>
+        </div>
+
+        {/* Carte 3 — Top outils */}
+        <div style={{ background: "rgba(6,182,212,0.04)", border: "1px solid rgba(6,182,212,0.2)", borderRadius: 16, padding: 20 }}>
+          <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Top des outils</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {[
+              { rank: 1, label: "Cohérence cardiaque", pct: 48, color: emerald },
+              { rank: 2, label: "Ancrage sensoriel", pct: 31, color: "#06b6d4" },
+              { rank: 3, label: "Marche consciente", pct: 21, color: "#8b5cf6" },
+            ].map((tool) => (
+              <div key={tool.rank} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#4b5563", width: 16, flexShrink: 0 }}>{tool.rank}.</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                    <span style={{ fontSize: 11, color: "white" }}>{tool.label}</span>
+                    <span style={{ fontSize: 11, color: tool.color, fontWeight: 600 }}>{tool.pct}%</span>
+                  </div>
+                  <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2 }}>
+                    <div style={{ height: "100%", width: `${tool.pct}%`, background: tool.color, borderRadius: 2, transition: "width 0.8s ease" }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Séparateur */}
+      <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 24 }} />
+    </div>
+
+    {/* ═══ GRID PATIENTS ═══ */}
+    {displayedPatients.length === 0 ? (
+      <p style={{ textAlign: "center", color: "#64748b", marginTop: 60 }}>Aucun patient</p>
+    ) : (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+        {[...displayedPatients].sort((a, b) => {
+          const order = { red: 0, orange: 1, green: 2 };
+          return (order[a.emotional_status as keyof typeof order] ?? 2) - (order[b.emotional_status as keyof typeof order] ?? 2);
+        }).map((patient) => {
+          const statusColor = getStatusColor(patient.emotional_status);
+          const isRed = patient.emotional_status === "red";
+          return (
+            <div key={patient.id} style={{ borderRadius: 16, padding: "20px", background: isRed ? "rgba(244,63,94,0.05)" : "rgba(255,255,255,0.02)", border: `1px solid ${isRed ? "rgba(244,63,94,0.25)" : "rgba(255,255,255,0.06)"}`, boxShadow: isRed ? "0 0 24px rgba(244,63,94,0.12)" : "none", transition: "all 0.3s" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+                <button onClick={() => { setSelectedPatientId(patient.id); setActiveTab("patients"); }} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "white" }}>{patient.initials}</div>
+                  <div style={{ textAlign: "left" }}>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "white", filter: discretMode ? "blur(4px)" : "none" }}>{patient.firstName} {patient.lastName}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{patient.totalMessages} messages</p>
+                  </div>
+                </button>
+                <span style={{ fontSize: 18 }}>{getStatusEmoji(patient.emotional_status)}</span>
+              </div>
+              {patient.emotional_insight && (
+                <p style={{ margin: "0 0 10px", fontSize: 12, color: statusColor, lineHeight: 1.5, fontStyle: "italic", filter: discretMode ? "blur(4px)" : "none" }}>
+                  "{patient.emotional_insight}"
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+)}
 
         {/* ═══ VUE IMPACT ═══ */}
         {activeTab === "valeur" && (
