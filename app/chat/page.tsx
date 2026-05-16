@@ -11,7 +11,6 @@ type ChatMessage = {
   hidden?: boolean;
 };
 
-type Tool = "breathing" | "ancrage" | "marche" | "manger" | "journal" | null;
 type BreathingStep = "idle" | "inhale" | "hold" | "exhale" | "done";
 
 type Session = {
@@ -19,6 +18,27 @@ type Session = {
   title: string;
   last_message_at: string;
 };
+
+type ToolData = {
+  tool_id: string;
+  twin_message: string;
+  tool_script: Record<string, string>;
+};
+
+type ActiveTool = {
+  id: string;
+  data: ToolData | null;
+} | null;
+
+const ACCENT = "#10b981";
+const ACCENT_DIM = "rgba(16,185,129,0.1)";
+const ACCENT_BORDER = "rgba(16,185,129,0.2)";
+const SURFACE = "rgba(255,255,255,0.04)";
+const BORDER = "rgba(255,255,255,0.08)";
+const TEXT_PRIMARY = "#f1f5f9";
+const TEXT_SECONDARY = "#94a3b8";
+const TEXT_MUTED = "#64748b";
+const BG_MAIN = "#0E1512";
 
 const quickActions = [
   "J'ai craqué ce soir, que faire ?",
@@ -29,12 +49,12 @@ const quickActions = [
   "Pourquoi je ne vois pas de résultats ?",
 ];
 
-const tools = [
-  { id: "breathing", emoji: "🫁", label: "Respirer" },
-  { id: "ancrage", emoji: "🌊", label: "S'apaiser" },
-  { id: "marche", emoji: "🚶", label: "Se vider la tête" },
-  { id: "manger", emoji: "🍽️", label: "Manger en pleine conscience" },
-];
+const TOOL_VARIANTS: Record<string, string[]> = {
+  breathing: ["Prenons un moment pour respirer ensemble.", "Votre corps a besoin de calme. On y va.", "La respiration est votre ancre. Suivez mon rythme.", "Trois minutes peuvent tout changer.", "Laissez votre souffle vous ramener ici."],
+  ancrage: ["Revenons dans le moment présent, pas à pas.", "Cinq sens, cinq instants de présence.", "On va ralentir le temps ensemble.", "Regardez autour de vous. Vous êtes en sécurité."],
+  marche: ["Chaque pas est une intention.", "Votre corps sait comment se ressourcer.", "On va déposer ce poids ensemble."],
+  manger: ["Ce repas mérite toute votre attention.", "Manger lentement est un acte de soin.", "Posez tout. Ce moment est pour vous."],
+};
 
 async function compressImage(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
@@ -60,36 +80,165 @@ async function compressImage(file: File): Promise<{ base64: string; mimeType: st
   });
 }
 
-const emerald = "#10b981";
+const LeafIcon = ({ size = 16, color = ACCENT }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <path d="M12 22C12 22 4 16 4 9C4 5.13 7.58 2 12 2C16.42 2 20 5.13 20 9C20 16 12 22 12 22Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 22V12" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M12 12C12 12 8 9 8 6" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+    <path d="M12 12C12 12 16 9 16 6" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+
+const CameraIcon = ({ size = 18, color = TEXT_SECONDARY }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <path d="M23 19C23 20.1 22.1 21 21 21H3C1.9 21 1 20.1 1 19V8C1 6.9 1.9 6 3 6H7L9 3H15L17 6H21C22.1 6 23 6.9 23 8V19Z" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <circle cx="12" cy="13" r="4" stroke={color} strokeWidth="1.5"/>
+  </svg>
+);
+
+const SendIcon = ({ size = 16, color = "black" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <path d="M22 2L11 13" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const SearchIcon = ({ size = 14, color = TEXT_MUTED }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <circle cx="11" cy="11" r="8" stroke={color} strokeWidth="1.5"/>
+    <path d="M21 21L16.65 16.65" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+);
+
+const MenuIcon = ({ size = 16, color = TEXT_SECONDARY }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <path d="M3 12H21M3 6H21M3 18H21" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+  </svg>
+);
+
+const ArcSpinner = ({ size = 28 }: { size?: number }) => {
+  const r = size / 2 - 3;
+  const circ = 2 * Math.PI * r;
+  return (
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ animation: "spin 1.4s linear infinite", position: "absolute" }}>
+        <defs>
+          <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#6ee7b7" stopOpacity="0.2"/>
+            <stop offset="50%" stopColor="#10b981" stopOpacity="0.8"/>
+            <stop offset="100%" stopColor="#34d399" stopOpacity="1"/>
+          </linearGradient>
+        </defs>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(16,185,129,0.08)" strokeWidth="2"/>
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="url(#arcGrad)" strokeWidth="2.5" strokeLinecap="round"
+          strokeDasharray={`${circ * 0.65} ${circ * 0.35}`}
+          style={{ filter: `drop-shadow(0 0 4px ${ACCENT})` }}/>
+      </svg>
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.5 }}>🌿</div>
+    </div>
+  );
+};
+
+type InputBarProps = {
+  isCenter?: boolean;
+  message: string;
+  setMessage: (v: string) => void;
+  send: (text?: string) => Promise<void>;
+  loading: boolean;
+  pendingImage: { base64: string; mimeType: string; previewUrl: string } | null;
+  photoHovered: boolean;
+  setPhotoHovered: (v: boolean) => void;
+  handleImageClick: () => void;
+  handleKeyDown: (e: KeyboardEvent<HTMLTextAreaElement> | KeyboardEvent<HTMLInputElement>) => void;
+  inputRef: React.RefObject<HTMLTextAreaElement | null>;
+};
+
+const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendingImage, photoHovered, setPhotoHovered, handleImageClick, handleKeyDown, inputRef }: InputBarProps) => (
+  <div style={{ display: "flex", gap: 8, alignItems: isCenter ? "flex-start" : "center", background: SURFACE, borderRadius: isCenter ? 16 : 14, border: `1px solid ${BORDER}`, padding: isCenter ? "18px 16px" : "6px 8px 6px 14px", transition: "border-color 0.2s", minHeight: isCenter ? 120 : undefined }}>
+    {isCenter ? (
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <textarea
+          ref={inputRef}
+          value={message}
+          onChange={e => setMessage(e.target.value)}
+          onKeyDown={handleKeyDown as React.KeyboardEventHandler<HTMLTextAreaElement>}
+          placeholder="Posez-moi vos questions, je suis là pour vous accompagner entre vos séances..."
+          rows={3}
+          spellCheck={false}
+          style={{ width: "100%", border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 16, outline: "none", caretColor: ACCENT, lineHeight: 1.6, resize: "none", fontFamily: "inherit", display: "block" }}
+        />
+      </div>
+    ) : (
+      <input
+        value={message}
+        onChange={e => setMessage(e.target.value)}
+        onKeyDown={handleKeyDown as React.KeyboardEventHandler<HTMLInputElement>}
+        placeholder={pendingImage ? "Ajoutez un commentaire..." : "Posez votre question..."}
+        style={{ flex: 1, height: 36, border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, outline: "none", caretColor: ACCENT }}
+      />
+    )}
+    <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0, alignSelf: isCenter ? "flex-end" : "center" }}>
+      <div style={{ position: "relative", flexShrink: 0 }}
+        onMouseEnter={() => setPhotoHovered(true)}
+        onMouseLeave={() => setPhotoHovered(false)}>
+        <span style={{ position: "absolute", right: "100%", top: "50%", fontSize: 12, color: ACCENT, fontWeight: 500, border: `1px solid ${ACCENT_BORDER}`, borderRadius: 6, padding: "3px 10px", background: ACCENT_DIM, whiteSpace: "nowrap", marginRight: 8, opacity: photoHovered ? 1 : 0, transform: photoHovered ? "translateY(-50%) translateX(0px)" : "translateY(-50%) translateX(20px)", transition: "opacity 0.5s ease, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)", pointerEvents: "none" }}>Analyser votre repas</span>
+        <button onClick={handleImageClick} style={{ width: 34, height: 34, borderRadius: 8, background: photoHovered ? ACCENT_DIM : "transparent", border: `1px solid ${photoHovered ? ACCENT_BORDER : "transparent"}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}>
+          <CameraIcon size={16} color={photoHovered ? ACCENT : TEXT_MUTED} />
+        </button>
+      </div>
+      <button onClick={() => void send()} disabled={loading || (!message.trim() && !pendingImage)}
+        style={{ width: 36, height: 36, borderRadius: 10, background: !loading && (message.trim() || pendingImage) ? ACCENT : SURFACE, border: "none", cursor: !loading && (message.trim() || pendingImage) ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", boxShadow: !loading && (message.trim() || pendingImage) ? "0 0 10px rgba(16,185,129,0.3)" : "none" }}>
+        <SendIcon size={14} color={!loading && (message.trim() || pendingImage) ? "black" : TEXT_MUTED} />
+      </button>
+    </div>
+  </div>
+);
 
 export default function ChatPage() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTool, setActiveTool] = useState<Tool>(null);
+  const [activeTool, setActiveTool] = useState<ActiveTool>(null);
   const [patientId, setPatientId] = useState<string | null>(null);
-  const [patientFirstName, setPatientFirstName] = useState<string>("");
+  const [patientFirstName, setPatientFirstName] = useState("");
+  const [patientInitials, setPatientInitials] = useState("?");
   const [practitionerIdFromDb, setPractitionerIdFromDb] = useState<string | null>(null);
-  const [practitionerName, setPractitionerName] = useState("votre praticien");
-  const [practitionerPlan, setPractitionerPlan] = useState<string>("essentiel");
+  const [practitionerPlan, setPractitionerPlan] = useState("essentiel");
   const [isMobile, setIsMobile] = useState(false);
   const [showUpsellModal, setShowUpsellModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [imageCompressing, setImageCompressing] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
   const [pendingImage, setPendingImage] = useState<{ base64: string; mimeType: string; previewUrl: string } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [filteredSessions, setFilteredSessions] = useState<Session[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [hoveredSession, setHoveredSession] = useState<string | null>(null);
+  const [photoHovered, setPhotoHovered] = useState(false);
+  const [sosLoading, setSosLoading] = useState(false);
   const [breathingStep, setBreathingStep] = useState<BreathingStep>("idle");
   const [breathingCycle, setBreathingCycle] = useState(0);
   const [breathingTimer, setBreathingTimer] = useState(0);
   const breathingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [ancrageStep, setAncrageStep] = useState(0);
   const [marcheStep, setMarcheStep] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const profilePhotoRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const hasMessages = messages.filter(m => !m.hidden).length > 0;
+  const sidebarWidth = 305;
+  const [showStressModal, setShowStressModal] = useState(false);
+  const [showStressBeforeModal, setShowStressBeforeModal] = useState(false);
+  const [stressBefore, setStressBefore] = useState<number | null>(null);
+  const [stressAfter, setStressAfter] = useState<number | null>(null);
+  const [completedToolId, setCompletedToolId] = useState<string | null>(null);
+  const [showPreemptiveSOS, setShowPreemptiveSOS] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [pendingToolData, setPendingToolData] = useState<{ id: string; data: ToolData } | null>(null);
 
   const ancrageSteps = [
     { count: 5, sense: "voyez", icon: "👀" },
@@ -100,33 +249,32 @@ export default function ChatPage() {
   ];
 
   const marcheSteps = [
-    "Levez-vous doucement. Sentez vos pieds sur le sol. Respirez profondément.",
-    "Commencez à marcher lentement. Portez attention à chaque pas.",
-    "Observez votre environnement. Quelles couleurs, quelles formes ?",
-    "Sentez l'air sur votre peau. La température, le mouvement autour de vous.",
-    "Portez votre attention sur votre respiration.",
-    "Vous êtes ancré dans le moment présent. Chaque pas est une intention. 🌿",
+    "Levez-vous doucement. Sentez vos pieds sur le sol.",
+    "Commencez à marcher lentement. Chaque pas est intentionnel.",
+    "Observez votre environnement. Couleurs, formes, lumières.",
+    "Sentez l'air sur votre peau. La température autour de vous.",
+    "Synchronisez respiration et pas. Vous êtes présent.",
+    "Vous êtes ancré dans le moment présent. 🌿",
   ];
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
   useEffect(() => {
-    const checkMobile = () => {
-      const mobile = window.innerWidth < 768;
-      setIsMobile(mobile);
-      if (mobile) setSidebarOpen(false);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
+    const check = () => { const m = window.innerWidth < 768; setIsMobile(m); if (m) setSidebarOpen(false); };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
   }, []);
+
+  useEffect(() => {
+    const q = searchQuery.toLowerCase();
+    setFilteredSessions(q ? sessions.filter(s => s.title.toLowerCase().includes(q)) : sessions);
+  }, [searchQuery, sessions]);
 
   const loadSessions = useCallback(async (pid: string) => {
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-    const { data } = await supabase.from("conversations_sessions").select("id, title, last_message_at").eq("patient_id", pid).order("last_message_at", { ascending: false }).limit(15);
-    if (data) setSessions(data as Session[]);
+    const { data } = await supabase.from("conversations_sessions").select("id, title, last_message_at").eq("patient_id", pid).order("last_message_at", { ascending: false }).limit(20);
+    if (data) { setSessions(data as Session[]); setFilteredSessions(data as Session[]); }
   }, []);
 
   useEffect(() => {
@@ -134,43 +282,82 @@ export default function ChatPage() {
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) return;
       setPatientId(data.user.id);
-      const { data: relation } = await supabase.from("patient_practitioner").select("practitioner_id").eq("patient_id", data.user.id).single();
-      if (relation) {
-        const practId = relation.practitioner_id as string;
+      const { data: rel } = await supabase.from("patient_practitioner").select("practitioner_id").eq("patient_id", data.user.id).single();
+      if (rel) {
+        const practId = rel.practitioner_id as string;
         setPractitionerIdFromDb(practId);
-        const { data: practitioner } = await supabase.from("practitioners").select("first_name, last_name, plan").eq("user_id", practId).single();
-        if (practitioner) {
-          const p = practitioner as { first_name: string; last_name: string; plan: string };
-          setPractitionerName(`${p.first_name} ${p.last_name}`);
-          setPractitionerPlan(p.plan || "essentiel");
-        }
-        const { data: history } = await supabase.from("conversations").select("role, content").eq("patient_id", data.user.id).eq("practitioner_id", practId).is("session_id", null).order("created_at", { ascending: true });
-        if (history?.length) setMessages(history as ChatMessage[]);
+        const { data: pract } = await supabase.from("practitioners").select("first_name, last_name, plan").eq("user_id", practId).single();
+        if (pract) { const p = pract as { first_name: string; last_name: string; plan: string }; setPractitionerPlan(p.plan || "essentiel"); }
+        const { data: hist } = await supabase.from("conversations").select("role, content").eq("patient_id", data.user.id).eq("practitioner_id", practId).is("session_id", null).order("created_at", { ascending: true });
+        if (hist?.length) setMessages(hist as ChatMessage[]);
       }
-      const { data: patient } = await supabase.from("patients").select("first_name").eq("user_id", data.user.id).single();
-      if (patient) { const p = patient as { first_name?: string }; if (p.first_name) setPatientFirstName(p.first_name); }
+      const { data: pat } = await supabase.from("patients").select("first_name, last_name").eq("user_id", data.user.id).single();
+      if (pat) {
+        const p = pat as { first_name?: string; last_name?: string };
+        if (p.first_name) setPatientFirstName(p.first_name);
+        setPatientInitials(`${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase() || "?");
+      }
       await loadSessions(data.user.id);
     });
   }, [loadSessions]);
 
   useEffect(() => () => { if (breathingIntervalRef.current) clearInterval(breathingIntervalRef.current); }, []);
 
+  const getVariant = (toolId: string) => {
+    const variants = TOOL_VARIANTS[toolId] ?? ["Prenons un moment ensemble."];
+    return variants[Math.floor(Math.random() * variants.length)];
+  };
+
   const closeTool = useCallback((toolId?: string) => {
     setActiveTool(null);
     setBreathingStep("idle"); setBreathingCycle(0); setBreathingTimer(0);
     if (breathingIntervalRef.current) clearInterval(breathingIntervalRef.current);
     setAncrageStep(0); setMarcheStep(0);
-    if (toolId) {
+    if (toolId && toolId !== "journal") {
       const names: Record<string, string> = { breathing: "cohérence cardiaque", ancrage: "ancrage sensoriel 5-4-3-2-1", marche: "marche consciente", manger: "pleine conscience alimentaire" };
-      if (names[toolId]) void sendHidden(`[INFO : Le patient vient de terminer une séance de ${names[toolId]}. Adapte ton prochain message subtilement.]`);
+      if (names[toolId]) {
+        setCompletedToolId(toolId);
+        setShowStressModal(true);
+        void sendHidden(`[INFO : Le patient vient de terminer une séance de ${names[toolId]}. Adapte subtilement ton prochain message.]`);
+      }
     }
   }, []);
 
   const sendHidden = async (msg: string) => {
     if (!patientId || !practitionerIdFromDb) return;
+    try { await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: msg, patientId, practitionerId: practitionerIdFromDb, sessionId: currentSessionId ?? undefined }) }); }
+    catch { /* silencieux */ }
+  };
+
+  const sendStressData = async (before: number, after: number, toolId: string) => {
+    if (!patientId || !practitionerIdFromDb) return;
     try {
-      await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: msg, patientId, practitionerId: practitionerIdFromDb, sessionId: currentSessionId ?? undefined }) });
+      await fetch("/api/sos-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId, practitionerId: practitionerIdFromDb, toolId, stressBefore: before, stressAfter: after }),
+      });
     } catch { /* silencieux */ }
+  };
+
+  const handleSOS = async () => {
+    if (!patientId || !practitionerIdFromDb || sosLoading) return;
+    setSosLoading(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "", patientId, practitionerId: practitionerIdFromDb, isSOS: true }),
+      });
+      const data = await res.json() as { tool?: ToolData };
+      const tool = data.tool ?? { tool_id: "breathing", twin_message: getVariant("breathing"), tool_script: {} };
+      setPendingToolData({ id: tool.tool_id, data: tool });
+      setShowStressBeforeModal(true);
+    } catch {
+      setPendingToolData({ id: "breathing", data: { tool_id: "breathing", twin_message: getVariant("breathing"), tool_script: {} } });
+      setShowStressBeforeModal(true);
+    }
+    setSosLoading(false);
   };
 
   const createSession = async (firstMessage: string) => {
@@ -200,8 +387,7 @@ export default function ChatPage() {
   };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const file = e.target.files?.[0]; if (!file) return;
     setImageCompressing(true); setCompressionProgress(0);
     try {
       const pi = setInterval(() => setCompressionProgress(p => Math.min(p + 30, 90)), 100);
@@ -227,12 +413,7 @@ export default function ChatPage() {
     breathingIntervalRef.current = interval;
   };
 
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  const stopGeneration = () => {
-    abortControllerRef.current?.abort();
-    setLoading(false);
-  };
+  const stopGeneration = () => { abortControllerRef.current?.abort(); setLoading(false); };
 
   const send = async (text?: string) => {
     const trimmed = (text ?? message).trim();
@@ -241,523 +422,567 @@ export default function ChatPage() {
     if (!sessionId) { sessionId = await createSession(trimmed || "📷 Photo"); setCurrentSessionId(sessionId); }
     const img = pendingImage;
     const newMessages: ChatMessage[] = [...messages, { role: "user", content: trimmed || "📷 Photo de repas", imageUrl: img?.previewUrl }];
-    setMessages(newMessages); setMessage(""); setPendingImage(null); setLoading(true);
-
-    // Message assistant vide qu'on va remplir au fur et à mesure
     const assistantIndex = newMessages.length;
     setMessages([...newMessages, { role: "assistant", content: "" }]);
-
+    setMessage(""); setPendingImage(null); setLoading(true);
     abortControllerRef.current = new AbortController();
-
     try {
-      const body: Record<string, string | undefined> = {
-        message: trimmed || "Analyse cette photo",
-        patientId: patientId ?? undefined,
-        practitionerId: practitionerIdFromDb ?? undefined,
-        sessionId: sessionId ?? undefined,
-      };
+      const body: Record<string, string | undefined> = { message: trimmed || "Analyse cette photo", patientId: patientId ?? undefined, practitionerId: practitionerIdFromDb ?? undefined, sessionId: sessionId ?? undefined };
       if (img) { body.imageBase64 = img.base64; body.imageMimeType = img.mimeType; }
-
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: abortControllerRef.current.signal,
-      });
-
-      if (!res.ok || !res.body) throw new Error("Erreur serveur");
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let fullText = "";
-
+      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: abortControllerRef.current.signal });
+      if (!res.ok || !res.body) throw new Error("Erreur");
+      const reader = res.body.getReader(); const decoder = new TextDecoder(); let fullText = "";
       while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        fullText += chunk;
-
-        // Retirer le JSON technique avant affichage
-        const cleanText = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
-
-        setMessages(prev => {
-          const updated = [...prev];
-          updated[assistantIndex] = { role: "assistant", content: cleanText };
-          return updated;
-        });
+        const { done, value } = await reader.read(); if (done) break;
+        fullText += decoder.decode(value, { stream: true });
+        const clean = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
+        setMessages(prev => { const u = [...prev]; u[assistantIndex] = { role: "assistant", content: clean }; return u; });
       }
-
+      const statusMatch = fullText.match(/\|\|\|([\s\S]*?)\|\|\|/);
+      if (statusMatch) {
+        try {
+          const parsed = JSON.parse(statusMatch[1]) as { status: string };
+          if (parsed.status === "red" && !activeTool) setShowPreemptiveSOS(true);
+        } catch { /* silencieux */ }
+      }
       if (patientId) await loadSessions(patientId);
     } catch (err) {
-      if ((err as Error).name === "AbortError") {
-        // Stop volontaire — on garde ce qui a été streamé
-      } else {
-        setMessages(prev => {
-          const updated = [...prev];
-          updated[assistantIndex] = { role: "assistant", content: "Impossible de contacter le serveur." };
-          return updated;
-        });
+      if ((err as Error).name !== "AbortError") {
+        setMessages(prev => { const u = [...prev]; u[assistantIndex] = { role: "assistant", content: "Impossible de contacter le serveur." }; return u; });
       }
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => { if (e.key === "Enter") { e.preventDefault(); void send(); } };
-  const breathingLabel: Record<BreathingStep, string> = { idle: "", inhale: "Inspirez...", hold: "Retenez...", exhale: "Expirez...", done: "Bravo ! 🎉" };
-  const breathingColor: Record<BreathingStep, string> = { idle: emerald, inhale: emerald, hold: "#6366f1", exhale: "#06b6d4", done: emerald };
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement> | KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
+  };
+
+  const breathingColor: Record<BreathingStep, string> = { idle: ACCENT, inhale: ACCENT, hold: "#6366f1", exhale: "#06b6d4", done: ACCENT };
+  const breathingLabel: Record<BreathingStep, string> = { idle: "", inhale: "Inspirez...", hold: "Retenez...", exhale: "Expirez...", done: "Bravo !" };
   const visibleMessages = messages.filter(m => !m.hidden);
 
   const renderTool = () => {
     if (!activeTool) return null;
-    if (activeTool === "journal") return <JournalModal patientId={patientId} practitionerId={practitionerIdFromDb} onClose={() => closeTool()} />;
+    if (activeTool.id === "journal") return <JournalModal patientId={patientId} practitionerId={practitionerIdFromDb} onClose={() => closeTool("journal")} />;
+    const id = activeTool.id;
+    const introMessage = activeTool.data?.twin_message || getVariant(id);
+
+    const content = () => {
+      if (id === "breathing") return (
+        <div style={{ textAlign: "center" }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY }}>Respirer</h2>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY }}>5 cycles · 5s · 4s · 5s</p>
+          {breathingStep === "idle" && <><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 20, lineHeight: 1.7 }}>La cohérence cardiaque réduit le stress et les envies de grignoter.</p><button onClick={startBreathing} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Commencer</button></>}
+          {breathingStep !== "idle" && breathingStep !== "done" && (<><p style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 16 }}>Cycle {breathingCycle} / 5</p>
+            <div style={{ width: 120, height: 120, borderRadius: "50%", margin: "0 auto 20px", background: `radial-gradient(circle, ${breathingColor[breathingStep]}18, transparent)`, border: `1.5px solid ${breathingColor[breathingStep]}44`, display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 1s ease", transform: breathingStep === "inhale" ? "scale(1.15)" : breathingStep === "exhale" ? "scale(0.88)" : "scale(1.05)" }}>
+              <span style={{ fontSize: 30, fontWeight: 700, color: breathingColor[breathingStep] }}>{breathingTimer}</span>
+            </div>
+            <p style={{ fontSize: 20, fontWeight: 600, color: breathingColor[breathingStep], marginBottom: 16 }}>{breathingLabel[breathingStep]}</p>
+            <button onClick={() => closeTool(id)} style={{ width: "100%", height: 42, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontSize: 14, cursor: "pointer" }}>Arrêter</button></>)}
+          {breathingStep === "done" && <><p style={{ fontSize: 44, margin: "0 0 12px" }}>🎉</p><h3 style={{ fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY, margin: "0 0 8px" }}>Excellent !</h3><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 20 }}>Votre corps vous remercie. 🌿</p><button onClick={() => closeTool(id)} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Terminer</button></>}
+        </div>
+      );
+      if (id === "ancrage") return (
+        <div style={{ textAlign: "center" }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY }}>S'apaiser</h2>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY }}>Technique 5-4-3-2-1</p>
+          {ancrageStep < 5 ? (<><div style={{ fontSize: 44, marginBottom: 14 }}>{ancrageSteps[ancrageStep].icon}</div>
+            <div style={{ background: ACCENT_DIM, borderRadius: 14, padding: "18px", marginBottom: 18, border: `1px solid ${ACCENT_BORDER}` }}>
+              <p style={{ margin: 0, fontSize: 28, fontWeight: 700, color: ACCENT }}>{ancrageSteps[ancrageStep].count}</p>
+              <p style={{ margin: "6px 0 0", fontSize: 15, color: TEXT_PRIMARY }}>chose{ancrageSteps[ancrageStep].count > 1 ? "s" : ""} que vous <strong>{ancrageSteps[ancrageStep].sense}</strong></p>
+            </div>
+            <button onClick={() => setAncrageStep(p => p + 1)} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 8 }}>{ancrageStep < 4 ? "Suivant →" : "Terminer"}</button>
+            <button onClick={() => closeTool(id)} style={{ width: "100%", height: 40, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontSize: 13, cursor: "pointer" }}>Quitter</button></>
+          ) : (<><p style={{ fontSize: 44, margin: "0 0 12px" }}>✨</p><h3 style={{ fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY, margin: "0 0 8px" }}>Ancré(e) !</h3><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 20 }}>Vous êtes dans le moment présent. 🌿</p><button onClick={() => closeTool(id)} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Fermer</button></>)}
+        </div>
+      );
+      if (id === "marche") return (
+        <div style={{ textAlign: "center" }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY }}>Se vider la tête</h2>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY }}>Étape {Math.min(marcheStep + 1, marcheSteps.length)} / {marcheSteps.length}</p>
+          {marcheStep < marcheSteps.length ? (<><div style={{ background: ACCENT_DIM, borderRadius: 14, padding: 20, marginBottom: 14, border: `1px solid ${ACCENT_BORDER}`, minHeight: 80, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <p style={{ margin: 0, fontSize: 15, color: TEXT_PRIMARY, lineHeight: 1.7 }}>{marcheSteps[marcheStep]}</p>
+          </div>
+            <div style={{ height: 2, background: SURFACE, borderRadius: 1, marginBottom: 16 }}><div style={{ height: "100%", borderRadius: 1, background: ACCENT, width: `${((marcheStep + 1) / marcheSteps.length) * 100}%`, transition: "width 0.3s" }} /></div>
+            <button onClick={() => setMarcheStep(p => p + 1)} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 8 }}>{marcheStep < marcheSteps.length - 1 ? "Suivant →" : "Terminer"}</button>
+            <button onClick={() => closeTool(id)} style={{ width: "100%", height: 40, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontSize: 13, cursor: "pointer" }}>Quitter</button></>
+          ) : (<><p style={{ fontSize: 44, margin: "0 0 12px" }}>🌿</p><h3 style={{ fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY, margin: "0 0 8px" }}>Belle promenade !</h3><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 20 }}>Chaque pas conscient est une victoire. 💚</p><button onClick={() => closeTool(id)} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Fermer</button></>)}
+        </div>
+      );
+      if (id === "manger") return (
+        <div>
+          <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY, textAlign: "center" }}>Manger en pleine conscience</h2>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY, textAlign: "center" }}>Avant votre repas</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 22 }}>
+            {(Object.values(activeTool.data?.tool_script ?? {}).length > 0 ? Object.values(activeTool.data!.tool_script) : ["Posez votre téléphone.", "Regardez votre assiette.", "Respirez 3 fois.", "Mangez lentement.", "Savourez chaque bouchée."]).map((step, i) => (
+              <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: ACCENT }}>{i + 1}</span>
+                </div>
+                <p style={{ margin: 0, fontSize: 14, color: TEXT_PRIMARY, lineHeight: 1.6 }}>{step}</p>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => closeTool(id)} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Bon appétit 🌿</button>
+        </div>
+      );
+      return null;
+    };
 
     return (
-      <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-        <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 32, width: "100%", maxWidth: 440, border: "1px solid rgba(255,255,255,0.08)", position: "relative" }}>
-          <button onClick={() => closeTool(activeTool)} style={{ position: "absolute", top: 16, right: 16, width: 32, height: 32, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
-
-          {activeTool === "breathing" && (
-            <div style={{ textAlign: "center" }}>
-              <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "white" }}>🫁 Respirer</h2>
-              <p style={{ margin: "0 0 24px", fontSize: 14, color: "#64748b" }}>5 cycles · 5s · 4s · 5s</p>
-              {breathingStep === "idle" && <><p style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24, lineHeight: 1.7 }}>La cohérence cardiaque réduit le stress et les envies de grignoter.</p><button onClick={startBreathing} style={{ width: "100%", height: 52, borderRadius: 12, background: emerald, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Commencer</button></>}
-              {breathingStep !== "idle" && breathingStep !== "done" && (
-                <><p style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>Cycle {breathingCycle} / 5</p>
-                  <div style={{ width: 140, height: 140, borderRadius: "50%", background: `radial-gradient(circle, ${breathingColor[breathingStep]}, ${breathingColor[breathingStep]}44)`, margin: "0 auto 24px", transition: "transform 1s ease-in-out", transform: breathingStep === "inhale" ? "scale(1.2)" : breathingStep === "exhale" ? "scale(0.85)" : "scale(1.05)", boxShadow: `0 8px 30px ${breathingColor[breathingStep]}44`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: 36, fontWeight: 800, color: "white" }}>{breathingTimer}</span>
-                  </div>
-                  <p style={{ fontSize: 22, fontWeight: 700, color: breathingColor[breathingStep] }}>{breathingLabel[breathingStep]}</p>
-                  <button onClick={() => closeTool(activeTool)} style={{ marginTop: 20, width: "100%", height: 44, borderRadius: 10, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#64748b", fontSize: 14, cursor: "pointer" }}>Arrêter</button></>
-              )}
-              {breathingStep === "done" && <><div style={{ fontSize: 56, marginBottom: 16 }}>🎉</div><h3 style={{ fontSize: 20, fontWeight: 700, color: "white", margin: "0 0 8px" }}>Excellent !</h3><p style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>Votre corps vous remercie. 🌿</p><button onClick={() => closeTool(activeTool)} style={{ width: "100%", height: 48, borderRadius: 12, background: emerald, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Terminer</button></>}
+      <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 440, border: `1px solid ${ACCENT_BORDER}`, position: "relative", maxHeight: "90vh", overflowY: "auto" }}>
+          <button onClick={() => closeTool(id)} style={{ position: "absolute", top: 14, right: 14, width: 30, height: 30, borderRadius: 8, background: SURFACE, border: `1px solid ${BORDER}`, cursor: "pointer", color: TEXT_SECONDARY, fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+          <div style={{ display: "flex", gap: 10, marginBottom: 20, padding: "12px 14px", background: ACCENT_DIM, borderRadius: 12, border: `1px solid ${ACCENT_BORDER}` }}>
+            <div style={{ width: 26, height: 26, borderRadius: "50%", border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <LeafIcon size={13} />
             </div>
-          )}
-
-          {activeTool === "ancrage" && (
-            <div style={{ textAlign: "center" }}>
-              <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "white" }}>🌊 S'apaiser</h2>
-              <p style={{ margin: "0 0 24px", fontSize: 14, color: "#64748b" }}>Ancrez-vous dans le moment présent</p>
-              {ancrageStep < 5 ? (
-                <><div style={{ fontSize: 48, marginBottom: 16 }}>{ancrageSteps[ancrageStep].icon}</div>
-                  <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 16, padding: "20px", marginBottom: 24, border: "1px solid rgba(16,185,129,0.2)" }}>
-                    <p style={{ margin: 0, fontSize: 32, fontWeight: 800, color: emerald }}>{ancrageSteps[ancrageStep].count}</p>
-                    <p style={{ margin: "8px 0 0", fontSize: 16, color: "white" }}>chose{ancrageSteps[ancrageStep].count > 1 ? "s" : ""} que vous <strong>{ancrageSteps[ancrageStep].sense}</strong></p>
-                  </div>
-                  <button onClick={() => setAncrageStep(p => p + 1)} style={{ width: "100%", height: 52, borderRadius: 12, background: emerald, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 10 }}>{ancrageStep < 4 ? "Suivant →" : "Terminer"}</button>
-                  <button onClick={() => closeTool(activeTool)} style={{ width: "100%", height: 40, borderRadius: 10, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 13, cursor: "pointer" }}>Quitter</button></>
-              ) : (
-                <><div style={{ fontSize: 56, marginBottom: 16 }}>✨</div><h3 style={{ fontSize: 20, fontWeight: 700, color: "white", margin: "0 0 8px" }}>Vous êtes ancré(e) !</h3><p style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>Vous venez de ramener votre esprit dans le présent. 🌿</p><button onClick={() => closeTool(activeTool)} style={{ width: "100%", height: 48, borderRadius: 12, background: emerald, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Fermer</button></>
-              )}
-            </div>
-          )}
-
-          {activeTool === "marche" && (
-            <div style={{ textAlign: "center" }}>
-              <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "white" }}>🚶 Se vider la tête</h2>
-              <p style={{ margin: "0 0 24px", fontSize: 14, color: "#64748b" }}>Étape {Math.min(marcheStep + 1, marcheSteps.length)} / {marcheSteps.length}</p>
-              {marcheStep < marcheSteps.length ? (
-                <><div style={{ background: "rgba(16,185,129,0.06)", borderRadius: 16, padding: 24, marginBottom: 16, border: "1px solid rgba(16,185,129,0.1)", minHeight: 90, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <p style={{ margin: 0, fontSize: 15, color: "#e2e8f0", lineHeight: 1.7 }}>{marcheSteps[marcheStep]}</p>
-                </div>
-                  <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, marginBottom: 20 }}>
-                    <div style={{ height: "100%", borderRadius: 2, background: emerald, width: `${((marcheStep + 1) / marcheSteps.length) * 100}%`, transition: "width 0.3s" }} />
-                  </div>
-                  <button onClick={() => setMarcheStep(p => p + 1)} style={{ width: "100%", height: 52, borderRadius: 12, background: emerald, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 10 }}>{marcheStep < marcheSteps.length - 1 ? "Suivant →" : "Terminer"}</button>
-                  <button onClick={() => closeTool(activeTool)} style={{ width: "100%", height: 40, borderRadius: 10, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 13, cursor: "pointer" }}>Quitter</button></>
-              ) : (
-                <><div style={{ fontSize: 56, marginBottom: 16 }}>🌿</div><h3 style={{ fontSize: 20, fontWeight: 700, color: "white", margin: "0 0 8px" }}>Belle promenade !</h3><p style={{ fontSize: 14, color: "#94a3b8", marginBottom: 24 }}>Chaque pas conscient est une victoire. 💚</p><button onClick={() => closeTool(activeTool)} style={{ width: "100%", height: 48, borderRadius: 12, background: emerald, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Fermer</button></>
-              )}
-            </div>
-          )}
-
-          {activeTool === "manger" && (
-            <div>
-              <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "white", textAlign: "center" }}>🍽️ Manger en pleine conscience</h2>
-              <p style={{ margin: "0 0 24px", fontSize: 14, color: "#64748b", textAlign: "center" }}>Avant de commencer votre repas</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 28 }}>
-                {[
-                  { icon: "📵", text: "Posez votre téléphone. Ce repas mérite toute votre attention." },
-                  { icon: "👀", text: "Regardez votre assiette. Observez les couleurs, les textures." },
-                  { icon: "🫁", text: "Prenez 3 respirations profondes avant de commencer." },
-                  { icon: "🐢", text: "Mangez lentement. Posez vos couverts entre chaque bouchée." },
-                  { icon: "💚", text: "Il n'y a pas d'aliment interdit. Chaque repas est un soin." },
-                ].map((item, i) => (
-                  <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <span style={{ fontSize: 20, flexShrink: 0 }}>{item.icon}</span>
-                    <p style={{ margin: 0, fontSize: 14, color: "#d1d5db", lineHeight: 1.6 }}>{item.text}</p>
-                  </div>
-                ))}
-              </div>
-              <button onClick={() => closeTool(activeTool)} style={{ width: "100%", height: 52, borderRadius: 12, background: emerald, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Bon appétit 🌿</button>
-            </div>
-          )}
+            <p style={{ margin: 0, fontSize: 13, color: TEXT_PRIMARY, lineHeight: 1.6 }}>{introMessage}</p>
+          </div>
+          {content()}
         </div>
       </div>
     );
   };
 
-  const sidebarWidth = 260;
-
   return (
-    <div style={{ minHeight: "100vh", background: "#070B09", fontFamily: "'Inter', -apple-system, sans-serif", display: "flex", color: "white", overflow: "hidden" }}>
-      {renderTool()}
+    <div style={{ height: "100vh", background: BG_MAIN, fontFamily: "'Inter', -apple-system, sans-serif", display: "flex", color: TEXT_PRIMARY, overflow: "hidden" }}>
 
-      {/* Upsell */}
-      {showUpsellModal && (
-        <div onClick={() => setShowUpsellModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#0d0d0d", borderRadius: 24, padding: 32, width: "100%", maxWidth: 400, textAlign: "center", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>📸</div>
-            <h3 style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 700, color: "white" }}>Analyse visuelle</h3>
-            <p style={{ margin: "0 0 20px", fontSize: 14, color: "#64748b", lineHeight: 1.6 }}>Cette option n'est pas encore activée par votre praticien.</p>
-            <button onClick={() => setShowUpsellModal(false)} style={{ width: "100%", height: 48, borderRadius: 12, background: emerald, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Compris !</button>
+      {/* Modale stress AVANT outil */}
+      {showStressBeforeModal && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 380, border: `1px solid ${ACCENT_BORDER}`, textAlign: "center" }}>
+            <p style={{ fontSize: 32, marginBottom: 12 }}>💭</p>
+            <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY }}>Comment est ton niveau de stress ?</h3>
+            <p style={{ margin: "0 0 24px", fontSize: 13, color: TEXT_SECONDARY }}>De 1 (très calme) à 10 (très tendu)</p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
+              {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                <button key={n} onClick={() => setStressBefore(n)}
+                  style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${stressBefore === n ? ACCENT : "rgba(255,255,255,0.1)"}`, background: stressBefore === n ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.03)", color: stressBefore === n ? ACCENT : TEXT_SECONDARY, fontSize: 14, fontWeight: stressBefore === n ? 700 : 400, cursor: "pointer", transition: "all 0.15s" }}>
+                  {n}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => {
+              if (!pendingToolData) return;
+              setShowStressBeforeModal(false);
+              setActiveTool(pendingToolData);
+              setPendingToolData(null);
+            }} disabled={!stressBefore}
+              style={{ width: "100%", height: 48, borderRadius: 12, background: stressBefore ? ACCENT : "rgba(255,255,255,0.05)", border: "none", color: stressBefore ? "black" : TEXT_MUTED, fontSize: 15, fontWeight: 600, cursor: stressBefore ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
+              Lancer l'exercice →
+            </button>
+            <button onClick={() => {
+              if (!pendingToolData) return;
+              setShowStressBeforeModal(false);
+              setActiveTool(pendingToolData);
+              setPendingToolData(null);
+              setStressBefore(null);
+            }} style={{ marginTop: 10, background: "none", border: "none", cursor: "pointer", fontSize: 13, color: TEXT_MUTED }}>
+              Passer
+            </button>
           </div>
         </div>
       )}
 
-      {/* Overlay mobile */}
-      {sidebarOpen && isMobile && <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 20 }} />}
-
-      {/* Sidebar */}
-      <aside style={{
-        width: sidebarOpen ? sidebarWidth : 0,
-        minWidth: sidebarOpen ? sidebarWidth : 0,
-        background: "#040604",
-        borderRight: sidebarOpen ? "1px solid rgba(255,255,255,0.06)" : "none",
-        display: "flex",
-        flexDirection: "column",
-        position: isMobile ? "fixed" : "relative",
-        top: 0, left: 0, height: "100vh",
-        zIndex: isMobile ? 30 : 1,
-        transition: "width 0.25s ease, min-width 0.25s ease",
-        overflow: "hidden",
-        flexShrink: 0,
-      }}>
-        <div style={{ width: sidebarWidth, display: "flex", flexDirection: "column", height: "100%" }}>
-
-          {/* Logo */}
-          <div style={{ padding: "18px 16px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ position: "relative", flexShrink: 0 }}>
-              <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(6px)" }} />
-              <img src="/logo.svg" alt="NutriTwin" style={{ height: 24, width: "auto", position: "relative" }} />
+      {/* Modale stress APRÈS outil */}
+      {showStressModal && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 380, border: `1px solid ${ACCENT_BORDER}`, textAlign: "center" }}>
+            <p style={{ fontSize: 32, marginBottom: 12 }}>🌿</p>
+            <h3 style={{ margin: "0 0 8px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY }}>Et maintenant, comment vous sentez-vous ?</h3>
+            <p style={{ margin: "0 0 24px", fontSize: 13, color: TEXT_SECONDARY }}>De 1 (très tendu) à 10 (très calme)</p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
+              {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                <button key={n} onClick={() => setStressAfter(n)}
+                  style={{ width: 40, height: 40, borderRadius: 10, border: `1px solid ${stressAfter === n ? ACCENT : "rgba(255,255,255,0.1)"}`, background: stressAfter === n ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.03)", color: stressAfter === n ? ACCENT : TEXT_SECONDARY, fontSize: 14, fontWeight: stressAfter === n ? 700 : 400, cursor: "pointer", transition: "all 0.15s" }}>
+                  {n}
+                </button>
+              ))}
             </div>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "white", letterSpacing: "-0.3px" }}>
-              Nutri<strong style={{ color: emerald }}>Twin</strong>
-            </span>
+            <button onClick={async () => {
+              if (!stressAfter) return;
+              await sendStressData(stressBefore ?? 0, stressAfter, completedToolId ?? "");
+              setShowStressModal(false);
+              setStressBefore(null);
+              setStressAfter(null);
+              setCompletedToolId(null);
+              setShowToast(true);
+              setTimeout(() => setShowToast(false), 4000);
+            }} disabled={!stressAfter}
+              style={{ width: "100%", height: 48, borderRadius: 12, background: stressAfter ? ACCENT : "rgba(255,255,255,0.05)", border: "none", color: stressAfter ? "black" : TEXT_MUTED, fontSize: 15, fontWeight: 600, cursor: stressAfter ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
+              Valider →
+            </button>
+            <button onClick={() => { setShowStressModal(false); setStressBefore(null); setStressAfter(null); setCompletedToolId(null); }}
+              style={{ marginTop: 10, background: "none", border: "none", cursor: "pointer", fontSize: 13, color: TEXT_MUTED }}>
+              Passer
+            </button>
           </div>
+        </div>
+      )}
 
-          {/* Nouvelle conversation */}
-          <div style={{ padding: "12px" }}>
-            <button onClick={() => { setMessages([]); setCurrentSessionId(null); if (isMobile) setSidebarOpen(false); }}
-              style={{ width: "100%", height: 38, borderRadius: 8, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              <span style={{ fontSize: 16 }}>+</span> Nouvelle conversation
+      {/* Bannière préemptive */}
+      {showPreemptiveSOS && !activeTool && (
+        <div style={{ position: "fixed", bottom: hasMessages ? 100 : 180, left: "50%", transform: "translateX(-50%)", zIndex: 90, width: "calc(100% - 40px)", maxWidth: 500, background: "#0a0f0c", borderRadius: 16, border: `1px solid ${ACCENT_BORDER}`, padding: "14px 16px", boxShadow: "0 8px 32px rgba(0,0,0,0.5)", display: "flex", alignItems: "center", gap: 12, animation: "fadeUp 0.3s ease" }}>
+          <div style={{ width: 36, height: 36, borderRadius: "50%", border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 18 }}>🌿</div>
+          <p style={{ margin: 0, fontSize: 13, color: TEXT_PRIMARY, flex: 1, lineHeight: 1.5 }}>On dirait que la pression monte. On prend 2 minutes ensemble pour souffler ?</p>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            <button onClick={() => { setShowPreemptiveSOS(false); void handleSOS(); }}
+              style={{ height: 34, borderRadius: 8, padding: "0 14px", background: ACCENT, border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+              Oui 🌿
+            </button>
+            <button onClick={() => setShowPreemptiveSOS(false)}
+              style={{ height: 34, borderRadius: 8, padding: "0 12px", background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 13, cursor: "pointer" }}>
+              Non
+            </button>
+          </div>
+        </div>
+      )}
+
+      {renderTool()}
+
+      {/* Modale profil */}
+      {showProfileModal && (
+        <div onClick={() => setShowProfileModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 320, border: `1px solid ${ACCENT_BORDER}`, textAlign: "center" }}>
+            <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 16px" }}>
+              <div style={{ width: 72, height: 72, borderRadius: "50%", background: `radial-gradient(circle at 30% 30%, #34d399, #059669)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700, color: "black", border: "2px solid rgba(52,211,153,0.4)" }}>{patientInitials}</div>
+              <button onClick={() => profilePhotoRef.current?.click()} style={{ position: "absolute", bottom: 0, right: 0, width: 22, height: 22, borderRadius: "50%", background: ACCENT, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="black" strokeWidth="2.5" strokeLinecap="round"/></svg>
+              </button>
+              <input ref={profilePhotoRef} type="file" accept="image/*" style={{ display: "none" }} />
+            </div>
+            <h3 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY }}>Bonjour {patientFirstName || "!"} 👋</h3>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY }}>Votre espace personnel NutriTwin</p>
+            <button style={{ width: "100%", height: 44, borderRadius: 10, background: ACCENT, border: "none", color: "black", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}>Modifier mon profil</button>
+            <div style={{ display: "flex", gap: 16, justifyContent: "center" }}>
+              <a href="/confidentialite" style={{ fontSize: 11, color: TEXT_MUTED, textDecoration: "none" }}>Confidentialité</a>
+              <span style={{ color: TEXT_MUTED, fontSize: 11 }}>·</span>
+              <a href="/cgu" style={{ fontSize: 11, color: TEXT_MUTED, textDecoration: "none" }}>Conditions d'utilisation</a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upsell */}
+      {showUpsellModal && (
+        <div onClick={() => setShowUpsellModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(8px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 360, textAlign: "center", border: `1px solid ${ACCENT_BORDER}` }}>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <CameraIcon size={22} color={ACCENT} />
+            </div>
+            <h3 style={{ margin: "0 0 10px", fontSize: 17, fontWeight: 600, color: TEXT_PRIMARY }}>Analyse visuelle</h3>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY, lineHeight: 1.6 }}>Cette option n'est pas encore activée par votre praticien.</p>
+            <button onClick={() => setShowUpsellModal(false)} style={{ width: "100%", height: 46, borderRadius: 10, background: ACCENT, border: "none", color: "black", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Compris</button>
+          </div>
+        </div>
+      )}
+
+      {sidebarOpen && isMobile && <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 20 }} />}
+
+      {/* ═══ SIDEBAR ═══ */}
+      <aside style={{ width: sidebarOpen ? sidebarWidth : 0, minWidth: sidebarOpen ? sidebarWidth : 0, background: "linear-gradient(180deg, #0d1f17 0%, #0a1a12 50%, #081510 100%)", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100vh", zIndex: isMobile ? 30 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 20px rgba(0,0,0,0.5)" }}>
+        <div style={{ width: sidebarWidth, display: "flex", flexDirection: "column", height: "100%", padding: "0 12px" }}>
+
+          {/* Header sidebar */}
+          <div style={{ padding: "20px 16px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 1px 0 rgba(255,255,255,0.08)", margin: "0 -12px", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <img src="/logo.svg" alt="NutriTwin" style={{ height: 42, width: "auto" }}
+                onError={e => { const t = e.target as HTMLImageElement; t.style.display = "none"; const n = t.nextElementSibling as HTMLElement; if (n) n.style.display = "flex"; }} />
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: "linear-gradient(135deg, #34d399, #059669)", display: "none", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🌿</div>
+              <div>
+                <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.3px" }}>Nutri<span style={{ color: ACCENT }}>Twin</span></p>
+                <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED }}>Votre espace santé</p>
+              </div>
+            </div>
+            <button onClick={() => setSidebarOpen(false)} style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
+              <MenuIcon size={14} />
             </button>
           </div>
 
-          {/* Journal */}
-          <div style={{ padding: "0 12px 12px" }}>
-            <button onClick={() => { setActiveTool("journal"); if (isMobile) setSidebarOpen(false); }}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.06))", border: "1px solid rgba(16,185,129,0.25)", cursor: "pointer", transition: "all 0.2s" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.1))"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.06))"; }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>📓</div>
+          {/* Mon accompagnement */}
+          <div style={{ marginBottom: 12 }}>
+            <p style={{ margin: "0 4px 8px", fontSize: 10, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Mon accompagnement</p>
+            <button onClick={() => { setActiveTool({ id: "journal", data: null }); if (isMobile) setSidebarOpen(false); }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "none", cursor: "pointer", transition: "all 0.2s", marginBottom: 4, boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}>
+              <div style={{ width: 34, height: 34, borderRadius: 9, border: "1px solid rgba(245,158,11,0.4)", background: "rgba(245,158,11,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 0 10px rgba(245,158,11,0.2), inset 0 0 8px rgba(245,158,11,0.05)" }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  <line x1="9" y1="7" x2="15" y2="7" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round"/>
+                  <line x1="9" y1="11" x2="15" y2="11" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round"/>
+                </svg>
+              </div>
               <div style={{ textAlign: "left" }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: emerald }}>Mon Journal</p>
-                <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Humeur · Repas · Émotions</p>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: TEXT_PRIMARY }}>Mon Journal</p>
+                <p style={{ margin: 0, fontSize: 10, color: TEXT_MUTED }}>Humeur · Repas · Émotions</p>
+              </div>
+            </button>
+
+            <button onClick={() => void handleSOS()} disabled={sosLoading}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "none", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
+              onMouseEnter={e => { if (!sosLoading) e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}>
+              <div style={{ width: 34, height: 34, borderRadius: 9, border: "1px solid rgba(6,182,212,0.4)", background: "rgba(6,182,212,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 0 10px rgba(6,182,212,0.2), inset 0 0 8px rgba(6,182,212,0.05)" }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="#06b6d4" stroke="#06b6d4" strokeWidth="0.5">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              </div>
+              <div style={{ textAlign: "left" }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: TEXT_PRIMARY }}>{sosLoading ? "Analyse..." : "Mon Soutien"}</p>
+                <p style={{ margin: 0, fontSize: 10, color: TEXT_MUTED }}>Aide personnalisée immédiate</p>
               </div>
             </button>
           </div>
 
-          {/* Mes Ressources */}
-          <div style={{ padding: "0 12px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <p style={{ margin: "0 0 8px 2px", fontSize: 11, fontWeight: 600, color: "#374151", letterSpacing: "0.08em", textTransform: "uppercase" }}>Mes ressources</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {tools.map(tool => (
-                <button key={tool.id} onClick={() => { setActiveTool(tool.id as Tool); if (isMobile) setSidebarOpen(false); }}
-                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, background: "transparent", border: "1px solid transparent", cursor: "pointer", fontSize: 13, color: "#64748b", transition: "all 0.15s" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.15)"; e.currentTarget.style.color = "#94a3b8"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.color = "#64748b"; }}>
-                  <span style={{ fontSize: 15, width: 20, textAlign: "center" }}>{tool.emoji}</span>
-                  <span>{tool.label}</span>
-                </button>
-              ))}
+          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 4px 12px" }} />
+
+          <div style={{ marginBottom: 8 }}>
+            <p style={{ margin: "5px 4px 8px", fontSize: 10, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Mes conversations</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "9px 12px", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3)" }}>
+              <SearchIcon size={13} color={TEXT_MUTED} />
+              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Rechercher..." style={{ flex: 1, border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 12, outline: "none", caretColor: ACCENT }} />
             </div>
           </div>
 
-          {/* Sessions */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "12px" }}>
-            <p style={{ margin: "0 0 8px 2px", fontSize: 11, fontWeight: 600, color: "#374151", letterSpacing: "0.08em", textTransform: "uppercase" }}>Discussions</p>
-            {sessions.length === 0 ? (
-              <p style={{ fontSize: 12, color: "#374151", textAlign: "center", marginTop: 12 }}>Aucune discussion</p>
-            ) : sessions.map(session => (
-              <div key={session.id}
-                style={{ position: "relative", marginBottom: 2 }}
+          <div style={{ flex: 1, overflowY: "auto", marginBottom: 8 }}>
+            {filteredSessions.length > 0 && (
+              <p style={{ margin: "0 4px 8px", fontSize: 10, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Discussions récentes</p>
+            )}
+            {filteredSessions.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "24px 16px" }}>
+                <p style={{ fontSize: 13, color: TEXT_MUTED, margin: 0 }}>Aucune discussion</p>
+                <p style={{ fontSize: 11, color: TEXT_MUTED, margin: "4px 0 0", opacity: 0.6 }}>Commencez une conversation !</p>
+              </div>
+            ) : filteredSessions.map(session => (
+              <div key={session.id} style={{ position: "relative", marginBottom: 2 }}
                 onMouseEnter={() => setHoveredSession(session.id)}
                 onMouseLeave={() => setHoveredSession(null)}>
                 <button onClick={() => void loadSession(session.id)}
-                  style={{ width: "100%", padding: "9px 10px", borderRadius: 8, textAlign: "left", background: currentSessionId === session.id ? "rgba(16,185,129,0.12)" : hoveredSession === session.id ? "rgba(255,255,255,0.04)" : "transparent", border: `1px solid ${currentSessionId === session.id ? "rgba(16,185,129,0.25)" : "transparent"}`, cursor: "pointer", transition: "all 0.15s", paddingRight: hoveredSession === session.id ? 80 : 10 }}>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: currentSessionId === session.id ? emerald : "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginBottom: 2 }}>{session.title}</p>
-                  <p style={{ margin: 0, fontSize: 10, color: "#374151" }}>{new Date(session.last_message_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</p>
-                </button>
-
-                {/* Actions hover */}
-                {hoveredSession === session.id && (
-                  <div style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", display: "flex", gap: 2 }}>
-                    <button
-                      onClick={e => { e.stopPropagation(); void navigator.clipboard.writeText(session.title); }}
-                      title="Copier"
-                      style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#64748b" }}
-                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.12)"}
-                      onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}>
-                      📋
-                    </button>
-                    <button
-                      onClick={e => { e.stopPropagation(); void deleteSession(session.id); }}
-                      title="Supprimer"
-                      style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#64748b" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.color = "#f87171"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#64748b"; }}>
-                      🗑
-                    </button>
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 12, textAlign: "left", background: currentSessionId === session.id ? "rgba(16,185,129,0.12)" : hoveredSession === session.id ? "rgba(255,255,255,0.04)" : "transparent", border: "none", cursor: "pointer", transition: "all 0.15s", paddingRight: hoveredSession === session.id ? 42 : 12, display: "flex", alignItems: "center", gap: 10, boxShadow: currentSessionId === session.id ? "0 2px 8px rgba(0,0,0,0.2)" : "none" }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 10, background: currentSessionId === session.id ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 14 }}>💬</div>
+                  <div style={{ overflow: "hidden", flex: 1 }}>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: currentSessionId === session.id ? ACCENT : TEXT_PRIMARY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.title}</p>
+                    <p style={{ margin: 0, fontSize: 10, color: TEXT_MUTED, marginTop: 1 }}>{new Date(session.last_message_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</p>
                   </div>
+                </button>
+                {hoveredSession === session.id && (
+                  <button onClick={e => { e.stopPropagation(); void deleteSession(session.id); }}
+                    style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", width: 26, height: 26, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TEXT_MUTED, transition: "all 0.15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.color = "#f87171"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = TEXT_MUTED; }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><polyline points="3,6 5,6 21,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M19,6V20C19,21 18,22 17,22H7C6,22 5,21 5,20V6M8,6V4C8,3 9,2 10,2H14C15,2 16,3 16,4V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                  </button>
                 )}
               </div>
             ))}
           </div>
+
+          <div style={{ paddingBottom: 16 }}>
+            <button onClick={() => { setMessages([]); setCurrentSessionId(null); if (isMobile) setSidebarOpen(false); }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: `1px solid rgba(16,185,129,0.18)`, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5V19M5 12H19" stroke="black" strokeWidth="2.5" strokeLinecap="round"/></svg>
+              </div>
+              <div style={{ textAlign: "left" }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ACCENT }}>Nouvelle conversation</p>
+                <p style={{ margin: 0, fontSize: 10, color: TEXT_MUTED }}>Démarrer un nouvel échange</p>
+              </div>
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* Zone principale */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, position: "relative" }}>
+      {/* ═══ ZONE PRINCIPALE ═══ */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        {/* Header fixe */}
-        <header style={{ background: "rgba(7,11,9,0.95)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 20px", height: 56, display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10, flexShrink: 0 }}>
-
-          {/* Bouton hamburger */}
-          <button onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.2)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="#64748b" style={{ width: 18, height: 18 }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
-          </button>
-
-          {hasMessages ? (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10 }}>
-              {/* Feuille avec halo */}
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                <div style={{ position: "absolute", inset: -6, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.25), transparent 70%)", animation: loading ? "glow-loading 1s ease-in-out infinite" : "glow-idle 3s ease-in-out infinite" }} />
-                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, position: "relative" }}>🌿</div>
-              </div>
-              <div>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "white" }}>Votre compagnon de suivi</p>
-                <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Basé sur l'approche de votre praticien</p>
-              </div>
-              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: emerald, animation: "breathe 3s ease-in-out infinite" }} />
-                <span style={{ fontSize: 11, color: emerald, fontWeight: 500 }}>{loading ? "En train de réfléchir..." : "À votre écoute"}</span>
-              </div>
-            </div>
-          ) : (
-            <div style={{ flex: 1 }} />
+        {/* Header */}
+        <header style={{ background: "#0a1510", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "0 16px", height: 82, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          {!sidebarOpen && (
+            <button onClick={() => setSidebarOpen(true)} style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+              onMouseEnter={e => e.currentTarget.style.background = SURFACE}
+              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              <MenuIcon size={16} />
+            </button>
           )}
+          {isMobile && sidebarOpen && (
+            <button onClick={() => setSidebarOpen(false)} style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <MenuIcon size={16} />
+            </button>
+          )}
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              {hasMessages && (
+                <>
+                  <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY, lineHeight: 1.3 }}>Votre compagnon de suivi</p>
+                  <p style={{ margin: 0, fontSize: 11, color: TEXT_MUTED }}>Basé sur l'approche de votre praticien</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
+                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: ACCENT, animation: "breathe 3s ease-in-out infinite" }} />
+                    <span style={{ fontSize: 11, color: ACCENT, fontWeight: 500 }}>{loading ? "En train de réfléchir..." : "À votre écoute"}</span>
+                  </div>
+                </>
+              )}
+            </div>
+            <button onClick={() => setShowProfileModal(true)}
+              style={{ width: 36, height: 36, borderRadius: "50%", background: `radial-gradient(circle at 30% 30%, #34d399, #059669)`, border: "2px solid rgba(52,211,153,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "black", flexShrink: 0, boxShadow: "0 0 10px rgba(16,185,129,0.15)", transition: "box-shadow 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow = "0 0 16px rgba(16,185,129,0.35)"}
+              onMouseLeave={e => e.currentTarget.style.boxShadow = "0 0 10px rgba(16,185,129,0.15)"}>
+              {patientInitials}
+            </button>
+          </div>
         </header>
 
-        {/* Contenu principal */}
         <main style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
-
-          {!hasMessages ? (
-            /* Écran d'accueil centré */
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 20px 160px", textAlign: "center" }}>
-              <div style={{ maxWidth: 560, width: "100%" }}>
-
-                {/* Avatar feuille */}
+          {!hasMessages && (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: isMobile ? "24px 16px 100px" : "32px 24px 100px" }}>
+              <div style={{ maxWidth: 580, width: "100%", textAlign: "center" }}>
                 <div style={{ position: "relative", width: 64, height: 64, margin: "0 auto 24px" }}>
-                  <div style={{ position: "absolute", inset: -12, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.2), transparent 70%)", animation: "glow-idle 3s ease-in-out infinite" }} />
-                  <div style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, position: "relative" }}>🌿</div>
+                  <div style={{ position: "absolute", inset: -12, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.15), transparent 70%)", animation: "glow-idle 3s ease-in-out infinite" }} />
+                  <div style={{ width: 64, height: 64, borderRadius: "50%", border: `1.5px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", fontSize: 28 }}>🌿</div>
                 </div>
-
-                {/* Salutation */}
-                <h1 style={{ margin: "0 0 8px", fontSize: 26, fontWeight: 700, color: "white" }}>
+                <h1 style={{ margin: "0 0 8px", fontSize: isMobile ? 26 : 30, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.5px" }}>
                   {patientFirstName ? `Bonjour ${patientFirstName} 👋` : "Bonjour 👋"}
                 </h1>
-                <p style={{ margin: "0 0 24px", fontSize: 15, color: "#64748b", lineHeight: 1.6 }}>
+                <p style={{ margin: "0 0 28px", fontSize: isMobile ? 15 : 16, color: TEXT_SECONDARY, lineHeight: 1.7 }}>
                   Je suis votre compagnon de suivi, créé à partir de l'expertise de votre praticien.
                 </p>
-
-                {/* Encadré */}
-                <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "18px 24px", marginBottom: 24 }}>
-                  <p style={{ margin: 0, fontSize: 15, color: "#94a3b8", lineHeight: 1.7 }}>
-                    Posez-moi vos questions, je suis là pour vous accompagner entre vos séances. 🌿
-                  </p>
+                <div style={{ marginBottom: 40 }}>
+                  <InputBar
+                    isCenter={true}
+                    message={message}
+                    setMessage={setMessage}
+                    send={send}
+                    loading={loading}
+                    pendingImage={pendingImage}
+                    photoHovered={photoHovered}
+                    setPhotoHovered={setPhotoHovered}
+                    handleImageClick={handleImageClick}
+                    handleKeyDown={handleKeyDown}
+                    inputRef={inputRef}
+                  />
                 </div>
-
-                {/* Quick actions */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 28 }}>
+                <p style={{ margin: "0 0 16px", fontSize: 11, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.1em", textTransform: "uppercase" }}>Questions fréquentes</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
                   {quickActions.map(action => (
                     <button key={action} onClick={() => void send(action)}
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: "8px 14px", fontSize: 13, color: "#64748b", cursor: "pointer", transition: "all 0.2s" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; e.currentTarget.style.color = emerald; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#64748b"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}>
+                      style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 20, padding: "8px 14px", fontSize: isMobile ? 13 : 14, color: TEXT_SECONDARY, cursor: "pointer", transition: "all 0.2s" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = ACCENT_DIM; e.currentTarget.style.color = ACCENT; e.currentTarget.style.borderColor = ACCENT_BORDER; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = SURFACE; e.currentTarget.style.color = TEXT_SECONDARY; e.currentTarget.style.borderColor = BORDER; }}>
                       {action}
                     </button>
                   ))}
                 </div>
-
-                {/* Bouton photo */}
-                <div>
-                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageChange} style={{ display: "none" }} />
-                  <button onClick={handleImageClick}
-                    style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 auto", height: 44, borderRadius: 10, padding: "0 20px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", color: "#64748b", fontSize: 14, transition: "all 0.2s" }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; e.currentTarget.style.color = emerald; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#64748b"; }}>
-                    <span style={{ fontSize: 18 }}>📷</span>
-                    <span>Analyser votre repas</span>
-                  </button>
-                </div>
               </div>
             </div>
-          ) : (
-            /* Messages */
-            <div style={{ flex: 1, padding: "24px 20px 180px" }}>
-              <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+          )}
+
+          {hasMessages && (
+            <div style={{ flex: 1, padding: isMobile ? "16px 12px 100px" : "20px 20px 100px" }}>
+              <div style={{ maxWidth: 700, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
+                  const isLastAssistant = !isUser && index === visibleMessages.length - 1;
+                  if (!isUser && !msg.content && isLastAssistant) return null;
                   return (
-                    <div key={index} style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 10, animation: "fadeUp 0.3s ease" }}>
-                      {!isUser && (
-                        <div style={{ position: "relative", flexShrink: 0 }}>
-                          <div style={{ position: "absolute", inset: -4, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.15), transparent 70%)" }} />
-                          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, position: "relative" }}>🌿</div>
-                        </div>
-                      )}
-                      <div style={{ maxWidth: "75%" }}>
+                    <div key={index} style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8, animation: "fadeUp 0.25s ease" }}>
+                      <div style={{ maxWidth: isMobile ? "88%" : "76%" }}>
                         {msg.imageUrl && (
-                          <div style={{ marginBottom: 8, display: "flex", justifyContent: "flex-end" }}>
-                            <img src={msg.imageUrl} alt="Photo" style={{ maxWidth: 200, maxHeight: 200, borderRadius: 12, objectFit: "cover", border: "1px solid rgba(16,185,129,0.3)" }} />
+                          <div style={{ marginBottom: 6, display: "flex", justifyContent: "flex-end" }}>
+                            <img src={msg.imageUrl} alt="Photo" style={{ maxWidth: isMobile ? 160 : 200, maxHeight: isMobile ? 160 : 200, borderRadius: 12, objectFit: "cover", border: `1px solid ${ACCENT_BORDER}` }} />
                           </div>
                         )}
-                        <div style={{
-                          padding: "12px 16px",
-                          borderRadius: isUser ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                          background: isUser ? "#065f46" : "rgba(255,255,255,0.05)",
-                          backdropFilter: isUser ? "none" : "blur(12px)",
-                          color: isUser ? "white" : "#e2e8f0",
-                          fontSize: 15, lineHeight: 1.7,
-                          border: isUser ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.08)",
-                        }}>
+                        <div style={{ padding: isMobile ? "11px 14px" : "12px 18px", borderRadius: isUser ? "16px 16px 4px 16px" : "16px 16px 16px 4px", background: isUser ? "linear-gradient(135deg, rgba(16,185,129,0.9), rgba(16,185,129,0.3))" : SURFACE, backdropFilter: isUser ? "none" : "blur(8px)", color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.75, border: isUser ? `1px solid rgba(16,185,129,0.18)` : `1px solid ${BORDER}`, boxShadow: isUser ? "0 2px 12px rgba(0,0,0,0.3)" : "none" }}>
                           {msg.content}
                         </div>
                       </div>
                     </div>
                   );
                 })}
-
                 {loading && (
-  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-    <div style={{ position: "relative", flexShrink: 0 }}>
-      <div style={{ position: "absolute", inset: -6, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.3), transparent 70%)", animation: "glow-loading 1s ease-in-out infinite" }} />
-      <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, position: "relative" }}>🌿</div>
-    </div>
-    <button onClick={stopGeneration}
-      style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.05)", backdropFilter: "blur(12px)", borderRadius: "16px 16px 16px 4px", padding: "10px 16px", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", color: "#64748b", fontSize: 13, transition: "all 0.2s" }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(244,63,94,0.3)"; e.currentTarget.style.color = "#f87171"; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#64748b"; }}>
-      <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-        {[0, 1, 2].map(i => (
-          <div key={i} style={{ width: 5, height: 5, borderRadius: "50%", background: emerald, animation: `dot-bounce 1.2s ease-in-out ${i * 0.2}s infinite` }} />
-        ))}
-      </div>
-      <span style={{ marginLeft: 6 }}>En train de réfléchir... · Arrêter</span>
-    </button>
-  </div>
-)}
-
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <ArcSpinner size={28} />
+                    <button onClick={stopGeneration}
+                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: "14px 14px 14px 4px", background: SURFACE, border: `1px solid ${BORDER}`, cursor: "pointer", color: TEXT_SECONDARY, fontSize: 12, transition: "all 0.2s" }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(244,63,94,0.3)"; e.currentTarget.style.color = "#f87171"; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_SECONDARY; }}>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                      En train de réfléchir... · Arrêter
+                    </button>
+                  </div>
+                )}
                 <div ref={messagesEndRef} />
               </div>
             </div>
           )}
         </main>
 
-        {/* Zone saisie fixe en bas */}
-        <div style={{ position: "fixed", bottom: 0, left: sidebarOpen && !isMobile ? sidebarWidth : 0, right: 0, background: "rgba(7,11,9,0.95)", backdropFilter: "blur(20px)", borderTop: "1px solid rgba(255,255,255,0.06)", padding: "12px 20px", paddingBottom: "max(16px, env(safe-area-inset-bottom))", transition: "left 0.25s ease" }}>
-
-          {pendingImage && (
-            <div style={{ maxWidth: 680, margin: "0 auto 10px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <img src={pendingImage.previewUrl} alt="Preview" style={{ width: 48, height: 48, borderRadius: 8, objectFit: "cover", border: `1px solid ${emerald}` }} />
-                <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>Photo prête à envoyer</p>
-                <button onClick={() => setPendingImage(null)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#64748b" }}>×</button>
+        {hasMessages && (
+          <div style={{ background: "rgba(7,11,9,0.97)", backdropFilter: "blur(20px)", borderTop: `1px solid ${BORDER}`, padding: isMobile ? "10px 12px" : "10px 20px", paddingBottom: "max(14px, env(safe-area-inset-bottom))", flexShrink: 0 }}>
+            {pendingImage && (
+              <div style={{ maxWidth: 700, margin: "0 auto 8px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <img src={pendingImage.previewUrl} alt="Preview" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", border: `1px solid ${ACCENT_BORDER}` }} />
+                  <p style={{ margin: 0, fontSize: 12, color: TEXT_SECONDARY }}>Photo prête</p>
+                  <button onClick={() => setPendingImage(null)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: TEXT_SECONDARY, fontSize: 18 }}>×</button>
+                </div>
               </div>
-            </div>
-          )}
-
-          {imageCompressing && (
-            <div style={{ maxWidth: 680, margin: "0 auto 8px" }}>
-              <div style={{ height: 2, background: "rgba(255,255,255,0.06)", borderRadius: 1 }}>
-                <div style={{ height: "100%", background: emerald, borderRadius: 1, width: `${compressionProgress}%`, transition: "width 0.1s" }} />
+            )}
+            {imageCompressing && (
+              <div style={{ maxWidth: 700, margin: "0 auto 6px" }}>
+                <div style={{ height: 2, background: SURFACE, borderRadius: 1 }}>
+                  <div style={{ height: "100%", background: ACCENT, borderRadius: 1, width: `${compressionProgress}%`, transition: "width 0.1s" }} />
+                </div>
               </div>
+            )}
+            <div style={{ maxWidth: 700, margin: "0 auto" }}>
+              <InputBar
+                isCenter={false}
+                message={message}
+                setMessage={setMessage}
+                send={send}
+                loading={loading}
+                pendingImage={pendingImage}
+                photoHovered={photoHovered}
+                setPhotoHovered={setPhotoHovered}
+                handleImageClick={handleImageClick}
+                handleKeyDown={handleKeyDown}
+                inputRef={inputRef}
+              />
+              <p style={{ margin: "6px 0 0", fontSize: 10, color: TEXT_MUTED, textAlign: "center" }}>
+                NutriTwin est une IA et peut se tromper · En cas de doute, consultez votre praticien
+              </p>
             </div>
-          )}
-
-          <div style={{ maxWidth: 680, margin: "0 auto" }}>
-            <div style={{ display: "flex", gap: 10, alignItems: "center", background: "rgba(255,255,255,0.04)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", padding: "6px 8px 6px 12px", transition: "border-color 0.2s" }}
-              onFocus={() => {}} >
-
-              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageChange} style={{ display: "none" }} />
-
-              <input value={message} onChange={e => setMessage(e.target.value)} onKeyDown={handleKeyDown}
-                placeholder={pendingImage ? "Ajoutez un commentaire..." : "Posez votre question..."}
-                style={{ flex: 1, height: 40, border: "none", background: "transparent", color: "white", fontSize: 15, outline: "none" }} />
-
-              {!hasMessages && (
-                <button onClick={handleImageClick}
-                  style={{ width: 36, height: 36, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#64748b", transition: "color 0.2s" }}
-                  onMouseEnter={e => e.currentTarget.style.color = emerald}
-                  onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                  📷
-                </button>
-              )}
-
-              {hasMessages && (
-                <button onClick={handleImageClick}
-                  style={{ width: 36, height: 36, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, color: "#64748b", transition: "color 0.2s" }}
-                  onMouseEnter={e => e.currentTarget.style.color = emerald}
-                  onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                  📷
-                </button>
-              )}
-
-              <button onClick={() => void send()} disabled={loading || (!message.trim() && !pendingImage)}
-                style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, background: loading || (!message.trim() && !pendingImage) ? "rgba(255,255,255,0.06)" : emerald, border: "none", cursor: loading || (!message.trim() && !pendingImage) ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: loading || (!message.trim() && !pendingImage) ? "#374151" : "black", transition: "all 0.2s", boxShadow: loading || (!message.trim() && !pendingImage) ? "none" : "0 2px 12px rgba(16,185,129,0.4)" }}
-                onMouseEnter={e => { if (!loading && (message.trim() || pendingImage)) e.currentTarget.style.boxShadow = "0 4px 20px rgba(16,185,129,0.6)"; }}
-                onMouseLeave={e => { if (!loading && (message.trim() || pendingImage)) e.currentTarget.style.boxShadow = "0 2px 12px rgba(16,185,129,0.4)"; }}>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 16, height: 16 }}>
-                  <path d="M5 12h13" /><path d="m12 5 7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-
-            <p style={{ margin: "8px 0 0", fontSize: 11, color: "#374151", textAlign: "center" }}>
-              NutriTwin est une IA et peut se tromper. En cas de doute, consultez votre praticien.
-            </p>
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageChange} style={{ display: "none" }} />
           </div>
-        </div>
+        )}
       </div>
 
+      {showToast && (
+        <div style={{ position: "fixed", bottom: 30, left: "50%", transform: "translateX(-50%)", zIndex: 120, background: "#0a0f0c", borderRadius: 14, border: `1px solid ${ACCENT_BORDER}`, padding: "12px 20px", boxShadow: "0 8px 32px rgba(0,0,0,0.5)", display: "flex", alignItems: "center", gap: 10, animation: "fadeUp 0.3s ease", whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: 18 }}>🌿</span>
+          <p style={{ margin: 0, fontSize: 13, color: TEXT_PRIMARY, fontWeight: 500 }}>Données transmises à votre praticien. Bravo pour ce moment de calme.</p>
+        </div>
+      )}
+
       <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes glow-idle { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
-        @keyframes glow-loading { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
-        @keyframes breathe { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.8); } }
+        @keyframes breathe { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.75); } }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes dot-bounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
         * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
-        ::placeholder { color: #374151; }
+        input::placeholder, textarea::placeholder { color: #475569; }
+        @media (max-width: 767px) { .chat-input { font-size: 16px !important; } }
       `}</style>
     </div>
   );
 }
+

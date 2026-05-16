@@ -11,33 +11,33 @@ const redis = new Redis({
 const PLAN_CONFIG = {
   essentiel: {
     model: "gemini-3.1-flash-lite",
-    maxOutputTokens: 200,
+    maxOutputTokens: 250,
     historyLimit: 20,
     ragChunks: 5,
     dailyMessageLimit: 30,
     isFounder: false,
   },
   pro: {
-    model: "gemini-3-flash-preview",
-    maxOutputTokens: 500,
+    model: "gemini-3-flash",
+    maxOutputTokens: 450,
     historyLimit: 100,
-    ragChunks: 5,
+    ragChunks: 8,
     dailyMessageLimit: 100,
     isFounder: false,
   },
   cabinet: {
-    model: "gemini-3-flash-preview",
-    maxOutputTokens: 500,
+    model: "gemini-3-flash",
+    maxOutputTokens: 450,
     historyLimit: 100,
-    ragChunks: 5,
+    ragChunks: 8,
     dailyMessageLimit: 100,
     isFounder: false,
   },
   fondateur: {
-    model: "gemini-3-flash-preview",
-    maxOutputTokens: 500,
+    model: "gemini-3-flash",
+    maxOutputTokens: 450,
     historyLimit: 100,
-    ragChunks: 5,
+    ragChunks: 8,
     dailyMessageLimit: 100,
     isFounder: true,
   },
@@ -53,6 +53,7 @@ type ChatRequest = {
   sessionId?: string;
   imageBase64?: string;
   imageMimeType?: string;
+  isSOS?: boolean;
 };
 
 const COMPLEX_KEYWORDS = [
@@ -160,6 +161,9 @@ async function getRelevantDocuments(question: string, practitionerId: string, ra
   try {
     const hasDocs = await hasDocuments(practitionerId);
     if (!hasDocs) return "";
+
+    // N'appelle l'embedding que si le message est suffisamment complexe
+    if (question.split(" ").length < 4 && !isComplexMessage(question)) return "";
 
     const supabase = createSupabaseClient();
     const queryEmbedding = await getGeminiEmbedding(question);
@@ -452,7 +456,104 @@ export async function POST(request: Request) {
       sessionId,
       imageBase64,
       imageMimeType,
+      isSOS,
     } = await request.json() as ChatRequest;
+
+    if (isSOS && patientId && practitionerId) {
+      const supabase = createSupabaseClient();
+    
+      // Profil patient depuis cache Redis
+      const patientContext = await getPatientProfile(patientId);
+    
+      // Données spécifiques pour la personnalisation miroir
+      const { data: patientRaw } = await supabase
+        .from("patients")
+        .select("first_name, practitioner_instruction, notes, pathologies, defi, motivation")
+        .eq("user_id", patientId)
+        .single();
+    
+      const patient = patientRaw as {
+        first_name?: string;
+        practitioner_instruction?: string;
+        notes?: string;
+        pathologies?: string;
+        defi?: string;
+        motivation?: string;
+      } | null;
+    
+      const mirrorContext = [
+        patient?.practitioner_instruction ? `Consigne actuelle du praticien : "${patient.practitioner_instruction}"` : "",
+        patient?.notes ? `Notes de suivi : "${patient.notes}"` : "",
+        patient?.defi ? `Plus gros défi du patient : "${patient.defi}"` : "",
+        patient?.motivation ? `État d'esprit actuel : "${patient.motivation}"` : "",
+        patient?.pathologies ? `Pathologies : "${patient.pathologies}"` : "",
+      ].filter(Boolean).join("\n");
+    
+      // 3 derniers messages
+      const { data: recentMessages } = await supabase
+        .from("conversations")
+        .select("role, content")
+        .eq("patient_id", patientId)
+        .eq("practitioner_id", practitionerId)
+        .order("created_at", { ascending: false })
+        .limit(3);
+    
+      const context = (recentMessages ?? [])
+        .reverse()
+        .map((m: { role: string; content: string }) => `${m.role === "user" ? "Patient" : "Jumeau"}: ${m.content}`)
+        .join("\n");
+    
+      const firstName = patient?.first_name ?? "le patient";
+    
+      const sosPrompt = `Tu es le Jumeau Numérique d'un nutritionniste expert. Tu dois choisir et personnaliser un outil de soutien émotionnel pour ${firstName}.
+    
+    CONTEXTE PATIENT :
+    ${patientContext}
+    
+    PERSONNALISATION MIROIR (utilise ces éléments pour rendre le script de l'exercice unique et personnel) :
+    ${mirrorContext || "Pas de données spécifiques."}
+    
+    DERNIERS ÉCHANGES :
+    ${context || "Aucun échange récent."}
+    
+    RÈGLES :
+    - Choisis l'outil parmi : breathing (stress/anxiété), ancrage (panique/dissociation), manger (impulsions alimentaires/TCA), marche (fatigue/rumination)
+    - Le twin_message doit utiliser le prénom ${firstName} et faire référence à un élément concret du contexte (défi, consigne, état d'esprit)
+    - Les steps du tool_script doivent être personnalisés — pas de texte générique
+    - Réponds UNIQUEMENT en JSON sans markdown ni backticks :
+    {"tool_id":"breathing","twin_message":"Message personnalisé avec prénom max 25 mots","tool_script":{"step_1":"instruction personnalisée","step_2":"instruction personnalisée","step_3":"instruction personnalisée"}}`;
+    
+      const sosModel = genAI.getGenerativeModel({
+        model: "gemini-3.1-flash-lite",
+        generationConfig: { maxOutputTokens: 400, temperature: 0.7 },
+      });
+    
+      const sosResult = await sosModel.generateContent(sosPrompt);
+      const sosText = sosResult.response.text().trim().replace(/```json|```/g, "").trim();
+    
+      // Tracking en base
+      try {
+        await supabase.from("sos_events").insert({
+          patient_id: patientId,
+          practitioner_id: practitionerId,
+          triggered_at: new Date().toISOString(),
+          raw_response: sosText,
+        });
+      } catch { /* silencieux */ }
+    
+      try {
+        const parsed = JSON.parse(sosText);
+        return Response.json({ tool: parsed });
+      } catch {
+        return Response.json({
+          tool: {
+            tool_id: "breathing",
+            twin_message: `${firstName}, prenons un moment pour souffler ensemble.`,
+            tool_script: {},
+          },
+        });
+      }
+    }      
 
     const practitionerData = practitionerId
       ? await getPractitionerData(practitionerId)
@@ -486,17 +587,17 @@ export async function POST(request: Request) {
     }
 
     const modelName = imageBase64
-      ? "gemini-3-flash-preview"
+      ? "gemini-3-flash"
       : plan === "essentiel"
         ? config.model
-        : isComplexMessage(message) ? "gemini-3-flash-preview" : "gemini-3.1-flash-lite";
+        : isComplexMessage(message) ? "gemini-3-flash" : "gemini-3.1-flash-lite";
 
     const model = genAI.getGenerativeModel({
       model: modelName,
       systemInstruction: practitionerPrompt,
       generationConfig: {
         maxOutputTokens: config.maxOutputTokens,
-        temperature: 0.7,
+        temperature: 0.78,
       },
     });
 
@@ -534,7 +635,7 @@ Max 150 mots. Sans markdown.`;
             const chunkText = chunk.text();
             fullText += chunkText;
             controller.enqueue(encoder.encode(chunkText));
-            await new Promise(resolve => setTimeout(resolve, 15));
+            await new Promise(resolve => setTimeout(resolve, 5));
           }          
         } catch {
           controller.close();

@@ -160,13 +160,14 @@ try {
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-12 sm:px-6">
       <div className="mb-8 text-center">
-  <div className="relative mx-auto mb-3 w-fit">
-    <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
-    <img src="/logo.svg" alt="NutriTwin" className="h-14 w-auto relative mx-auto" />
-  </div>
-  <h1 className="text-[22px] tracking-tight text-white">Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
-  <p className="mt-2 text-sm text-zinc-400">Créez votre compte praticien</p>
-
+          <div className="relative mx-auto mb-3 w-fit">
+            <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
+            <div style={{ position: "relative", width: 75, height: 75, margin: "0 auto" }}>
+  <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, animation: "pulse-ring 2s ease-in-out infinite" }}>🌿</div>
+</div>
+          </div>
+          <h1 className="text-[22px] tracking-tight text-white mt-3">Bienvenue sur Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
+          <p className="mt-2 text-sm text-zinc-400">Créez votre espace personnel</p>
           {plan && (
             <p className="mt-1 text-xs font-semibold" style={{ color: "#10b981" }}>
               {plan === "pro" ? "Plan Professionnel sélectionné" : `Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)} sélectionné`}
@@ -361,7 +362,7 @@ try {
 <button
   type="submit"
   disabled={loading || !acceptCGU}
-  className="mt-6 w-full rounded-xl bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+  className="mt-6 w-full rounded-xl - bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
   onMouseEnter={(e) => {
     if (!loading && acceptCGU) {
       e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
@@ -395,12 +396,14 @@ try {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <p className="text-zinc-400">Chargement...</p>
-      </div>
-    }>
-      <SignupForm />
-    </Suspense>
+    <>
+      <Suspense fallback={
+        <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+          <p className="text-zinc-400">Chargement...</p>
+        </div>
+      }>
+        <SignupForm />
+      </Suspense>
+    </>
   );
 }

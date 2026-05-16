@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
 const EyeIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: 20, height: 20 }}>
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5">
     <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
   </svg>
 );
 
 const EyeOffIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" style={{ width: 20, height: 20 }}>
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5">
     <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
   </svg>
 );
@@ -28,8 +28,6 @@ export default function SetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
-
-  // RGPD
   const [acceptCGU, setAcceptCGU] = useState(false);
   const [acceptData, setAcceptData] = useState(false);
 
@@ -46,239 +44,172 @@ export default function SetPasswordPage() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!firstName.trim() || !lastName.trim()) {
-      setError("Veuillez renseigner votre prénom et nom.");
-      return;
-    }
-    if (!password || password !== confirm) {
-      setError("Les mots de passe ne correspondent pas.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("Minimum 8 caractères.");
-      return;
-    }
-    if (!acceptCGU) {
-      setError("Vous devez accepter les CGU et la politique de confidentialité.");
-      return;
-    }
-    if (!acceptData) {
-      setError("Vous devez consentir au traitement de vos données nutritionnelles.");
-      return;
-    }
+    if (!firstName.trim() || !lastName.trim()) { setError("Veuillez renseigner votre prénom et nom."); return; }
+    if (!password || password !== confirm) { setError("Les mots de passe ne correspondent pas."); return; }
+    if (password.length < 8) { setError("Minimum 8 caractères."); return; }
+    if (!acceptCGU) { setError("Vous devez accepter les CGU et la politique de confidentialité."); return; }
+    if (!acceptData) { setError("Vous devez consentir au traitement de vos données nutritionnelles."); return; }
 
-    setLoading(true);
-    setError("");
+    setLoading(true); setError("");
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     const { error: updateError } = await supabase.auth.updateUser({ password });
-    if (updateError) {
-      setError(updateError.message);
-      setLoading(false);
-      return;
-    }
+    if (updateError) { setError(updateError.message); setLoading(false); return; }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await fetch("/api/create-patient", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.id,
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: user.email,
-        }),
+        body: JSON.stringify({ userId: user.id, firstName: firstName.trim(), lastName: lastName.trim(), email: user.email }),
       });
     }
-
     router.push("/patient-onboarding");
-  };
-
-  const inputStyle = {
-    display: "block", width: "100%", marginTop: 6,
-    height: 48, borderRadius: 12,
-    border: "1.5px solid #e2e8f0",
-    padding: "0 44px 0 16px", fontSize: 15, outline: "none",
-    background: "#f8fafc", color: "#0f172a",
-    boxSizing: "border-box" as const,
-    transition: "border-color 0.2s",
-  };
-
-  const eyeButtonStyle = {
-    position: "absolute" as const,
-    right: 12, top: "50%", transform: "translateY(-50%)",
-    background: "none", border: "none", cursor: "pointer",
-    color: "#94a3b8", padding: 0, display: "flex",
   };
 
   const isDisabled = loading || !password || !confirm || !firstName || !lastName || !acceptCGU || !acceptData;
 
   return (
-    <div style={{
-      minHeight: "100vh", background: "#f8fafc",
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      padding: 20,
-    }}>
-      <div style={{
-        background: "white", borderRadius: 20, padding: 32,
-        width: "100%", maxWidth: 420,
-        boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
-        border: "1px solid rgba(0,0,0,0.06)",
-      }}>
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 28,
-            background: "linear-gradient(135deg, #6ee7b7, #10b981)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 26, margin: "0 auto 16px",
-            boxShadow: "0 4px 14px rgba(16,185,129,0.3)",
-          }}>🌿</div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a" }}>
-            Bienvenue sur NutriTwin
-          </h1>
-          <p style={{ margin: "8px 0 0", fontSize: 14, color: "#64748b" }}>
-            Quelques informations pour personnaliser votre espace
-          </p>
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
+      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-12 sm:px-6">
+
+        {/* Logo */}
+        <div className="mb-8 text-center">
+          <div className="relative mx-auto mb-3 w-fit">
+            <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
+            <div style={{ position: "relative", width: 75, height: 75, margin: "0 auto" }}>
+  <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, animation: "pulse-ring 2s ease-in-out infinite" }}>🌿</div>
+</div>
+          </div>
+          <h1 className="text-[22px] tracking-tight text-white mt-3">Bienvenue sur Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
+          <p className="mt-2 text-sm text-zinc-400">Créez votre espace personnel</p>
         </div>
 
-        {!ready ? (
-          <p style={{ textAlign: "center", color: "#94a3b8", fontSize: 14 }}>
-            Vérification de votre invitation...
-          </p>
-        ) : (
-          <>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <label style={{ display: "block" }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Prénom</span>
+        <div className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
+          {!ready ? (
+            <div className="py-8 text-center">
+              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />
+              <p className="text-sm text-zinc-400">Vérification de votre invitation...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+
+              {/* Prénom / Nom */}
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-sm font-medium text-zinc-300">Prénom</span>
                   <input
                     type="text"
                     value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    onChange={e => setFirstName(e.target.value)}
                     placeholder="Ilona"
-                    style={{ ...inputStyle, padding: "0 16px" }}
-                    onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                    onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
+                    className="mt-2 w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
                   />
                 </label>
-                <label style={{ display: "block" }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Nom</span>
+                <label className="block">
+                  <span className="text-sm font-medium text-zinc-300">Nom</span>
                   <input
                     type="text"
                     value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
+                    onChange={e => setLastName(e.target.value)}
                     placeholder="Dupont"
-                    style={{ ...inputStyle, padding: "0 16px" }}
-                    onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                    onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
+                    className="mt-2 w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
                   />
                 </label>
               </div>
 
-              <label style={{ display: "block" }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Mot de passe</span>
-                <div style={{ position: "relative" }}>
+              {/* Mot de passe */}
+              <label className="block">
+                <span className="text-sm font-medium text-zinc-300">Mot de passe</span>
+                <div className="relative mt-2">
                   <input
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={e => setPassword(e.target.value)}
                     placeholder="Minimum 8 caractères"
-                    style={inputStyle}
-                    onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                    onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
+                    className="w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 pr-12 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} style={eyeButtonStyle}>
+                  <button type="button" onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition">
                     {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
                 </div>
               </label>
 
-              <label style={{ display: "block" }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Confirmer le mot de passe</span>
-                <div style={{ position: "relative" }}>
+              {/* Confirmer */}
+              <label className="block">
+                <span className="text-sm font-medium text-zinc-300">Confirmer le mot de passe</span>
+                <div className="relative mt-2">
                   <input
                     type={showConfirm ? "text" : "password"}
                     value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
+                    onChange={e => setConfirm(e.target.value)}
                     placeholder="Répétez votre mot de passe"
-                    onKeyDown={(e) => { if (e.key === "Enter") void handleSubmit(); }}
-                    style={inputStyle}
-                    onFocus={(e) => e.target.style.borderColor = "#10b981"}
-                    onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
+                    onKeyDown={e => { if (e.key === "Enter") void handleSubmit(); }}
+                    className="w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 pr-12 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
                   />
-                  <button type="button" onClick={() => setShowConfirm(!showConfirm)} style={eyeButtonStyle}>
+                  <button type="button" onClick={() => setShowConfirm(!showConfirm)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition">
                     {showConfirm ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
                 </div>
               </label>
 
-              {/* Cases RGPD */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
-                <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={acceptCGU}
-                    onChange={(e) => setAcceptCGU(e.target.checked)}
-                    style={{ marginTop: 2, accentColor: "#10b981", width: 16, height: 16, flexShrink: 0 }}
-                  />
-                  <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
+              {/* RGPD */}
+              <div className="space-y-3 pt-2">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input type="checkbox" checked={acceptCGU} onChange={e => setAcceptCGU(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[#10b981]" />
+                  <span className="text-xs leading-relaxed text-zinc-400">
                     J'accepte les{" "}
-                    <a href="/cgu" target="_blank" style={{ color: "#10b981", textDecoration: "underline" }}>
-                      Conditions Générales d'Utilisation
-                    </a>
+                    <a href="/cgu" target="_blank" className="text-[#34d399] hover:underline">CGU</a>
                     {" "}et la{" "}
-                    <a href="/confidentialite" target="_blank" style={{ color: "#10b981", textDecoration: "underline" }}>
-                      Politique de Confidentialité
-                    </a>
+                    <a href="/confidentialite" target="_blank" className="text-[#34d399] hover:underline">Politique de Confidentialité</a>
                     {" "}*
                   </span>
                 </label>
 
-                <label style={{ display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer" }}>
-                  <input
-                    type="checkbox"
-                    checked={acceptData}
-                    onChange={(e) => setAcceptData(e.target.checked)}
-                    style={{ marginTop: 2, accentColor: "#10b981", width: 16, height: 16, flexShrink: 0 }}
-                  />
-                  <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
-                    Je consens au traitement de mes informations de nutrition et d'hygiène de vie pour permettre au jumeau numérique de mon praticien de m'accompagner au quotidien. *
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input type="checkbox" checked={acceptData} onChange={e => setAcceptData(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[#10b981]" />
+                  <span className="text-xs leading-relaxed text-zinc-400">
+                    Je consens au traitement de mes données nutritionnelles pour mon accompagnement personnalisé. *
                   </span>
                 </label>
 
-                <p style={{ margin: 0, fontSize: 11, color: "#94a3b8" }}>* Champs obligatoires</p>
+                <p className="text-[11px] text-zinc-200">* Champs obligatoires</p>
               </div>
+
+              {error && (
+                <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
+                  <p className="text-sm text-red-400">{error}</p>
+                </div>
+              )}
+
+              <button
+                onClick={() => void handleSubmit()}
+                disabled={isDisabled}
+                className="mt-2 w-full rounded-xl bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                onMouseEnter={e => {
+                  if (!isDisabled) {
+                    e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
+                    e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+                  }
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.boxShadow = "none";
+                  e.currentTarget.style.transform = "translateY(0) scale(1)";
+                }}
+              >
+                {loading ? "Création en cours..." : "Accéder à mon espace →"}
+              </button>
+
+              <p className="mt-2 text-center text-xs text-zinc-500">
+                🔒 Chiffrement de bout en bout · Données traitées en Europe (RGPD)
+              </p>
             </div>
-
-            {error && (
-              <p style={{ margin: "12px 0 0", fontSize: 13, color: "#ef4444" }}>{error}</p>
-            )}
-
-            <button
-              onClick={() => void handleSubmit()}
-              disabled={isDisabled}
-              style={{
-                width: "100%", height: 48, marginTop: 20,
-                borderRadius: 24,
-                background: isDisabled ? "#e2e8f0" : "linear-gradient(135deg, #34d399, #10b981)",
-                border: "none",
-                color: isDisabled ? "#94a3b8" : "white",
-                fontSize: 15, fontWeight: 600,
-                cursor: isDisabled ? "not-allowed" : "pointer",
-                boxShadow: isDisabled ? "none" : "0 4px 14px rgba(16,185,129,0.35)",
-                transition: "all 0.2s",
-              }}
-            >
-              {loading ? "Création..." : "Accéder à mon espace"}
-            </button>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 
-const emerald = "#10b981";
-const amber = "#f59e0b";
+const emerald = "var(--accent)";
+const amber = "var(--amber)";
 
 function useInView(threshold = 0.2) {
   const ref = useRef<HTMLDivElement>(null);
@@ -392,7 +392,7 @@ export default function Home() {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
       <div className="flex items-center gap-2">
       <img src="/logo.svg" alt="NutriTwin" className="h-7 sm:h-10 w-auto relative" />
-      <span className="text-[15px] tracking-tight">Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></span>
+      <span className="text-[18px] tracking-tight">Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></span>
         </div>
 
           <nav className="hidden items-center gap-8 lg:flex">
@@ -759,7 +759,9 @@ export default function Home() {
   <div className="hidden sm:flex flex-1 justify-end">
     <p className="text-[13px] text-zinc-400">© 2026 NutriTwin</p>
   </div>
-  <p className="sm:hidden text-[12px] text-zinc-400">© 2026 NutriTwin</p>
+  <div className="sm:hidden w-full text-center">
+  <p className="text-[12px] text-zinc-400">© 2026 NutriTwin</p>
+</div>
 </div>
 
   </div>
