@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 
-const emerald = "var(--accent)";
-const amber = "var(--amber)";
+const emerald = "#10b981";
+const amber = "#f59e0b";
 
 function useInView(threshold = 0.2) {
   const ref = useRef<HTMLDivElement>(null);

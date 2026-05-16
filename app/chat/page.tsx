@@ -38,7 +38,7 @@ const BORDER = "rgba(255,255,255,0.08)";
 const TEXT_PRIMARY = "#f1f5f9";
 const TEXT_SECONDARY = "#94a3b8";
 const TEXT_MUTED = "#64748b";
-const BG_MAIN = "#0E1512";
+const BG_MAIN = "#080e0b";
 
 const quickActions = [
   "J'ai craqué ce soir, que faire ?",
@@ -194,6 +194,138 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
   </div>
 );
 
+// ═══ ONBOARDING TOUR ═══
+const onboardingSteps = [
+  {
+    id: "welcome",
+    highlight: null,
+    icon: "🌿",
+    title: "Bienvenue",
+    text: "Je suis votre compagnon de suivi, créé à partir de l'expertise de votre praticien. Laissez-moi vous montrer vos outils en quelques secondes.",
+    position: "center" as const,
+  },
+  {
+    id: "journal",
+    highlight: "journal",
+    icon: "📖",
+    title: "Mon Journal",
+    text: "C'est ici que vous déposerez vos ressentis. Plus vous m'en dites, plus je serai à même de vous aider entre vos séances.",
+    position: "sidebar" as const,
+    glowColor: "rgba(245,158,11,0.4)",
+  },
+  {
+    id: "sos",
+    highlight: "sos",
+    icon: "💙",
+    title: "Mon Soutien",
+    text: "En cas de tempête, ce bouton est votre ancre immédiate. Je ne vous laisserai jamais seul face à une crise.",
+    position: "sidebar" as const,
+    glowColor: "rgba(6,182,212,0.4)",
+  },
+  {
+    id: "camera",
+    highlight: "camera",
+    icon: "📸",
+    title: "Analyse de repas",
+    text: "Prenez votre assiette en photo. Je l'analyserai instantanément pour vérifier si elle respecte nos objectifs de la semaine.",
+    position: "bottom" as const,
+    glowColor: "rgba(16,185,129,0.4)",
+  },
+  {
+    id: "chat",
+    highlight: null,
+    icon: "💬",
+    title: "La conversation",
+    text: "Et ici, nous discutons de tout, comme si vous étiez au cabinet. Je reste là, disponible pour vous.",
+    position: "center" as const,
+  },
+];
+
+type OnboardingProps = {
+  step: number;
+  firstName: string;
+  onNext: () => void;
+  onSkip: () => void;
+  isMobile: boolean;
+};
+
+const OnboardingTour = ({ step, firstName, onNext, onSkip, isMobile }: OnboardingProps) => {
+  const current = onboardingSteps[step];
+  const isLast = step === onboardingSteps.length - 1;
+  const isFirst = step === 0;
+
+  const getBubblePosition = () => {
+    if (current.position === "center") return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+    if (current.position === "sidebar") return isMobile
+      ? { bottom: 100, left: "50%", transform: "translateX(-50%)" }
+      : { top: current.id === "journal" ? 180 : 240, left: 325, transform: "none" };
+    if (current.position === "bottom") return isMobile
+      ? { bottom: 100, left: "50%", transform: "translateX(-50%)" }
+      : { bottom: 110, right: 80, transform: "none" };
+    return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, pointerEvents: "none" }}>
+      {/* Overlay léger */}
+      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)", pointerEvents: "auto" }} onClick={onSkip} />
+
+      {/* Lueur sur le bouton concerné */}
+      {current.highlight === "journal" && !isMobile && (
+        <div style={{ position: "absolute", top: 168, left: 12, width: 281, height: 50, borderRadius: 12, boxShadow: `0 0 0 2px ${current.glowColor}, 0 0 20px ${current.glowColor}`, pointerEvents: "none", animation: "breathe 2s ease-in-out infinite" }} />
+      )}
+      {current.highlight === "sos" && !isMobile && (
+        <div style={{ position: "absolute", top: 226, left: 12, width: 281, height: 50, borderRadius: 12, boxShadow: `0 0 0 2px ${current.glowColor}, 0 0 20px ${current.glowColor}`, pointerEvents: "none", animation: "breathe 2s ease-in-out infinite" }} />
+      )}
+
+      {/* Bulle principale */}
+      <div style={{ position: "absolute", ...getBubblePosition(), width: isMobile ? "calc(100% - 40px)" : 340, maxWidth: 340, background: "#0a0f0c", borderRadius: 20, padding: 24, border: `1px solid ${ACCENT_BORDER}`, boxShadow: "0 24px 80px rgba(0,0,0,0.7)", pointerEvents: "auto", animation: "fadeUp 0.35s cubic-bezier(0.16,1,0.3,1)" }}>
+
+        {/* Icône + titre */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+            {current.icon}
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: TEXT_PRIMARY }}>{current.title}</p>
+            {isFirst && firstName && (
+              <p style={{ margin: 0, fontSize: 11, color: ACCENT }}>Bonjour {firstName} 👋</p>
+            )}
+          </div>
+        </div>
+
+        {/* Texte */}
+        <p style={{ margin: "0 0 20px", fontSize: 14, color: TEXT_SECONDARY, lineHeight: 1.7 }}>
+          {current.text}
+        </p>
+
+        {/* Progression */}
+        <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
+          {onboardingSteps.map((_, i) => (
+            <div key={i} style={{ flex: 1, height: 2, borderRadius: 1, background: i <= step ? ACCENT : "rgba(255,255,255,0.1)", transition: "background 0.3s" }} />
+          ))}
+        </div>
+
+        {/* Boutons */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onSkip}
+            style={{ flex: 1, height: 38, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 13, cursor: "pointer", transition: "all 0.2s" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = TEXT_SECONDARY; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_MUTED; }}>
+            Passer
+          </button>
+          <button onClick={onNext}
+            style={{ flex: 2, height: 38, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: `1px solid ${ACCENT_BORDER}`, color: ACCENT, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.4)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = ACCENT_BORDER; }}>
+            {isLast ? "C'est parti 🌿" : "Suivant →"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function ChatPage() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -239,6 +371,24 @@ export default function ChatPage() {
   const [showPreemptiveSOS, setShowPreemptiveSOS] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [pendingToolData, setPendingToolData] = useState<{ id: string; data: ToolData } | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [patientEmail, setPatientEmail] = useState("");
+  const [patientPhoto, setPatientPhoto] = useState<string | null>(null);
+  const [patientVictories, setPatientVictories] = useState<string[]>([]);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [showLogoutPatientModal, setShowLogoutPatientModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [savingPatientProfile, setSavingPatientProfile] = useState(false);
+  const [patientProfileSaved, setPatientProfileSaved] = useState(false);
+  const [exportingRGPD, setExportingRGPD] = useState(false);
+  const patientAvatarRef = useRef<HTMLInputElement>(null);
 
   const ancrageSteps = [
     { count: 5, sense: "voyez", icon: "👀" },
@@ -277,6 +427,29 @@ export default function ChatPage() {
     if (data) { setSessions(data as Session[]); setFilteredSessions(data as Session[]); }
   }, []);
 
+  const completeOnboarding = useCallback(async (pid: string) => {
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    await supabase.from("patients").update({ onboarding_done: true }).eq("user_id", pid);
+    setShowOnboarding(false);
+    // Message de clôture dans le chat
+    setMessages([{
+      role: "assistant",
+      content: "Voilà, vous avez vos outils en main. Je reste ici, dans le chat, pour répondre à vos questions. 🌿",
+    }]);
+  }, []);
+
+  const handleOnboardingNext = useCallback(() => {
+    if (onboardingStep < onboardingSteps.length - 1) {
+      setOnboardingStep(s => s + 1);
+    } else {
+      if (patientId) void completeOnboarding(patientId);
+    }
+  }, [onboardingStep, patientId, completeOnboarding]);
+
+  const handleOnboardingSkip = useCallback(() => {
+    if (patientId) void completeOnboarding(patientId);
+  }, [patientId, completeOnboarding]);
+
   useEffect(() => {
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     supabase.auth.getUser().then(async ({ data }) => {
@@ -291,11 +464,25 @@ export default function ChatPage() {
         const { data: hist } = await supabase.from("conversations").select("role, content").eq("patient_id", data.user.id).eq("practitioner_id", practId).is("session_id", null).order("created_at", { ascending: true });
         if (hist?.length) setMessages(hist as ChatMessage[]);
       }
-      const { data: pat } = await supabase.from("patients").select("first_name, last_name").eq("user_id", data.user.id).single();
+      const { data: pat } = await supabase.from("patients").select("first_name, last_name, onboarding_done").eq("user_id", data.user.id).single();
       if (pat) {
-        const p = pat as { first_name?: string; last_name?: string };
+        const p = pat as { first_name?: string; last_name?: string; onboarding_done?: boolean };
         if (p.first_name) setPatientFirstName(p.first_name);
         setPatientInitials(`${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase() || "?");
+        if (p.first_name) setEditFirstName(p.first_name);
+        if (p.last_name) setEditLastName(p.last_name ?? "");
+        // Charger email
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) setPatientEmail(user.email);
+        // Charger photo
+        const { data: photoData } = supabase.storage.from("Avatars").getPublicUrl(`${data.user.id}/avatar.jpg`);
+        if (photoData) setPatientPhoto(photoData.publicUrl + "?t=" + Date.now());
+        // Charger victoires
+        const victories = (p as { victories_history?: string[] }).victories_history ?? [];
+        setPatientVictories(victories);
+        if (!p.onboarding_done) {
+          setTimeout(() => setShowOnboarding(true), 600);
+        }
       }
       await loadSessions(data.user.id);
     });
@@ -548,6 +735,17 @@ export default function ChatPage() {
   return (
     <div style={{ height: "100vh", background: BG_MAIN, fontFamily: "'Inter', -apple-system, sans-serif", display: "flex", color: TEXT_PRIMARY, overflow: "hidden" }}>
 
+      {/* ═══ ONBOARDING ═══ */}
+      {showOnboarding && (
+        <OnboardingTour
+          step={onboardingStep}
+          firstName={patientFirstName}
+          onNext={handleOnboardingNext}
+          onSkip={handleOnboardingSkip}
+          isMobile={isMobile}
+        />
+      )}
+
       {/* Modale stress AVANT outil */}
       {showStressBeforeModal && (
         <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
@@ -643,26 +841,195 @@ export default function ChatPage() {
 
       {/* Modale profil */}
       {showProfileModal && (
-        <div onClick={() => setShowProfileModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 320, border: `1px solid ${ACCENT_BORDER}`, textAlign: "center" }}>
-            <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 16px" }}>
-              <div style={{ width: 72, height: 72, borderRadius: "50%", background: `radial-gradient(circle at 30% 30%, #34d399, #059669)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700, color: "black", border: "2px solid rgba(52,211,153,0.4)" }}>{patientInitials}</div>
-              <button onClick={() => profilePhotoRef.current?.click()} style={{ position: "absolute", bottom: 0, right: 0, width: 22, height: 22, borderRadius: "50%", background: ACCENT, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="black" strokeWidth="2.5" strokeLinecap="round"/></svg>
-              </button>
-              <input ref={profilePhotoRef} type="file" accept="image/*" style={{ display: "none" }} />
-            </div>
-            <h3 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY }}>Bonjour {patientFirstName || "!"} 👋</h3>
-            <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY }}>Votre espace personnel NutriTwin</p>
-            <button style={{ width: "100%", height: 44, borderRadius: 10, background: ACCENT, border: "none", color: "black", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}>Modifier mon profil</button>
-            <div style={{ display: "flex", gap: 16, justifyContent: "center" }}>
-              <a href="/confidentialite" style={{ fontSize: 11, color: TEXT_MUTED, textDecoration: "none" }}>Confidentialité</a>
-              <span style={{ color: TEXT_MUTED, fontSize: 11 }}>·</span>
-              <a href="/cgu" style={{ fontSize: 11, color: TEXT_MUTED, textDecoration: "none" }}>Conditions d'utilisation</a>
-            </div>
+  <div onClick={() => setShowProfileModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+    <div onClick={e => e.stopPropagation()} style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 360, border: `1px solid ${ACCENT_BORDER}`, maxHeight: "90vh", overflowY: "auto" }}>
+
+      {/* Avatar */}
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <div style={{ position: "relative", width: 80, height: 80, margin: "0 auto 12px" }}>
+          {patientPhoto ? (
+            <img src={patientPhoto} alt="avatar" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(52,211,153,0.4)" }} onError={() => setPatientPhoto(null)} />
+          ) : (
+            <div style={{ width: 80, height: 80, borderRadius: "50%", background: `radial-gradient(circle at 30% 30%, #34d399, #059669)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 700, color: "black", border: "2px solid rgba(52,211,153,0.4)" }}>{patientInitials}</div>
+          )}
+          <button onClick={() => patientAvatarRef.current?.click()} disabled={uploadingPhoto}
+            style={{ position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: ACCENT, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {uploadingPhoto ? <span style={{ fontSize: 10 }}>⏳</span> : <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="black" strokeWidth="2.5" strokeLinecap="round"/></svg>}
+          </button>
+          <input ref={patientAvatarRef} type="file" accept="image/*" style={{ display: "none" }} onChange={async e => {
+            const file = e.target.files?.[0]; if (!file || !patientId) return;
+            setUploadingPhoto(true);
+            const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+            const compressed = await compressImage(file);
+            const byteString = atob(compressed.base64);
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+            const blob = new Blob([ab], { type: "image/jpeg" });
+            await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg" });
+            const { data } = supabase.storage.from("Avatars").getPublicUrl(`${patientId}/avatar.jpg`);
+            setPatientPhoto(data.publicUrl + "?t=" + Date.now());
+            setUploadingPhoto(false);
+            if (patientAvatarRef.current) patientAvatarRef.current.value = "";
+          }} />
+        </div>
+        <h3 style={{ margin: "0 0 2px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY }}>{patientFirstName || "Mon profil"}</h3>
+        <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED }}>{patientEmail}</p>
+      </div>
+
+      {/* Modifier prénom/nom */}
+      <div style={{ marginBottom: 16 }}>
+        <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.1em", textTransform: "uppercase" }}>Mon profil</p>
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <input value={editFirstName} onChange={e => setEditFirstName(e.target.value)} placeholder="Prénom"
+            style={{ flex: 1, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "rgba(255,255,255,0.03)", color: TEXT_PRIMARY, padding: "0 12px", fontSize: 13, outline: "none" }}
+            onFocus={e => e.target.style.borderColor = ACCENT_BORDER}
+            onBlur={e => e.target.style.borderColor = BORDER} />
+          <input value={editLastName} onChange={e => setEditLastName(e.target.value)} placeholder="Nom"
+            style={{ flex: 1, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "rgba(255,255,255,0.03)", color: TEXT_PRIMARY, padding: "0 12px", fontSize: 13, outline: "none" }}
+            onFocus={e => e.target.style.borderColor = ACCENT_BORDER}
+            onBlur={e => e.target.style.borderColor = BORDER} />
+        </div>
+        <button onClick={async () => {
+          if (!patientId) return;
+          setSavingPatientProfile(true);
+          const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+          await supabase.from("patients").update({ first_name: editFirstName, last_name: editLastName }).eq("user_id", patientId);
+          setPatientFirstName(editFirstName);
+          setPatientInitials(`${editFirstName[0] ?? ""}${editLastName[0] ?? ""}`.toUpperCase());
+          setSavingPatientProfile(false);
+          setPatientProfileSaved(true);
+          setTimeout(() => setPatientProfileSaved(false), 2000);
+        }} disabled={savingPatientProfile}
+          style={{ width: "100%", height: 38, borderRadius: 10, background: patientProfileSaved ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.12)", border: `1px solid ${patientProfileSaved ? ACCENT : ACCENT_BORDER}`, color: ACCENT, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}>
+          {patientProfileSaved ? "✅ Sauvegardé" : savingPatientProfile ? "..." : "Sauvegarder"}
+        </button>
+      </div>
+
+      {/* Mes Victoires */}
+      {patientVictories.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.1em", textTransform: "uppercase" }}>🏆 Mes Victoires</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {patientVictories.slice(-5).reverse().map((v, i) => (
+              <div key={i} style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14 }}>🏆</span>
+                <p style={{ margin: 0, fontSize: 12, color: TEXT_SECONDARY, lineHeight: 1.5 }}>{v}</p>
+              </div>
+            ))}
           </div>
         </div>
       )}
+
+      {/* Actions */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+        {/* Export RGPD */}
+        <button onClick={async () => {
+          if (!patientId) return;
+          setExportingRGPD(true);
+          const res = await fetch(`/api/export-rgpd?patientId=${patientId}`);
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a"); a.href = url; a.download = `nutritwin-export-${new Date().toISOString().split("T")[0]}.json`; a.click();
+          URL.revokeObjectURL(url);
+          setExportingRGPD(false);
+        }} disabled={exportingRGPD}
+          style={{ width: "100%", height: 40, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = TEXT_PRIMARY; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = TEXT_SECONDARY; }}>
+          {exportingRGPD ? "Export en cours..." : "📥 Télécharger mes données (RGPD)"}
+        </button>
+
+        {/* Déconnexion */}
+        <button onClick={() => { setShowProfileModal(false); setShowLogoutPatientModal(true); }}
+          style={{ width: "100%", height: 40, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = TEXT_PRIMARY; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = TEXT_SECONDARY; }}>
+          Se déconnecter
+        </button>
+
+        {/* Supprimer */}
+        <button onClick={() => { setShowProfileModal(false); setShowDeleteAccountModal(true); }}
+          style={{ width: "100%", height: 40, borderRadius: 10, background: "rgba(244,63,94,0.06)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.12)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.06)"; }}>
+          Clôturer mon accompagnement
+        </button>
+      </div>
+
+      {/* Liens légaux */}
+      <div style={{ display: "flex", gap: 16, justifyContent: "center" }}>
+        <a href="/confidentialite" style={{ fontSize: 11, color: TEXT_MUTED, textDecoration: "none" }}>Confidentialité</a>
+        <span style={{ color: TEXT_MUTED, fontSize: 11 }}>·</span>
+        <a href="/cgu" style={{ fontSize: 11, color: TEXT_MUTED, textDecoration: "none" }}>CGU</a>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Modale déconnexion patient */}
+{showLogoutPatientModal && (
+  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", zIndex: 110, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+    <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 340, border: `1px solid ${BORDER}`, textAlign: "center" }}>
+      <p style={{ fontSize: 32, marginBottom: 12 }}>👋</p>
+      <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 600, color: TEXT_PRIMARY }}>Se déconnecter ?</h3>
+      <p style={{ margin: "0 0 24px", fontSize: 13, color: TEXT_SECONDARY }}>Vous devrez vous reconnecter pour accéder à votre espace.</p>
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={() => setShowLogoutPatientModal(false)}
+          style={{ flex: 1, height: 44, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 14, cursor: "pointer", transition: "all 0.2s" }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = TEXT_SECONDARY; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_MUTED; }}>
+          Annuler
+        </button>
+        <button onClick={async () => {
+          const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+          await supabase.auth.signOut();
+          window.location.href = "/patient-login";
+        }}
+          style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; }}>
+          Se déconnecter
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Modale suppression compte */}
+{showDeleteAccountModal && (
+  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", zIndex: 110, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+    <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 360, border: "1px solid rgba(244,63,94,0.2)", textAlign: "center" }}>
+      <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", fontSize: 22 }}>⚠️</div>
+      <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 600, color: TEXT_PRIMARY }}>Clôturer mon accompagnement</h3>
+      <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY, lineHeight: 1.6 }}>Cette action est irréversible. Toutes vos données seront supprimées conformément au RGPD.</p>
+      <input type="password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} placeholder="Confirmez avec votre mot de passe"
+        style={{ width: "100%", height: 44, borderRadius: 10, border: `1px solid ${deleteError ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "rgba(255,255,255,0.03)", color: TEXT_PRIMARY, padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 8, fontFamily: "inherit" }}
+        onFocus={e => e.target.style.borderColor = "rgba(244,63,94,0.4)"}
+        onBlur={e => e.target.style.borderColor = deleteError ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"} />
+      {deleteError && <p style={{ margin: "0 0 12px", fontSize: 12, color: "#f87171" }}>{deleteError}</p>}
+      <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+        <button onClick={() => { setShowDeleteAccountModal(false); setDeletePassword(""); setDeleteError(""); }}
+          style={{ flex: 1, height: 44, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 14, cursor: "pointer", transition: "all 0.2s" }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = TEXT_SECONDARY; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_MUTED; }}>
+          Annuler
+        </button>
+        <button onClick={async () => {
+          if (!deletePassword || !patientId) return;
+          setDeletingAccount(true); setDeleteError("");
+          const res = await fetch("/api/delete-account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId, password: deletePassword, email: patientEmail }) });
+          const data = await res.json() as { error?: string };
+          if (!res.ok) { setDeleteError(data.error ?? "Erreur"); setDeletingAccount(false); return; }
+          window.location.href = "/patient-login";
+        }} disabled={deletingAccount || !deletePassword}
+          style={{ flex: 1, height: 44, borderRadius: 10, background: deletingAccount || !deletePassword ? "rgba(244,63,94,0.04)" : "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.3)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: deletingAccount || !deletePassword ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
+          {deletingAccount ? "Suppression..." : "Confirmer"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Upsell */}
       {showUpsellModal && (
@@ -673,7 +1040,12 @@ export default function ChatPage() {
             </div>
             <h3 style={{ margin: "0 0 10px", fontSize: 17, fontWeight: 600, color: TEXT_PRIMARY }}>Analyse visuelle</h3>
             <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY, lineHeight: 1.6 }}>Cette option n'est pas encore activée par votre praticien.</p>
-            <button onClick={() => setShowUpsellModal(false)} style={{ width: "100%", height: 46, borderRadius: 10, background: ACCENT, border: "none", color: "black", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Compris</button>
+            <button onClick={() => setShowUpsellModal(false)}
+              style={{ width: "100%", height: 46, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+              Compris
+            </button>
           </div>
         </div>
       )}
@@ -681,11 +1053,11 @@ export default function ChatPage() {
       {sidebarOpen && isMobile && <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 20 }} />}
 
       {/* ═══ SIDEBAR ═══ */}
-      <aside style={{ width: sidebarOpen ? sidebarWidth : 0, minWidth: sidebarOpen ? sidebarWidth : 0, background: "linear-gradient(180deg, #0d1f17 0%, #0a1a12 50%, #081510 100%)", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100vh", zIndex: isMobile ? 30 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 20px rgba(0,0,0,0.5)" }}>
+      <aside style={{ width: sidebarOpen ? sidebarWidth : 0, minWidth: sidebarOpen ? sidebarWidth : 0, background: "linear-gradient(180deg, #0b1a14 0%, #090f0c 50%, #070c0a 100%)", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100vh", zIndex: isMobile ? 30 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 20px rgba(0,0,0,0.5)" }}>
         <div style={{ width: sidebarWidth, display: "flex", flexDirection: "column", height: "100%", padding: "0 12px" }}>
 
           {/* Header sidebar */}
-          <div style={{ padding: "20px 16px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: "0 1px 0 rgba(255,255,255,0.08)", margin: "0 -12px", marginBottom: 16 }}>
+          <div style={{ padding: "20px 16px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0a1510", borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "0 -12px", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <img src="/logo.svg" alt="NutriTwin" style={{ height: 42, width: "auto" }}
                 onError={e => { const t = e.target as HTMLImageElement; t.style.display = "none"; const n = t.nextElementSibling as HTMLElement; if (n) n.style.display = "flex"; }} />
@@ -802,8 +1174,7 @@ export default function ChatPage() {
       {/* ═══ ZONE PRINCIPALE ═══ */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        {/* Header */}
-        <header style={{ background: "#0a1510", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "0 16px", height: 82, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        <header style={{ background: "#0a1410", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "0 16px", height: 82, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           {!sidebarOpen && (
             <button onClick={() => setSidebarOpen(true)} style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
               onMouseEnter={e => e.currentTarget.style.background = SURFACE}
@@ -853,19 +1224,7 @@ export default function ChatPage() {
                   Je suis votre compagnon de suivi, créé à partir de l'expertise de votre praticien.
                 </p>
                 <div style={{ marginBottom: 40 }}>
-                  <InputBar
-                    isCenter={true}
-                    message={message}
-                    setMessage={setMessage}
-                    send={send}
-                    loading={loading}
-                    pendingImage={pendingImage}
-                    photoHovered={photoHovered}
-                    setPhotoHovered={setPhotoHovered}
-                    handleImageClick={handleImageClick}
-                    handleKeyDown={handleKeyDown}
-                    inputRef={inputRef}
-                  />
+                  <InputBar isCenter={true} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} />
                 </div>
                 <p style={{ margin: "0 0 16px", fontSize: 11, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.1em", textTransform: "uppercase" }}>Questions fréquentes</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
@@ -941,19 +1300,7 @@ export default function ChatPage() {
               </div>
             )}
             <div style={{ maxWidth: 700, margin: "0 auto" }}>
-              <InputBar
-                isCenter={false}
-                message={message}
-                setMessage={setMessage}
-                send={send}
-                loading={loading}
-                pendingImage={pendingImage}
-                photoHovered={photoHovered}
-                setPhotoHovered={setPhotoHovered}
-                handleImageClick={handleImageClick}
-                handleKeyDown={handleKeyDown}
-                inputRef={inputRef}
-              />
+              <InputBar isCenter={false} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} />
               <p style={{ margin: "6px 0 0", fontSize: 10, color: TEXT_MUTED, textAlign: "center" }}>
                 NutriTwin est une IA et peut se tromper · En cas de doute, consultez votre praticien
               </p>
@@ -985,4 +1332,3 @@ export default function ChatPage() {
     </div>
   );
 }
-
