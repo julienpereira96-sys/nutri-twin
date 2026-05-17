@@ -839,8 +839,8 @@ export default function ChatPage() {
 
       {renderTool()}
 
-      {/* Modale profil */}
-      {showProfileModal && (
+     {/* Modale profil */}
+{showProfileModal && (
   <div onClick={() => setShowProfileModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
     <div onClick={e => e.stopPropagation()} style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 360, border: `1px solid ${ACCENT_BORDER}`, maxHeight: "90vh", overflowY: "auto" }}>
 
@@ -873,37 +873,24 @@ export default function ChatPage() {
             if (patientAvatarRef.current) patientAvatarRef.current.value = "";
           }} />
         </div>
-        <h3 style={{ margin: "0 0 2px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY }}>{patientFirstName || "Mon profil"}</h3>
-        <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED }}>{patientEmail}</p>
-      </div>
 
-      {/* Modifier prénom/nom */}
-      <div style={{ marginBottom: 16 }}>
-        <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.1em", textTransform: "uppercase" }}>Mon profil</p>
-        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-          <input value={editFirstName} onChange={e => setEditFirstName(e.target.value)} placeholder="Prénom"
-            style={{ flex: 1, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "rgba(255,255,255,0.03)", color: TEXT_PRIMARY, padding: "0 12px", fontSize: 13, outline: "none" }}
-            onFocus={e => e.target.style.borderColor = ACCENT_BORDER}
-            onBlur={e => e.target.style.borderColor = BORDER} />
-          <input value={editLastName} onChange={e => setEditLastName(e.target.value)} placeholder="Nom"
-            style={{ flex: 1, height: 40, borderRadius: 10, border: `1px solid ${BORDER}`, background: "rgba(255,255,255,0.03)", color: TEXT_PRIMARY, padding: "0 12px", fontSize: 13, outline: "none" }}
-            onFocus={e => e.target.style.borderColor = ACCENT_BORDER}
-            onBlur={e => e.target.style.borderColor = BORDER} />
+        {/* Identité en lecture seule */}
+        <h3 style={{ margin: "0 0 2px", fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY }}>{patientFirstName} {editLastName}</h3>
+        <p style={{ margin: "0 0 10px", fontSize: 12, color: TEXT_MUTED }}>{patientEmail}</p>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 20, padding: "4px 12px", marginBottom: 4 }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke={ACCENT} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          <span style={{ fontSize: 10, color: ACCENT, fontWeight: 600 }}>Identité vérifiée par votre praticien</span>
         </div>
-        <button onClick={async () => {
-          if (!patientId) return;
-          setSavingPatientProfile(true);
-          const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-          await supabase.from("patients").update({ first_name: editFirstName, last_name: editLastName }).eq("user_id", patientId);
-          setPatientFirstName(editFirstName);
-          setPatientInitials(`${editFirstName[0] ?? ""}${editLastName[0] ?? ""}`.toUpperCase());
-          setSavingPatientProfile(false);
-          setPatientProfileSaved(true);
-          setTimeout(() => setPatientProfileSaved(false), 2000);
-        }} disabled={savingPatientProfile}
-          style={{ width: "100%", height: 38, borderRadius: 10, background: patientProfileSaved ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.12)", border: `1px solid ${patientProfileSaved ? ACCENT : ACCENT_BORDER}`, color: ACCENT, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}>
-          {patientProfileSaved ? "✅ Sauvegardé" : savingPatientProfile ? "..." : "Sauvegarder"}
-        </button>
+        <div style={{ marginTop: 6 }}>
+          <button onClick={() => {
+            setShowProfileModal(false);
+            setMessage("Bonjour, il y a une erreur dans mon nom dans mon dossier.");
+          }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: TEXT_MUTED, textDecoration: "underline", textDecorationStyle: "dotted", padding: 0 }}
+            onMouseEnter={e => e.currentTarget.style.color = TEXT_SECONDARY}
+            onMouseLeave={e => e.currentTarget.style.color = TEXT_MUTED}>
+            Une erreur dans votre nom ? Prévenez votre praticien.
+          </button>
+        </div>
       </div>
 
       {/* Mes Victoires */}
@@ -923,7 +910,6 @@ export default function ChatPage() {
 
       {/* Actions */}
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-        {/* Export RGPD */}
         <button onClick={async () => {
           if (!patientId) return;
           setExportingRGPD(true);
@@ -940,28 +926,26 @@ export default function ChatPage() {
           {exportingRGPD ? "Export en cours..." : "📥 Télécharger mes données (RGPD)"}
         </button>
 
-        {/* Déconnexion */}
         <button onClick={() => { setShowProfileModal(false); setShowLogoutPatientModal(true); }}
           style={{ width: "100%", height: 40, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = TEXT_PRIMARY; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = TEXT_SECONDARY; }}>
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; e.currentTarget.style.color = "#f87171"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_SECONDARY; }}>
           Se déconnecter
         </button>
 
-        {/* Supprimer */}
         <button onClick={() => { setShowProfileModal(false); setShowDeleteAccountModal(true); }}
           style={{ width: "100%", height: 40, borderRadius: 10, background: "rgba(244,63,94,0.06)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.12)"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.06)"; }}>
+          onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.12)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.35)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.06)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; }}>
           Clôturer mon accompagnement
         </button>
       </div>
 
       {/* Liens légaux */}
       <div style={{ display: "flex", gap: 16, justifyContent: "center" }}>
-        <a href="/confidentialite" style={{ fontSize: 11, color: TEXT_MUTED, textDecoration: "none" }}>Confidentialité</a>
+        <a href="/confidentialite" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: TEXT_MUTED, textDecoration: "none" }}>Confidentialité</a>
         <span style={{ color: TEXT_MUTED, fontSize: 11 }}>·</span>
-        <a href="/cgu" style={{ fontSize: 11, color: TEXT_MUTED, textDecoration: "none" }}>CGU</a>
+        <a href="/cgu" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: TEXT_MUTED, textDecoration: "none" }}>CGU</a>
       </div>
     </div>
   </div>
@@ -1053,11 +1037,11 @@ export default function ChatPage() {
       {sidebarOpen && isMobile && <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 20 }} />}
 
       {/* ═══ SIDEBAR ═══ */}
-      <aside style={{ width: sidebarOpen ? sidebarWidth : 0, minWidth: sidebarOpen ? sidebarWidth : 0, background: "linear-gradient(180deg, #0b1a14 0%, #090f0c 50%, #070c0a 100%)", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100vh", zIndex: isMobile ? 30 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 20px rgba(0,0,0,0.5)" }}>
+      <aside style={{ width: sidebarOpen ? sidebarWidth : 0, minWidth: sidebarOpen ? sidebarWidth : 0, background: "linear-gradient(180deg, #0b1a14 0%, #090f0c 50%, #070c0a 100%)", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100vh", zIndex: isMobile ? 30 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 24px rgba(0,0,0,5)", borderRight: "1px solid rgba(16,185,129,0.08)", }}>
         <div style={{ width: sidebarWidth, display: "flex", flexDirection: "column", height: "100%", padding: "0 12px" }}>
 
           {/* Header sidebar */}
-          <div style={{ padding: "20px 16px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0a1510", borderBottom: "1px solid rgba(255,255,255,0.1)", margin: "0 -12px", marginBottom: 16 }}>
+          <div style={{ padding: "20px 16px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "transparent", borderBottom: "1px solid rgba(16,185,129,0.12)", margin: "0 -12px", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <img src="/logo.svg" alt="NutriTwin" style={{ height: 42, width: "auto" }}
                 onError={e => { const t = e.target as HTMLImageElement; t.style.display = "none"; const n = t.nextElementSibling as HTMLElement; if (n) n.style.display = "flex"; }} />
@@ -1174,7 +1158,7 @@ export default function ChatPage() {
       {/* ═══ ZONE PRINCIPALE ═══ */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        <header style={{ background: "#0a1410", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.1)", padding: "0 16px", height: 82, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        <header style={{ background: "linear-gradient(90deg, #0b1a14 0%, #080e0b 50%, #0b1a14 100%)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(16,185,129,0.15)", padding: "0 16px", height: 82, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           {!sidebarOpen && (
             <button onClick={() => setSidebarOpen(true)} style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
               onMouseEnter={e => e.currentTarget.style.background = SURFACE}
