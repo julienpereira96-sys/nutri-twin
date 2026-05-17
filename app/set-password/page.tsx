@@ -1,126 +1,216 @@
-import { createServerClient } from "@supabase/auth-helpers-nextjs";
-import { type NextRequest, NextResponse } from "next/server";
+"use client";
 
-export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
-          );
-        },
-      },
-    },
+const EyeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+  </svg>
+);
+
+const EyeOffIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+  </svg>
+);
+
+export default function SetPasswordPage() {
+  const router = useRouter();
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [ready, setReady] = useState(false);
+  const [acceptCGU, setAcceptCGU] = useState(false);
+  const [acceptData, setAcceptData] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+        setReady(true);
+      }
+    });
+  }, []);
+
+  const handleSubmit = async () => {
+    if (!firstName.trim() || !lastName.trim()) { setError("Veuillez renseigner votre prénom et nom."); return; }
+    if (!password || password !== confirm) { setError("Les mots de passe ne correspondent pas."); return; }
+    if (password.length < 8) { setError("Minimum 8 caractères."); return; }
+    if (!acceptCGU) { setError("Vous devez accepter les CGU et la politique de confidentialité."); return; }
+    if (!acceptData) { setError("Vous devez consentir au traitement de vos données nutritionnelles."); return; }
+
+    setLoading(true); setError("");
+
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    if (updateError) { setError(updateError.message); setLoading(false); return; }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await fetch("/api/create-patient", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id, firstName: firstName.trim(), lastName: lastName.trim(), email: user.email }),
+      });
+    }
+    router.push("/patient-onboarding");
+  };
+
+  const isDisabled = loading || !password || !confirm || !firstName || !lastName || !acceptCGU || !acceptData;
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
+      <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-12 sm:px-6">
+
+        {/* Logo */}
+        <div className="mb-8 text-center">
+          <div className="relative mx-auto mb-3 w-fit">
+            <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
+            <div style={{ position: "relative", width: 75, height: 75, margin: "0 auto" }}>
+  <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, animation: "pulse-ring 2s ease-in-out infinite" }}>🌿</div>
+</div>
+          </div>
+          <h1 className="text-[22px] tracking-tight text-white mt-3">Bienvenue sur Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
+          <p className="mt-2 text-sm text-zinc-400">Créez votre espace personnel</p>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
+          {!ready ? (
+            <div className="py-8 text-center">
+              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />
+              <p className="text-sm text-zinc-400">Vérification de votre invitation...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+
+              {/* Prénom / Nom */}
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-sm font-medium text-zinc-300">Prénom</span>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={e => setFirstName(e.target.value)}
+                    placeholder="Ilona"
+                    className="mt-2 w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-zinc-300">Nom</span>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={e => setLastName(e.target.value)}
+                    placeholder="Dupont"
+                    className="mt-2 w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
+                  />
+                </label>
+              </div>
+
+              {/* Mot de passe */}
+              <label className="block">
+                <span className="text-sm font-medium text-zinc-300">Mot de passe</span>
+                <div className="relative mt-2">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Minimum 8 caractères"
+                    className="w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 pr-12 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition">
+                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                  </button>
+                </div>
+              </label>
+
+              {/* Confirmer */}
+              <label className="block">
+                <span className="text-sm font-medium text-zinc-300">Confirmer le mot de passe</span>
+                <div className="relative mt-2">
+                  <input
+                    type={showConfirm ? "text" : "password"}
+                    value={confirm}
+                    onChange={e => setConfirm(e.target.value)}
+                    placeholder="Répétez votre mot de passe"
+                    onKeyDown={e => { if (e.key === "Enter") void handleSubmit(); }}
+                    className="w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 pr-12 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
+                  />
+                  <button type="button" onClick={() => setShowConfirm(!showConfirm)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition">
+                    {showConfirm ? <EyeOffIcon /> : <EyeIcon />}
+                  </button>
+                </div>
+              </label>
+
+              {/* RGPD */}
+              <div className="space-y-3 pt-2">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input type="checkbox" checked={acceptCGU} onChange={e => setAcceptCGU(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[#10b981]" />
+                  <span className="text-xs leading-relaxed text-zinc-400">
+                    J'accepte les{" "}
+                    <a href="/cgu" target="_blank" className="text-[#34d399] hover:underline">CGU</a>
+                    {" "}et la{" "}
+                    <a href="/confidentialite" target="_blank" className="text-[#34d399] hover:underline">Politique de Confidentialité</a>
+                    {" "}*
+                  </span>
+                </label>
+
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input type="checkbox" checked={acceptData} onChange={e => setAcceptData(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[#10b981]" />
+                  <span className="text-xs leading-relaxed text-zinc-400">
+                    Je consens au traitement de mes données nutritionnelles pour mon accompagnement personnalisé. *
+                  </span>
+                </label>
+
+                <p className="text-[11px] text-zinc-200">* Champs obligatoires</p>
+              </div>
+
+              {error && (
+                <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
+                  <p className="text-sm text-red-400">{error}</p>
+                </div>
+              )}
+
+              <button
+                onClick={() => void handleSubmit()}
+                disabled={isDisabled}
+                className="mt-2 w-full rounded-xl bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                onMouseEnter={e => {
+                  if (!isDisabled) {
+                    e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
+                    e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+                  }
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.boxShadow = "none";
+                  e.currentTarget.style.transform = "translateY(0) scale(1)";
+                }}
+              >
+                {loading ? "Création en cours..." : "Accéder à mon espace →"}
+              </button>
+
+              <p className="mt-2 text-center text-xs text-zinc-500">
+                🔒 Chiffrement de bout en bout · Données traitées en Europe (RGPD)
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
-
-  const { data: { user } } = await supabase.auth.getUser();
-  const path = request.nextUrl.pathname;
-
-  // Routes publiques
-  if (
-    path === "/" ||
-    path.startsWith("/signup") ||
-    path.startsWith("/login") ||
-    path.startsWith("/patient-login") ||
-    path.startsWith("/set-password") ||
-    path.startsWith("/reset-password") //
-  ) {
-    return supabaseResponse;
-  }
-
-  // /verify-otp — besoin d'un email en paramètre
-  if (path.startsWith("/verify-otp")) {
-    const email = request.nextUrl.searchParams.get("email");
-    if (!email) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-    return supabaseResponse;
-  }
-
-  // /checkout — besoin d'être connecté
-  if (path.startsWith("/checkout")) {
-    if (!user) {
-      return NextResponse.redirect(new URL("/signup", request.url));
-    }
-    return supabaseResponse;
-  }
-
-  // /payment-success — besoin d'être connecté
-  if (path.startsWith("/payment-success")) {
-    if (!user) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-    return supabaseResponse;
-  }
-
-   // /patient-onboarding — besoin d'être connecté (patient)
-   if (path.startsWith("/patient-onboarding")) {
-    if (!user) {
-      return NextResponse.redirect(new URL("/patient-login", request.url));
-    }
-    return supabaseResponse;
-  }
-
-  // /chat — besoin d'être connecté (patient)
-  if (path.startsWith("/chat")) {
-    if (!user) {
-      return NextResponse.redirect(new URL("/patient-login", request.url));
-    }
-    return supabaseResponse;
-  }
-
-  // /onboarding — besoin d'être connecté + PAS encore de profil
-  if (path.startsWith("/onboarding")) {
-    if (!user) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-    const { data: profile } = await supabase
-      .from("practitioner_profiles")
-      .select("user_id")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
-    return supabaseResponse;
-  }
-
-  // /dashboard — besoin d'être connecté + profil complété
-  if (path.startsWith("/dashboard")) {
-    if (!user) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-    const { data: profile } = await supabase
-      .from("practitioner_profiles")
-      .select("user_id")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile) {
-      return NextResponse.redirect(new URL("/onboarding", request.url));
-    }
-    return supabaseResponse;
-  }
-
-  return supabaseResponse;
 }
-
-export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-  ],
-};
-
