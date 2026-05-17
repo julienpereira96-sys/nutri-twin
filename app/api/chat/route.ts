@@ -69,6 +69,82 @@ const COMPLEX_KEYWORDS = [
   "échec", "culpabilité", "désespoir", "craquer", "pleurer",
 ];
 
+
+
+// ═══ DÉTECTION DE CRISE ═══
+const CRISIS_CRITICAL_KEYWORDS = [
+  // Suicide
+  "suicide", "suicider", "me suicider", "suicidaire", "veux mourir", "envie de mourir",
+  "je veux mourir", "en finir", "plus envie de vivre", "disparaître", "disparaitre",
+  "me tuer", "me faire du mal", "mettre fin à ma vie", "fin à ma vie",
+  // Urgences vitales
+  "gorge qui serre", "gorge enfle", "lèvres gonflent", "lèvres gonflées", "allergie grave",
+  "anaphylaxie", "epipen", "je suffoque", "je peux plus respirer",
+  "douleur poitrine", "douleur thoracique", "bras gauche engourdi", "bras qui engourdit",
+  "je perds connaissance", "je vais perdre connaissance", "vision floue soudaine",
+  "paralysie", "je parle plus", "bouche tordue",
+  // Hypoglycémie sévère  
+  "je tremble plus je peux", "sueurs froides et confus", "je comprends plus rien",
+  // Menaces
+  "je vais le tuer", "je vais la tuer", "je vais faire du mal", "envie de frapper",
+];
+
+const CRISIS_ALERT_KEYWORDS = [
+  // TCA graves
+  "je me suis fait vomir", "j'ai vomi exprès", "je prends des laxatifs", "laxatifs après manger",
+  "je mange rien depuis", "j'ai rien mangé depuis", "moins de 500 calories", "moins de 600 calories",
+  "j'ai tout mangé d'un coup", "j'ai tout englouti", "crise de boulimie", "hyperphagie",
+  // Arrêt traitement
+  "arrêter mon traitement", "arrêter mes médicaments", "stop mes cachets", "plus prendre mes médicaments",
+  // Grossesse
+  "je suis enceinte", "j'attends un bébé", "grossesse", "je suis tombée enceinte",
+  // Interactions médicamenteuses
+  "nouveau médicament", "on m'a prescrit", "ordonnance nouvelle",
+  // Décompensation
+  "on empoisonne", "ils me surveillent", "je suis suivie", "complot", "on veut me faire du mal",
+];
+
+function detectCrisisLevel(message: string): "critical" | "alert" | "none" {
+  const lower = message.toLowerCase();
+  if (CRISIS_CRITICAL_KEYWORDS.some(kw => lower.includes(kw))) return "critical";
+  if (CRISIS_ALERT_KEYWORDS.some(kw => lower.includes(kw))) return "alert";
+  return "none";
+}
+
+const CRISIS_CRITICAL_RESPONSES: Record<string, string> = {
+  suicide: "Je t'entends, et ce que tu ressens est réel. Tu n'es pas seul(e). Appelle maintenant le 3114 — c'est le numéro national de prévention du suicide, disponible 24h/24, gratuit et confidentiel. Ton praticien sera également informé immédiatement. 🌿",
+  medical: "Ce que tu décris nécessite une attention médicale immédiate. Appelle le 15 (SAMU) ou le 112 maintenant. Ne reste pas seul(e). Ton praticien sera informé.",
+  threat: "Je prends note de ce que tu exprimes. Si tu te sens en danger ou si tu risques de faire du mal à quelqu'un, appelle le 17 (Police) ou le 112 immédiatement.",
+};
+
+function getCriticalResponseType(message: string): string {
+  const lower = message.toLowerCase();
+  if (["suicide", "mourir", "en finir", "tuer", "disparaître", "disparaitre"].some(kw => lower.includes(kw))) return "suicide";
+  if (["gorge", "respire", "poitrine", "thoracique", "bras", "paralysie", "tremble", "sueurs froides"].some(kw => lower.includes(kw))) return "medical";
+  if (["je vais le tuer", "je vais la tuer", "faire du mal", "frapper"].some(kw => lower.includes(kw))) return "threat";
+  return "suicide";
+}
+
+function getTCAResponse(firstName: string): string {
+  return `Je sens que c'est un moment très difficile pour toi, ${firstName}. On va mettre de côté les conseils alimentaires pour l'instant. Je vais en toucher deux mots à ton praticien pour qu'on puisse t'épauler au mieux. Respire, je suis là. 🌿`;
+}
+
+function getAlertMurmure(message: string): string {
+  const lower = message.toLowerCase();
+  if (["enceinte", "grossesse", "bébé"].some(kw => lower.includes(kw)))
+    return "Le patient a confirmé une grossesse. Priorité à la nutrition prénatale et à l'équilibre micronutritionnel. Suspendre tout objectif de perte de poids ou de restriction.";
+  if (["vomi", "laxatif", "boulimie", "hyperphagie"].some(kw => lower.includes(kw)))
+    return "Comportement TCA détecté. Passer en mode soutien uniquement. Ne pas donner de conseils nutritionnels jusqu'à la prochaine consultation.";
+  if (["arrêter mon traitement", "stop mes cachets", "plus prendre mes médicaments"].some(kw => lower.includes(kw)))
+    return "Le patient envisage d'arrêter son traitement médical. Rediriger systématiquement vers le médecin traitant sur ce sujet.";
+  if (["nouveau médicament", "on m'a prescrit", "ordonnance"].some(kw => lower.includes(kw)))
+    return "Nouveau médicament signalé. Vérifier les interactions possibles avec le protocole nutritionnel en cours.";
+  if (["complot", "empoisonne", "surveillent"].some(kw => lower.includes(kw)))
+    return "Signes de décompensation psychologique détectés. Reprendre la main manuellement et contacter le patient directement.";
+  return "Alerte comportementale détectée. Vérifier la conversation et contacter le patient si nécessaire.";
+}
+
+
 function isComplexMessage(message: string): boolean {
   const lower = message.toLowerCase();
   if (message.split(" ").length > 15) return true;
@@ -559,6 +635,80 @@ export async function POST(request: Request) {
         });
       }
     }      
+
+    // ═══ DÉTECTION CRISE ═══
+const crisisLevel = detectCrisisLevel(message);
+
+if (crisisLevel === "critical" && patientId && practitionerId) {
+  const supabase = createSupabaseClient();
+  const responseType = getCriticalResponseType(message);
+  const criticalResponse = CRISIS_CRITICAL_RESPONSES[responseType];
+
+  // Vérification Gemini avant d'envoyer l'alerte
+  const verifyModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: { maxOutputTokens: 10, temperature: 0 } });
+  const verifyResult = await verifyModel.generateContent(`Ce message exprime-t-il un danger de mort immédiat pour le patient ou pour autrui ? Réponds uniquement par "oui" ou "non". Message : "${message}"`);
+  const verifyText = verifyResult.response.text().trim().toLowerCase();
+
+  if (verifyText.includes("oui")) {
+    // Mettre à jour le statut patient
+    await supabase.from("patients").update({
+      emotional_status: "red_critical",
+      emotional_insight: "Alerte critique détectée",
+    }).eq("user_id", patientId);
+
+    // Ajouter admin_alert
+    const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
+    const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+    await supabase.from("patients").update({
+      admin_alerts: [...alerts, { type: "crisis", alert_type: responseType, date: new Date().toISOString(), seen: false, murmure: "" }]
+    }).eq("user_id", patientId);
+
+    // Sauvegarder la conversation
+    await supabase.from("conversations").insert([
+      { patient_id: patientId, practitioner_id: practitionerId, role: "user", content: message, session_id: sessionId ?? null },
+      { patient_id: patientId, practitioner_id: practitionerId, role: "assistant", content: criticalResponse, session_id: sessionId ?? null },
+    ]);
+
+    // Envoyer email au praticien
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "",
+        },
+        body: JSON.stringify({ patientId, practitionerId, alertType: responseType, message }),        
+      });
+    } catch { /* silencieux */ }
+
+    return new Response(criticalResponse, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+}
+
+if (crisisLevel === "alert" && patientId && practitionerId) {
+  const supabase = createSupabaseClient();
+  const murmure = getAlertMurmure(message);
+
+  await supabase.from("patients").update({ emotional_status: "red" }).eq("user_id", patientId);
+  
+  const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
+  const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+  
+  await supabase.from("patients").update({
+    admin_alerts: [...alerts, { 
+      type: "alert", 
+      alert_type: "behavioral", 
+      date: new Date().toISOString(), 
+      seen: false, 
+      murmure 
+    }]
+  }).eq("user_id", patientId);
+
+  // ON NE RETURN PAS — Gemini continue
+}
+
 
     const practitionerData = practitionerId
       ? await getPractitionerData(practitionerId)

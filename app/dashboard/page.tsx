@@ -141,7 +141,7 @@ const OnboardingTour = ({ step, practitionerName, onNext, onSkip }: OnboardingPr
 // ═══ TYPES ═══
 type RealPatient = {
   id: string; firstName: string; lastName: string; initials: string; avatarColor: string; email: string;
-  lastMessage: string; lastMessageTime: string; lastMessageRole: string; totalMessages: number;admin_alerts?: { type: string; date: string; seen: boolean }[];
+  lastMessage: string; lastMessageTime: string; lastMessageRole: string; totalMessages: number;admin_alerts?: { type: string; date: string; seen: boolean; alert_type?: string; murmure?: string }[];
   age?: number; sexe?: string; taille?: number; poids?: number; objective?: string; pathologies?: string;
   allergies?: string; traitements?: string; objectif_clinique?: string; niveau_activite?: string;
   regime_specifique?: string; notes?: string; brief_jumeau?: string; practitioner_instruction?: string;
@@ -158,6 +158,75 @@ const AVATAR_COLORS = ["#f43f5e", "#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#
 
 function getStatusColor(status?: string) { if (status === "red") return coral; if (status === "orange") return amber; return emerald; }
 function getStatusEmoji(status?: string) { if (status === "red") return "🔴"; if (status === "orange") return "🟠"; return "🟢"; }
+
+function LeverAlerteCritique({ alert, patientId, onResolved }: { alert: { type: string; alert_type?: string }; patientId: string; onResolved: () => void }) {
+  const [checked, setChecked] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+
+  const resolve = async () => {
+    setLoading(true);
+    await supabase.from("patients").update({ emotional_status: "green", admin_alerts: [] }).eq("user_id", patientId);
+    await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId }) });
+    onResolved();
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ background: "rgba(244,63,94,0.06)", border: "1px solid rgba(244,63,94,0.2)", borderRadius: 8, padding: "10px 12px" }}>
+      <label style={{ display: "flex", alignItems: "flex-start", gap: 8, cursor: "pointer", marginBottom: 10 }}>
+        <input type="checkbox" checked={checked} onChange={e => setChecked(e.target.checked)} style={{ marginTop: 2, accentColor: "#f43f5e", flexShrink: 0 }} />
+        <span style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>Je certifie avoir pris contact avec le patient et mis en place les mesures de sécurité nécessaires.</span>
+      </label>
+      <button onClick={resolve} disabled={!checked || loading}
+        style={{ width: "100%", height: 32, borderRadius: 8, background: checked ? "rgba(244,63,94,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${checked ? "rgba(244,63,94,0.3)" : "rgba(255,255,255,0.06)"}`, color: checked ? "#f87171" : "#64748b", fontSize: 11, fontWeight: 600, cursor: checked ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
+        {loading ? "..." : "Confirmer et lever l'alerte"}
+      </button>
+    </div>
+  );
+}
+
+function LeverAlerteSimple({ alert, patientId, murmureSuggere, onResolved }: { alert: object; patientId: string; murmureSuggere: string; onResolved: (murmure: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [murmure, setMurmure] = useState(murmureSuggere);
+  const [loading, setLoading] = useState(false);
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+
+  const resolve = async () => {
+    setLoading(true);
+    await supabase.from("patients").update({
+      emotional_status: "green",
+      admin_alerts: [],
+      ...(murmure ? { practitioner_instruction: murmure } : {}),
+    }).eq("user_id", patientId);
+    onResolved(murmure);
+    setLoading(false);
+    setOpen(false);
+  };
+
+  if (!open) return (
+    <button onClick={() => setOpen(true)}
+      style={{ height: 28, borderRadius: 8, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.08)", color: amber, transition: "all 0.2s" }}>
+      Lever l'alerte →
+    </button>
+  );
+
+  return (
+    <div style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 8, padding: "10px 12px" }}>
+      <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: amber }}>Murmure suggéré par le Jumeau</p>
+      <textarea value={murmure} onChange={e => setMurmure(e.target.value)} rows={3}
+        style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "white", padding: "8px 10px", fontSize: 11, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.5, marginBottom: 8 }} />
+      <div style={{ display: "flex", gap: 6 }}>
+        <button onClick={() => setOpen(false)} style={{ flex: 1, height: 28, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 11, cursor: "pointer" }}>Annuler</button>
+        <button onClick={resolve} disabled={loading}
+          style={{ flex: 2, height: 28, borderRadius: 8, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", color: emerald, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+          {loading ? "..." : "Lever et activer le murmure →"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 
 export default function DashboardPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
@@ -281,8 +350,13 @@ export default function DashboardPage() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const fidelityScore = hasDocuments === true ? 100 : 70;
-  const fidelityColor = hasDocuments === true ? emerald : amber;
+  const fidelityScore = 
+  documents.length === 0 ? 70 : 
+  documents.length === 1 ? 85 : 
+  documents.length === 2 ? 95 : 100;
+  const fidelityColor = 
+  documents.length === 0 ? amber : 
+  documents.length >= 3 ? emerald : "#06b6d4"; 
   const [editAge, setEditAge] = useState("");
   const [editObjective, setEditObjective] = useState("");
   const [editPathologies, setEditPathologies] = useState("");
@@ -401,7 +475,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
     : patients.find((p) => p.id === selectedPatientId);
 
   const filteredPatients = displayedPatients.filter((p) => `${p.firstName} ${p.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()));
-  const redPatients = displayedPatients.filter((p) => p.emotional_status === "red");
+  const redPatients = displayedPatients.filter((p) => p.emotional_status === "red" || p.emotional_status === "red_critical");
   const orangePatients = displayedPatients.filter((p) => p.emotional_status === "orange");
   const victoryPatients = displayedPatients.filter((p) => p.latest_victory);
 
@@ -742,6 +816,25 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
         </div>
       </header>
 
+      {/* Bandeau critique global */}
+      {patients.some(p => p.emotional_status === "red_critical") && (
+  <div style={{ background: "rgba(244,63,94,0.12)", borderBottom: "1px solid rgba(244,63,94,0.4)", padding: "10px 24px", animation: "criticalPulse 2s ease-in-out infinite", position: "sticky", top: 64, zIndex: 45 }}>
+    <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", alignItems: "center", gap: 12 }}>
+      <span style={{ fontSize: 18, flexShrink: 0 }}>🚨</span>
+      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: coral }}>Alerte critique — Intervention immédiate requise</p>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginLeft: 8 }}>
+        {patients.filter(p => p.emotional_status === "red_critical").map(p => (
+          <button key={p.id} onClick={() => { setSelectedPatientId(p.id); setActiveTab("patients"); }}
+            style={{ background: "rgba(244,63,94,0.15)", border: "1px solid rgba(244,63,94,0.4)", borderRadius: 20, padding: "3px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: coral, filter: discretMode ? "blur(4px)" : "none" }}>
+            {p.firstName} {p.lastName}
+          </button>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
+
       {/* Bandeau victoires */}
       {victoryPatients.length > 0 && (
         <div style={{ background: "rgba(16,185,129,0.08)", borderBottom: "1px solid rgba(16,185,129,0.2)", padding: "10px 24px" }}>
@@ -927,9 +1020,48 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Alerte admin */}
+                  {(selectedPatient.admin_alerts?.filter(a => !a.seen).length ?? 0) > 0 && !onboardingDemoMode && (
+                    <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                        <span style={{ fontSize: 12 }}>⚠️</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: amber }}>Action requise</span>
+                      </div>
+                      {selectedPatient.admin_alerts?.filter(a => !a.seen).map((alert, i) => (
+                        <div key={i} style={{ marginBottom: 8 }}>
+                          <p style={{ margin: "0 0 6px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
+                            {alert.type === "crisis" && alert.alert_type === "suicide" && "Le patient a exprimé des idées suicidaires."}
+                            {alert.type === "crisis" && alert.alert_type === "medical" && "Urgence médicale signalée par le patient."}
+                            {alert.type === "crisis" && alert.alert_type === "threat" && "Le patient a exprimé une menace envers autrui."}
+                            {alert.type === "alert" && "Comportement sensible détecté — relecture recommandée."}
+                            {alert.type === "admin_alert" && alert.alert_type === "identity_correction" && "Le patient signale une erreur dans son nom."}
+                          </p>
+                          {alert.type === "crisis" ? (
+                            <LeverAlerteCritique alert={alert} patientId={selectedPatient.id} onResolved={() => {
+                              setPatients(prev => prev.map(p => p.id === selectedPatient.id ? {
+                                ...p,
+                                emotional_status: "green",
+                                admin_alerts: []
+                              } : p));
+                            }} />
+                          ) : (
+                            <LeverAlerteSimple alert={alert} patientId={selectedPatient.id} murmureSuggere={(alert as { murmure?: string }).murmure ?? ""} onResolved={(murmure) => {
+                              setPatients(prev => prev.map(p => p.id === selectedPatient.id ? {
+                                ...p,
+                                emotional_status: "green",
+                                practitioner_instruction: murmure || p.practitioner_instruction,
+                                admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a)
+                              } : p));
+                            }} />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                  {/* Murmure */}
-                  <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px", marginBottom: 10 }}>
+                   {/* Murmure */}
+                   <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px", marginBottom: 10 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                       <span style={{ fontSize: 11 }}>🎙️</span>
                       <span style={{ fontSize: 11, fontWeight: 700, color: emerald }}>Murmure actif</span>
@@ -952,6 +1084,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                       </button>
                     </div>
                   )}
+                
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <button onClick={() => !onboardingDemoMode && openMurmureModal()}
@@ -978,15 +1111,32 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
         )}
 
        
- {activeTab === "radar" && (
+{activeTab === "radar" && (
   <div>
+    {/* ═══ BANDEAU CRITIQUE ═══ */}
+    {displayedPatients.some(p => p.emotional_status === "red_critical") && (
+      <div style={{ background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.4)", borderRadius: 16, padding: "16px 20px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12, animation: "criticalPulse 2s ease-in-out infinite" }}>
+        <span style={{ fontSize: 20, flexShrink: 0 }}>🚨</span>
+        <div style={{ flex: 1 }}>
+          <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: coral }}>Alerte critique — Intervention immédiate requise</p>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {displayedPatients.filter(p => p.emotional_status === "red_critical").map(p => (
+              <button key={p.id} onClick={() => { setSelectedPatientId(p.id); setActiveTab("patients"); }}
+                style={{ background: "rgba(244,63,94,0.15)", border: "1px solid rgba(244,63,94,0.4)", borderRadius: 20, padding: "3px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: coral, filter: discretMode ? "blur(4px)" : "none" }}>
+                {p.firstName} {p.lastName}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+
     {/* ═══ HEADER RÉSILIENCE ═══ */}
     <div style={{ marginBottom: 28 }}>
       <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Radar émotionnel</h2>
       <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Résilience du cabinet · Statut IA mis à jour à chaque message</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
-
         {/* Carte 1 — Delta stress */}
         <div style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 16, padding: 20 }}>
           <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Delta de stress moyen</p>
@@ -1062,35 +1212,49 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
     ) : (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
         {[...displayedPatients].sort((a, b) => {
-          const order = { red: 0, orange: 1, green: 2 };
-          return (order[a.emotional_status as keyof typeof order] ?? 2) - (order[b.emotional_status as keyof typeof order] ?? 2);
+          const order = { red_critical: 0, red: 1, orange: 2, green: 3 };
+          return (order[a.emotional_status as keyof typeof order] ?? 3) - (order[b.emotional_status as keyof typeof order] ?? 3);
         }).map((patient) => {
-          const statusColor = getStatusColor(patient.emotional_status);
-          const isRed = patient.emotional_status === "red";
+          const isCritical = patient.emotional_status === "red_critical";
+          const isRed = patient.emotional_status === "red" || isCritical;
+          const statusColor = isCritical ? coral : getStatusColor(patient.emotional_status);
           return (
-            <div key={patient.id} style={{ borderRadius: 16, padding: "20px", background: isRed ? "rgba(244,63,94,0.05)" : "rgba(255,255,255,0.02)", border: `1px solid ${isRed ? "rgba(244,63,94,0.25)" : "rgba(255,255,255,0.06)"}`, boxShadow: isRed ? "0 0 24px rgba(244,63,94,0.12)" : "none", transition: "all 0.3s" }}>
+            <div key={patient.id} style={{ borderRadius: 16, padding: "20px", background: isCritical ? "rgba(244,63,94,0.08)" : isRed ? "rgba(244,63,94,0.05)" : "rgba(255,255,255,0.02)", border: `1px solid ${isCritical ? "rgba(244,63,94,0.5)" : isRed ? "rgba(244,63,94,0.25)" : "rgba(255,255,255,0.06)"}`, boxShadow: isCritical ? "0 0 32px rgba(244,63,94,0.25)" : isRed ? "0 0 24px rgba(244,63,94,0.12)" : "none", transition: "all 0.3s", animation: isCritical ? "criticalPulse 2s ease-in-out infinite" : "none" }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
                 <button onClick={() => { setSelectedPatientId(patient.id); setActiveTab("patients"); }} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                   <div style={{ width: 40, height: 40, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "white" }}>{patient.initials}</div>
                   <div style={{ textAlign: "left" }}>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "white", filter: discretMode ? "blur(4px)" : "none" }}>{patient.firstName} {patient.lastName}</p>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: isCritical ? coral : "white", filter: discretMode ? "blur(4px)" : "none" }}>{patient.firstName} {patient.lastName}</p>
                     <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{patient.totalMessages} messages</p>
                   </div>
                 </button>
-                <span style={{ fontSize: 18 }}>{getStatusEmoji(patient.emotional_status)}</span>
+                <span style={{ fontSize: 18 }}>{isCritical ? "🚨" : getStatusEmoji(patient.emotional_status)}</span>
               </div>
               {patient.emotional_insight && (
                 <p style={{ margin: "0 0 10px", fontSize: 12, color: statusColor, lineHeight: 1.5, fontStyle: "italic", filter: discretMode ? "blur(4px)" : "none" }}>
                   "{patient.emotional_insight}"
                 </p>
               )}
+              {isCritical && (
+                <div style={{ background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: coral }}>⚡ Intervention immédiate</span>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
     )}
+
+    <style>{`
+      @keyframes criticalPulse {
+        0%, 100% { box-shadow: 0 0 32px rgba(244,63,94,0.25); }
+        50% { box-shadow: 0 0 48px rgba(244,63,94,0.5); }
+      }
+    `}</style>
   </div>
 )}
+
 
         {/* ═══ VUE IMPACT ═══ */}
         {activeTab === "valeur" && (
