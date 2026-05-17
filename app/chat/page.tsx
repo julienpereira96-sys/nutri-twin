@@ -882,14 +882,15 @@ export default function ChatPage() {
           <span style={{ fontSize: 10, color: ACCENT, fontWeight: 600 }}>Identité vérifiée par votre praticien</span>
         </div>
         <div style={{ marginTop: 6 }}>
-          <button onClick={() => {
-            setShowProfileModal(false);
-            setMessage("Bonjour, il y a une erreur dans mon nom dans mon dossier.");
-          }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: TEXT_MUTED, textDecoration: "underline", textDecorationStyle: "dotted", padding: 0 }}
-            onMouseEnter={e => e.currentTarget.style.color = TEXT_SECONDARY}
-            onMouseLeave={e => e.currentTarget.style.color = TEXT_MUTED}>
-            Une erreur dans votre nom ? Prévenez votre praticien.
-          </button>
+        <button onClick={() => {
+          setShowProfileModal(false);
+          setMessage("[ADMIN:identity_correction] Bonjour, il y a une erreur dans mon nom dans mon dossier.");
+        }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: TEXT_MUTED, textDecoration: "underline", textDecorationStyle: "dotted", padding: 0 }}
+          onMouseEnter={e => e.currentTarget.style.color = TEXT_SECONDARY}
+          onMouseLeave={e => e.currentTarget.style.color = TEXT_MUTED}>
+          Une erreur dans votre nom ? Prévenez votre praticien.
+        </button>
+
         </div>
       </div>
 

@@ -141,7 +141,7 @@ const OnboardingTour = ({ step, practitionerName, onNext, onSkip }: OnboardingPr
 // ═══ TYPES ═══
 type RealPatient = {
   id: string; firstName: string; lastName: string; initials: string; avatarColor: string; email: string;
-  lastMessage: string; lastMessageTime: string; lastMessageRole: string; totalMessages: number;
+  lastMessage: string; lastMessageTime: string; lastMessageRole: string; totalMessages: number;admin_alerts?: { type: string; date: string; seen: boolean }[];
   age?: number; sexe?: string; taille?: number; poids?: number; objective?: string; pathologies?: string;
   allergies?: string; traitements?: string; objectif_clinique?: string; niveau_activite?: string;
   regime_specifique?: string; notes?: string; brief_jumeau?: string; practitioner_instruction?: string;
@@ -331,7 +331,8 @@ export default function DashboardPage() {
     const { data: relations } = await supabase.from("patient_practitioner").select("patient_id").eq("practitioner_id", pid);
     if (!relations || relations.length === 0) { setLoading(false); return; }
     const patientIds = relations.map((r) => r.patient_id);
-    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, notes, brief_jumeau, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes").in("user_id", patientIds);
+    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, notes, brief_jumeau, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts")
+    .in("user_id", patientIds);
     if (!patientsData) { setLoading(false); return; }
     const patientsWithStats = await Promise.all(
       patientsData.map(async (p, i) => {
@@ -350,7 +351,9 @@ export default function DashboardPage() {
           objective: p.objective, pathologies: p.pathologies, allergies: p.allergies, notes: p.notes,
           brief_jumeau: p.brief_jumeau, practitioner_instruction: p.practitioner_instruction,
           emotional_status: p.emotional_status ?? "green", emotional_insight: p.emotional_insight ?? "",
-          latest_victory: p.latest_victory ?? "", private_notes: p.private_notes ?? "",
+latest_victory: p.latest_victory ?? "", private_notes: p.private_notes ?? "",
+admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[] | null) ?? [],
+
         };
       })
     );

@@ -423,6 +423,11 @@ RÈGLES ABSOLUES :
 - Ne JAMAIS dire "En tant qu'IA", "En tant que modèle de langue" ou similaire. Tu ES ce praticien.
 - Ne jamais inventer des informations médicales non confirmées.
 
+COMMANDE ADMINISTRATIVE :
+Si le message commence par [ADMIN:identity_correction] :
+- Réponds uniquement : "C'est noté. J'ai transmis la demande de correction à votre praticien pour que votre dossier soit parfaitement à jour. Pouvez-vous me préciser l'orthographe exacte de votre nom ?"
+- Ajoute obligatoirement : |||{"status":"green","reason":"demande correction identité","victory":"","action":"admin_alert","alert_type":"identity_correction"}|||
+
 JSON TECHNIQUE OBLIGATOIRE — À ajouter en toute fin de réponse, invisible pour le patient :
 |||{"status":"green","reason":"résumé état en 8 mots max","victory":""}|||
 - status : "red" si détresse/découragement sévère, "orange" si difficulté modérée, "green" si tout va bien
@@ -645,17 +650,19 @@ Max 150 mots. Sans markdown.`;
         let emotionalStatus = "green";
         let emotionalInsight = "";
         let victoryText = "";
+        let adminAlert: { action?: string; alert_type?: string } = {};
         const statusMatch = fullText.match(/\|\|\|([\s\S]*?)\|\|\|/);
         if (statusMatch) {
           try {
-            const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string; victory?: string };
+            const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string; victory?: string; action?: string; alert_type?: string };
             emotionalStatus = parsed.status;
             emotionalInsight = parsed.reason;
             victoryText = parsed.victory ?? "";
+            if (parsed.action) adminAlert = { action: parsed.action, alert_type: parsed.alert_type };
           } catch { /* silencieux */ }
           fullText = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
         }
-
+        
         if (patientId) {
           await supabase.from("conversations").insert([
             {
@@ -673,13 +680,21 @@ Max 150 mots. Sans markdown.`;
               session_id: sessionId ?? null,
             },
           ]);
-
+        
           await supabase.from("patients").update({
             emotional_status: emotionalStatus,
             emotional_insight: emotionalInsight,
             ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString() } : {}),
           }).eq("user_id", patientId);
-
+        
+          if (adminAlert.action === "admin_alert") {
+            const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
+            const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+            await supabase.from("patients").update({
+              admin_alerts: [...alerts, { type: adminAlert.alert_type, date: new Date().toISOString(), seen: false }]
+            }).eq("user_id", patientId);
+          }
+        
           if (sessionId) {
             await supabase.from("conversations_sessions").update({
               last_message: fullText.slice(0, 100),
@@ -687,7 +702,7 @@ Max 150 mots. Sans markdown.`;
             }).eq("id", sessionId);
           }
         }
-
+        
         controller.close();
       },
     });
@@ -709,3 +724,4 @@ Max 150 mots. Sans markdown.`;
 }
 
 export { invalidatePractitionerCache };
+
