@@ -15,14 +15,14 @@ export async function POST(request: Request) {
 
   const now = new Date().toISOString();
 
-  const { error } = await supabase.from("patients").insert({
+  const { error } = await supabase.from("patients").upsert({
     user_id: userId,
     first_name: firstName,
     last_name: lastName,
     email,
     rgpd_accepted_at: now,
     rgpd_data_accepted_at: now,
-  });
+  }, { onConflict: "user_id" });  
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ success: true });

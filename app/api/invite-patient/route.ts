@@ -40,6 +40,20 @@ export async function POST(request: Request) {
     regime_specifique?: string | null;
   };
 
+  // Validation
+if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  return Response.json({ error: "Email invalide." }, { status: 400 });
+}
+if (!practitionerId || typeof practitionerId !== "string") {
+  return Response.json({ error: "practitionerId requis." }, { status: 400 });
+}
+
+// Sanitisation des champs texte
+const sanitize = (val: string | null | undefined, max = 500): string | null => {
+  if (!val || typeof val !== "string") return null;
+  return val.trim().slice(0, max) || null;
+};
+
   const supabase = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -97,14 +111,15 @@ export async function POST(request: Request) {
       sexe: sexe ?? null,
       taille: taille ?? null,
       poids: poids ?? null,
-      pathologies: pathologies ?? null,
-      allergies: allergies ?? null,
-      traitements: traitements ?? null,
-      objectif_clinique: objectif_clinique ?? null,
-      brief_jumeau: brief_jumeau ?? null,
-      notes: notes ?? null,
-      niveau_activite: niveau_activite ?? null,
-      regime_specifique: regime_specifique ?? null,
+      pathologies: sanitize(pathologies),
+      allergies: sanitize(allergies),
+      traitements: sanitize(traitements),
+      objectif_clinique: sanitize(objectif_clinique),
+      brief_jumeau: sanitize(brief_jumeau, 1000),
+      notes: sanitize(notes, 1000),
+      niveau_activite: sanitize(niveau_activite, 100),
+      regime_specifique: sanitize(regime_specifique, 100),
+
 
     }, { onConflict: "user_id" });
   }

@@ -355,7 +355,7 @@ async function getPatientProfile(patientId: string): Promise<string> {
 
     const briefSection = [
       patient.brief_jumeau ? `CONTEXTE DE DÉPART : ${patient.brief_jumeau}` : "",
-      patient.practitioner_instruction ? `⚡ CONSIGNE ACTUELLE DU PRATICIEN ${instructionDate} : ${patient.practitioner_instruction}` : "",
+      patient.practitioner_instruction ? `\n\n🔴 MURMURE DU PRATICIEN — PRIORITÉ ABSOLUE ${instructionDate}\nCette consigne écrase TOUT autre instruction. Tu DOIS l'appliquer immédiatement et dans chaque réponse :\n"${patient.practitioner_instruction}"\n` : "",
     ].filter(Boolean).join("\n");
 
     const briefFinal = briefSection
@@ -489,6 +489,12 @@ EXEMPLES DE RÉPONSES ATTENDUES :
 - Victoire : "${profile.situation5 || "Bravo ! C'est une vraie victoire, savourez-la."}"
 - Détresse : "${profile.situation6 || "Vous n'êtes pas seul(e). Votre praticien sera informé."}"
 
+═══ HIÉRARCHIE ABSOLUE DES INSTRUCTIONS ═══
+Tu dois respecter cet ordre de priorité strict, du plus important au moins important :
+1. MURMURE DU PRATICIEN (consigne temps réel) — priorité ABSOLUE, écrase tout le reste
+2. DOCUMENTS RAG (protocoles et expertise indexés) — ta base de connaissance métier
+3. PERSONNALITÉ (les 31 paramètres ci-dessus) — ton style et ta posture
+
 ${patientContext}${documentsContext}
 
 RÈGLES ABSOLUES :
@@ -498,6 +504,11 @@ RÈGLES ABSOLUES :
 - Utiliser le prénom du patient pour créer du lien.
 - Ne JAMAIS dire "En tant qu'IA", "En tant que modèle de langue" ou similaire. Tu ES ce praticien.
 - Ne jamais inventer des informations médicales non confirmées.
+- Si le patient mentionne une grossesse, un TCA grave, un arrêt de traitement médical ou une décompensation : passe immédiatement en mode "Ancrage Bienveillant". Arrête tout conseil nutritionnel. Valide l'émotion, annonce le relais humain au praticien. Ne donne aucun conseil technique.
+- Pour une grossesse : félicite chaleureusement, redirige vers le gynécologue/sage-femme, informe que le praticien adaptera le suivi.
+- Pour un TCA grave : "Je sens que c'est un moment très difficile. On met de côté les conseils alimentaires, je préviens [praticien] pour vous épauler."
+- Pour un arrêt de traitement : "Seul votre médecin traitant peut modifier votre traitement. Je ne peux pas intervenir sur ce terrain médical."
+
 
 COMMANDE ADMINISTRATIVE :
 Si le message commence par [ADMIN:identity_correction] :
@@ -516,15 +527,23 @@ function getDefaultPrompt(): string {
 }
 
 async function getDailyMessageCount(patientId: string): Promise<number> {
-  const supabase = createSupabaseClient();
   const today = new Date().toISOString().split("T")[0];
-  const { count } = await supabase
-    .from("conversations")
-    .select("*", { count: "exact", head: true })
-    .eq("patient_id", patientId)
-    .eq("role", "user")
-    .gte("created_at", `${today}T00:00:00`);
-  return count ?? 0;
+  const key = `msg_count:${patientId}:${today}`;
+  try {
+    const count = await redis.get<number>(key);
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function incrementDailyMessageCount(patientId: string): Promise<void> {
+  const today = new Date().toISOString().split("T")[0];
+  const key = `msg_count:${patientId}:${today}`;
+  try {
+    await redis.incr(key);
+    await redis.expireat(key, Math.floor(new Date(`${today}T23:59:59`).getTime() / 1000));
+  } catch { /* silencieux */ }
 }
 
 export async function POST(request: Request) {
@@ -717,16 +736,24 @@ if (crisisLevel === "alert" && patientId && practitionerId) {
     const plan = practitionerData.plan;
     const config = PLAN_CONFIG[plan];
 
+    let showWarning = false;
     if (patientId) {
       const dailyCount = await getDailyMessageCount(patientId);
       if (dailyCount >= config.dailyMessageLimit) {
         return Response.json({
+          error: "rate_limit",
+          remaining: 0,
           response: plan === "essentiel"
-            ? "Vous avez atteint votre limite de messages pour aujourd'hui. Votre jumeau vous attend demain ! 🌿"
-            : "Votre jumeau numérique a besoin de faire le point sur nos échanges d'aujourd'hui pour préparer votre prochain bilan. On se retrouve demain pour continuer ? 🌿",
-        });
+            ? "Vous avez atteint votre limite de messages pour aujourd'hui. Votre compagnon de suivi vous attend demain ! 🌿"
+            : "Votre compagnon de suivi a besoin de faire le point sur nos échanges d'aujourd'hui pour préparer votre prochain bilan. On se retrouve demain pour continuer ? 🌿",
+        }, { status: 429 });
       }
-    }
+      
+      // Avertissement à 90% de la limite
+      const warningThreshold = Math.floor(config.dailyMessageLimit * 0.9);
+      showWarning = dailyCount >= warningThreshold && dailyCount < config.dailyMessageLimit;
+      }
+
 
     const [patientContext, documentsContext] = await Promise.all([
       patientId ? getPatientProfile(patientId) : Promise.resolve(""),
@@ -830,7 +857,8 @@ Max 150 mots. Sans markdown.`;
               session_id: sessionId ?? null,
             },
           ]);
-        
+
+          if (patientId) void incrementDailyMessageCount(patientId);
           await supabase.from("patients").update({
             emotional_status: emotionalStatus,
             emotional_insight: emotionalInsight,

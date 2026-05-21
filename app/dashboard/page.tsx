@@ -286,6 +286,8 @@ export default function DashboardPage() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showJumeauModal, setShowJumeauModal] = useState(false);
+  const [jumeauText, setJumeauText] = useState("");
+  const [jumeauTextUploading, setJumeauTextUploading] = useState(false);
   const [showMurmureModal, setShowMurmureModal] = useState(false);
   const [practitionerId, setPractitionerId] = useState<string | null>(null);
 
@@ -545,8 +547,8 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
 
   const openJumeauModal = async () => {
     setShowJumeauModal(true); setUploadedFiles([]); setUploadSuccess([]); setUploadErrors([]); setDocumentType(null);
-    if (practitionerId) await loadDocuments(practitionerId);
-  };
+    if (practitionerId) void loadDocuments(practitionerId);
+  };  
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -1520,113 +1522,211 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
         </div>
       )}
 
-      {showJumeauModal && (
-        <div onClick={(e) => { if (e.target === e.currentTarget) setShowJumeauModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 560, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>Améliorer mon jumeau</h2>
-                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>Gérez les documents qui enrichissent votre jumeau</p>
-              </div>
-              <button onClick={() => setShowJumeauModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
+{showJumeauModal && (
+  <div onClick={(e) => { if (e.target === e.currentTarget) setShowJumeauModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+    <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 560, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
+      
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div>
+          <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>Votre expertise</p>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>Mon Jumeau</h2>
+        </div>
+        <button onClick={() => setShowJumeauModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
+      </div>
+
+      {/* Score de fidélité */}
+      {(() => {
+        const count = documents.length;
+        const score = count === 0 ? 70 : count === 1 ? 85 : 100;
+        const color = count === 0 ? "#f59e0b" : count === 1 ? "#06b6d4" : "#10b981";
+        const msg = count === 0
+          ? "⚠️ Jumeau initialisé — Votre jumeau connaît votre personnalité mais il lui manque encore votre expertise. Partagez votre vision et votre signature pour lui donner votre pleine précision."
+          : count === 1
+          ? "🔹 Jumeau Personnalisé — Une première brique de votre expertise a été intégrée. Ajoutez un second document pour que votre double soit parfaitement opérationnel et certifié."
+          : "✅ Jumeau certifié — Précision maximale atteinte. Votre jumeau possède désormais votre expertise.";
+        return (
+          <div style={{ background: `${color}10`, borderRadius: 16, border: `2px solid ${color}40`, padding: "16px", marginBottom: 20, transition: "all 0.5s" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>Score de fidélité du jumeau</span>
+              <span style={{ fontSize: 16, fontWeight: 800, color }}>{score}%</span>
             </div>
-            <div style={{ background: hasDocuments ? "rgba(16,185,129,0.05)" : "rgba(245,158,11,0.08)", borderRadius: 16, border: `1px solid ${hasDocuments ? "rgba(16,185,129,0.2)" : "rgba(245,158,11,0.3)"}`, padding: "16px", marginBottom: 20 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>Score de fidélité</span>
-                <span style={{ fontSize: 16, fontWeight: 800, color: fidelityColor }}>{fidelityScore}%</span>
-              </div>
-              <div style={{ height: 8, background: "rgba(255,255,255,0.08)", borderRadius: 4 }}>
-                <div style={{ height: "100%", borderRadius: 4, backgroundColor: fidelityColor, width: `${fidelityScore}%`, transition: "width 0.7s" }} />
-              </div>
-              <p style={{ margin: "10px 0 0", fontSize: 13, color: hasDocuments ? emerald : amber, fontWeight: 500 }}>
-                {hasDocuments ? "✅ Jumeau Fidèle — Votre jumeau est prêt." : "⚠️ Importez au moins un document."}
-              </p>
+            <div style={{ height: 10, background: "rgba(255,255,255,0.08)", borderRadius: 5 }}>
+              <div style={{ height: "100%", borderRadius: 5, backgroundColor: color, width: `${score}%`, transition: "width 0.7s" }} />
             </div>
-            <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>Documents indexés ({documents.length})</p>
-              {loadingDocs ? <p style={{ fontSize: 13, color: "#64748b" }}>Chargement...</p> : documents.length === 0 ? (
-                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", padding: "20px", textAlign: "center" }}>
-                  <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Aucun document indexé</p>
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {documents.map((doc) => (
-                    <div key={doc.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                        <span style={{ fontSize: 18, flexShrink: 0 }}>{fileTypeIcon(doc.file_type)}</span>
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 13, color: "white", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.file_name}</p>
-                          <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{new Date(doc.created_at).toLocaleDateString("fr-FR")}</p>
-                        </div>
-                      </div>
-                      <button onClick={() => void deleteDocument(doc.id, doc.file_name)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#64748b", flexShrink: 0, marginLeft: 8, padding: "4px 8px", borderRadius: 6 }} onMouseEnter={(e) => e.currentTarget.style.color = "#f87171"} onMouseLeave={(e) => e.currentTarget.style.color = "#64748b"}>✕</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 700, color: "white" }}>Type de document</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-                {[{ type: "protocole" as const, icon: "📋", label: "Protocoles & méthodes", desc: "Articles, plans alimentaires", note: "✓ Indexé tel quel", noteColor: emerald }, { type: "patient" as const, icon: "🗂️", label: "Données patients", desc: "Bilans, comptes-rendus", note: "✓ Anonymisé avant indexation", noteColor: "#60a5fa" }].map(({ type, icon, label, desc, note, noteColor }) => (
-                  <button key={type} onClick={() => setDocumentType(type)} style={{ borderRadius: 12, border: `2px solid ${documentType === type ? emerald : "rgba(255,255,255,0.1)"}`, background: documentType === type ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)", padding: "14px", textAlign: "left", cursor: "pointer" }}>
-                    <p style={{ margin: "0 0 6px", fontSize: 22 }}>{icon}</p>
-                    <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "white" }}>{label}</p>
-                    <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>{desc}</p>
-                    <p style={{ margin: 0, fontSize: 12, color: noteColor, fontWeight: 600 }}>{note}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-            <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a" onChange={handleFileChange} style={{ display: "none" }} />
-            <label onClick={() => fileInputRef.current?.click()} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", borderRadius: 12, border: "2px dashed rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.01)", padding: "20px", cursor: "pointer", marginBottom: 12 }} onMouseEnter={(e) => e.currentTarget.style.borderColor = "rgba(16,185,129,0.4)"} onMouseLeave={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"}>
-              <span style={{ fontSize: 32, marginBottom: 8 }}>📄</span>
-              <span style={{ fontSize: 14, fontWeight: 500, color: "#94a3b8" }}>Cliquez pour sélectionner</span>
-              <span style={{ fontSize: 12, color: "#475569", marginTop: 4 }}>PDF · DOCX · TXT · JPG · PNG · Excel · CSV · MP3</span>
-            </label>
-            <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 12, border: "1.5px solid rgba(16,185,129,0.2)", padding: "14px 16px", marginBottom: 12 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <span style={{ fontSize: 22 }}>🎙️</span>
-                <div>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "white" }}>Mémo vocal</p>
-                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>Transcription automatique.</p>
-                </div>
-              </div>
-              {!audioBlob ? (
-                <button onClick={isRecording ? stopRecording : startRecording}
-                  style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: `1px solid ${isRecording ? "rgba(239,68,68,0.3)" : "rgba(16,185,129,0.3)"}`, background: isRecording ? "rgba(239,68,68,0.08)" : "rgba(16,185,129,0.08)", color: isRecording ? "#f87171" : emerald, transition: "all 0.2s" }}>
-                  {isRecording ? <><span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", animation: "breathe 1s ease-in-out infinite" }} />Arrêter — {formatTime(recordingTime)}</> : <>🎙️ Enregistrer</>}
-                </button>
-              ) : (
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <p style={{ margin: 0, fontSize: 13, color: emerald }}>✅ {formatTime(recordingTime)}</p>
-                  <button onClick={uploadAudioMemo} style={{ borderRadius: 20, padding: "8px 16px", fontSize: 13, fontWeight: 600, background: emerald, border: "none", color: "black", cursor: "pointer" }}>Ajouter</button>
-                  <button onClick={() => setAudioBlob(null)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 16 }}>✕</button>
-                </div>
-              )}
-            </div>
-            {uploadedFiles.length > 0 && (
-              <div style={{ marginBottom: 12 }}>
-                {uploadedFiles.map((f, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, color: "#94a3b8" }}>{f.name}</span>
-                    <button onClick={() => setUploadedFiles((prev) => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer" }}>✕</button>
+            <p style={{ margin: "10px 0 0", fontSize: 13, color, fontWeight: 500 }}>{msg}</p>
+          </div>
+        );
+      })()}
+
+      {/* Documents indexés */}
+      <div style={{ marginBottom: 20 }}>
+        <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>Documents indexés ({documents.length})</p>
+        {loadingDocs ? (
+          <p style={{ fontSize: 13, color: "#64748b" }}>Chargement...</p>
+        ) : documents.length === 0 ? (
+          <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", padding: "20px", textAlign: "center" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Aucun document indexé</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {documents.map((doc) => (
+              <div key={doc.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>{fileTypeIcon(doc.file_type)}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, color: "white", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {doc.file_name.startsWith("dashboard_note_") ? "Note personnalisée" : doc.file_name.startsWith("memo_vocal_") ? "Mémo vocal" : doc.file_name}
+                    </p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{new Date(doc.created_at).toLocaleDateString("fr-FR")}</p>
                   </div>
-                ))}
-                <button onClick={() => void uploadFiles()} disabled={uploading || !documentType}
-                  style={{ width: "100%", height: 48, borderRadius: 12, background: uploading || !documentType ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${uploading || !documentType ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: uploading || !documentType ? "#64748b" : emerald, fontSize: 14, fontWeight: 600, cursor: uploading || !documentType ? "not-allowed" : "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                  {uploading ? "Indexation en cours..." : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""} →`}
+                </div>
+                <button onClick={() => void deleteDocument(doc.id, doc.file_name)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", flexShrink: 0, marginLeft: 8, padding: "4px 8px", borderRadius: 6, transition: "color 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                  onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                  </svg>
                 </button>
               </div>
-            )}
-            {uploadSuccess.length > 0 && (
-              <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", padding: "12px 14px" }}>
-                {uploadSuccess.map((s, i) => <p key={i} style={{ margin: "0 0 2px", fontSize: 12, color: emerald }}>✅ {s}</p>)}
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Encadrés upload */}
+      <div style={{ marginBottom: 16 }}>
+        <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>Ajouter des documents</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+          {[
+            { type: "protocole" as const, icon: "📋", label: "Protocoles & méthodes", desc: "Articles, plans alimentaires", note: "✓ Indexé tel quel", noteColor: emerald },
+            { type: "patient" as const, icon: "🗂️", label: "Données patients", desc: "Bilans, comptes-rendus", note: "✓ Anonymisé avant indexation", noteColor: "#60a5fa" }
+          ].map(({ type, icon, label, desc, note, noteColor }) => (
+            <label key={type} style={{ borderRadius: 12, border: `2px dashed ${documentType === type ? (type === "patient" ? "#60a5fa" : emerald) : "rgba(255,255,255,0.15)"}`, background: documentType === type ? (type === "patient" ? "rgba(96,165,250,0.08)" : "rgba(16,185,129,0.08)") : "rgba(255,255,255,0.02)", padding: "14px", textAlign: "left", cursor: "pointer", transition: "all 0.2s", display: "block" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = type === "patient" ? "rgba(96,165,250,0.6)" : "rgba(16,185,129,0.6)"; e.currentTarget.style.background = type === "patient" ? "rgba(96,165,250,0.05)" : "rgba(16,185,129,0.05)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = documentType === type ? (type === "patient" ? "#60a5fa" : emerald) : "rgba(255,255,255,0.15)"; e.currentTarget.style.background = documentType === type ? (type === "patient" ? "rgba(96,165,250,0.08)" : "rgba(16,185,129,0.08)") : "rgba(255,255,255,0.02)"; }}>
+              <input type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a"
+                onChange={e => { setDocumentType(type); handleFileChange(e); }}
+                style={{ display: "none" }} />
+              <p style={{ margin: "0 0 6px", fontSize: 22 }}>{icon}</p>
+              <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "white" }}>{label}</p>
+              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>{desc}</p>
+              <p style={{ margin: "0 0 8px", fontSize: 12, color: noteColor, fontWeight: 600 }}>{note}</p>
+              <div style={{ borderRadius: 8, border: "1px dashed rgba(255,255,255,0.12)", padding: "6px 10px", textAlign: "center" }}>
+                <span style={{ fontSize: 11, color: "#64748b" }}>Cliquez pour sélectionner · PDF, DOCX, TXT, MP3...</span>
               </div>
+            </label>
+          ))}
+        </div>
+
+        {/* Fichiers en attente */}
+        {uploadedFiles.length > 0 && (
+          <div style={{ marginBottom: 8 }}>
+            {uploadedFiles.map((f, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", marginBottom: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  <span style={{ fontSize: 13, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                </div>
+                <button onClick={() => setUploadedFiles(prev => prev.filter((_, j) => j !== i))}
+                  style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4, flexShrink: 0 }}
+                  onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                  onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                  </svg>
+                </button>
+              </div>
+            ))}
+            <button onClick={async () => {
+              await uploadFiles();
+              if (practitionerId) await loadDocuments(practitionerId);
+            }} disabled={uploading || !documentType}
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 12px", borderRadius: 12, background: uploading || !documentType ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: `1px solid ${uploading || !documentType ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.18)"}`, color: uploading || !documentType ? "#64748b" : emerald, fontSize: 14, fontWeight: 600, cursor: uploading || !documentType ? "not-allowed" : "pointer", transition: "all 0.2s" }}
+              onMouseEnter={e => { if (!uploading && documentType) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+              onMouseLeave={e => { e.currentTarget.style.background = uploading || !documentType ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
+              {uploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation en cours...</> : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""} →`}
+            </button>
+            {uploading && <p style={{ fontSize: 12, color: "#f59e0b", textAlign: "center", marginTop: 6 }}>Patientez, l'indexation peut prendre quelques instants.</p>}
+          </div>
+        )}
+      </div>
+
+      {/* Textarea + micro */}
+      <div style={{ marginBottom: 12 }}>
+        <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "white" }}>Ajouter une instruction</p>
+        <div style={{ position: "relative" }}>
+          <textarea value={jumeauText} onChange={e => setJumeauText(e.target.value)}
+            placeholder="Ajoutez une nuance, une nouvelle méthode ou une instruction à votre jumeau..."
+            rows={4}
+            style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px 48px 14px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", transition: "border-color 0.2s" }}
+            onFocus={e => e.target.style.borderColor = emerald}
+            onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+          <div style={{ position: "absolute", bottom: 12, right: 12, display: "flex", alignItems: "center", gap: 6 }}>
+            {isRecording && <span style={{ fontSize: 11, color: "#f87171" }}>{formatTime(recordingTime)}</span>}
+            {!audioBlob && (
+              <button onClick={isRecording ? stopRecording : startRecording} title="Mémo vocal"
+                style={{ width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: isRecording ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.3)", background: isRecording ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.15)", transition: "all 0.2s" }}>
+                {isRecording ? <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", animation: "breathe 1s ease-in-out infinite" }} /> : <span style={{ fontSize: 13 }}>🎙️</span>}
+              </button>
             )}
           </div>
         </div>
-      )}
+
+        {audioBlob && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)" }}>
+            <span style={{ fontSize: 13, color: emerald, flex: 1 }}>✅ Mémo enregistré ({formatTime(recordingTime)})</span>
+            <button onClick={async () => { uploadAudioMemo(); if (practitionerId) { await new Promise(r => setTimeout(r, 2000)); await loadDocuments(practitionerId); } }}
+              style={{ borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)", color: emerald, cursor: "pointer", transition: "all 0.2s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
+              Indexer ce mémo →
+            </button>
+            <button onClick={() => setAudioBlob(null)}
+              style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4 }}
+              onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+              onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+              </svg>
+            </button>
+          </div>
+        )}
+
+        {jumeauText.trim() && !audioBlob && (
+          <button onClick={async () => {
+            setJumeauTextUploading(true);
+            const blob = new Blob([jumeauText], { type: "text/plain" });
+            const file = new File([blob], `note_praticien_${Date.now()}.txt`, { type: "text/plain" });
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("practitionerId", practitionerId ?? "");
+            formData.append("documentType", "protocole");
+            try {
+              const res = await fetch("/api/upload-document", { method: "POST", body: formData });
+              const data = await res.json() as { success?: boolean };
+              if (res.ok && data.success) {
+                setJumeauText("");
+                if (practitionerId) await loadDocuments(practitionerId);
+              }
+            } catch { /* silencieux */ }
+            setJumeauTextUploading(false);
+          }} disabled={jumeauTextUploading}
+            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 12px", borderRadius: 12, background: jumeauTextUploading ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: `1px solid ${jumeauTextUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.18)"}`, color: jumeauTextUploading ? "#64748b" : emerald, fontSize: 13, fontWeight: 600, cursor: jumeauTextUploading ? "not-allowed" : "pointer", transition: "all 0.2s", marginTop: 8 }}
+            onMouseEnter={e => { if (!jumeauTextUploading) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+            onMouseLeave={e => { e.currentTarget.style.background = jumeauTextUploading ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
+            {jumeauTextUploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation en cours...</> : "Indexer cette note →"}
+          </button>
+        )}
+        {jumeauTextUploading && <p style={{ fontSize: 12, color: "#f59e0b", textAlign: "center", marginTop: 6 }}>Patientez, l'indexation peut prendre quelques instants.</p>}
+      </div>
+
+    </div>
+  </div>
+)}
 
       {showProfileModal && (
         <div onClick={(e) => { if (e.target === e.currentTarget) setShowProfileModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>

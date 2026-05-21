@@ -51,7 +51,7 @@ if (authHeader !== process.env.CRISIS_SECRET_TOKEN) {
 
     <div style="background:#0d1512;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;margin-bottom:24px;">
       <p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;">Message du patient</p>
-      <p style="margin:0;font-size:14px;color:#e2e8f0;line-height:1.7;font-style:italic;">"${message}"</p>
+      <p style="margin:0;font-size:14px;color:#e2e8f0;line-height:1.7;">Une alerte critique a été détectée. Connectez-vous pour voir la conversation et intervenir.</p>
     </div>
 
     <div style="background:#0d1512;border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:20px;margin-bottom:32px;">
