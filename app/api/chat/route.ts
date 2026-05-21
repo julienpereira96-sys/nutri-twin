@@ -599,6 +599,25 @@ export async function POST(request: Request) {
         .eq("practitioner_id", practitionerId)
         .order("created_at", { ascending: false })
         .limit(3);
+
+        // Derniers outils SOS utilisés
+        const { data: recentSOS } = await supabase
+        .from("sos_events")
+        .select("raw_response, triggered_at")
+        .eq("patient_id", patientId)
+        .order("triggered_at", { ascending: false })
+        .limit(3);
+
+        const recentTools = (recentSOS ?? [])
+        .map(e => {
+          try {
+            const parsed = JSON.parse(e.raw_response as string) as { tool_id?: string };
+            return parsed.tool_id ?? null;
+          } catch { return null; }
+        })
+        .filter(Boolean)
+        .join(", ");
+
     
       const context = (recentMessages ?? [])
         .reverse()
@@ -618,12 +637,28 @@ export async function POST(request: Request) {
     DERNIERS ÉCHANGES :
     ${context || "Aucun échange récent."}
     
-    RÈGLES :
+        RÈGLES :
+        RÈGLES :
     - Choisis l'outil parmi : breathing (stress/anxiété), ancrage (panique/dissociation), manger (impulsions alimentaires/TCA), marche (fatigue/rumination)
-    - Le twin_message doit utiliser le prénom ${firstName} et faire référence à un élément concret du contexte (défi, consigne, état d'esprit)
-    - Les steps du tool_script doivent être personnalisés — pas de texte générique
+    
+    - ANTI-REDONDANCE : Les outils récemment utilisés par ce patient sont : ${recentTools || "aucun"}. Évite de reproposer le même outil. Varie systématiquement.
+    
+    - PROPOSITION, PAS IMPOSITION : Amène toujours l'exercice comme une proposition douce, sauf si le patient a explicitement demandé de l'aide (bouton SOS pressé).
+    
+    - HUMOUR BIENVEILLANT : Si le patient exprime de la lassitude envers un exercice ("encore la respiration ?"), réponds avec autodérision et légèreté. Exemple : "Je sais, je suis monomaniaque du souffle — mais c'est le seul bouton Reset de ton système nerveux que je peux activer à distance ! 🌿"
+    
+    - Le twin_message doit suivre cette structure en moins de 30 mots :
+      1. Valide l'émotion immédiate du dernier message du patient (écho émotionnel 70%)
+      2. Lien subtil avec l'objectif de santé si pertinent (ADN praticien 30%, s'inspirer du Murmure ou du ton)
+      3. Transition douce vers l'exercice
+      Exemple : "Je sens que cet examen raté t'a épuisé, ${firstName}. Prenons 2 minutes pour retrouver ton calme avant d'y revenir."
+      Maximum 30 mots. Jamais robotique, toujours humain.
+    
+    - Les steps du tool_script doivent être personnalisés et varier à chaque fois — jamais de texte générique ou identique à une session précédente.
+    
     - Réponds UNIQUEMENT en JSON sans markdown ni backticks :
-    {"tool_id":"breathing","twin_message":"Message personnalisé avec prénom max 25 mots","tool_script":{"step_1":"instruction personnalisée","step_2":"instruction personnalisée","step_3":"instruction personnalisée"}}`;
+    {"tool_id":"breathing","twin_message":"Message personnalisé avec prénom max 30 mots","tool_script":{"step_1":"instruction personnalisée","step_2":"instruction personnalisée","step_3":"instruction personnalisée"}}`;
+
     
       const sosModel = genAI.getGenerativeModel({
         model: "gemini-3.1-flash-lite",

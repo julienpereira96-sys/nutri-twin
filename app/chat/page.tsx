@@ -389,6 +389,11 @@ export default function ChatPage() {
   const [patientProfileSaved, setPatientProfileSaved] = useState(false);
   const [exportingRGPD, setExportingRGPD] = useState(false);
   const patientAvatarRef = useRef<HTMLInputElement>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [feedbackScore, setFeedbackScore] = useState<number | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+
 
   const ancrageSteps = [
     { count: 5, sense: "voyez", icon: "👀" },
@@ -648,6 +653,44 @@ export default function ChatPage() {
   const breathingLabel: Record<BreathingStep, string> = { idle: "", inhale: "Inspirez...", hold: "Retenez...", exhale: "Expirez...", done: "Bravo !" };
   const visibleMessages = messages.filter(m => !m.hidden);
 
+  const submitFeedback = async (score: number) => {
+    setFeedbackScore(score);
+    setFeedbackSubmitting(true);
+    try {
+      const res = await fetch("/api/sos-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId,
+          practitionerId: practitionerIdFromDb,
+          eventId: null,
+          stressBeforeProxy: stressBefore ?? 5,
+          scoreAfter: score,
+        }),
+      });
+      const data = await res.json() as { sosFailed?: boolean };
+      if (data.sosFailed) {
+        setFeedbackMessage("Je vois que l'exercice n'a pas suffi à t'apaiser. C'est ok, cela arrive quand la tension est trop forte. Ton praticien vient d'être notifié pour t'accompagner. En attendant, essaye de boire un verre d'eau et de t'allonger quelques minutes. 🌿");
+      } else {
+        setFeedbackMessage("Super, garde cette sensation avec toi pour la suite. Tu as bien fait de prendre ce moment pour toi. 🌿");
+      }
+    } catch {
+      setFeedbackMessage("Merci pour ton retour. 🌿");
+    }
+    setFeedbackSubmitting(false);
+  };
+
+  const openFeedback = () => {
+    setShowFeedback(true);
+    setFeedbackScore(null);
+    setFeedbackMessage("");
+  };
+
+  const closeFeedbackAndTool = (toolId: string) => {
+    setShowFeedback(false);
+    closeTool(toolId);
+  };
+
   const renderTool = () => {
     if (!activeTool) return null;
     if (activeTool.id === "journal") return <JournalModal patientId={patientId} practitionerId={practitionerIdFromDb} onClose={() => closeTool("journal")} />;
@@ -666,7 +709,8 @@ export default function ChatPage() {
             </div>
             <p style={{ fontSize: 20, fontWeight: 600, color: breathingColor[breathingStep], marginBottom: 16 }}>{breathingLabel[breathingStep]}</p>
             <button onClick={() => closeTool(id)} style={{ width: "100%", height: 42, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontSize: 14, cursor: "pointer" }}>Arrêter</button></>)}
-          {breathingStep === "done" && <><p style={{ fontSize: 44, margin: "0 0 12px" }}>🎉</p><h3 style={{ fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY, margin: "0 0 8px" }}>Excellent !</h3><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 20 }}>Votre corps vous remercie. 🌿</p><button onClick={() => closeTool(id)} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Terminer</button></>}
+          {breathingStep === "done" && <><p style={{ fontSize: 44, margin: "0 0 12px" }}>🎉</p><h3 style={{ fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY, margin: "0 0 8px" }}>Excellent !</h3><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 20 }}>Votre corps vous remercie. 🌿</p><button onClick={() => openFeedback()} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Terminer</button>
+          </>}
         </div>
       );
       if (id === "ancrage") return (
@@ -680,7 +724,7 @@ export default function ChatPage() {
             </div>
             <button onClick={() => setAncrageStep(p => p + 1)} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 8 }}>{ancrageStep < 4 ? "Suivant →" : "Terminer"}</button>
             <button onClick={() => closeTool(id)} style={{ width: "100%", height: 40, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontSize: 13, cursor: "pointer" }}>Quitter</button></>
-          ) : (<><p style={{ fontSize: 44, margin: "0 0 12px" }}>✨</p><h3 style={{ fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY, margin: "0 0 8px" }}>Ancré(e) !</h3><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 20 }}>Vous êtes dans le moment présent. 🌿</p><button onClick={() => closeTool(id)} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Fermer</button></>)}
+          ) : (<><p style={{ fontSize: 44, margin: "0 0 12px" }}>✨</p><h3 style={{ fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY, margin: "0 0 8px" }}>Ancré(e) !</h3><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 20 }}>Vous êtes dans le moment présent. 🌿</p><button onClick={() => openFeedback()} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Terminer</button></>)}
         </div>
       );
       if (id === "marche") return (
@@ -693,7 +737,7 @@ export default function ChatPage() {
             <div style={{ height: 2, background: SURFACE, borderRadius: 1, marginBottom: 16 }}><div style={{ height: "100%", borderRadius: 1, background: ACCENT, width: `${((marcheStep + 1) / marcheSteps.length) * 100}%`, transition: "width 0.3s" }} /></div>
             <button onClick={() => setMarcheStep(p => p + 1)} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 8 }}>{marcheStep < marcheSteps.length - 1 ? "Suivant →" : "Terminer"}</button>
             <button onClick={() => closeTool(id)} style={{ width: "100%", height: 40, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontSize: 13, cursor: "pointer" }}>Quitter</button></>
-          ) : (<><p style={{ fontSize: 44, margin: "0 0 12px" }}>🌿</p><h3 style={{ fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY, margin: "0 0 8px" }}>Belle promenade !</h3><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 20 }}>Chaque pas conscient est une victoire. 💚</p><button onClick={() => closeTool(id)} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Fermer</button></>)}
+          ) : (<><p style={{ fontSize: 44, margin: "0 0 12px" }}>🌿</p><h3 style={{ fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY, margin: "0 0 8px" }}>Belle promenade !</h3><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 20 }}>Chaque pas conscient est une victoire. 💚</p><button onClick={() => openFeedback()} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Terminer</button></>)}
         </div>
       );
       if (id === "manger") return (
@@ -837,7 +881,39 @@ export default function ChatPage() {
         </div>
       )}
 
-      {renderTool()}
+      {showFeedback && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.9)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, border: "1px solid rgba(255,255,255,0.08)" }}>
+            {!feedbackScore ? (
+              <>
+                <p style={{ fontSize: 32, textAlign: "center", margin: "0 0 8px" }}>🌿</p>
+                <h3 style={{ fontSize: 18, fontWeight: 600, color: "white", textAlign: "center", margin: "0 0 6px" }}>Comment tu te sens ?</h3>
+                <p style={{ fontSize: 13, color: "#64748b", textAlign: "center", margin: "0 0 24px" }}>1 = encore tendu(e) · 10 = complètement apaisé(e)</p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 12 }}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => (
+                    <button key={score} onClick={() => void submitFeedback(score)} disabled={feedbackSubmitting}
+                      style={{ height: 48, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: score <= 3 ? "rgba(244,63,94,0.08)" : score <= 6 ? "rgba(245,158,11,0.08)" : "rgba(16,185,129,0.08)", color: score <= 3 ? "#f87171" : score <= 6 ? "#f59e0b" : "#10b981", fontSize: 16, fontWeight: 700, cursor: "pointer", transition: "all 0.15s" }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.08)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}>
+                      {score}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: 44, textAlign: "center", margin: "0 0 12px" }}>{feedbackScore >= 7 ? "🌟" : feedbackScore >= 4 ? "🌿" : "💙"}</p>
+                <p style={{ fontSize: 14, color: "white", textAlign: "center", lineHeight: 1.7, margin: "0 0 24px" }}>{feedbackMessage}</p>
+                <button onClick={() => closeFeedbackAndTool(activeTool?.id ?? "")}
+                  style={{ width: "100%", height: 48, borderRadius: 12, background: "#10b981", border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+                  Continuer 🌿
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+        )}
+        {renderTool()}
 
      {/* Modale profil */}
 {showProfileModal && (

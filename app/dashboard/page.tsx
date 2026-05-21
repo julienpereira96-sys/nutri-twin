@@ -260,6 +260,7 @@ export default function DashboardPage() {
   const [practitionerPhoto, setPractitionerPhoto] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [reportError, setReportError] = useState("");
 
   const AVATARS = [
     <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 3C13 3 4 8 4 15C4 19.4 8.1 23 13 23C17.9 23 22 19.4 22 15C22 8 13 3 13 3Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/><path d="M13 23V13" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/><path d="M13 13C13 13 9 10 9 7" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/><path d="M13 13C13 13 17 10 17 7" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/></svg>,
@@ -491,9 +492,8 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
     if (!selectedPatientId) return;
     setSavingMurmure(true);
     await supabase.from("patients").update({ practitioner_instruction: murmureText || null }).eq("user_id", selectedPatientId);
-    await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: selectedPatientId }) });
-    setPatients((prev) => prev.map((p) => p.id === selectedPatientId ? { ...p, practitioner_instruction: murmureText || undefined } : p));
-    setSavingMurmure(false);
+await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: selectedPatientId }) });
+setSavingMurmure(false);
     setShowMurmureModal(false);
   };
 
@@ -654,7 +654,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
 
   const generateReport = async () => {
     if (!selectedPatientId) return;
-    setReportLoading(true); setReportContent("");
+    setReportLoading(true); setReportContent(""); setReportError("");
     try {
       const now = new Date(); let dateFrom = ""; let dateTo = now.toISOString().split("T")[0];
       if (reportPeriod === "week") { const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7); dateFrom = weekAgo.toISOString().split("T")[0]; }
@@ -681,7 +681,8 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
       const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: prompt, practitionerId: practitionerId ?? undefined }) });
       const aiData = (await res.json()) as { response?: string };
       setReportContent(aiData.response ?? "Impossible de générer le rapport.");
-    } finally { setReportLoading(false); }
+    } catch { setReportError("La génération a échoué. Vérifiez votre connexion et réessayez."); }
+    finally { setReportLoading(false); }
   };
 
   const resetInviteForm = () => {
@@ -1804,6 +1805,15 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                 </div>
               )}
             </div>
+            {reportError && (
+              <div style={{ background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", borderRadius: 12, padding: "12px 16px", marginBottom: 12, fontSize: 13, color: "#f87171", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span>{reportError}</span>
+                <button onClick={() => void generateReport()}
+                  style={{ background: "rgba(244,63,94,0.12)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 8, padding: "6px 14px", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  Réessayer →
+                </button>
+              </div>
+            )}
             {!reportContent && (
               <button onClick={() => void generateReport()} disabled={reportLoading || (reportPeriod === "custom" && (!reportDateFrom || !reportDateTo))}
                 style={{ width: "100%", height: 48, borderRadius: 12, background: reportLoading ? "#1a1a1a" : emerald, border: "none", color: reportLoading ? "#4a4a4a" : "black", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}>
