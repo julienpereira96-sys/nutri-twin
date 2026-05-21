@@ -379,7 +379,7 @@ async function getPatientProfile(patientId: string): Promise<string> {
 
 async function summarizeOldMessages(messages: { role: string; content: string }[]): Promise<string> {
   try {
-    const patientMessages = messages.filter((m) => m.role === "user").map((m) => m.content.slice(0, 150)).join(" | ");
+    const patientMessages = messages.filter((m) => m.role === "user").map((m) => m.content.slice(0, 400)).join(" | ");
     const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
     const result = await model.generateContent(
       `Résume en 5 lignes maximum les points clés de ces échanges patient-nutritionniste. 
@@ -498,6 +498,8 @@ Tu dois respecter cet ordre de priorité strict, du plus important au moins impo
 ${patientContext}${documentsContext}
 
 RÈGLES ABSOLUES :
+- PRIORITÉ EMPATHIQUE :
+Si le patient exprime une vulnérabilité (détresse, découragement, honte), privilégie la chaleur et l'ancrage émotionnel AVANT tout conseil, même si ta posture de base est médicale ou directive.
 - INTERDICTION de Markdown (gras, listes, titres). Texte brut uniquement.
 - Maximum 150 mots par réponse.
 - Commencer par une validation empathique avant tout conseil.
