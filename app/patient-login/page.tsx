@@ -25,7 +25,14 @@ export default function PatientLoginPage() {
     try {
       const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-      if (signInError) { setError(signInError.message); return; }
+      if (signInError) {
+        if (signInError.message.includes("Invalid login credentials") || signInError.message.includes("invalid_credentials") || signInError.code === "invalid_credentials") {
+          setError("Email ou mot de passe incorrect. Vérifiez vos informations.");
+        } else {
+          setError(signInError.message);
+        }
+        return;
+      }
       router.push("/chat");
     } catch {
       setError("Une erreur est survenue. Réessayez plus tard.");
