@@ -105,8 +105,6 @@ export default function LoginPage() {
     Votre session a expiré après 30 jours d'inactivité. Reconnectez-vous pour accéder à votre cabinet. 🔒
   </div>
 )}
-<form onSubmit={onSubmit} className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8"></form>
-
         <form onSubmit={onSubmit} className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
           <div className="space-y-4">
             <label className="block">
