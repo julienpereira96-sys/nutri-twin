@@ -265,8 +265,10 @@ export default function DashboardPage() {
   const [showBilanModal, setShowBilanModal] = useState(false);
   const [bilanContent, setBilanContent] = useState("");
   const [bilanLoading, setBilanLoading] = useState(false);
+  const [inviteStep, setInviteStep] = useState(1);
+  const [inviteFirstName, setInviteFirstName] = useState("");
+  const [inviteLastName, setInviteLastName] = useState("");
 
-  
 
 
   const AVATARS = [
@@ -496,7 +498,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
       const { count } = await supabase.from("documents").select("*", { count: "exact", head: true }).eq("practitioner_id", pid);
       setHasDocuments((count ?? 0) > 0);
       if ((count ?? 0) > 0) { const hidden = localStorage.getItem("fidelity_hidden"); if (hidden === "true") setShowFidelity(false); }
-      await Promise.all([loadPatients(pid), loadMonthlyStats(pid)]);
+      await Promise.all([loadPatients(pid), loadMonthlyStats(pid), loadDocuments(pid)]);
     });
   }, []);
 
@@ -774,16 +776,18 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
   };
 
   const resetInviteForm = () => {
-    setInviteEmail(""); setInviteAge(""); setInviteSexe(""); setInviteTaille(""); setInvitePoids("");
+    setInviteEmail(""); setInviteFirstName(""); setInviteLastName(""); setInviteAge(""); setInviteSexe(""); setInviteTaille(""); setInvitePoids("");
     setInvitePathologies(""); setInviteAllergies(""); setInviteTraitements(""); setInviteObjectifClinique("");
     setInviteBriefJumeau(""); setInviteNotes(""); setInviteNiveauActivite(""); setInviteRegime(""); setInviteError("");
+    setInviteStep(1);
   };
 
   const sendInvite = async () => {
     if (!inviteEmail.trim()) return;
     setInviting(true); setInviteError("");
     try {
-      const res = await fetch("/api/invite-patient", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId: practitionerId ?? "", age: inviteAge ? parseInt(inviteAge) : null, sexe: inviteSexe || null, taille: inviteTaille ? parseInt(inviteTaille) : null, poids: invitePoids ? parseFloat(invitePoids) : null, pathologies: invitePathologies || null, allergies: inviteAllergies || null, traitements: inviteTraitements || null, objectif_clinique: inviteObjectifClinique || null, brief_jumeau: inviteBriefJumeau || null, notes: inviteNotes || null, niveau_activite: inviteNiveauActivite || null, regime_specifique: inviteRegime || null }) });
+      const res = await fetch("/api/invite-patient", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId: practitionerId ?? "", first_name: inviteFirstName || null, last_name: inviteLastName || null,
+        age: inviteAge ? parseInt(inviteAge) : null, sexe: inviteSexe || null, taille: inviteTaille ? parseInt(inviteTaille) : null, poids: invitePoids ? parseFloat(invitePoids) : null, pathologies: invitePathologies || null, allergies: inviteAllergies || null, traitements: inviteTraitements || null, objectif_clinique: inviteObjectifClinique || null, brief_jumeau: inviteBriefJumeau || null, notes: inviteNotes || null, niveau_activite: inviteNiveauActivite || null, regime_specifique: inviteRegime || null }) });
       const data = await res.json() as { error?: string };
       if (!res.ok) setInviteError(data.error ?? "Une erreur est survenue.");
       else { setInviteSuccess(true); resetInviteForm(); if (practitionerId) await loadPatients(practitionerId); }
@@ -1688,7 +1692,8 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
       )}
 
 {showJumeauModal && (
-  <div onClick={(e) => { if (e.target === e.currentTarget) setShowJumeauModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+  <div onClick={(e) => { e.stopPropagation(); }}
+  style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
     <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 560, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
       
       {/* Header */}
@@ -1999,127 +2004,178 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
       )}
 
 {showInviteModal && (
-  <div onClick={(e) => { if (e.target === e.currentTarget) setShowInviteModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-    <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 32, width: "100%", maxWidth: 540, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "92vh", overflowY: "auto", position: "relative" }}>
-      <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteSuccess(false); }} style={{ position: "absolute", top: 18, right: 18, background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+  <div onClick={(e) => { e.stopPropagation(); }}
+  style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+    <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 500, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", position: "relative" }}>
+      
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+        <div>
+          <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            {inviteSuccess ? "Terminé" : `Étape ${inviteStep} sur 3`}
+          </p>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>
+            {inviteSuccess ? "Invitation envoyée !" : inviteStep === 1 ? "Nouveau patient" : inviteStep === 2 ? "Contexte médical" : "Brief Jumeau"}
+          </h2>
+        </div>
+        <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteStep(1); }} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+      </div>
 
-      <h2 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 800, color: "white" }}>Nouveau patient</h2>
-      <p style={{ margin: "0 0 28px", fontSize: 14, color: "#64748b" }}>Votre patient recevra un email pour créer son espace.</p>
+      {/* Barre de progression */}
+      {!inviteSuccess && (
+        <div style={{ display: "flex", gap: 6, marginBottom: 28 }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= inviteStep ? emerald : "rgba(255,255,255,0.08)", transition: "background 0.3s" }} />
+          ))}
+        </div>
+      )}
 
       {inviteSuccess ? (
-        <div style={{ background: "rgba(16,185,129,0.15)", border: `1px solid ${emerald}`, borderRadius: 14, padding: "20px", textAlign: "center", color: emerald, fontWeight: 600, fontSize: 16 }}>✅ Invitation envoyée !</div>
-      ) : (
+        <div style={{ textAlign: "center", padding: "20px 0" }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+          <p style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "white" }}>C'est parti !</p>
+          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{inviteEmail} va recevoir son invitation.</p>
+        </div>
+      ) : inviteStep === 1 ? (
         <>
-          {/* Bloc 1 — Identité */}
-          <div style={{ marginBottom: 20 }}>
-            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>Coordonnées</p>
-            <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="Adresse email *"
-              style={{ width: "100%", height: 48, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box", marginBottom: 10 }}
-              onFocus={(e) => e.target.style.borderColor = emerald} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Les informations de base pour créer l'espace de votre patient.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+              <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Email *</p>
+              <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="patient@email.fr"
+                style={{ width: "100%", height: 46, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 10 }}
+                onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                <div>
+                  <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Prénom</p>
+                  <input type="text" value={inviteFirstName} onChange={e => setInviteFirstName(e.target.value)} placeholder="Sophie"
+                    style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                    onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                </div>
+                <div>
+                  <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Nom</p>
+                  <input type="text" value={inviteLastName} onChange={e => setInviteLastName(e.target.value)} placeholder="Martin"
+                    style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                    onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                </div>
+              </div>
+              </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
               {[
                 { label: "Âge", value: inviteAge, setter: setInviteAge, placeholder: "34", type: "number" },
                 { label: "Taille (cm)", value: inviteTaille, setter: setInviteTaille, placeholder: "168", type: "number" },
                 { label: "Poids (kg)", value: invitePoids, setter: setInvitePoids, placeholder: "72", type: "number" },
               ].map(({ label, value, setter, placeholder, type }) => (
                 <div key={label}>
-                  <p style={{ margin: "0 0 5px", fontSize: 11, color: "#64748b" }}>{label}</p>
+                  <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
                   <input type={type} value={value} onChange={e => setter(e.target.value)} placeholder={placeholder}
-                    style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-                    onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
+                    style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                    onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
                 </div>
               ))}
               <div>
-                <p style={{ margin: "0 0 5px", fontSize: 11, color: "#64748b" }}>Sexe</p>
+                <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
                 <select value={inviteSexe} onChange={e => setInviteSexe(e.target.value)}
-                  style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: inviteSexe ? "white" : "#64748b", padding: "0 8px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
-                  <option value="">—</option><option value="Femme">Femme</option><option value="Homme">Homme</option><option value="Autre">Autre</option>
+                  style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: inviteSexe ? "white" : "#64748b", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
+                  <option value="">Choisir</option>
+                  <option value="Femme">Femme</option><option value="Homme">Homme</option><option value="Autre">Autre</option>
                 </select>
               </div>
             </div>
           </div>
 
-          {/* Bloc 2 — Contexte médical */}
-          <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px solid rgba(255,255,255,0.06)", padding: "20px", marginBottom: 20 }}>
-            <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "white" }}>🩺 Ce que le jumeau doit connaître</p>
-            <p style={{ margin: "0 0 16px", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>Pour ne jamais donner un conseil inadapté à ce patient.</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {[
-                { label: "Pathologies", value: invitePathologies, setter: setInvitePathologies, placeholder: "Ex: Diabète type 2, hypothyroïdie..." },
-                { label: "Allergies & intolérances", value: inviteAllergies, setter: setInviteAllergies, placeholder: "Ex: Gluten, lactose, fruits à coque..." },
-                { label: "Traitements en cours", value: inviteTraitements, setter: setInviteTraitements, placeholder: "Ex: Metformine 500mg, Lévothyrox..." },
-                { label: "Objectif principal", value: inviteObjectifClinique, setter: setInviteObjectifClinique, placeholder: "Ex: Perte de poids, équilibre glycémique..." },
-              ].map(({ label, value, setter, placeholder }) => (
-                <div key={label}>
-                  <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>{label}</p>
-                  <input type="text" value={value} onChange={e => setter(e.target.value)} placeholder={placeholder}
-                    style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#0d0d0d", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-                    onFocus={e => e.target.style.borderColor = "rgba(255,255,255,0.2)"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
-                </div>
-              ))}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                <div>
-                  <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Niveau d'activité</p>
-                  <select value={inviteNiveauActivite} onChange={e => setInviteNiveauActivite(e.target.value)}
-                    style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#0d0d0d", color: inviteNiveauActivite ? "white" : "#64748b", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
-                    <option value="">Non renseigné</option>
-                    <option value="Sédentaire">Sédentaire</option>
-                    <option value="Légère">Légère</option>
-                    <option value="Modérée">Modérée</option>
-                    <option value="Intense">Intense</option>
-                    <option value="Athlète">Athlète</option>
-                  </select>
-                </div>
-                <div>
-                  <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Régime alimentaire</p>
-                  <select value={inviteRegime} onChange={e => setInviteRegime(e.target.value)}
-                    style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#0d0d0d", color: inviteRegime ? "white" : "#64748b", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
-                    <option value="">Aucun régime spécifique</option>
-                    <option value="Omnivore">Omnivore</option>
-                    <option value="Végétarien">Végétarien</option>
-                    <option value="Vegan">Vegan</option>
-                    <option value="Sans gluten">Sans gluten</option>
-                    <option value="Halal">Halal</option>
-                    <option value="Méditerranéen">Méditerranéen</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bloc 3 — Brief Jumeau */}
-          <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 16, border: "1.5px solid rgba(16,185,129,0.2)", padding: "20px", marginBottom: 20 }}>
-            <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 800, color: emerald }}>🌿 La voix de votre jumeau</p>
-            <p style={{ margin: "0 0 14px", fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>Définissez le ton, les priorités et ce que le jumeau doit éviter avec ce patient. Plus c'est précis, plus il sera juste.</p>
-            <textarea value={inviteBriefJumeau} onChange={(e) => setInviteBriefJumeau(e.target.value)}
-              placeholder="Ex: Sophie est anxieuse autour de la balance — évite ce sujet. Elle se culpabilise facilement, reste bienveillant avant d'être technique. Elle adore cuisiner, utilise ça pour l'engager."
-              rows={4}
-              style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", background: "#161616", color: "white", padding: "12px 14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.6 }}
-              onFocus={(e) => e.target.style.borderColor = emerald} onBlur={(e) => e.target.style.borderColor = "rgba(16,185,129,0.2)"} />
-          </div>
-
-          {/* Notes internes */}
-          <div style={{ marginBottom: 24 }}>
-            <textarea value={inviteNotes} onChange={(e) => setInviteNotes(e.target.value)}
-              placeholder="Notes internes (visibles uniquement par vous)..."
-              rows={2}
-              style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", background: "transparent", color: "#64748b", padding: "10px 12px", fontSize: 12, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif" }}
-              onFocus={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.12)"; e.target.style.color = "white"; }}
-              onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.05)"; e.target.style.color = "#64748b"; }} />
-          </div>
-
-          {inviteError && <p style={{ margin: "0 0 16px", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
-          <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={() => { setShowInviteModal(false); resetInviteForm(); }}
-              style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+          {inviteError && <p style={{ margin: "16px 0 0", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
+          <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
+            <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteStep(1); }}
+              style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
               Annuler
             </button>
-            <button onClick={() => void sendInvite()} disabled={inviting || !inviteEmail.trim()}
-              style={{ flex: 2, height: 48, borderRadius: 12, background: inviting || !inviteEmail.trim() ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${inviting || !inviteEmail.trim() ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: inviting || !inviteEmail.trim() ? "#64748b" : emerald, cursor: inviting || !inviteEmail.trim() ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}
-              onMouseEnter={e => { if (!inviting && inviteEmail.trim()) e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
-              onMouseLeave={e => { if (!inviting && inviteEmail.trim()) e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>
+            <button onClick={() => { if (!inviteEmail.trim()) { setInviteError("L'email est requis."); return; } if (!inviteFirstName.trim()) { setInviteError("Le prénom est requis."); return; } setInviteError(""); setInviteStep(2); }}
+              style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+              Suivant →
+            </button>
+          </div>
+        </>
+      ) : inviteStep === 2 ? (
+        <>
+          <p style={{ margin: "0 0 4px", fontSize: 13, color: "#94a3b8" }}>Pour que le jumeau ne donne jamais un conseil inadapté.</p>
+<p style={{ margin: "0 0 20px", fontSize: 12, color: "#4b5563" }}>Vous pourrez compléter depuis la fiche patient.</p>
+
+<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+  {[
+    { label: "Pathologies", value: invitePathologies, setter: setInvitePathologies, id: "path", options: ["Diabète type 2", "Hypertension", "Hypothyroïdie", "SOPK", "Cholestérol", "TCA", "Surpoids"] },
+    { label: "Allergies", value: inviteAllergies, setter: setInviteAllergies, id: "allerg", options: ["Gluten", "Lactose", "Fruits à coque", "Œufs", "Fruits de mer"] },
+    { label: "Traitements", value: inviteTraitements, setter: setInviteTraitements, id: "trait", options: ["Metformine", "Lévothyrox", "Pilule contraceptive", "Antidépresseurs", "Insuline"] },
+    { label: "Objectif", value: inviteObjectifClinique, setter: setInviteObjectifClinique, id: "obj", options: ["Perte de poids", "Prise de masse", "Équilibre glycémique", "Bien-être général", "Grossesse"] },
+    { label: "Activité", value: inviteNiveauActivite, setter: setInviteNiveauActivite, id: "activ", options: ["Sédentaire", "Légère", "Modérée", "Intense", "Athlète"] },
+    { label: "Régime", value: inviteRegime, setter: setInviteRegime, id: "regime", options: ["Végétarien", "Vegan", "Sans gluten", "Halal", "Méditerranéen"] },
+  ].map(({ label, value, setter, id, options }) => {
+    const isAutre = value !== "" && !options.includes(value);
+    return (
+      <div key={id}>
+        <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>{label}</p>
+        <select
+          value={isAutre ? "Autre" : value}
+          onChange={e => {
+            if (e.target.value === "Autre") setter("__autre__");
+            else setter(e.target.value);
+          }}
+          style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}
+        >
+          <option value="">Choisir</option>
+          {options.map(o => <option key={o} value={o}>{o}</option>)}
+          <option value="Autre">Autre...</option>
+        </select>
+        {(value === "__autre__" || isAutre) && (
+          <input
+            type="text"
+            value={value === "__autre__" ? "" : value}
+            onChange={e => setter(e.target.value)}
+            placeholder={`Précisez...`}
+            autoFocus
+            style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", marginTop: 6 }}
+            onFocus={e => e.target.style.borderColor = emerald}
+            onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.3)"}
+          />
+        )}
+      </div>
+    );
+  })}
+</div>
+
+<div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+  <button onClick={() => setInviteStep(3)}
+    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+    Suivant →
+  </button>
+</div>
+        </>
+      ) : (
+        <>
+          <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 14, border: "1px solid rgba(16,185,129,0.15)", padding: "14px 16px", marginBottom: 20 }}>
+            <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.6 }}>🌿 C'est ici que vous donnez une personnalité à votre jumeau pour ce patient. Ton, priorités, ce qu'il doit éviter... Plus c'est précis, plus il sera juste.</p>
+          </div>
+          <textarea value={inviteBriefJumeau} onChange={e => setInviteBriefJumeau(e.target.value)}
+            placeholder="Ex: Sophie est anxieuse autour de la balance — évite ce sujet. Elle se culpabilise facilement, reste bienveillant avant d'être technique. Elle adore cuisiner, utilise ça pour l'engager."
+            rows={5}
+            style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 12 }}
+            onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.2)"} />
+                    <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Notes internes <span style={{ fontWeight: 400, color: "#4b5563" }}>— visibles uniquement par vous</span></p>
+          <textarea value={inviteNotes} onChange={e => setInviteNotes(e.target.value)}
+            placeholder="Contexte de la prise en charge, source de la recommandation..."
+            rows={2}
+            style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "10px 12px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif" }}
+            onFocus={e => e.target.style.borderColor = "rgba(255,255,255,0.2)"}
+            onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
+
+          {inviteError && <p style={{ margin: "0 0 12px", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
+          <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+            <button onClick={() => setInviteStep(2)}
+              style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
+              ← Retour
+            </button>
+            <button onClick={() => void sendInvite()} disabled={inviting}
+              style={{ flex: 2, height: 48, borderRadius: 12, background: inviting ? "rgba(255,255,255,0.04)" : emerald, border: "none", color: inviting ? "#64748b" : "black", cursor: inviting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700 }}>
               {inviting ? "Envoi..." : "Envoyer l'invitation →"}
             </button>
           </div>

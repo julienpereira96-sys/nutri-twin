@@ -11,6 +11,8 @@ export async function POST(request: Request) {
   const {
     email,
     practitionerId,
+    first_name,
+    last_name,
     age,
     sexe,
     taille,
@@ -26,6 +28,8 @@ export async function POST(request: Request) {
   } = await request.json() as {
     email: string;
     practitionerId: string;
+    first_name?: string | null;
+    last_name?: string | null;
     age?: number | null;
     sexe?: string | null;
     taille?: number | null;
@@ -40,26 +44,23 @@ export async function POST(request: Request) {
     regime_specifique?: string | null;
   };
 
-  // Validation
-if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-  return Response.json({ error: "Email invalide." }, { status: 400 });
-}
-if (!practitionerId || typeof practitionerId !== "string") {
-  return Response.json({ error: "practitionerId requis." }, { status: 400 });
-}
+  if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return Response.json({ error: "Email invalide." }, { status: 400 });
+  }
+  if (!practitionerId || typeof practitionerId !== "string") {
+    return Response.json({ error: "practitionerId requis." }, { status: 400 });
+  }
 
-// Sanitisation des champs texte
-const sanitize = (val: string | null | undefined, max = 500): string | null => {
-  if (!val || typeof val !== "string") return null;
-  return val.trim().slice(0, max) || null;
-};
+  const sanitize = (val: string | null | undefined, max = 500): string | null => {
+    if (!val || typeof val !== "string") return null;
+    return val.trim().slice(0, max) || null;
+  };
 
   const supabase = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Récupérer le plan du praticien
   const { data: practitioner } = await supabase
     .from("practitioners")
     .select("plan, subscription_status")
@@ -69,7 +70,6 @@ const sanitize = (val: string | null | undefined, max = 500): string | null => {
   const plan = practitioner?.plan ?? "essentiel";
   const limit = PLAN_LIMITS[plan] ?? 10;
 
-  // Compter les patients actuels
   const { count } = await supabase
     .from("patient_practitioner")
     .select("*", { count: "exact", head: true })
@@ -95,7 +95,6 @@ const sanitize = (val: string | null | undefined, max = 500): string | null => {
       : "Une erreur est survenue lors de l'envoi de l'invitation.";
     return Response.json({ error: errorMessage }, { status: 500 });
   }
-  
 
   if (data.user && practitionerId) {
     await supabase.from("patient_practitioner").insert({
@@ -103,10 +102,11 @@ const sanitize = (val: string | null | undefined, max = 500): string | null => {
       practitioner_id: practitionerId,
     });
 
-    // Sauvegarder les infos pré-remplies par le praticien
     await supabase.from("patients").upsert({
       user_id: data.user.id,
       email,
+      first_name: sanitize(first_name, 100),
+      last_name: sanitize(last_name, 100),
       age: age ?? null,
       sexe: sexe ?? null,
       taille: taille ?? null,
@@ -119,8 +119,6 @@ const sanitize = (val: string | null | undefined, max = 500): string | null => {
       notes: sanitize(notes, 1000),
       niveau_activite: sanitize(niveau_activite, 100),
       regime_specifique: sanitize(regime_specifique, 100),
-
-
     }, { onConflict: "user_id" });
   }
 
