@@ -757,6 +757,97 @@ export default function ChatPage() {
           <button onClick={() => closeTool(id)} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Bon appétit 🌿</button>
         </div>
       );
+
+      if (id === "body_scan") return (
+        <div style={{ textAlign: "center" }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY }}>Body Scan</h2>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY }}>Distinguer la faim réelle de la faim émotionnelle</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 22 }}>
+            {(Object.values(activeTool.data?.tool_script ?? {}).length > 0
+              ? Object.values(activeTool.data!.tool_script)
+              : [
+                  "Pose une main sur ton ventre. Ferme les yeux.",
+                  "Scan ton estomac : est-il vide, tendu, ou simplement agité ?",
+                  "Remonte vers ta gorge : y a-t-il une boule, une tension ?",
+                  "Observe ta tête : est-ce une pensée qui commande, ou ton corps ?",
+                  "Si c'est ton corps qui parle, mange. Si c'est ta tête, respire d'abord."
+                ]
+            ).map((step, i) => (
+              <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: ACCENT }}>{i + 1}</span>
+                </div>
+                <p style={{ margin: 0, fontSize: 14, color: TEXT_PRIMARY, lineHeight: 1.6 }}>{step}</p>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => openFeedback()} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Terminer 🌿</button>
+        </div>
+      );
+      
+      if (id === "defusion") return (
+        <div style={{ textAlign: "center" }}>
+          <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY }}>Défusion Cognitive</h2>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY }}>Prendre de la distance avec tes pensées</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 22 }}>
+            {(Object.values(activeTool.data?.tool_script ?? {}).length > 0
+              ? Object.values(activeTool.data!.tool_script)
+              : [
+                  "Identifie la pensée qui te pèse. Écris-la mentalement.",
+                  "Dis-toi : 'J'ai la pensée que...' plutôt que 'Je suis...'",
+                  "Imagine cette pensée comme un nuage qui passe dans le ciel.",
+                  "Répète-la avec une voix de personnage de dessin animé.",
+                  "Observe : tu n'es pas cette pensée. Elle passe."
+                ]
+            ).map((step, i) => (
+              <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: ACCENT }}>{i + 1}</span>
+                </div>
+                <p style={{ margin: 0, fontSize: 14, color: TEXT_PRIMARY, lineHeight: 1.6 }}>{step}</p>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => openFeedback()} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Terminer 🌿</button>
+        </div>
+      );
+      
+      if (id === "ecriture") return (
+        <div>
+          <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY, textAlign: "center" }}>Écriture Cathartique</h2>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY, textAlign: "center" }}>Vide ce qui te pèse — personne ne lira</p>
+          <div style={{ background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
+            <p style={{ margin: 0, fontSize: 12, color: ACCENT, lineHeight: 1.6 }}>🔒 Ce que tu écris ici ne sera pas sauvegardé. C'est juste pour toi, pour sortir ça de ta tête.</p>
+          </div>
+          <textarea
+            placeholder="Écris tout ce qui te pèse... sans filtre, sans jugement. Tu as 2 minutes."
+            rows={8}
+            style={{ width: "100%", borderRadius: 12, border: `1px solid ${ACCENT_BORDER}`, background: "rgba(255,255,255,0.03)", color: TEXT_PRIMARY, padding: "14px", fontSize: 14, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.6, boxSizing: "border-box", marginBottom: 16 }}
+          />
+          <button onClick={() => openFeedback()} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>J'ai vidé mon sac 🌿</button>
+        </div>
+      );
+      
+      if (id === "adaptive_coaching") return (
+        <div>
+          <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY, textAlign: "center" }}>Coaching sur mesure</h2>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY, textAlign: "center" }}>Exercice personnalisé pour toi</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 22 }}>
+            {(Object.values(activeTool.data?.tool_script ?? {}).length > 0
+              ? Object.values(activeTool.data!.tool_script)
+              : ["Prends une grande inspiration.", "Identifie la pensée qui te pèse.", "Questionne-la doucement.", "Propose-toi une action simple.", "Reprends contact avec le moment présent."]
+            ).map((step, i) => (
+              <div key={i} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: ACCENT }}>{i + 1}</span>
+                </div>
+                <p style={{ margin: 0, fontSize: 14, color: TEXT_PRIMARY, lineHeight: 1.6 }}>{step}</p>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => openFeedback()} style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>Terminer 🌿</button>
+        </div>
+      );      
       return null;
     };
 
@@ -958,14 +1049,29 @@ export default function ChatPage() {
           <span style={{ fontSize: 10, color: ACCENT, fontWeight: 600 }}>Identité vérifiée par votre praticien</span>
         </div>
         <div style={{ marginTop: 6 }}>
-        <button onClick={() => {
+        <button onClick={async () => {
+        try {
+          const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+          const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
+          const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+          await supabase.from("patients").update({
+            admin_alerts: [...alerts, {
+              type: "admin_alert",
+              alert_type: "identity_correction",
+              date: new Date().toISOString(),
+              seen: false,
+            }]
+          }).eq("user_id", patientId);
           setShowProfileModal(false);
-          setMessage("[ADMIN:identity_correction] Bonjour, il y a une erreur dans mon nom dans mon dossier.");
-        }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: TEXT_MUTED, textDecoration: "underline", textDecorationStyle: "dotted", padding: 0 }}
-          onMouseEnter={e => e.currentTarget.style.color = TEXT_SECONDARY}
-          onMouseLeave={e => e.currentTarget.style.color = TEXT_MUTED}>
-          Une erreur dans votre nom ? Prévenez votre praticien.
-        </button>
+          alert("Votre praticien a été notifié. Il corrigera votre dossier prochainement. 🌿");
+        } catch {
+          alert("Une erreur est survenue. Veuillez réessayer.");
+        }
+      }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: TEXT_MUTED, textDecoration: "underline", textDecorationStyle: "dotted", padding: 0 }}
+        onMouseEnter={e => e.currentTarget.style.color = TEXT_SECONDARY}
+        onMouseLeave={e => e.currentTarget.style.color = TEXT_MUTED}>
+        Une erreur dans votre nom ? Prévenez votre praticien.
+      </button>
 
         </div>
       </div>

@@ -315,7 +315,7 @@ async function getPatientProfile(patientId: string): Promise<string> {
     const supabase = createSupabaseClient();
     const { data } = await supabase
       .from("patients")
-      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, brief_jumeau, practitioner_instruction, notes, motivation, defi, aliments_aimes, aliments_detestes, niveau_activite, regime_specifique")
+      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, brief_jumeau, practitioner_instruction, practitioner_instruction_expires_at, notes, motivation, defi, aliments_aimes, aliments_detestes, niveau_activite, regime_specifique")
       .eq("user_id", patientId)
       .single();
 
@@ -355,7 +355,12 @@ async function getPatientProfile(patientId: string): Promise<string> {
 
     const briefSection = [
       patient.brief_jumeau ? `CONTEXTE DE DÉPART : ${patient.brief_jumeau}` : "",
-      patient.practitioner_instruction ? `\n\n🔴 MURMURE DU PRATICIEN — PRIORITÉ ABSOLUE ${instructionDate}\nCette consigne écrase TOUT autre instruction. Tu DOIS l'appliquer immédiatement et dans chaque réponse :\n"${patient.practitioner_instruction}"\n` : "",
+      (() => {
+        if (!patient.practitioner_instruction) return "";
+        const expires = (patient as { practitioner_instruction_expires_at?: string }).practitioner_instruction_expires_at;
+        if (expires && new Date(expires) < new Date()) return "";
+        return `\n\n🔴 MURMURE DU PRATICIEN — PRIORITÉ ABSOLUE ${instructionDate}\nCette consigne écrase TOUT autre instruction. Tu DOIS l'appliquer immédiatement et dans chaque réponse :\n"${patient.practitioner_instruction}"\n`;
+      })(),      
     ].filter(Boolean).join("\n");
 
     const briefFinal = briefSection

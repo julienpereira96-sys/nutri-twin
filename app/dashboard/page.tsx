@@ -144,15 +144,15 @@ type RealPatient = {
   lastMessage: string; lastMessageTime: string; lastMessageRole: string; totalMessages: number;admin_alerts?: { type: string; date: string; seen: boolean; alert_type?: string; murmure?: string }[];
   age?: number; sexe?: string; taille?: number; poids?: number; objective?: string; pathologies?: string;
   allergies?: string; traitements?: string; objectif_clinique?: string; niveau_activite?: string;
-  regime_specifique?: string; notes?: string; brief_jumeau?: string; practitioner_instruction?: string;
-  emotional_status?: string; emotional_insight?: string; latest_victory?: string; private_notes?: string;
+  regime_specifique?: string; notes?: string; brief_jumeau?: string; practitioner_instruction?: string; practitioner_instruction_expires_at?: string;
+  emotional_status?: string; emotional_insight?: string; latest_victory?: string; private_notes?: string; created_at?: string;
 };
 
 type Conversation = { id: string; role: "user" | "assistant"; content: string; created_at: string; };
 type ReportPeriod = "week" | "month" | "custom";
 type ActiveTab = "patients" | "radar" | "valeur" | "patterns";
 type Document = { id: string; file_name: string; file_type: string; created_at: string; };
-type MonthlyStats = { messages_geres: number; crises_nocturnes: number; temps_economise_heures: number; taux_retention: number; questions_repetitives_pct: number; };
+type MonthlyStats = { messages_geres: number; crises_nocturnes: number; temps_economise_heures: number; temps_accompagnement_heures: number; taux_retention: number; questions_repetitives_pct: number; sos_resolutions?: number; chat_resolutions?: number; };
 
 const AVATAR_COLORS = ["#f43f5e", "#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ec4899", "#06b6d4", "#f97316"];
 
@@ -261,6 +261,12 @@ export default function DashboardPage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [reportError, setReportError] = useState("");
+  const [showBilanModal, setShowBilanModal] = useState(false);
+  const [bilanContent, setBilanContent] = useState("");
+  const [bilanLoading, setBilanLoading] = useState(false);
+
+  
+
 
   const AVATARS = [
     <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 3C13 3 4 8 4 15C4 19.4 8.1 23 13 23C17.9 23 22 19.4 22 15C22 8 13 3 13 3Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/><path d="M13 23V13" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/><path d="M13 13C13 13 9 10 9 7" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/><path d="M13 13C13 13 17 10 17 7" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/></svg>,
@@ -360,7 +366,10 @@ export default function DashboardPage() {
   const fidelityColor = 
   documents.length === 0 ? amber : 
   documents.length >= 3 ? emerald : "#06b6d4"; 
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
   const [editAge, setEditAge] = useState("");
+  const [murmureDuration, setMurmureDuration] = useState("permanent");
   const [editObjective, setEditObjective] = useState("");
   const [editPathologies, setEditPathologies] = useState("");
   const [editAllergies, setEditAllergies] = useState("");
@@ -399,8 +408,41 @@ export default function DashboardPage() {
     else {
       const { count: totalMessages } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("practitioner_id", pid).gte("created_at", `${month}-01T00:00:00`);
       const { count: nightMessages } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("practitioner_id", pid).gte("created_at", `${month}-01T21:00:00`);
-      const msgs = totalMessages ?? 0;
-      setMonthlyStats({ messages_geres: msgs, crises_nocturnes: nightMessages ?? 0, temps_economise_heures: Math.round(msgs * 0.02 * 10) / 10, taux_retention: 85, questions_repetitives_pct: 72 });
+
+        // Résolutions par outil SOS
+        const { count: sosCount } = await supabase.from("sos_events").select("*", { count: "exact", head: true }).eq("practitioner_id", pid).gte("triggered_at", `${month}-01T00:00:00`);
+
+        // Résolutions par discussion — feedbacks SOS avec amélioration
+        const { data: sosFeedbacks } = await supabase.from("sos_feedback").select("score_after, stress_before_proxy").eq("practitioner_id", pid).gte("created_at", `${month}-01T00:00:00`);
+        const chatResolutions = (sosFeedbacks ?? []).filter(f => f.score_after < f.stress_before_proxy).length;
+
+        const msgs = totalMessages ?? 0;
+        // Temps libéré : 45s par message simple, 2min par message complexe, 5min par SOS
+        const tempsLibere = Math.round(((msgs * 0.75) + ((sosCount ?? 0) * 5)) / 60 * 10) / 10;
+        // Temps accompagnement : durée estimée des sessions patient
+        const { data: sessions } = await supabase
+          .from("conversations_sessions")
+          .select("created_at, last_message_at")
+          .eq("practitioner_id", pid)
+          .gte("created_at", `${month}-01T00:00:00`);
+        const tempsAccompagnement = Math.round(
+          (sessions ?? []).reduce((sum, s) => {
+            if (!s.last_message_at) return sum;
+            const dur = (new Date(s.last_message_at).getTime() - new Date(s.created_at).getTime()) / 1000 / 60;
+            return sum + Math.min(dur, 60); // cap à 60 min par session
+          }, 0) / 60 * 10
+        ) / 10;
+
+        setMonthlyStats({ 
+          messages_geres: msgs, 
+          crises_nocturnes: nightMessages ?? 0, 
+          temps_economise_heures: tempsLibere,
+          temps_accompagnement_heures: tempsAccompagnement,
+          taux_retention: 85, 
+          questions_repetitives_pct: 72,
+          sos_resolutions: sosCount ?? 0,
+          chat_resolutions: chatResolutions,
+        });
     }
   };
 
@@ -408,7 +450,7 @@ export default function DashboardPage() {
     const { data: relations } = await supabase.from("patient_practitioner").select("patient_id").eq("practitioner_id", pid);
     if (!relations || relations.length === 0) { setLoading(false); return; }
     const patientIds = relations.map((r) => r.patient_id);
-    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, notes, brief_jumeau, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts")
+    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, notes, brief_jumeau, practitioner_instruction, practitioner_instruction_expires_at, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at")
     .in("user_id", patientIds);
     if (!patientsData) { setLoading(false); return; }
     const patientsWithStats = await Promise.all(
@@ -426,8 +468,9 @@ export default function DashboardPage() {
           age: p.age, sexe: p.sexe, taille: p.taille, poids: p.poids, traitements: p.traitements,
           objectif_clinique: p.objectif_clinique, niveau_activite: p.niveau_activite, regime_specifique: p.regime_specifique,
           objective: p.objective, pathologies: p.pathologies, allergies: p.allergies, notes: p.notes,
-          brief_jumeau: p.brief_jumeau, practitioner_instruction: p.practitioner_instruction,
+          brief_jumeau: p.brief_jumeau, practitioner_instruction: p.practitioner_instruction, practitioner_instruction_expires_at: p.practitioner_instruction_expires_at,
           emotional_status: p.emotional_status ?? "green", emotional_insight: p.emotional_insight ?? "",
+          created_at: p.created_at,
 latest_victory: p.latest_victory ?? "", private_notes: p.private_notes ?? "",
 admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[] | null) ?? [],
 
@@ -491,11 +534,25 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
   const saveMurmure = async () => {
     if (!selectedPatientId) return;
     setSavingMurmure(true);
-    await supabase.from("patients").update({ practitioner_instruction: murmureText || null }).eq("user_id", selectedPatientId);
-await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: selectedPatientId }) });
-setSavingMurmure(false);
+  
+    const expiresAt = murmureDuration === "permanent" ? null
+      : murmureDuration === "24h" ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+      : murmureDuration === "3j" ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
+      : murmureDuration === "7j" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      : murmureDuration === "14j" ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  
+    await supabase.from("patients").update({
+      practitioner_instruction: murmureText || null,
+      practitioner_instruction_expires_at: expiresAt,
+    }).eq("user_id", selectedPatientId);
+  
+    await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: selectedPatientId }) });
+    setPatients((prev) => prev.map((p) => p.id === selectedPatientId ? { ...p, practitioner_instruction: murmureText || undefined } : p));
+    setSavingMurmure(false);
+    setMurmureDuration("permanent");
     setShowMurmureModal(false);
-  };
+  };  
 
   const savePrivateNotes = async () => {
     if (!selectedPatientId) return;
@@ -526,11 +583,34 @@ setSavingMurmure(false);
     if (!journalEntries?.length && !chatMessages?.length) { setPatternInsight("Pas encore assez de données pour détecter des patterns."); setPatternLoading(false); return; }
     const journalData = `| Date | Humeur | Alimentation | Émotions |\n| :--- | :--- | :--- | :--- |\n${journalEntries?.map((e) => `| ${e.date} | ${e.mood}/10 | ${e.food_rating}/3 | ${(e.emotions as string[])?.join(", ")} |`).join("\n") ?? ""}`;
     const chatData = chatMessages?.filter((m) => m.role === "user").slice(0, 20).map((m) => m.content.slice(0, 100)).join(" | ") ?? "";
-    const prompt = `Tu es un analyste de données nutritionnelles. Analyse ces données d'un patient et détecte des corrélations ou patterns comportementaux.\n\nJournal (30 derniers jours) :\n${journalData}\n\nMessages du patient (extraits) :\n${chatData}\n\nGénère 3 insights sous forme de phrases courtes et percutantes. Sois précis, factuel, médical. 3 insights maximum. Sans markdown.`;
+    const prompt = `Tu es un analyste de données nutritionnelles expert. Analyse ces données d'un patient et détecte des corrélations ou patterns comportementaux.
+
+      Journal (30 derniers jours) :
+      ${journalData}
+
+      Messages du patient (extraits) :
+      ${chatData}
+
+      Génère exactement 3 insights structurés. Pour chaque insight, réponds UNIQUEMENT en JSON valide sans markdown ni backticks :
+      [
+        {
+          "observation": "Fait brut observable dans les données",
+          "correlation": "Lien avec un autre facteur détecté",
+          "hypothese": "Interprétation probable du pattern",
+          "action": "Suggestion concrète pour le praticien"
+        }
+      ]`;
     try {
       const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: prompt, practitionerId }) });
       const data = await res.json() as { response?: string };
-      setPatternInsight(data.response ?? "Impossible de générer les insights.");
+      const raw = data.response ?? "";
+      try {
+        const cleaned = raw.replace(/```json|```/g, "").trim();
+        const parsed = JSON.parse(cleaned) as { observation: string; correlation: string; hypothese: string; action: string }[];
+        setPatternInsight(JSON.stringify(parsed));
+      } catch {
+        setPatternInsight(raw);
+      }
     } catch { setPatternInsight("Erreur lors de l'analyse."); }
     setPatternLoading(false);
   };
@@ -602,6 +682,8 @@ setSavingMurmure(false);
   const openProfileModal = () => {
     const patient = patients.find((p) => p.id === selectedPatientId);
     if (!patient) return;
+    setEditFirstName(patient.firstName ?? "");
+    setEditLastName(patient.lastName ?? "");
     setEditAge(patient.age ? String(patient.age) : ""); setEditObjective(patient.objective ?? "");
     setEditPathologies(patient.pathologies ?? ""); setEditAllergies(patient.allergies ?? ""); setEditNotes(patient.notes ?? "");
     setProfileSaved(false); setShowProfileModal(true);
@@ -610,7 +692,18 @@ setSavingMurmure(false);
   const saveProfile = async () => {
     if (!selectedPatientId) return;
     setSavingProfile(true);
-    await supabase.from("patients").update({ age: editAge ? parseInt(editAge) : null, objective: editObjective || null, pathologies: editPathologies || null, allergies: editAllergies || null, notes: editNotes || null }).eq("user_id", selectedPatientId);
+    await supabase.from("patients").update({ 
+      first_name: editFirstName || null,
+      last_name: editLastName || null,
+      age: editAge ? parseInt(editAge) : null, 
+      objective: editObjective || null, 
+      pathologies: editPathologies || null, 
+      allergies: editAllergies || null, 
+      notes: editNotes || null 
+    }).eq("user_id", selectedPatientId); 
+    const patient = patients.find(p => p.id === selectedPatientId);
+    const alerts = (patient?.admin_alerts ?? []).filter((a: { alert_type?: string }) => a.alert_type !== "identity_correction");
+    await supabase.from("patients").update({ admin_alerts: alerts }).eq("user_id", selectedPatientId);   
     setPatients((prev) => prev.map((p) => { if (p.id !== selectedPatientId) return p; return { ...p, age: editAge ? parseInt(editAge) : undefined, objective: editObjective || undefined, pathologies: editPathologies || undefined, allergies: editAllergies || undefined, notes: editNotes || undefined }; }));
     setSavingProfile(false); setProfileSaved(true);
     setTimeout(() => setShowProfileModal(false), 1500);
@@ -706,6 +799,51 @@ setSavingMurmure(false);
   const formatTime = (seconds: number) => { const m = Math.floor(seconds / 60).toString().padStart(2, "0"); const s = (seconds % 60).toString().padStart(2, "0"); return `${m}:${s}`; };
   const fileTypeIcon = (type: string) => { if (["jpg","jpeg","png"].includes(type)) return "🖼️"; if (["mp3","wav","m4a"].includes(type)) return "🎙️"; if (["xlsx","csv"].includes(type)) return "📊"; if (type === "pdf") return "📕"; if (type === "docx") return "📝"; return "📄"; };
   const today = new Date().toISOString().split("T")[0];
+
+  const generateBilan = async () => {
+    if (!selectedPatientId || !practitionerId) return;
+    setBilanLoading(true); setBilanContent("");
+    
+    const { data: chatMessages } = await supabase
+      .from("conversations")
+      .select("role, content, created_at")
+      .eq("patient_id", selectedPatientId)
+      .eq("practitioner_id", practitionerId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+  
+    const { data: journalEntries } = await supabase
+      .from("journal_entries")
+      .select("date, mood, food_rating, emotions, content")
+      .eq("patient_id", selectedPatientId)
+      .order("date", { ascending: false })
+      .limit(14);
+  
+    const chatData = chatMessages?.filter(m => m.role === "user").slice(0, 20).map(m => m.content.slice(0, 150)).join(" | ") ?? "";
+    const journalData = journalEntries?.map(e => `${e.date}: humeur ${e.mood}/10, ${(e.emotions as string[])?.join(", ")}`).join(" | ") ?? "";
+  
+    const prompt = `Tu es l'assistant d'un nutritionniste qui prépare sa prochaine consultation avec un patient.
+  
+  Voici les derniers échanges du patient avec le jumeau numérique :
+  ${chatData || "Pas de conversations récentes"}
+  
+  Voici son journal des 14 derniers jours :
+  ${journalData || "Pas d'entrées journal"}
+  
+  Génère exactement 3 questions clés que le praticien devrait poser lors de la prochaine consultation, basées sur ce qui a été dit. Les questions doivent être précises, personnalisées et montrer que le praticien a suivi de près l'évolution du patient. Réponds UNIQUEMENT en JSON sans markdown :
+  [
+    {"question": "...", "contexte": "Pourquoi cette question est importante"},
+    {"question": "...", "contexte": "Pourquoi cette question est importante"},
+    {"question": "...", "contexte": "Pourquoi cette question est importante"}
+  ]`;
+  
+    try {
+      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: prompt, practitionerId }) });
+      const data = await res.json() as { response?: string };
+      setBilanContent(data.response ?? "");
+    } catch { setBilanContent(""); }
+    setBilanLoading(false);
+  };  
 
   return (
     <div style={{ minHeight: "100vh", background: "#070B09", color: "white", fontFamily: "Inter, sans-serif" }}>
@@ -918,7 +1056,11 @@ setSavingMurmure(false);
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                             <span style={{ fontSize: 13, fontWeight: 600, color: isSelected ? emerald : "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{patient.firstName}</span>
                             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                              {patient.latest_victory && <span style={{ fontSize: 10 }}>🏆</span>}
+                            {patient.latest_victory && <span style={{ fontSize: 10 }}>🏆</span>}
+                            {patient.created_at && (new Date().getTime() - new Date(patient.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000 && (
+                              <span style={{ fontSize: 10 }} title="Nouveau patient — 7 premiers jours">🔵</span>
+                            )}
+                            <span style={{ fontSize: 10, color: statusColor }}>●</span>
                               <span style={{ fontSize: 10, color: statusColor }}>●</span>
                             </div>
                           </div>
@@ -961,10 +1103,11 @@ setSavingMurmure(false);
                         <p style={{ margin: 0, fontSize: 12, color: "#64748b", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{onboardingDemoMode ? "patient@email.fr" : (selectedPatient as RealPatient).email}</p>
                       </div>
                     </div>
-                    <button onClick={() => { if (!onboardingDemoMode) { setShowReportModal(true); setReportContent(""); } }}
-                      style={{ height: 32, borderRadius: 8, padding: "0 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.08)", color: emerald }}>
-                      📊 Rapport IA
-                    </button>
+                    <button onClick={() => { if (!onboardingDemoMode) { setShowBilanModal(true); void generateBilan(); } }}
+                    style={{ height: 38, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    ✨ Préparer ma séance
+                  </button>
+
                   </div>
                   <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", background: "#070707", display: "flex", flexDirection: "column", gap: 12 }}>
                     {displayedConversations.length === 0 ? (
@@ -1069,9 +1212,28 @@ setSavingMurmure(false);
                       <span style={{ fontSize: 11 }}>🎙️</span>
                       <span style={{ fontSize: 11, fontWeight: 700, color: emerald }}>Murmure actif</span>
                     </div>
-                    <p style={{ margin: 0, fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
-                      {onboardingDemoMode ? "Sois plus doux cette semaine, elle traverse une période difficile." : ((selectedPatient as RealPatient).practitioner_instruction || "Aucune consigne active")}
-                    </p>
+                    {(() => {
+                    const p = selectedPatient as RealPatient;
+                    const expires = p.practitioner_instruction_expires_at;
+                    const isExpired = expires && new Date(expires) < new Date();
+                    return (
+                      <>
+                        {isExpired && (
+                          <p style={{ margin: "0 0 6px", fontSize: 11, color: "#f59e0b", fontWeight: 600 }}>
+                            ⚠️ Murmure expiré — Le jumeau a repris son comportement standard.
+                          </p>
+                        )}
+                        <p style={{ margin: 0, fontSize: 11, color: isExpired ? "#64748b" : "#94a3b8", lineHeight: 1.5, textDecoration: isExpired ? "line-through" : "none" }}>
+                          {onboardingDemoMode ? "Sois plus doux cette semaine, elle traverse une période difficile." : (p.practitioner_instruction || "Aucune consigne active")}
+                        </p>
+                        {expires && !isExpired && (
+                          <p style={{ margin: "4px 0 0", fontSize: 10, color: "#64748b" }}>
+                            Expire le {new Date(expires).toLocaleDateString("fr-FR")}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                   </div>
 
                   {!onboardingDemoMode && (
@@ -1172,10 +1334,16 @@ setSavingMurmure(false);
           <p style={{ margin: "0 0 4px", fontSize: 48, fontWeight: 900, color: "#818cf8", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
             {patients.reduce((sum, p) => sum + (p.totalMessages > 0 ? 1 : 0), 0) || 0}
           </p>
-          <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>ce mois-ci en autonomie totale</p>
-          <div style={{ background: "rgba(99,102,241,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 12 }}>🛡️</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#818cf8" }}>Sans votre intervention</span>
+          <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>ce mois-ci en autonomie totale</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 8, padding: "6px 10px", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 12 }}>💬</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: emerald }}>Par discussion : {monthlyStats?.chat_resolutions ?? 0}</span>
+            </div>
+            <div style={{ background: "rgba(99,102,241,0.08)", borderRadius: 8, padding: "6px 10px", display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 12 }}>🛡️</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#818cf8" }}>Par outil SOS : {monthlyStats?.sos_resolutions ?? 0}</span>
+            </div>
           </div>
         </div>
 
@@ -1231,7 +1399,12 @@ setSavingMurmure(false);
                     <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{patient.totalMessages} messages</p>
                   </div>
                 </button>
+                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                {patient.created_at && (new Date().getTime() - new Date(patient.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000 && (
+                  <span style={{ fontSize: 12 }} title="Nouveau patient">🔵</span>
+                )}
                 <span style={{ fontSize: 18 }}>{isCritical ? "🚨" : getStatusEmoji(patient.emotional_status)}</span>
+              </div>
               </div>
               {patient.emotional_insight && (
                 <p style={{ margin: "0 0 10px", fontSize: 12, color: statusColor, lineHeight: 1.5, fontStyle: "italic", filter: discretMode ? "blur(4px)" : "none" }}>
@@ -1270,7 +1443,8 @@ setSavingMurmure(false);
               {[
                 { icon: "💬", label: "Messages gérés", value: monthlyStats?.messages_geres ?? 0, unit: "messages", desc: "Questions répondues à votre place", color: emerald },
                 { icon: "🌙", label: "Crises nocturnes", value: monthlyStats?.crises_nocturnes ?? 0, unit: "interventions", desc: "Moments où votre jumeau était là pour eux", color: "#8b5cf6" },
-                { icon: "⏱️", label: "Temps économisé", value: monthlyStats?.temps_economise_heures ?? 0, unit: "heures", desc: "Estimé à 1,2 min par message géré", color: amber },
+                { icon: "⏱️", label: "Temps libéré", value: monthlyStats?.temps_economise_heures ?? 0, unit: "heures", desc: "Temps praticien récupéré ce mois-ci", color: amber },
+                { icon: "🤝", label: "Temps d'accompagnement", value: monthlyStats?.temps_accompagnement_heures ?? 0, unit: "heures", desc: "Présence simulée auprès de vos patients", color: "#06b6d4" },
                 { icon: "🔄", label: "Questions répétitives", value: `${monthlyStats?.questions_repetitives_pct ?? 0}%`, unit: "", desc: "Absorbées par le jumeau sans vous", color: "#06b6d4" },
               ].map((stat, i) => (
                 <div key={i} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "24px", backdropFilter: "blur(20px)" }}>
@@ -1291,6 +1465,8 @@ setSavingMurmure(false);
                 Ce mois-ci, votre jumeau a répondu à <strong style={{ color: "white" }}>{monthlyStats?.messages_geres ?? 0} questions</strong>, géré <strong style={{ color: "white" }}>{monthlyStats?.crises_nocturnes ?? 0} moments difficiles</strong> en dehors de vos heures de consultation, et vous a économisé environ <strong style={{ color: "white" }}>{monthlyStats?.temps_economise_heures ?? 0} heures</strong> de suivi.
                 <br /><br />
                 <strong style={{ color: emerald }}>{monthlyStats?.questions_repetitives_pct ?? 0}% des questions répétitives</strong> ont été absorbées sans votre intervention. Votre expertise travaille 24h/24.
+                <br /><br />
+                Vos patients ont bénéficié de <strong style={{ color: "#06b6d4" }}>{monthlyStats?.temps_accompagnement_heures ?? 0}h de présence simulée</strong> ce mois-ci. Vous avez récupéré <strong style={{ color: amber }}>{monthlyStats?.temps_economise_heures ?? 0}h de votre temps</strong>.
               </p>
             </div>
           </div>
@@ -1325,12 +1501,38 @@ setSavingMurmure(false);
             {patternInsight && (
               <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "24px" }}>
                 <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 700, color: emerald, letterSpacing: "0.08em", textTransform: "uppercase" }}>🧬 Insights — {selectedPatient?.firstName}</p>
-                {patternInsight.split("\n").filter(Boolean).map((line, i) => (
+                {(() => {
+  try {
+    const insights = JSON.parse(patternInsight) as { observation: string; correlation: string; hypothese: string; action: string }[];
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {insights.map((insight, i) => (
+          <div key={i} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 20 }}>
+            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: emerald, letterSpacing: "0.1em", textTransform: "uppercase" }}>Insight {i + 1}</p>
+            {[
+              { label: "📊 Observation", value: insight.observation, color: "#e2e8f0" },
+              { label: "🔗 Corrélation", value: insight.correlation, color: "#94a3b8" },
+              { label: "💡 Hypothèse", value: insight.hypothese, color: "#c084fc" },
+              { label: "✅ Action suggérée", value: insight.action, color: emerald },
+            ].map(({ label, value, color }) => (
+              <div key={label} style={{ marginBottom: 10 }}>
+                <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 700, color: "#64748b" }}>{label}</p>
+                <p style={{ margin: 0, fontSize: 13, color, lineHeight: 1.6 }}>{value}</p>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+              } catch {
+                return patternInsight.split("\n").filter(Boolean).map((line, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: emerald, flexShrink: 0, marginTop: 7 }} />
                     <p style={{ margin: 0, fontSize: 14, color: "#e2e8f0", lineHeight: 1.7 }}>{line.replace(/^[-•*]\s*/, "")}</p>
                   </div>
-                ))}
+                ));
+              }
+            })()}
               </div>
             )}
             {!patternInsight && !patternLoading && (
@@ -1513,6 +1715,24 @@ setSavingMurmure(false);
             </div>
             <textarea value={murmureText} onChange={(e) => setMurmureText(e.target.value)} placeholder="Ex: Sois plus doux cette semaine, elle traverse une période difficile au travail." rows={5}
               style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.6 }} />
+              <div style={{ marginBottom: 16 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#64748b" }}>DURÉE DU MURMURE</p>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {[
+                  { value: "permanent", label: "Permanent" },
+                  { value: "24h", label: "24h" },
+                  { value: "3j", label: "3 jours" },
+                  { value: "7j", label: "7 jours" },
+                  { value: "14j", label: "14 jours" },
+                  { value: "30j", label: "30 jours" },
+                ].map(({ value, label }) => (
+                  <button key={value} onClick={() => setMurmureDuration(value)}
+                    style={{ height: 32, borderRadius: 20, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: murmureDuration === value ? "1px solid rgba(16,185,129,0.4)" : "1px solid rgba(255,255,255,0.1)", background: murmureDuration === value ? "rgba(16,185,129,0.12)" : "transparent", color: murmureDuration === value ? "#10b981" : "#64748b", transition: "all 0.2s" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               {murmureText && <button onClick={() => setMurmureText("")} style={{ height: 44, borderRadius: 10, padding: "0 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(244,63,94,0.3)", background: "rgba(244,63,94,0.08)", color: "#f87171" }}>Supprimer</button>}
               <button onClick={() => void saveMurmure()} disabled={savingMurmure} style={{ flex: 1, height: 44, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", border: "none", background: emerald, color: "black" }}>
@@ -1737,7 +1957,7 @@ setSavingMurmure(false);
               <button onClick={() => setShowProfileModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {[{ label: "Âge", value: editAge, onChange: setEditAge, placeholder: "Ex: 34", type: "number" }, { label: "Objectif principal", value: editObjective, onChange: setEditObjective, placeholder: "Ex: Perte de poids", type: "text" }, { label: "Pathologies", value: editPathologies, onChange: setEditPathologies, placeholder: "Ex: Diabète type 2", type: "text" }, { label: "Allergies", value: editAllergies, onChange: setEditAllergies, placeholder: "Ex: Gluten, lactose", type: "text" }].map(({ label, value, onChange, placeholder, type }) => (
+            {[{ label: "Prénom", value: editFirstName, onChange: setEditFirstName, placeholder: "Ex: Sophie", type: "text" }, { label: "Nom", value: editLastName, onChange: setEditLastName, placeholder: "Ex: Martin", type: "text" }, { label: "Âge", value: editAge, onChange: setEditAge, placeholder: "Ex: 34", type: "number" },{ label: "Objectif principal", value: editObjective, onChange: setEditObjective, placeholder: "Ex: Perte de poids", type: "text" }, { label: "Pathologies", value: editPathologies, onChange: setEditPathologies, placeholder: "Ex: Diabète type 2", type: "text" }, { label: "Allergies", value: editAllergies, onChange: setEditAllergies, placeholder: "Ex: Gluten, lactose", type: "text" }].map(({ label, value, onChange, placeholder, type }) => (
                 <div key={label}>
                   <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
                   <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
@@ -1919,6 +2139,52 @@ setSavingMurmure(false);
           </div>
         </div>
       )}
+
+{showBilanModal && (
+  <div onClick={e => { if (e.target === e.currentTarget) setShowBilanModal(false); }}
+    style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+    <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 520, border: "1px solid rgba(99,102,241,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "85vh", overflowY: "auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>✨ Préparer ma séance</h2>
+          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>3 questions clés pour {selectedPatient?.firstName}</p>
+        </div>
+        <button onClick={() => setShowBilanModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
+      </div>
+
+      {bilanLoading ? (
+        <div style={{ textAlign: "center", padding: "40px 0" }}>
+          <p style={{ fontSize: 13, color: "#64748b" }}>Analyse des échanges en cours... 🧬</p>
+        </div>
+      ) : bilanContent ? (
+        (() => {
+          try {
+            const questions = JSON.parse(bilanContent.replace(/```json|```/g, "").trim()) as { question: string; contexte: string }[];
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {questions.map((q, i) => (
+                  <div key={i} style={{ background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: 20 }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#818cf8", textTransform: "uppercase", letterSpacing: "0.1em" }}>Question {i + 1}</p>
+                    <p style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 600, color: "white", lineHeight: 1.5 }}>"{q.question}"</p>
+                    <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>💡 {q.contexte}</p>
+                  </div>
+                ))}
+                <button onClick={() => void navigator.clipboard.writeText(questions.map((q, i) => `${i + 1}. ${q.question}`).join("\n"))}
+                  style={{ height: 44, borderRadius: 12, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", color: "#818cf8", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  📋 Copier les questions
+                </button>
+              </div>
+            );
+          } catch {
+            return <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7 }}>{bilanContent}</p>;
+          }
+        })()
+      ) : (
+        <p style={{ fontSize: 13, color: "#64748b", textAlign: "center", padding: "40px 0" }}>Impossible de générer le bilan.</p>
+      )}
+    </div>
+  </div>
+)}
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
