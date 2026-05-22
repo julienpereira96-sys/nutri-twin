@@ -145,7 +145,7 @@ export default function LoginPage() {
             className="mt-6 w-full rounded-xl bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
             onMouseEnter={e => { if (!loading) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
-            {loading ? "Connexion..." : "Se connecter"}
+            {loading ? "Connexion..." : "Se connecter →"}
           </button>
 
           <button type="button" onClick={() => setShowForgotModal(true)}
