@@ -150,9 +150,10 @@ type RealPatient = {
 
 type Conversation = { id: string; role: "user" | "assistant"; content: string; created_at: string; };
 type ReportPeriod = "week" | "month" | "custom";
-type ActiveTab = "patients" | "radar" | "valeur" | "patterns";
+type ActiveTab = "patients" | "vue_ensemble" | "analyse";
 type Document = { id: string; file_name: string; file_type: string; created_at: string; };
-type MonthlyStats = { messages_geres: number; crises_nocturnes: number; temps_economise_heures: number; temps_accompagnement_heures: number; taux_retention: number; questions_repetitives_pct: number; sos_resolutions?: number; chat_resolutions?: number; };
+type MonthlyStats = { messages_geres: number; crises_nocturnes: number; temps_economise_heures: number; temps_accompagnement_heures: number; taux_retention: number; questions_repetitives_pct: number; sos_resolutions?: number; chat_resolutions?: number; delta_stress_avant?: number | null; delta_stress_apres?: number | null; };
+
 
 const AVATAR_COLORS = ["#f43f5e", "#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ec4899", "#06b6d4", "#f97316"];
 
@@ -402,49 +403,43 @@ export default function DashboardPage() {
   };
 
   const loadMonthlyStats = async (pid: string) => {
-    const month = new Date().toISOString().slice(0, 7);
-    const { data } = await supabase.from("stats_mensuelles_praticien").select("*").eq("practitioner_id", pid).eq("month", month).single();
-    if (data) { setMonthlyStats(data as MonthlyStats); }
-    else {
-      const { count: totalMessages } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("practitioner_id", pid).gte("created_at", `${month}-01T00:00:00`);
-      const { count: nightMessages } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("practitioner_id", pid).gte("created_at", `${month}-01T21:00:00`);
+    const { count: totalMessages } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("practitioner_id", pid);
+    const { count: sosCount } = await supabase.from("sos_events").select("*", { count: "exact", head: true }).eq("practitioner_id", pid);
+    const { data: sosFeedbacks } = await supabase.from("sos_feedback").select("score_after, stress_before_proxy").eq("practitioner_id", pid);
+    const chatResolutions = (sosFeedbacks ?? []).filter(f => f.score_after < f.stress_before_proxy).length;
+    const feedbacksWithData = (sosFeedbacks ?? []).filter(f => f.stress_before_proxy > 0 && f.score_after > 0);
+    const avgBefore = feedbacksWithData.length > 0 ? Math.round(feedbacksWithData.reduce((sum, f) => sum + f.stress_before_proxy, 0) / feedbacksWithData.length * 10) / 10 : null;
+    const avgAfter = feedbacksWithData.length > 0 ? Math.round(feedbacksWithData.reduce((sum, f) => sum + f.score_after, 0) / feedbacksWithData.length * 10) / 10 : null;
 
-        // Résolutions par outil SOS
-        const { count: sosCount } = await supabase.from("sos_events").select("*", { count: "exact", head: true }).eq("practitioner_id", pid).gte("triggered_at", `${month}-01T00:00:00`);
-
-        // Résolutions par discussion — feedbacks SOS avec amélioration
-        const { data: sosFeedbacks } = await supabase.from("sos_feedback").select("score_after, stress_before_proxy").eq("practitioner_id", pid).gte("created_at", `${month}-01T00:00:00`);
-        const chatResolutions = (sosFeedbacks ?? []).filter(f => f.score_after < f.stress_before_proxy).length;
-
-        const msgs = totalMessages ?? 0;
-        // Temps libéré : 45s par message simple, 2min par message complexe, 5min par SOS
-        const tempsLibere = Math.round(((msgs * 0.75) + ((sosCount ?? 0) * 5)) / 60 * 10) / 10;
-        // Temps accompagnement : durée estimée des sessions patient
-        const { data: sessions } = await supabase
-          .from("conversations_sessions")
-          .select("created_at, last_message_at")
-          .eq("practitioner_id", pid)
-          .gte("created_at", `${month}-01T00:00:00`);
-        const tempsAccompagnement = Math.round(
-          (sessions ?? []).reduce((sum, s) => {
-            if (!s.last_message_at) return sum;
-            const dur = (new Date(s.last_message_at).getTime() - new Date(s.created_at).getTime()) / 1000 / 60;
-            return sum + Math.min(dur, 60); // cap à 60 min par session
-          }, 0) / 60 * 10
-        ) / 10;
-
-        setMonthlyStats({ 
-          messages_geres: msgs, 
-          crises_nocturnes: nightMessages ?? 0, 
-          temps_economise_heures: tempsLibere,
-          temps_accompagnement_heures: tempsAccompagnement,
-          taux_retention: 85, 
-          questions_repetitives_pct: 72,
-          sos_resolutions: sosCount ?? 0,
-          chat_resolutions: chatResolutions,
-        });
-    }
-  };
+  
+    const msgs = totalMessages ?? 0;
+    const tempsLibere = Math.round(((msgs * 0.75) + ((sosCount ?? 0) * 5)) / 60 * 10) / 10;
+  
+    const { data: sessions } = await supabase
+      .from("conversations_sessions")
+      .select("created_at, last_message_at")
+      .eq("practitioner_id", pid);
+    const tempsAccompagnement = Math.round(
+      (sessions ?? []).reduce((sum, s) => {
+        if (!s.last_message_at) return sum;
+        const dur = (new Date(s.last_message_at).getTime() - new Date(s.created_at).getTime()) / 1000 / 60;
+        return sum + Math.min(dur, 60);
+      }, 0) / 60 * 10
+    ) / 10;
+  
+    setMonthlyStats({
+      messages_geres: msgs,
+      crises_nocturnes: 0,
+      temps_economise_heures: tempsLibere,
+      temps_accompagnement_heures: tempsAccompagnement,
+      taux_retention: 85,
+      questions_repetitives_pct: 72,
+      sos_resolutions: sosCount ?? 0,
+      chat_resolutions: chatResolutions,
+      delta_stress_avant: avgBefore,
+      delta_stress_apres: avgAfter,
+    });  
+  };  
 
   const loadPatients = async (pid: string) => {
     const { data: relations } = await supabase.from("patient_practitioner").select("patient_id").eq("practitioner_id", pid);
@@ -929,8 +924,8 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {(["patients", "radar", "valeur", "patterns"] as ActiveTab[]).map((tab) => {
-              const labels: Record<ActiveTab, string> = { patients: "Suivi", radar: "Radar", valeur: "Impact", patterns: "Insights" };
+          {(["patients", "vue_ensemble", "analyse"] as ActiveTab[]).map((tab) => {
+              const labels: Record<ActiveTab, string> = { patients: "Suivi", vue_ensemble: "Vue d'ensemble", analyse: "Analyse" };
               const isActive = activeTab === tab;
               return (
                 <button key={tab} onClick={() => setActiveTab(tab)}
@@ -1060,8 +1055,8 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                             {patient.created_at && (new Date().getTime() - new Date(patient.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000 && (
                               <span style={{ fontSize: 10 }} title="Nouveau patient — 7 premiers jours">🔵</span>
                             )}
-                            <span style={{ fontSize: 10, color: statusColor }}>●</span>
                               <span style={{ fontSize: 10, color: statusColor }}>●</span>
+
                             </div>
                           </div>
                           <p style={{ margin: 0, fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
@@ -1276,7 +1271,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
         )}
 
        
-{activeTab === "radar" && (
+{activeTab === "vue_ensemble" && (
   <div>
     {/* ═══ BANDEAU CRITIQUE ═══ */}
     {displayedPatients.some(p => p.emotional_status === "red_critical") && (
@@ -1298,10 +1293,11 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
 
     {/* ═══ HEADER RÉSILIENCE ═══ */}
     <div style={{ marginBottom: 28 }}>
-      <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Radar émotionnel</h2>
-      <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Résilience du cabinet · Statut IA mis à jour à chaque message</p>
+      <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Vue d'ensemble</h2>
+      <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Suivi en cours · Statut IA mis à jour à chaque message</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
+
         {/* Carte 1 — Delta stress */}
         <div style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 16, padding: 20 }}>
           <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Delta de stress moyen</p>
@@ -1309,68 +1305,57 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
             <div style={{ flex: 1 }}>
               <p style={{ margin: "0 0 4px", fontSize: 10, color: "#64748b" }}>Avant</p>
               <div style={{ height: 6, background: "rgba(244,63,94,0.15)", borderRadius: 3, marginBottom: 4 }}>
-                <div style={{ height: "100%", width: "72%", background: coral, borderRadius: 3 }} />
+              <div style={{ height: "100%", width: `${((monthlyStats?.delta_stress_avant ?? 0) / 10) * 100}%`, background: coral, borderRadius: 3 }} />
+
               </div>
-              <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: coral }}>7.2</p>
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: coral }}>{monthlyStats?.delta_stress_avant ?? "—"}</p>
             </div>
             <div style={{ fontSize: 18, color: "#64748b", paddingBottom: 4 }}>→</div>
             <div style={{ flex: 1 }}>
               <p style={{ margin: "0 0 4px", fontSize: 10, color: "#64748b" }}>Après</p>
               <div style={{ height: 6, background: "rgba(16,185,129,0.15)", borderRadius: 3, marginBottom: 4 }}>
-                <div style={{ height: "100%", width: "31%", background: emerald, borderRadius: 3 }} />
+              <div style={{ height: "100%", width: `${((monthlyStats?.delta_stress_apres ?? 0) / 10) * 100}%`, background: emerald, borderRadius: 3 }} />
               </div>
-              <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: emerald }}>3.1</p>
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: emerald }}>{monthlyStats?.delta_stress_apres ?? "—"}</p>
             </div>
           </div>
           <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 12 }}>📉</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: emerald }}>-57% de stress moyen</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: emerald }}>
+            {monthlyStats?.delta_stress_avant && monthlyStats?.delta_stress_apres
+              ? `-${Math.round((1 - monthlyStats.delta_stress_apres / monthlyStats.delta_stress_avant) * 100)}% de stress moyen`
+              : "Pas encore de données"}
+          </span>
           </div>
         </div>
 
-        {/* Carte 2 — Crises absorbées */}
+        {/* Carte 2 — Crises apaisées */}
         <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: 20 }}>
           <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Crises apaisées</p>
           <p style={{ margin: "0 0 4px", fontSize: 48, fontWeight: 900, color: "#818cf8", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
             {patients.reduce((sum, p) => sum + (p.totalMessages > 0 ? 1 : 0), 0) || 0}
           </p>
-          <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>ce mois-ci en autonomie totale</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 8, padding: "6px 10px", display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 12 }}>💬</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: emerald }}>Par discussion : {monthlyStats?.chat_resolutions ?? 0}</span>
-            </div>
-            <div style={{ background: "rgba(99,102,241,0.08)", borderRadius: 8, padding: "6px 10px", display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ fontSize: 12 }}>🛡️</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#818cf8" }}>Par outil SOS : {monthlyStats?.sos_resolutions ?? 0}</span>
-            </div>
+          <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>En toute autonomie</p>
+          <div style={{ background: "rgba(99,102,241,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12 }}>🛡️</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#818cf8" }}>Sans votre intervention</span>
           </div>
         </div>
 
-        {/* Carte 3 — Top outils */}
-        <div style={{ background: "rgba(6,182,212,0.04)", border: "1px solid rgba(6,182,212,0.2)", borderRadius: 16, padding: 20 }}>
-          <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Top des outils</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {[
-              { rank: 1, label: "Cohérence cardiaque", pct: 48, color: emerald },
-              { rank: 2, label: "Ancrage sensoriel", pct: 31, color: "#06b6d4" },
-              { rank: 3, label: "Marche consciente", pct: 21, color: "#8b5cf6" },
-            ].map((tool) => (
-              <div key={tool.rank} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#4b5563", width: 16, flexShrink: 0 }}>{tool.rank}.</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                    <span style={{ fontSize: 11, color: "white" }}>{tool.label}</span>
-                    <span style={{ fontSize: 11, color: tool.color, fontWeight: 600 }}>{tool.pct}%</span>
-                  </div>
-                  <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2 }}>
-                    <div style={{ height: "100%", width: `${tool.pct}%`, background: tool.color, borderRadius: 2, transition: "width 0.8s ease" }} />
-                  </div>
-                </div>
-              </div>
-            ))}
+
+        {/* Carte 4 — Interventions hors-cabinet */}
+        <div style={{ background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 16, padding: 20 }}>
+          <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Interventions hors-cabinet</p>
+          <p style={{ margin: "0 0 4px", fontSize: 48, fontWeight: 900, color: amber, lineHeight: 1 }}>
+            {monthlyStats?.messages_geres ?? 0}
+          </p>
+          <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>messages gérés</p>
+          <div style={{ background: "rgba(245,158,11,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 12 }}>⏱️</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: amber }}>{monthlyStats?.temps_economise_heures ?? 0}h libérées</span>
           </div>
         </div>
+
       </div>
 
       {/* Séparateur */}
@@ -1431,52 +1416,11 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
   </div>
 )}
 
-
-        {/* ═══ VUE IMPACT ═══ */}
-        {activeTab === "valeur" && (
-          <div>
-            <div style={{ marginBottom: 24 }}>
-              <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Impact de votre jumeau</h2>
-              <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Ce que votre jumeau a accompli ce mois-ci</p>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16, marginBottom: 24 }}>
-              {[
-                { icon: "💬", label: "Messages gérés", value: monthlyStats?.messages_geres ?? 0, unit: "messages", desc: "Questions répondues à votre place", color: emerald },
-                { icon: "🌙", label: "Crises nocturnes", value: monthlyStats?.crises_nocturnes ?? 0, unit: "interventions", desc: "Moments où votre jumeau était là pour eux", color: "#8b5cf6" },
-                { icon: "⏱️", label: "Temps libéré", value: monthlyStats?.temps_economise_heures ?? 0, unit: "heures", desc: "Temps praticien récupéré ce mois-ci", color: amber },
-                { icon: "🤝", label: "Temps d'accompagnement", value: monthlyStats?.temps_accompagnement_heures ?? 0, unit: "heures", desc: "Présence simulée auprès de vos patients", color: "#06b6d4" },
-                { icon: "🔄", label: "Questions répétitives", value: `${monthlyStats?.questions_repetitives_pct ?? 0}%`, unit: "", desc: "Absorbées par le jumeau sans vous", color: "#06b6d4" },
-              ].map((stat, i) => (
-                <div key={i} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "24px", backdropFilter: "blur(20px)" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                    <span style={{ fontSize: 24 }}>{stat.icon}</span>
-                    <span style={{ fontSize: 13, color: "#64748b", fontWeight: 500 }}>{stat.label}</span>
-                  </div>
-                  <p style={{ margin: "0 0 4px", fontSize: 36, fontWeight: 800, color: stat.color, fontVariantNumeric: "tabular-nums" }}>
-                    {stat.value}{stat.unit && <span style={{ fontSize: 14, fontWeight: 400, color: "#64748b", marginLeft: 6 }}>{stat.unit}</span>}
-                  </p>
-                  <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{stat.desc}</p>
-                </div>
-              ))}
-            </div>
-            <div style={{ background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 16, padding: "24px" }}>
-              <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "white" }}>🧬 Synthèse du mois</p>
-              <p style={{ margin: 0, fontSize: 14, color: "#94a3b8", lineHeight: 1.8 }}>
-                Ce mois-ci, votre jumeau a répondu à <strong style={{ color: "white" }}>{monthlyStats?.messages_geres ?? 0} questions</strong>, géré <strong style={{ color: "white" }}>{monthlyStats?.crises_nocturnes ?? 0} moments difficiles</strong> en dehors de vos heures de consultation, et vous a économisé environ <strong style={{ color: "white" }}>{monthlyStats?.temps_economise_heures ?? 0} heures</strong> de suivi.
-                <br /><br />
-                <strong style={{ color: emerald }}>{monthlyStats?.questions_repetitives_pct ?? 0}% des questions répétitives</strong> ont été absorbées sans votre intervention. Votre expertise travaille 24h/24.
-                <br /><br />
-                Vos patients ont bénéficié de <strong style={{ color: "#06b6d4" }}>{monthlyStats?.temps_accompagnement_heures ?? 0}h de présence simulée</strong> ce mois-ci. Vous avez récupéré <strong style={{ color: amber }}>{monthlyStats?.temps_economise_heures ?? 0}h de votre temps</strong>.
-              </p>
-            </div>
-          </div>
-        )}
-
         {/* ═══ VUE INSIGHTS ═══ */}
-        {activeTab === "patterns" && (
+        {activeTab === "analyse" && (
           <div>
             <div style={{ marginBottom: 24 }}>
-              <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Insights comportementaux</h2>
+              <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Analyses comportementales</h2>
               <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>L'IA détecte ce que l'œil humain ne voit pas</p>
             </div>
             <div style={{ marginBottom: 20 }}>
@@ -2054,91 +1998,136 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
         </div>
       )}
 
-      {showInviteModal && (
-        <div onClick={(e) => { if (e.target === e.currentTarget) setShowInviteModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 32, width: "100%", maxWidth: 560, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "92vh", overflowY: "auto", position: "relative" }}>
-            <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteSuccess(false); }} style={{ position: "absolute", top: 18, right: 18, background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
-            <h2 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, color: "white" }}>Inviter un patient</h2>
-            <p style={{ margin: "0 0 24px", fontSize: 14, color: "#64748b" }}>Votre patient recevra un email pour accéder à son espace personnalisé.</p>
-            {inviteSuccess ? (
-              <div style={{ background: "rgba(16,185,129,0.15)", border: `1px solid ${emerald}`, borderRadius: 14, padding: "20px", textAlign: "center", color: emerald, fontWeight: 600, fontSize: 16 }}>✅ Invitation envoyée !</div>
-            ) : (
-              <>
-                <div style={{ marginBottom: 16 }}>
-                  <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "white" }}>Email *</p>
-                  <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="email@patient.fr"
-                    style={{ width: "100%", height: 48, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box" }}
-                    onFocus={(e) => e.target.style.borderColor = emerald} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+{showInviteModal && (
+  <div onClick={(e) => { if (e.target === e.currentTarget) setShowInviteModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+    <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 32, width: "100%", maxWidth: 540, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "92vh", overflowY: "auto", position: "relative" }}>
+      <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteSuccess(false); }} style={{ position: "absolute", top: 18, right: 18, background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+
+      <h2 style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 800, color: "white" }}>Nouveau patient</h2>
+      <p style={{ margin: "0 0 28px", fontSize: 14, color: "#64748b" }}>Votre patient recevra un email pour créer son espace.</p>
+
+      {inviteSuccess ? (
+        <div style={{ background: "rgba(16,185,129,0.15)", border: `1px solid ${emerald}`, borderRadius: 14, padding: "20px", textAlign: "center", color: emerald, fontWeight: 600, fontSize: 16 }}>✅ Invitation envoyée !</div>
+      ) : (
+        <>
+          {/* Bloc 1 — Identité */}
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>Coordonnées</p>
+            <input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="Adresse email *"
+              style={{ width: "100%", height: 48, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 16px", fontSize: 15, outline: "none", boxSizing: "border-box", marginBottom: 10 }}
+              onFocus={(e) => e.target.style.borderColor = emerald} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
+              {[
+                { label: "Âge", value: inviteAge, setter: setInviteAge, placeholder: "34", type: "number" },
+                { label: "Taille (cm)", value: inviteTaille, setter: setInviteTaille, placeholder: "168", type: "number" },
+                { label: "Poids (kg)", value: invitePoids, setter: setInvitePoids, placeholder: "72", type: "number" },
+              ].map(({ label, value, setter, placeholder, type }) => (
+                <div key={label}>
+                  <p style={{ margin: "0 0 5px", fontSize: 11, color: "#64748b" }}>{label}</p>
+                  <input type={type} value={value} onChange={e => setter(e.target.value)} placeholder={placeholder}
+                    style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                    onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
                 </div>
-                <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 20, marginBottom: 16 }}>
-                  <p style={{ margin: "0 0 16px", fontSize: 15, fontWeight: 700, color: "white" }}>Profil du patient</p>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
-                    {[{ label: "Âge", value: inviteAge, onChange: setInviteAge, placeholder: "34", type: "number" }, { label: "Taille (cm)", value: inviteTaille, onChange: setInviteTaille, placeholder: "168", type: "number" }, { label: "Poids (kg)", value: invitePoids, onChange: setInvitePoids, placeholder: "72", type: "number" }].map(({ label, value, onChange, placeholder, type }) => (
-                      <div key={label}>
-                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
-                        <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-                          style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-                          onFocus={(e) => e.target.style.borderColor = emerald} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
-                    <div>
-                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
-                      <select value={inviteSexe} onChange={(e) => setInviteSexe(e.target.value)} style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: inviteSexe ? "white" : "#64748b", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
-                        <option value="">—</option><option value="Femme">Femme</option><option value="Homme">Homme</option><option value="Autre">Autre</option>
-                      </select>
-                    </div>
-                    <div>
-                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Activité</p>
-                      <select value={inviteNiveauActivite} onChange={(e) => setInviteNiveauActivite(e.target.value)} style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: inviteNiveauActivite ? "white" : "#64748b", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
-                        <option value="">—</option><option value="Sédentaire">Sédentaire</option><option value="Légère">Légère</option><option value="Modérée">Modérée</option><option value="Intense">Intense</option><option value="Athlète">Athlète</option>
-                      </select>
-                    </div>
-                    <div>
-                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Régime</p>
-                      <select value={inviteRegime} onChange={(e) => setInviteRegime(e.target.value)} style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: inviteRegime ? "white" : "#64748b", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
-                        <option value="">—</option><option value="Omnivore">Omnivore</option><option value="Végétarien">Végétarien</option><option value="Vegan">Vegan</option><option value="Sans gluten">Sans gluten</option><option value="Halal">Halal</option><option value="Méditerranéen">Méditerranéen</option>
-                      </select>
-                    </div>
-                  </div>
-                  {[{ label: "Pathologies", value: invitePathologies, onChange: setInvitePathologies, placeholder: "Ex: Diabète type 2" }, { label: "Allergies", value: inviteAllergies, onChange: setInviteAllergies, placeholder: "Ex: Gluten, lactose" }, { label: "Traitements", value: inviteTraitements, onChange: setInviteTraitements, placeholder: "Ex: Metformine 500mg" }, { label: "Objectif", value: inviteObjectifClinique, onChange: setInviteObjectifClinique, placeholder: "Ex: Perte de poids" }].map(({ label, value, onChange, placeholder }) => (
-                    <div key={label} style={{ marginBottom: 10 }}>
-                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
-                      <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-                        style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-                        onFocus={(e) => e.target.style.borderColor = emerald} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-                    </div>
-                  ))}
-                </div>
-                <div style={{ background: "rgba(16,185,129,0.06)", borderRadius: 16, border: "1.5px solid rgba(16,185,129,0.25)", padding: "18px", marginBottom: 16 }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 800, color: emerald }}>🎯 Brief pour le jumeau</p>
-                  <p style={{ margin: "0 0 12px", fontSize: 13, color: "#94a3b8" }}>Consigne de départ pour personnaliser les réponses.</p>
-                  <textarea value={inviteBriefJumeau} onChange={(e) => setInviteBriefJumeau(e.target.value)} placeholder="Ex: Sois très encourageant sur le sport, mais ferme sur l'hydratation." rows={3}
-                    style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(16,185,129,0.3)", background: "#161616", color: "white", padding: "12px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif" }}
-                    onFocus={(e) => e.target.style.borderColor = emerald} onBlur={(e) => e.target.style.borderColor = "rgba(16,185,129,0.3)"} />
-                </div>
-                <div style={{ marginBottom: 20 }}>
-                  <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Notes internes</p>
-                  <textarea value={inviteNotes} onChange={(e) => setInviteNotes(e.target.value)} placeholder="Notes visibles uniquement par vous..." rows={2}
-                    style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "10px 12px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif" }}
-                    onFocus={(e) => e.target.style.borderColor = emerald} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-                </div>
-                {inviteError && <p style={{ margin: "0 0 16px", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={() => { setShowInviteModal(false); resetInviteForm(); }} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
-                  <button onClick={() => void sendInvite()} disabled={inviting || !inviteEmail.trim()}
-                    style={{ flex: 2, height: 48, borderRadius: 12, background: inviting || !inviteEmail.trim() ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${inviting || !inviteEmail.trim() ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: inviting || !inviteEmail.trim() ? "#64748b" : emerald, cursor: inviting || !inviteEmail.trim() ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}
-                    onMouseEnter={e => { if (!inviting && inviteEmail.trim()) e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
-                    onMouseLeave={e => { if (!inviting && inviteEmail.trim()) e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>
-                    {inviting ? "Envoi..." : "Envoyer l'invitation →"}
-                  </button>
-                </div>
-              </>
-            )}
+              ))}
+              <div>
+                <p style={{ margin: "0 0 5px", fontSize: 11, color: "#64748b" }}>Sexe</p>
+                <select value={inviteSexe} onChange={e => setInviteSexe(e.target.value)}
+                  style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: inviteSexe ? "white" : "#64748b", padding: "0 8px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
+                  <option value="">—</option><option value="Femme">Femme</option><option value="Homme">Homme</option><option value="Autre">Autre</option>
+                </select>
+              </div>
+            </div>
           </div>
-        </div>
+
+          {/* Bloc 2 — Contexte médical */}
+          <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px solid rgba(255,255,255,0.06)", padding: "20px", marginBottom: 20 }}>
+            <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "white" }}>🩺 Ce que le jumeau doit connaître</p>
+            <p style={{ margin: "0 0 16px", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>Pour ne jamais donner un conseil inadapté à ce patient.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                { label: "Pathologies", value: invitePathologies, setter: setInvitePathologies, placeholder: "Ex: Diabète type 2, hypothyroïdie..." },
+                { label: "Allergies & intolérances", value: inviteAllergies, setter: setInviteAllergies, placeholder: "Ex: Gluten, lactose, fruits à coque..." },
+                { label: "Traitements en cours", value: inviteTraitements, setter: setInviteTraitements, placeholder: "Ex: Metformine 500mg, Lévothyrox..." },
+                { label: "Objectif principal", value: inviteObjectifClinique, setter: setInviteObjectifClinique, placeholder: "Ex: Perte de poids, équilibre glycémique..." },
+              ].map(({ label, value, setter, placeholder }) => (
+                <div key={label}>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>{label}</p>
+                  <input type="text" value={value} onChange={e => setter(e.target.value)} placeholder={placeholder}
+                    style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#0d0d0d", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                    onFocus={e => e.target.style.borderColor = "rgba(255,255,255,0.2)"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
+                </div>
+              ))}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Niveau d'activité</p>
+                  <select value={inviteNiveauActivite} onChange={e => setInviteNiveauActivite(e.target.value)}
+                    style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#0d0d0d", color: inviteNiveauActivite ? "white" : "#64748b", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
+                    <option value="">Non renseigné</option>
+                    <option value="Sédentaire">Sédentaire</option>
+                    <option value="Légère">Légère</option>
+                    <option value="Modérée">Modérée</option>
+                    <option value="Intense">Intense</option>
+                    <option value="Athlète">Athlète</option>
+                  </select>
+                </div>
+                <div>
+                  <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Régime alimentaire</p>
+                  <select value={inviteRegime} onChange={e => setInviteRegime(e.target.value)}
+                    style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#0d0d0d", color: inviteRegime ? "white" : "#64748b", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
+                    <option value="">Aucun régime spécifique</option>
+                    <option value="Omnivore">Omnivore</option>
+                    <option value="Végétarien">Végétarien</option>
+                    <option value="Vegan">Vegan</option>
+                    <option value="Sans gluten">Sans gluten</option>
+                    <option value="Halal">Halal</option>
+                    <option value="Méditerranéen">Méditerranéen</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bloc 3 — Brief Jumeau */}
+          <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 16, border: "1.5px solid rgba(16,185,129,0.2)", padding: "20px", marginBottom: 20 }}>
+            <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 800, color: emerald }}>🌿 La voix de votre jumeau</p>
+            <p style={{ margin: "0 0 14px", fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>Définissez le ton, les priorités et ce que le jumeau doit éviter avec ce patient. Plus c'est précis, plus il sera juste.</p>
+            <textarea value={inviteBriefJumeau} onChange={(e) => setInviteBriefJumeau(e.target.value)}
+              placeholder="Ex: Sophie est anxieuse autour de la balance — évite ce sujet. Elle se culpabilise facilement, reste bienveillant avant d'être technique. Elle adore cuisiner, utilise ça pour l'engager."
+              rows={4}
+              style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", background: "#161616", color: "white", padding: "12px 14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.6 }}
+              onFocus={(e) => e.target.style.borderColor = emerald} onBlur={(e) => e.target.style.borderColor = "rgba(16,185,129,0.2)"} />
+          </div>
+
+          {/* Notes internes */}
+          <div style={{ marginBottom: 24 }}>
+            <textarea value={inviteNotes} onChange={(e) => setInviteNotes(e.target.value)}
+              placeholder="Notes internes (visibles uniquement par vous)..."
+              rows={2}
+              style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.05)", background: "transparent", color: "#64748b", padding: "10px 12px", fontSize: 12, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif" }}
+              onFocus={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.12)"; e.target.style.color = "white"; }}
+              onBlur={(e) => { e.target.style.borderColor = "rgba(255,255,255,0.05)"; e.target.style.color = "#64748b"; }} />
+          </div>
+
+          {inviteError && <p style={{ margin: "0 0 16px", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => { setShowInviteModal(false); resetInviteForm(); }}
+              style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+              Annuler
+            </button>
+            <button onClick={() => void sendInvite()} disabled={inviting || !inviteEmail.trim()}
+              style={{ flex: 2, height: 48, borderRadius: 12, background: inviting || !inviteEmail.trim() ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${inviting || !inviteEmail.trim() ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: inviting || !inviteEmail.trim() ? "#64748b" : emerald, cursor: inviting || !inviteEmail.trim() ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}
+              onMouseEnter={e => { if (!inviting && inviteEmail.trim()) e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
+              onMouseLeave={e => { if (!inviting && inviteEmail.trim()) e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>
+              {inviting ? "Envoi..." : "Envoyer l'invitation →"}
+            </button>
+          </div>
+        </>
       )}
+    </div>
+  </div>
+)}
 
 {showBilanModal && (
   <div onClick={e => { if (e.target === e.currentTarget) setShowBilanModal(false); }}
