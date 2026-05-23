@@ -106,14 +106,7 @@ function VerifyOTPForm() {
 
   return (
     <div className="min-h-screen bg-[#070707] flex items-center justify-center px-4">
-  <div className="w-full max-w-md">
-    <div className="mb-8 text-center">
-      <div className="relative mx-auto mb-3 w-fit">
-        <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
-        <img src="/logo.svg" alt="NutriTwin" className="h-14 w-auto relative mx-auto" />
-      </div>
-      <h1 className="text-[22px] tracking-tight text-white">Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
-    </div>
+    <div className="w-full max-w-md">  
 
         <div className="rounded-2xl border border-white/[0.08] bg-[#0d0d0d] p-8">
           <div className="text-center mb-8">

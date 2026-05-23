@@ -316,7 +316,7 @@ function CheckoutForm() {
               Récapitulatif de votre commande
             </p>
 
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.05] px-4 py-3.5 mb-4">
+            <div className={`rounded-xl border px-4 py-3.5 mb-4 ${plan === "fondateur" ? "border-amber-500/20 bg-amber-500/[0.05]" : "border-emerald-500/20 bg-emerald-500/[0.05]"}`}>
               <div className="flex items-center gap-3">
                 <span className="text-[18px]">🎁</span>
                 <div>
