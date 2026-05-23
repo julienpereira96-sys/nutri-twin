@@ -821,14 +821,14 @@ function FounderSection() {
             </div>
           </div>
           <button
-  onClick={() => {
-    if (typeof window !== "undefined" && localStorage.getItem("from_checkout") === "true") {
-      localStorage.removeItem("from_checkout");
-      window.location.assign(`/checkout?plan=fondateur`);
-    } else {
-      window.location.assign(`/signup?plan=fondateur`);
-    }
-  }}
+    onClick={() => {
+      if (typeof window !== "undefined" && document.cookie.includes("from_checkout=true")) {
+        document.cookie = "from_checkout=; path=/; max-age=0";
+        window.location.assign(`/checkout?plan=fondateur`);
+      } else {
+        window.location.assign(`/signup?plan=fondateur`);
+      }
+    }}  
   className="inline-flex h-[48px] sm:h-[52px] items-center justify-center rounded-xl px-8 sm:px-10 text-[14px] sm:text-[15px] font-semibold text-black transition active:scale-95 cursor-pointer"
   style={{ backgroundColor: amber }}
   onMouseEnter={(e) => {
@@ -903,14 +903,14 @@ function PricingCard({ name, price, badge, description, features, plan, featured
         ))}
       </ul>
       <button
-    onClick={() => {
-      if (typeof window !== "undefined" && localStorage.getItem("from_checkout") === "true") {
-        localStorage.removeItem("from_checkout");
-        window.location.assign(`/checkout?plan=${plan}`);
-      } else {
-        window.location.assign(`/signup?plan=${plan}`);  
-      }
-    }}  
+      onClick={() => {
+        if (typeof window !== "undefined" && document.cookie.includes("from_checkout=true")) {
+          document.cookie = "from_checkout=; path=/; max-age=0";
+          window.location.assign(`/checkout?plan=${plan}`);
+        } else {
+          window.location.assign(`/signup?plan=${plan}`);
+        }
+      }}    
     className="inline-flex h-[50px] w-full items-center justify-center rounded-xl text-[13px] font-semibold transition active:scale-95 mt-2 cursor-pointer"
       style={featured
     ? { backgroundColor: emerald, color: "black", boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }
