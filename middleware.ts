@@ -75,11 +75,6 @@ export async function middleware(request: NextRequest) {
       if (!user) return supabaseResponse; 
       const practitioner = await getPractitioner();
       if (!practitioner?.plan) {
-        const changingPlan = request.cookies.get("changing_plan")?.value === "true";
-        if (changingPlan) {
-          const selectedPlan = request.cookies.get("selected_plan")?.value || "pro";
-          return NextResponse.redirect(new URL(`/checkout?plan=${selectedPlan}`, request.url));
-        }
         await supabase.auth.signOut();
         return NextResponse.redirect(new URL("/login", request.url));
       }   
