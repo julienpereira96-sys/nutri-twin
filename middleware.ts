@@ -75,8 +75,13 @@ export async function middleware(request: NextRequest) {
       if (!user) return supabaseResponse;
       const practitioner = await getPractitioner();
       if (!practitioner?.plan) {
-        return NextResponse.redirect(new URL("/checkout?plan=pro", request.url));
-      }
+        const changingPlan = request.cookies.get("changing_plan")?.value === "true";
+        if (!changingPlan) {
+          await supabase.auth.signOut();
+          return NextResponse.redirect(new URL("/login?pending=true", request.url));
+        }
+        return supabaseResponse;
+      }      
       const profile = await getProfile();
       if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
       return NextResponse.redirect(new URL("/dashboard", request.url));
