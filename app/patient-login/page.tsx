@@ -70,6 +70,11 @@ export default function PatientLoginPage() {
       body: JSON.stringify({ email: forgotEmail.trim() }),
     });
     const data = await res.json() as { exists?: boolean };
+    if (!data.exists) {
+      setResetError("Aucun compte trouvé avec cette adresse email.");
+      setResetLoading(false);
+      return;
+    }
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: `${window.location.origin}/set-password` });
     setResetSent(true);
@@ -174,7 +179,7 @@ export default function PatientLoginPage() {
               <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 14, padding: "20px", textAlign: "center" }}>
                 <p style={{ fontSize: 28, marginBottom: 10 }}>✅</p>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "white" }}>Email envoyé !</p>
-                <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b" }}>Si un compte existe avec <strong style={{ color: "#10b981" }}>{forgotEmail}</strong>, vous recevrez un lien de réinitialisation.</p>
+                <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b" }}>Vérifiez votre boîte mail à <strong style={{ color: "#10b981" }}>{forgotEmail}</strong></p>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Pensez à vérifier vos spams.</p>
                 <button onClick={closeModal} style={{ marginTop: 16, height: 40, borderRadius: 20, padding: "0 20px", background: "#10b981", border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Fermer</button>
               </div>
