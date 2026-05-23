@@ -901,12 +901,14 @@ function PricingCard({ name, price, badge, description, features, plan, featured
         ))}
       </ul>
       <button
-  onClick={() => {
-    if (typeof window !== "undefined" && localStorage.getItem("from_checkout") === "true") {window.location.href = `/checkout?plan=${plan}`;
-    } else {
-      window.location.href = `/signup?plan=${plan}`;
-    }
-  }}
+    onClick={() => {
+      if (typeof window !== "undefined" && localStorage.getItem("from_checkout") === "true") {
+        localStorage.removeItem("from_checkout");
+        window.location.href = `/checkout?plan=${plan}`;
+      } else {
+        window.location.href = `/signup?plan=${plan}`;
+      }
+    }}  
   className="inline-flex h-[50px] w-full items-center justify-center rounded-xl text-[13px] font-semibold transition active:scale-95 mt-2"
   style={featured
     ? { backgroundColor: emerald, color: "black", boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }
