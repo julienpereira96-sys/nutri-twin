@@ -145,7 +145,7 @@ export default function LoginPage() {
         )}
         {error === "__unconfirmed__" && (
           <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3">
-            <p className="text-sm text-amber-400">Un compte existe déjà avec cet email mais n'est pas encore vérifié.</p>
+            <p className="text-sm text-amber-400">Un compte existe déjà avec cette adresse email mais n'est pas encore vérifié.</p>
             <button onClick={async () => {
               const supabase = createSupabaseBrowserClient();
               await supabase.auth.resend({ type: "signup", email: email.trim() });
@@ -170,12 +170,29 @@ export default function LoginPage() {
         )}
 
 
+                    {error === "__no_plan__" ? (
+            <button onClick={() => router.push("/checkout?plan=pro")}
+              className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer"
+              style={{ backgroundColor: "#f59e0b" }}>
+              Finaliser mon abonnement →
+            </button>
+          ) : error === "__unconfirmed__" ? (
+            <button onClick={async () => {
+              const supabase = createSupabaseBrowserClient();
+              await supabase.auth.resend({ type: "signup", email: email.trim() });
+              router.push(`/verify-otp?email=${encodeURIComponent(email.trim())}&plan=pro`);
+            }} className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer"
+              style={{ backgroundColor: "#f59e0b" }}>
+              Recevoir mon code de vérification →
+            </button>
+          ) : (
           <button type="submit" disabled={loading}
             className="mt-6 w-full rounded-xl bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
             onMouseEnter={e => { if (!loading) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
             {loading ? "Connexion..." : "Se connecter →"}
           </button>
+          )}
 
           <button type="button" onClick={() => setShowForgotModal(true)}
             className="mt-3 w-full text-center text-sm text-zinc-500 hover:text-[#10b981] transition cursor-pointer">

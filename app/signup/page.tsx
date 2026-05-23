@@ -382,6 +382,22 @@ try {
             </div>
           )}
 
+{error === "__unconfirmed__" ? (
+  <button onClick={async () => {
+    const supabase = createSupabaseBrowserClient();
+    await supabase.auth.resend({ type: "signup", email: email.trim() });
+    router.push(`/verify-otp?email=${encodeURIComponent(email.trim())}&plan=${plan}`);
+  }} className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer"
+    style={{ backgroundColor: "#f59e0b" }}>
+    Recevoir mon code de vérification →
+  </button>
+) : error && error.includes("compte existe déjà") ? (
+  <button onClick={() => router.push("/login")}
+    className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer"
+    style={{ backgroundColor: "#f59e0b" }}>
+    {error.includes("finaliser") ? "Finaliser mon abonnement →" : "Se connecter →"}
+  </button>
+) : (
 <button
   type="submit"
   disabled={loading || !acceptCGU}
@@ -400,6 +416,7 @@ try {
 
             {loading ? "Création du compte..." : "Créer mon compte →"}
           </button>
+          )}
 
           <p className="mt-4 text-center text-xs text-zinc-400">
             Un code de vérification vous sera envoyé par email
