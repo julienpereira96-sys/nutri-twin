@@ -821,6 +821,12 @@ function FounderSection() {
             </div>
           </div>
           <Link href="/signup?plan=fondateur"
+  onClick={(e) => {
+    if (typeof window !== "undefined" && sessionStorage.getItem("from_checkout") === "true") {
+      e.preventDefault();
+      window.location.assign(`/checkout?plan=fondateur`);
+    }
+  }}
   className="inline-flex h-[48px] sm:h-[52px] items-center justify-center rounded-xl px-8 sm:px-10 text-[14px] sm:text-[15px] font-semibold text-black transition active:scale-95"
   style={{ backgroundColor: amber }}
   onMouseEnter={(e) => {
