@@ -95,7 +95,7 @@ export default function PatientLoginPage() {
 </div>
           </div>
           <h1 className="text-[22px] tracking-tight text-white">Mon espace Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
-          <p className="mt-2 text-sm text-zinc-400">Connectez-vous pour accéder <br /> à votre compagnon de suivi</p>
+          <p className="mt-2 text-base text-zinc-400">Connectez-vous pour accéder <br /> à votre compagnon de suivi</p>
         </div>
 
         {sessionExpired && (

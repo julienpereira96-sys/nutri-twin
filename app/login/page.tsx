@@ -40,8 +40,10 @@ export default function LoginPage() {
           setError("Email ou mot de passe incorrect. Vérifiez vos informations.");
         } else if (signInError.message.includes("Email not confirmed") || signInError.message.includes("email_not_confirmed")) {
           setError("__unconfirmed__");
-          return;
-        }        
+        } else {
+          setError(signInError.message);
+        }
+        return;
       }
       const { data: { user } } = await supabase.auth.getUser();
       const { data: practitioner } = await supabase.from("practitioners").select("plan").eq("user_id", user?.id).single();
@@ -97,7 +99,7 @@ export default function LoginPage() {
 </div>
           </div>
           <h1 className="text-[22px] tracking-tight text-white">Mon espace Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
-          <p className="mt-2 text-sm text-zinc-400">Connectez-vous pour accéder à votre espace praticien</p>
+          <p className="mt-2 text-base text-zinc-400">Connectez-vous pour accéder <br /> à votre espace praticien</p>
         </div>
 
         {sessionExpired && (
@@ -166,8 +168,11 @@ export default function LoginPage() {
           </button>
 
           <p className="mt-6 text-center text-sm text-zinc-400">
-          Pas encore de compte ? Inscrivez-vous pour accéder à NutriTwin.
-        </p>
+            Pas encore de compte ?{" "}
+            <Link href="/#tarifs" className="font-medium text-[#34d399] hover:underline">
+              S'inscrire
+            </Link>
+          </p>
         </form>
       </div>
 
