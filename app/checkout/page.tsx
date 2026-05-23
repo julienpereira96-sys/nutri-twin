@@ -361,7 +361,7 @@ function CheckoutForm() {
                       </svg>
                     </div>
                     <span className="text-[13px] text-zinc-200">{f}</span>
-                  </li>
+                  </li> 
                 ))}
               </ul>
             </div>
@@ -369,9 +369,10 @@ function CheckoutForm() {
             <Link
               href="/#tarifs"
               onClick={() => {
-                document.cookie = "from_checkout=true; path=/; max-age=300";
-                window.location.replace("/?nocache=" + Date.now() + "#tarifs");
-              }}
+                document.cookie = "changing_plan=true; path=/; max-age=60";
+                window.onbeforeunload = null;
+                window.location.replace("/#tarifs#from_checkout=true");
+              }}              
               className="text-[11px] text-zinc-600 hover:text-zinc-400 transition"
             >
               ← Changer de plan

@@ -77,7 +77,7 @@ export async function middleware(request: NextRequest) {
       if (!practitioner?.plan) {
         const changingPlan = request.cookies.get("changing_plan")?.value === "true";
         if (!changingPlan) {
-          await supabase.auth.signOut();
+          await supabase.auth.signOut(); 
           return NextResponse.redirect(new URL("/login?pending=true", request.url));
         }
         return supabaseResponse; 
