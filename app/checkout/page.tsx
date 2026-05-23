@@ -367,12 +367,12 @@ function CheckoutForm() {
             </div>
 
             <Link
-              href="/?from_checkout=true#tarifs"
-              onClick={() => {}}
+              href="/#tarifs"
+              onClick={() => localStorage.setItem("from_checkout", "true")}
               className="text-[11px] text-zinc-600 hover:text-zinc-400 transition"
             >
               ← Changer de plan
-            </Link>
+              </Link>
           </div>
 
           <div>
