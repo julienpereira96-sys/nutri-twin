@@ -145,7 +145,7 @@ export default function LoginPage() {
         )}
         {error === "__unconfirmed__" && (
           <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3">
-            <p className="text-sm text-amber-400">Un compte existe déjà mais n'est pas encore vérifié.</p>
+            <p className="text-sm text-amber-400">Un compte existe déjà avec cet email mais n'est pas encore vérifié.</p>
             <button onClick={async () => {
               const supabase = createSupabaseBrowserClient();
               await supabase.auth.resend({ type: "signup", email: email.trim() });

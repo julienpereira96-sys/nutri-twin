@@ -820,16 +820,15 @@ function FounderSection() {
               <div className="h-2 rounded-full transition-all duration-1000" style={{ width: inView ? `${((10 - count) / 10) * 100}%` : "0%", background: `linear-gradient(90deg, ${amber}, #fbbf24)` }} />
             </div>
           </div>
-          <Link href="/signup?plan=fondateur"
-  onClick={(e) => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("from_checkout") === "true"
-  ) {
-    e.preventDefault();
-    window.location.href = `/checkout?plan=fondateur`;
-    return;
-  }
-}}
-  className="inline-flex h-[48px] sm:h-[52px] items-center justify-center rounded-xl px-8 sm:px-10 text-[14px] sm:text-[15px] font-semibold text-black transition active:scale-95"
+          <button
+  onClick={() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("from_checkout") === "true") {
+      window.location.href = `/checkout?plan=fondateur`;
+    } else {
+      window.location.href = `/signup?plan=fondateur`;
+    }
+  }}
+  className="inline-flex h-[48px] sm:h-[52px] items-center justify-center rounded-xl px-8 sm:px-10 text-[14px] sm:text-[15px] font-semibold text-black transition active:scale-95 cursor-pointer"
   style={{ backgroundColor: amber }}
   onMouseEnter={(e) => {
     e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)";
@@ -840,8 +839,8 @@ function FounderSection() {
     e.currentTarget.style.transform = "translateY(0) scale(1)";
   }}
 >
-            Je veux devenir Fondateur →
-          </Link>
+  Je veux devenir Fondateur →
+</button>
           <p className="mt-4 text-[11px] text-zinc-600">
             Aucun engagement · Annulable à tout moment
           </p>
@@ -902,13 +901,12 @@ function PricingCard({ name, price, badge, description, features, plan, featured
           </li>
         ))}
       </ul>
-      <Link
-  href={`/signup?plan=${plan}`}
-  onClick={(e) => {
+      <button
+  onClick={() => {
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("from_checkout") === "true") {
-      e.preventDefault();
       window.location.href = `/checkout?plan=${plan}`;
-      return;
+    } else {
+      window.location.href = `/signup?plan=${plan}`;
     }
   }}
   className="inline-flex h-[50px] w-full items-center justify-center rounded-xl text-[13px] font-semibold transition active:scale-95 mt-2"
@@ -929,7 +927,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
 >
 
   Commencer l'essai gratuit →
-</Link>
+</button>
 
     </div>
   );
