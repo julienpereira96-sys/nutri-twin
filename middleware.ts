@@ -72,7 +72,7 @@ export async function middleware(request: NextRequest) {
 
     // /login — non connecté uniquement
     if (path.startsWith("/login")) {
-      if (!user) return supabaseResponse;
+      if (!user) return supabaseResponse; 
       const practitioner = await getPractitioner();
       if (!practitioner?.plan) {
         const changingPlan = request.cookies.get("changing_plan")?.value === "true";
