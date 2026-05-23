@@ -824,10 +824,11 @@ function FounderSection() {
   onClick={(e) => {
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("from_checkout") === "true"
   ) {
-      e.preventDefault();
-      window.location.assign(`/checkout?plan=fondateur`);
-    }
-  }}
+    e.preventDefault();
+    window.location.href = `/checkout?plan=fondateur`;
+    return;
+  }
+}}
   className="inline-flex h-[48px] sm:h-[52px] items-center justify-center rounded-xl px-8 sm:px-10 text-[14px] sm:text-[15px] font-semibold text-black transition active:scale-95"
   style={{ backgroundColor: amber }}
   onMouseEnter={(e) => {
@@ -907,6 +908,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
     if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("from_checkout") === "true") {
       e.preventDefault();
       window.location.href = `/checkout?plan=${plan}`;
+      return;
     }
   }}
   className="inline-flex h-[50px] w-full items-center justify-center rounded-xl text-[13px] font-semibold transition active:scale-95 mt-2"
