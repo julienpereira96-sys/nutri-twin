@@ -80,7 +80,7 @@ export async function middleware(request: NextRequest) {
           await supabase.auth.signOut();
           return NextResponse.redirect(new URL("/login?pending=true", request.url));
         }
-        return supabaseResponse;
+        return supabaseResponse; 
       }      
       const profile = await getProfile();
       if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
