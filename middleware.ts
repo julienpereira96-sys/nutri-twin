@@ -63,7 +63,7 @@ export async function middleware(request: NextRequest) {
         if (!plan) return NextResponse.redirect(new URL("/#tarifs", request.url));
         return supabaseResponse;
       }  
-    const practitioner = await getPractitioner();
+    const practitioner = await getPractitioner(); 
     if (!practitioner?.plan) return NextResponse.redirect(new URL("/checkout?plan=pro", request.url));
     const profile = await getProfile();
     if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
