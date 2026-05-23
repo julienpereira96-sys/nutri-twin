@@ -92,7 +92,7 @@ export default function SetPasswordPage() {
 </div>
           </div>
           <h1 className="text-[22px] tracking-tight text-white mt-3">Bienvenue sur Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
-          <p className="mt-2 text-sm text-zinc-400">Créez votre espace personnel</p>
+          <p className="mt-2 text-base text-zinc-400">Créez votre espace personnel</p>
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
