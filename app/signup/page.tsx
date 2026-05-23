@@ -353,18 +353,21 @@ try {
             </div>
           </div>
 
-            {error === "__unconfirmed__" && (
-            <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3">
-              <p className="text-sm text-amber-400">Un compte existe déjà avec cet email mais n'est pas encore vérifié.</p>
-              <button onClick={async () => {
-                const supabase = createSupabaseBrowserClient();
-                await supabase.auth.resend({ type: "signup", email: email.trim() });
-                router.push(`/verify-otp?email=${encodeURIComponent(email.trim())}&plan=${plan}`);
-              }} className="mt-2 text-sm font-semibold underline cursor-pointer" style={{ color: "#f59e0b" }}>
-                Recevoir mon code de vérification →
-              </button>
+          {error && error !== "__unconfirmed__" && (
+            <div className={`mt-4 rounded-xl px-4 py-3 border ${error.includes("compte existe déjà") ? "bg-amber-500/10 border-amber-500/20" : "bg-red-500/10 border-red-500/20"}`}>
+              <p className={`text-sm ${error.includes("compte existe déjà") ? "text-amber-400" : "text-red-400"}`} role="alert">
+                {error.includes("compte existe déjà") ? "Un compte existe déjà avec cette adresse email." : error}
+              </p>
+              {error.includes("compte existe déjà") && (
+                <button onClick={() => router.push("/login")}
+                  className="mt-3 inline-flex items-center justify-center w-full h-9 rounded-lg text-[13px] font-semibold transition cursor-pointer"
+                  style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b" }}>
+                  {error.includes("finaliser") ? "Se connecter et finaliser mon abonnement →" : "Se connecter →"}
+                </button>
+              )}
             </div>
           )}
+
 
 {error && error !== "__unconfirmed__" && (
             <div className={`mt-4 rounded-xl px-4 py-3 border ${error.includes("compte existe déjà") ? "bg-amber-500/10 border-amber-500/20" : "bg-red-500/10 border-red-500/20"}`}>
