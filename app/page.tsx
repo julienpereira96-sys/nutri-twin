@@ -822,7 +822,8 @@ function FounderSection() {
           </div>
           <Link href="/signup?plan=fondateur"
   onClick={(e) => {
-    if (typeof window !== "undefined" && sessionStorage.getItem("from_checkout") === "true") {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("from_checkout") === "true"
+  ) {
       e.preventDefault();
       window.location.assign(`/checkout?plan=fondateur`);
     }
@@ -903,7 +904,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       <Link
   href={`/signup?plan=${plan}`}
   onClick={(e) => {
-    if (typeof window !== "undefined" && sessionStorage.getItem("from_checkout") === "true") {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("from_checkout") === "true") {
       e.preventDefault();
       window.location.href = `/checkout?plan=${plan}`;
     }

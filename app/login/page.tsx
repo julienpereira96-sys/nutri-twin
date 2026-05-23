@@ -48,8 +48,10 @@ export default function LoginPage() {
       const { data: { user } } = await supabase.auth.getUser();
       const { data: practitioner } = await supabase.from("practitioners").select("plan").eq("user_id", user?.id).single();
       if (!practitioner?.plan) {
-        router.push(`/checkout?plan=pro`);
-      } else {
+        setError("__no_plan__");
+        return;
+      }
+       else {
         router.push("/dashboard");
       }
     } catch {
@@ -154,6 +156,18 @@ export default function LoginPage() {
             </button>
           </div>
         )}
+
+{error === "__no_plan__" && (
+          <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3">
+            <p className="text-sm text-amber-400">Votre compte est créé mais votre abonnement n'est pas encore finalisé.</p>
+            <button onClick={() => router.push("/checkout?plan=pro")}
+              className="mt-3 inline-flex items-center justify-center w-full h-9 rounded-lg text-[13px] font-semibold transition cursor-pointer"
+              style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b" }}>
+              Finaliser mon abonnement →
+            </button>
+          </div>
+        )}
+
 
           <button type="submit" disabled={loading}
             className="mt-6 w-full rounded-xl bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
