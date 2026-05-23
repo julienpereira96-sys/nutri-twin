@@ -37,7 +37,7 @@ export default function LoginPage() {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (signInError) {
         if (signInError.message.includes("Invalid login credentials") || signInError.message.includes("invalid_credentials") || signInError.code === "invalid_credentials") {
-          setError("Email ou mot de passe incorrect. <Vérifiez vos informations.");
+          setError("Email ou mot de passe incorrect. Vérifiez vos informations.");
         } else if (signInError.message.includes("Email not confirmed") || signInError.message.includes("email_not_confirmed")) {
           setError("__unconfirmed__");
           return;
@@ -166,9 +166,8 @@ export default function LoginPage() {
           </button>
 
           <p className="mt-6 text-center text-sm text-zinc-400">
-            Pas encore de compte ?{" "}
-            <Link href="/#tarifs" className="font-medium text-[#34d399] hover:underline">S'inscrire</Link>
-          </p>
+          Pas encore de compte ? Inscrivez-vous pour accéder à NutriTwin.
+        </p>
         </form>
       </div>
 
