@@ -70,15 +70,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // /login — non connecté uniquement
-  if (path.startsWith("/login")) {
-    if (!user) return supabaseResponse;
-    const practitioner = await getPractitioner();
-    if (!practitioner?.plan) return NextResponse.redirect(new URL("/checkout?plan=pro", request.url));
-    const profile = await getProfile();
-    if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
+    // /login — non connecté uniquement
+    if (path.startsWith("/login")) {
+      if (!user) return supabaseResponse;
+      const practitioner = await getPractitioner();
+      if (!practitioner?.plan) {
+        await supabase.auth.signOut();
+        return NextResponse.redirect(new URL("/login?pending=true", request.url));
+      }
+      const profile = await getProfile();
+      if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }  
 
   // /patient-login — non connecté uniquement
   if (path.startsWith("/patient-login")) {
@@ -169,6 +172,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: 
   ["/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
-    
+
   ],
 };
