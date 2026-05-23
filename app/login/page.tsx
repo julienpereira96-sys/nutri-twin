@@ -104,7 +104,7 @@ export default function LoginPage() {
 
         {sessionExpired && (
   <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 12, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "#f59e0b", textAlign: "center" }}>
-    Votre session a expiré après 30 jours d'inactivité. Reconnectez-vous pour accéder à votre cabinet. 🔒
+        Votre session a expiré après 30 jours d'inactivité.<br />Reconnectez-vous pour accéder à votre cabinet. 🔒
   </div>
 )}
         <form onSubmit={onSubmit} className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">

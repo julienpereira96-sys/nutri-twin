@@ -81,7 +81,7 @@ export default function ResetPasswordPage() {
             <div className="py-8 text-center">
               <p style={{ fontSize: 32, marginBottom: 12 }}>⏱️</p>
               <p className="text-sm font-semibold text-white mb-2">Lien expiré</p>
-              <p className="text-sm text-zinc-400 mb-6">Ce lien de réinitialisation n'est plus valide. Demandez-en un nouveau depuis la page de connexion.</p>
+              <p className="text-sm text-zinc-400 mb-6">Ce lien de réinitialisation n'est plus valide.<br /> Demandez-en un nouveau depuis la page de connexion.</p>
               <button onClick={() => router.push("/login")} className="text-sm font-semibold cursor-pointer" style={{ color: "#10b981" }}>
                 Retour à la connexion →
               </button>

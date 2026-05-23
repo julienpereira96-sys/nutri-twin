@@ -56,9 +56,13 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // /signup — non connecté uniquement
-  if (path.startsWith("/signup")) {
-    if (!user) return supabaseResponse;
+    // /signup — non connecté uniquement, plan requis
+    if (path.startsWith("/signup")) {
+      if (!user) {
+        const plan = request.nextUrl.searchParams.get("plan");
+        if (!plan) return NextResponse.redirect(new URL("/#tarifs", request.url));
+        return supabaseResponse;
+      }  
     const practitioner = await getPractitioner();
     if (!practitioner?.plan) return NextResponse.redirect(new URL("/checkout?plan=pro", request.url));
     const profile = await getProfile();
@@ -164,6 +168,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webpo$).*)",
   ],
 };

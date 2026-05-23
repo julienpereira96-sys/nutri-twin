@@ -105,7 +105,7 @@ export default function PatientLoginPage() {
 
         {sessionExpired && (
         <div className="mb-4 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-400 text-center">
-          Votre session a expiré. Reconnectez-vous pour accéder à votre espace. 🔒
+              Votre session a expiré.<br />Reconnectez-vous pour accéder à votre espace. 🔒
         </div>
       )}
 

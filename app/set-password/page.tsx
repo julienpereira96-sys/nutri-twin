@@ -64,7 +64,15 @@ export default function SetPasswordPage() {
 
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     const { error: updateError } = await supabase.auth.updateUser({ password });
-    if (updateError) { setError(updateError.message); setLoading(false); return; }
+    if (updateError) {
+      if (updateError.message.includes("Auth session missing")) {
+        setError("Lien invalide ou expiré. Contactez votre praticien pour recevoir une nouvelle invitation.");
+      } else {
+        setError(updateError.message);
+      }
+      setLoading(false);
+      return;
+    }
 
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
