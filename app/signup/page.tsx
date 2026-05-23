@@ -366,16 +366,20 @@ try {
             </div>
           )}
 
-          {error && error !== "__unconfirmed__" && (
-          <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
-          <p className="text-sm text-red-400" role="alert">{error}</p>
-          {error.includes("compte existe déjà") && (
-  <Link href="/login" className="mt-2 inline-block text-[12px] font-semibold transition hover:opacity-80" style={{ color: emerald }}>
-    {error.includes("finaliser") ? "→ Se connecter et finaliser mon abonnement" : "→ Se connecter"}
-  </Link>
-)}
-          </div>
-        )}
+{error && error !== "__unconfirmed__" && (
+            <div className={`mt-4 rounded-xl px-4 py-3 border ${error.includes("compte existe déjà") ? "bg-amber-500/10 border-amber-500/20" : "bg-red-500/10 border-red-500/20"}`}>
+              <p className={`text-sm ${error.includes("compte existe déjà") ? "text-amber-400" : "text-red-400"}`} role="alert">
+                {error.includes("compte existe déjà") ? "Un compte existe déjà avec cette adresse email." : error}
+              </p>
+              {error.includes("compte existe déjà") && (
+                <Link href="/login"
+                  className="mt-3 inline-flex items-center justify-center w-full h-9 rounded-lg text-[13px] font-semibold transition"
+                  style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald }}>
+                  {error.includes("finaliser") ? "Se connecter et finaliser mon abonnement →" : "Se connecter →"}
+                </Link>
+              )}
+            </div>
+          )}
 
 <button
   type="submit"
