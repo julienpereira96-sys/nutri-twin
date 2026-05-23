@@ -247,6 +247,7 @@ function CheckoutForm() {
   const [error, setError] = useState("");
 
   const fetchClientSecret = useCallback(async () => {
+    setClientSecret("");
     try {
       const supabase = createSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -280,8 +281,9 @@ function CheckoutForm() {
   }, [plan]);
 
   useEffect(() => {
+    setClientSecret("");
     fetchClientSecret();
-  }, [fetchClientSecret]);
+  }, [plan, fetchClientSecret]);
 
   return (
     <div className="min-h-screen bg-[#070707] text-white">
@@ -365,8 +367,8 @@ function CheckoutForm() {
             </div>
 
             <Link
-              href="/#tarifs"
-              onClick={() => sessionStorage.setItem("from_checkout", "true")}
+              href="/?from_checkout=true#tarifs"
+              onClick={() => {}}
               className="text-[11px] text-zinc-600 hover:text-zinc-400 transition"
             >
               ← Changer de plan
