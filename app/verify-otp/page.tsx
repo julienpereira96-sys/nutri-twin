@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import Link from "next/link";
 
 const emerald = "#10b981";
 
@@ -98,6 +97,7 @@ function VerifyOTPForm() {
     try {
       await supabase.auth.resend({ type: "signup", email });
       setCountdown(60);
+      setError("✅ Nouveau code envoyé !");
     } catch {
       setError("Impossible de renvoyer le code.");
     }
@@ -155,7 +155,7 @@ function VerifyOTPForm() {
           </div>
 
           {error && (
-            <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-[13px] text-red-400 text-center">
+            <div className={`mb-4 rounded-xl px-4 py-3 text-[13px] text-center border ${error.startsWith("✅") ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
               {error}
             </div>
           )}
@@ -166,10 +166,10 @@ function VerifyOTPForm() {
             </div>
           )}
 
-          <button
+            <button
             onClick={handleVerify}
             disabled={loading || success || code.join("").length !== 6}
-            className="w-full h-[48px] rounded-xl text-[14px] font-semibold text-black transition active:scale-95 disabled:opacity-50"
+            className="w-full h-[48px] rounded-xl text-[14px] font-semibold text-black transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             style={{ backgroundColor: emerald }}
           >
             {loading ? "Vérification..." : "Confirmer mon email"}
@@ -182,11 +182,11 @@ function VerifyOTPForm() {
                 <span className="text-zinc-500">Renvoyer dans {countdown}s</span>
               ) : (
                 <button
-                  onClick={handleResend}
-                  disabled={resending}
-                  className="font-medium transition hover:opacity-80"
-                  style={{ color: emerald }}
-                >
+                onClick={handleResend}
+                disabled={resending}
+                className="font-medium transition hover:opacity-80 cursor-pointer disabled:cursor-not-allowed"
+                style={{ color: emerald }}
+              >
                   {resending ? "Envoi..." : "Renvoyer"}
                 </button>
               )}
