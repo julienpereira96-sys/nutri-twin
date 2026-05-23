@@ -37,7 +37,7 @@ export default function LoginPage() {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (signInError) {
         if (signInError.message.includes("Invalid login credentials") || signInError.message.includes("invalid_credentials") || signInError.code === "invalid_credentials") {
-          setError("Email ou mot de passe incorrect. < /br> Vérifiez vos informations.");
+          setError("Email ou mot de passe incorrect. <Vérifiez vos informations.");
         } else if (signInError.message.includes("Email not confirmed") || signInError.message.includes("email_not_confirmed")) {
           setError("__unconfirmed__");
           return;
@@ -142,7 +142,7 @@ export default function LoginPage() {
         )}
         {error === "__unconfirmed__" && (
           <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3">
-            <p className="text-sm text-amber-400">Un compte existe mais n'est pas encore vérifié.</p>
+            <p className="text-sm text-amber-400">Un compte existe déjà mais n'est pas encore vérifié.</p>
             <button onClick={async () => {
               const supabase = createSupabaseBrowserClient();
               await supabase.auth.resend({ type: "signup", email: email.trim() });

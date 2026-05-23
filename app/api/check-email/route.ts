@@ -9,12 +9,18 @@ export async function POST(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const { data } = await supabase.auth.admin.listUsers();
-  const user = data?.users?.find(
+  // Chercher dans auth.users via admin API avec filtre direct
+  const { data: { users }, error } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  
+  if (error) return NextResponse.json({ exists: false, hasPlan: false, isConfirmed: false });
+  
+  const user = users?.find(
     (u) => u.email?.toLowerCase() === email.trim().toLowerCase()
   );
 
-  if (!user) return NextResponse.json({ exists: false, hasPlan: false });
+  if (!user) return NextResponse.json({ exists: false, hasPlan: false, isConfirmed: false });
+
+  const isConfirmed = !!user.email_confirmed_at;
 
   const { data: practitioner } = await supabase
     .from("practitioners")
@@ -25,5 +31,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     exists: true,
     hasPlan: !!practitioner?.plan,
+    isConfirmed,
   });
 }
