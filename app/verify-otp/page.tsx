@@ -166,11 +166,13 @@ function VerifyOTPForm() {
             </div>
           )}
 
-            <button
+<button
             onClick={handleVerify}
             disabled={loading || success || code.join("").length !== 6}
             className="w-full h-[48px] rounded-xl text-[14px] font-semibold text-black transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             style={{ backgroundColor: emerald }}
+            onMouseEnter={e => { if (!loading && !success && code.join("").length === 6) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}
           >
             {loading ? "Vérification..." : "Confirmer mon email"}
           </button>
