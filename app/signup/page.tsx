@@ -172,7 +172,7 @@ try {
 </div>
           </div>
           <h1 className="text-[22px] tracking-tight text-white mt-3">Bienvenue sur Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
-          <p className="mt-2 text-sm text-zinc-400">Créez votre espace personnel</p>
+          <p className="mt-2 text-base text-zinc-400">Créez votre espace personnel</p>
           {plan && (
             <p className="mt-1 text-xs font-semibold" style={{ color: "#10b981" }}>
               {plan === "pro" ? "Plan Professionnel sélectionné" : `Plan ${plan.charAt(0).toUpperCase() + plan.slice(1)} sélectionné`}
@@ -352,6 +352,19 @@ try {
               <p className="text-[11px] text-zinc-200">* Champ obligatoire</p>
             </div>
           </div>
+
+            {error === "__unconfirmed__" && (
+            <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3">
+              <p className="text-sm text-amber-400">Un compte existe déjà avec cet email mais n'est pas encore vérifié.</p>
+              <button onClick={async () => {
+                const supabase = createSupabaseBrowserClient();
+                await supabase.auth.resend({ type: "signup", email: email.trim() });
+                router.push(`/verify-otp?email=${encodeURIComponent(email.trim())}&plan=${plan}`);
+              }} className="mt-2 text-sm font-semibold underline cursor-pointer" style={{ color: "#f59e0b" }}>
+                Recevoir mon code de vérification →
+              </button>
+            </div>
+          )}
 
           {error && (
           <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
