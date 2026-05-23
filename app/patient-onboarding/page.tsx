@@ -174,6 +174,7 @@ export default function PatientOnboardingPage() {
         digestif.length > 0 ? `Digestif: ${digestif.join(", ")}` : "",
       ].filter(Boolean).join(" | ") || null,
       onboarding_completed: true,
+      onboarding_status: "completed",
     }).eq("user_id", user.id);
 
     setSaving(false);

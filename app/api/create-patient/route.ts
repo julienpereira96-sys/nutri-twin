@@ -22,7 +22,8 @@ export async function POST(request: Request) {
     email,
     rgpd_accepted_at: now,
     rgpd_data_accepted_at: now,
-  }, { onConflict: "user_id" });  
+    onboarding_status: "password_set",
+  }, { onConflict: "user_id" });
 
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ success: true });

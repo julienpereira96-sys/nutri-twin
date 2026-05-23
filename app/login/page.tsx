@@ -146,14 +146,6 @@ export default function LoginPage() {
         {error === "__unconfirmed__" && (
           <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3">
             <p className="text-sm text-amber-400">Un compte existe déjà avec cette adresse email mais n'est pas encore vérifié.</p>
-            <button onClick={async () => {
-              const supabase = createSupabaseBrowserClient();
-              await supabase.auth.resend({ type: "signup", email: email.trim() });
-              router.push(`/verify-otp?email=${encodeURIComponent(email.trim())}&plan=pro`);
-            }} className="mt-3 inline-flex items-center justify-center w-full h-9 rounded-lg text-[13px] font-semibold transition cursor-pointer"
-              style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b" }}>
-              Recevoir mon code de vérification →
-            </button>
           </div>
         )}
 
@@ -161,19 +153,16 @@ export default function LoginPage() {
 {error === "__no_plan__" && (
           <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3">
             <p className="text-sm text-amber-400">Votre compte est créé mais votre abonnement n'est pas encore finalisé.</p>
-            <button onClick={() => router.push("/checkout?plan=pro")}
-              className="mt-3 inline-flex items-center justify-center w-full h-9 rounded-lg text-[13px] font-semibold transition cursor-pointer"
-              style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b" }}>
-              Finaliser mon abonnement →
-            </button>
           </div>
         )}
 
 
-                    {error === "__no_plan__" ? (
+{error === "__no_plan__" ? (
             <button onClick={() => router.push("/checkout?plan=pro")}
               className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer"
-              style={{ backgroundColor: "#f59e0b" }}>
+              style={{ backgroundColor: "#f59e0b" }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
               Finaliser mon abonnement →
             </button>
           ) : error === "__unconfirmed__" ? (
@@ -182,7 +171,9 @@ export default function LoginPage() {
               await supabase.auth.resend({ type: "signup", email: email.trim() });
               router.push(`/verify-otp?email=${encodeURIComponent(email.trim())}&plan=pro`);
             }} className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer"
-              style={{ backgroundColor: "#f59e0b" }}>
+              style={{ backgroundColor: "#f59e0b" }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
               Recevoir mon code de vérification →
             </button>
           ) : (

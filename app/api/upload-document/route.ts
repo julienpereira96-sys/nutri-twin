@@ -10,20 +10,16 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 });
 
-function chunkText(text: string, chunkSize = 500): string[] {
+function chunkText(text: string, chunkSize = 500, overlap = 50): string[] {
   const words = text.split(" ");
   const chunks: string[] = [];
-  let current = "";
+  let i = 0;
 
-  for (const word of words) {
-    if ((current + " " + word).trim().split(" ").length > chunkSize) {
-      if (current.trim()) chunks.push(current.trim());
-      current = word;
-    } else {
-      current = current ? current + " " + word : word;
-    }
+  while (i < words.length) {
+    const chunk = words.slice(i, i + chunkSize).join(" ");
+    if (chunk.trim()) chunks.push(chunk.trim());
+    i += chunkSize - overlap;
   }
-  if (current.trim()) chunks.push(current.trim());
   return chunks;
 }
 
@@ -176,6 +172,13 @@ export async function POST(request: Request) {
 
     if (!text.trim()) {
       return Response.json({ error: "Impossible d'extraire le contenu du fichier." }, { status: 400 });
+    }
+    
+    const MIN_CHARS = 50;
+    if (text.trim().length < MIN_CHARS) {
+      return Response.json({ 
+        error: "Le document semble vide ou illisible (scan trop flou, image de mauvaise qualité). Veuillez fournir un document avec du contenu lisible." 
+      }, { status: 400 });
     }
 
     const documentType = formData.get("documentType") as string | null;

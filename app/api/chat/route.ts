@@ -644,7 +644,17 @@ export async function POST(request: Request) {
     
         RÈGLES :
         RÈGLES :
-    - Choisis l'outil parmi : breathing (stress/anxiété), ancrage (panique/dissociation), manger (impulsions alimentaires/TCA), marche (fatigue/rumination)
+    - Choisis l'outil parmi :
+      breathing (stress/anxiété/tension)
+      ancrage (panique/dissociation/perte de repères)
+      manger (impulsions alimentaires/TCA/envie de grignoter)
+      marche (fatigue/rumination/besoin de mouvement)
+      body_scan (confusion faim réelle vs émotionnelle, sensations corporelles)
+      defusion (pensées automatiques négatives, culpabilité, "je suis nul")
+      ecriture (ruminations nocturnes, trop-plein émotionnel, besoin de vider)
+      adaptive_coaching (situation unique nécessitant un exercice sur mesure TCC)
+
+    - Si tu choisis adaptive_coaching, génère toi-même les steps du tool_script en fonction du problème précis du patient. Les steps doivent suivre une approche TCC (Thérapies Cognitivo-Comportementales) : identifier la pensée automatique, la questionner, proposer une action concrète. Reste dans un cadre bienveillant et nutritionnel.
     
     - ANTI-REDONDANCE : Les outils récemment utilisés par ce patient sont : ${recentTools || "aucun"}. Évite de reproposer le même outil. Varie systématiquement.
     

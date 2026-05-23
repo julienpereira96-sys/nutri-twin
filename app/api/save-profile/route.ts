@@ -68,6 +68,7 @@ export async function POST(request: Request) {
           token: process.env.UPSTASH_REDIS_REST_TOKEN!,
         });
         await redis.del(`practitioner:${userId}`);
+        await redis.del(`patient_profile:${userId}`);
       } catch {
         // Silencieux
       }
