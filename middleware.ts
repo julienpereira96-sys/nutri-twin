@@ -77,11 +77,11 @@ export async function middleware(request: NextRequest) {
       if (!practitioner?.plan) {
         const changingPlan = request.cookies.get("changing_plan")?.value === "true";
         if (!changingPlan) {
-          await supabase.auth.signOut(); 
-          return NextResponse.redirect(new URL("/login?pending=true", request.url));
+          await supabase.auth.signOut();
+          return NextResponse.redirect(new URL("/login", request.url));
         }
-        return supabaseResponse; 
-      }      
+        return supabaseResponse;
+      }    
       const profile = await getProfile();
       if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
       return NextResponse.redirect(new URL("/dashboard", request.url));
