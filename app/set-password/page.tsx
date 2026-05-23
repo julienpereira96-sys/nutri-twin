@@ -36,11 +36,21 @@ export default function SetPasswordPage() {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
+
+    // Timeout — si après 5 secondes toujours pas de session, lien expiré
+    const timeout = setTimeout(() => {
+      setReady(false);
+      setError("__expired__");
+    }, 5000);
+
     supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+        clearTimeout(timeout);
         setReady(true);
       }
     });
+
+    return () => clearTimeout(timeout);
   }, []);
 
   const handleSubmit = async () => {
@@ -86,7 +96,13 @@ export default function SetPasswordPage() {
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
-          {!ready ? (
+        {error === "__expired__" ? (
+            <div className="py-8 text-center">
+              <p style={{ fontSize: 32, marginBottom: 12 }}>⏱️</p>
+              <p className="text-sm font-semibold text-white mb-2">Lien expiré</p>
+              <p className="text-sm text-zinc-400 mb-6">Ce lien d'invitation n'est plus valide. Contactez votre praticien pour en recevoir un nouveau.</p>
+            </div>
+          ) : !ready ? (
             <div className="py-8 text-center">
               <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />
               <p className="text-sm text-zinc-400">Vérification de votre invitation...</p>

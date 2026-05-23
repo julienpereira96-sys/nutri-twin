@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 
 export default function PatientLoginPage() {
@@ -12,6 +12,12 @@ export default function PatientLoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reason") === "session_expired") setSessionExpired(true);
+  }, []);
 
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
@@ -27,7 +33,20 @@ export default function PatientLoginPage() {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (signInError) {
         if (signInError.message.includes("Invalid login credentials") || signInError.message.includes("invalid_credentials") || signInError.code === "invalid_credentials") {
-          setError("Email ou mot de passe incorrect. Vérifiez vos informations.");
+          // Vérifier si le compte existe mais n'a pas de mot de passe défini
+          const checkRes = await fetch("/api/check-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: email.trim() }),
+          });
+          const checkData = await checkRes.json() as { exists?: boolean; isConfirmed?: boolean };
+          if (checkData.exists && !checkData.isConfirmed) {
+            setError("Vous n'avez pas encore activé votre compte. Consultez l'email d'invitation envoyé par votre praticien.");
+          } else {
+            setError("Email ou mot de passe incorrect. Vérifiez vos informations.");
+          }
+        } else if (signInError.message.includes("Email not confirmed") || signInError.message.includes("email_not_confirmed")) {
+          setError("Vous n'avez pas encore activé votre compte. Consultez l'email d'invitation envoyé par votre praticien.");
         } else {
           setError(signInError.message);
         }
@@ -51,11 +70,6 @@ export default function PatientLoginPage() {
       body: JSON.stringify({ email: forgotEmail.trim() }),
     });
     const data = await res.json() as { exists?: boolean };
-    if (!data.exists) {
-      setResetError("Aucun compte trouvé avec cette adresse email.");
-      setResetLoading(false);
-      return;
-    }
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: `${window.location.origin}/set-password` });
     setResetSent(true);
@@ -83,6 +97,12 @@ export default function PatientLoginPage() {
           <h1 className="text-[22px] tracking-tight text-white">Mon espace Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
           <p className="mt-2 text-sm text-zinc-400">Connectez-vous pour accéder <br /> à votre compagnon de suivi</p>
         </div>
+
+        {sessionExpired && (
+        <div className="mb-4 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-400 text-center">
+          Votre session a expiré. Reconnectez-vous pour accéder à votre espace. 🔒
+        </div>
+      )}
 
         <form onSubmit={onSubmit} className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
           <div className="space-y-4">
@@ -154,7 +174,7 @@ export default function PatientLoginPage() {
               <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 14, padding: "20px", textAlign: "center" }}>
                 <p style={{ fontSize: 28, marginBottom: 10 }}>✅</p>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "white" }}>Email envoyé !</p>
-                <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b" }}>Vérifiez votre boîte mail à <strong style={{ color: "#10b981" }}>{forgotEmail}</strong></p>
+                <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b" }}>Si un compte existe avec <strong style={{ color: "#10b981" }}>{forgotEmail}</strong>, vous recevrez un lien de réinitialisation.</p>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Pensez à vérifier vos spams.</p>
                 <button onClick={closeModal} style={{ marginTop: 16, height: 40, borderRadius: 20, padding: "0 20px", background: "#10b981", border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Fermer</button>
               </div>

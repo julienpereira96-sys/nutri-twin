@@ -17,10 +17,15 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const supabase = createSupabaseBrowserClient();
+
+    const timeout = setTimeout(() => {
+      setError("__expired__");
+    }, 5000);
+
     supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "PASSWORD_RECOVERY") {
+        clearTimeout(timeout);
         setReady(true);
-        // Détecter si praticien ou patient
         if (session?.user) {
           const { data } = await supabase
             .from("practitioners")
@@ -31,6 +36,8 @@ export default function ResetPasswordPage() {
         }
       }
     });
+
+    return () => clearTimeout(timeout);
   }, []);
 
   const handleReset = async () => {
@@ -70,10 +77,20 @@ export default function ResetPasswordPage() {
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
-          {!ready ? (
-            <p className="text-center text-zinc-400 text-sm">
-              Vérification du lien en cours...
-            </p>
+        {error === "__expired__" ? (
+            <div className="py-8 text-center">
+              <p style={{ fontSize: 32, marginBottom: 12 }}>⏱️</p>
+              <p className="text-sm font-semibold text-white mb-2">Lien expiré</p>
+              <p className="text-sm text-zinc-400 mb-6">Ce lien de réinitialisation n'est plus valide. Demandez-en un nouveau depuis la page de connexion.</p>
+              <button onClick={() => router.push("/login")} className="text-sm font-semibold cursor-pointer" style={{ color: "#10b981" }}>
+                Retour à la connexion →
+              </button>
+            </div>
+          ) : !ready ? (
+            <div className="py-8 text-center">
+              <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />
+              <p className="text-sm text-zinc-400">Vérification du lien en cours...</p>
+            </div>
           ) : (
             <div className="space-y-4">
               <label className="block">
