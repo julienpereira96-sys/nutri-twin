@@ -183,16 +183,39 @@ export default function OnboardingPage() {
       localStorage.setItem("onboarding_selected", JSON.stringify(selected));
     }, [selected]);    
 
-  useEffect(() => {
-    const checkProfile = async () => {
-      const supabase = createSupabaseBrowserClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase.from("practitioners").select("onboarding_done").eq("user_id", user.id).single();
-      if (data?.onboarding_done) setAlreadyDone(true);
-    };
-    void checkProfile();
-  }, []);
+    useEffect(() => {
+      const init = async () => {
+        const supabase = createSupabaseBrowserClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+  
+        // Vérifier si onboarding déjà fait
+        const { data } = await supabase.from("practitioners").select("onboarding_done").eq("user_id", user.id).single();
+        if (data?.onboarding_done) setAlreadyDone(true);
+  
+        // Charger les documents indexés
+        const { data: docs } = await supabase
+          .from("practitioner_documents")
+          .select("id, file_name, document_type, created_at")
+          .eq("practitioner_id", user.id)
+          .order("created_at", { ascending: false });
+  
+          if (docs && docs.length > 0) {
+            const mapDoc = (d: { id: string; file_name: string; document_type: string; created_at: string }): IndexedFile => ({
+              name: d.file_name,
+              fileName: d.file_name,
+              type: d.document_type as "protocole" | "patient",
+              indexedAt: new Date(d.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }),
+              fileType: getFileType(d.file_name),
+            });
+            setSlot1IndexedFiles(docs.filter(d => d.document_type === "protocole").map(mapDoc));
+            setSlot2IndexedFiles(docs.filter(d => d.document_type === "patient").map(mapDoc));
+            if (docs.filter(d => d.document_type === "protocole").length > 0) setSlot1Done(true);
+            if (docs.filter(d => d.document_type === "patient").length > 0) setSlot2Done(true);
+          }
+      };
+      void init();
+    }, []);  
 
   useEffect(() => {
     const handlePopState = () => window.history.pushState(null, "", window.location.pathname);
@@ -730,10 +753,10 @@ export default function OnboardingPage() {
                     </div>
                     <div className="pt-2">
                       <p className="text-sm font-semibold text-white mb-1">Pas de documents prêts ou des nuances à apporter ?</p>
-                      <p className="text-xs text-zinc-500 mb-3">Une expertise non documentée vaut autant qu'un protocole écrit.</p>
+                      <p className="text-xs text-zinc-500 mb-3">Décrivez votre vision ou des détails non écrits dans vos protocoles.</p>
                       <div className="relative">
                         <textarea value={slot1Text} onChange={e => setSlot1Text(e.target.value)}
-                          placeholder="Décrivez votre vision ou des détails non écrits dans vos protocoles..." rows={4}
+                          placeholder="Exemple : Je crois profondément que l’accompagnement nutritionnel doit d'abord être un espace de sécurité absolue, où le jugement n’a aucune place, peu importent les difficultés ou les écarts rencontrés. Pour moi, apaiser l’anxiété est le préalable indispensable à toute discussion technique ou calorique. Ma pratique repose sur la douceur, la validation systématique des émotions et la conviction qu'il faut toujours ouvrir sur une note d'espoir pour permettre au patient de se projeter durablement vers son mieux-être." rows={4}
                           className="w-full rounded-2xl border border-white/10 bg-[#1a1a1a] px-4 py-4 pr-14 text-sm text-white outline-none transition-all duration-200 placeholder:text-zinc-600 focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/20 resize-none" />
                         <div className="absolute bottom-6 right-3 group flex items-center justify-end">
                           <span className="mr-2 text-xs text-zinc-500 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0 whitespace-nowrap pointer-events-none">Mémo vocal</span>
