@@ -37,13 +37,11 @@ export default function LoginPage() {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (signInError) {
         if (signInError.message.includes("Invalid login credentials") || signInError.message.includes("invalid_credentials") || signInError.code === "invalid_credentials") {
-          setError("Email ou mot de passe incorrect. Vérifiez vos informations.");
+          setError("Email ou mot de passe incorrect. < /br> Vérifiez vos informations.");
         } else if (signInError.message.includes("Email not confirmed") || signInError.message.includes("email_not_confirmed")) {
-          setError("Votre email n'est pas encore vérifié. Vérifiez votre boîte mail ou réessayez de vous inscrire.");
-        } else {
-          setError(signInError.message);
-        }
-        return;
+          setError("__unconfirmed__");
+          return;
+        }        
       }
       const { data: { user } } = await supabase.auth.getUser();
       const { data: practitioner } = await supabase.from("practitioners").select("plan").eq("user_id", user?.id).single();
@@ -137,11 +135,23 @@ export default function LoginPage() {
             </label>
           </div>
 
-          {error && (
-            <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
-              <p className="text-sm text-red-400" role="alert">{error}</p>
-            </div>
-          )}
+          {error && error !== "__unconfirmed__" && (
+          <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
+            <p className="text-sm text-red-400" role="alert">{error}</p>
+          </div>
+        )}
+        {error === "__unconfirmed__" && (
+          <div className="mt-4 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3">
+            <p className="text-sm text-amber-400">Un compte existe mais n'est pas encore vérifié.</p>
+            <button onClick={async () => {
+              const supabase = createSupabaseBrowserClient();
+              await supabase.auth.resend({ type: "signup", email: email.trim() });
+              router.push(`/verify-otp?email=${encodeURIComponent(email.trim())}&plan=pro`);
+            }} className="mt-2 text-sm font-semibold underline cursor-pointer" style={{ color: "#f59e0b" }}>
+              Recevoir mon code de vérification →
+            </button>
+          </div>
+        )}
 
           <button type="submit" disabled={loading}
             className="mt-6 w-full rounded-xl bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
