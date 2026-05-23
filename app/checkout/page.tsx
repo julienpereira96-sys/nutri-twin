@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
@@ -105,14 +105,18 @@ function PaymentForm({ plan }: { plan: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const beforeUnloadRef = useRef<((e: BeforeUnloadEvent) => void) | null>(null);
+
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
+    beforeUnloadRef.current = handleBeforeUnload;
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, []);
+
 
   const handleSubmit = async () => {
     if (!stripe || !elements) return;
@@ -366,17 +370,16 @@ function CheckoutForm() {
               </ul>
             </div>
 
-            <Link
-              href="/#tarifs"
+            <button
               onClick={() => {
                 document.cookie = "changing_plan=true; path=/; max-age=60";
                 window.onbeforeunload = null;
                 window.location.replace("/#tarifs#from_checkout=true");
-              }}              
-              className="text-[11px] text-zinc-600 hover:text-zinc-400 transition"
+              }}
+              className="text-[11px] text-zinc-600 hover:text-zinc-400 transition cursor-pointer"
             >
               ← Changer de plan
-              </Link>
+            </button>
           </div>
 
           <div>
