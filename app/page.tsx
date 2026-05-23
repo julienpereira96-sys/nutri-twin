@@ -822,8 +822,7 @@ function FounderSection() {
           </div>
           <button
     onClick={() => {
-      if (typeof window !== "undefined" && document.cookie.includes("from_checkout=true")) {
-        document.cookie = "from_checkout=; path=/; max-age=0";
+      if (typeof window !== "undefined" && window.location.hash.includes("from_checkout=true")) {
         window.location.assign(`/checkout?plan=fondateur`);
       } else {
         window.location.assign(`/signup?plan=fondateur`);
@@ -904,8 +903,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       </ul>
       <button
       onClick={() => {
-        if (typeof window !== "undefined" && document.cookie.includes("from_checkout=true")) {
-          document.cookie = "from_checkout=; path=/; max-age=0";
+        if (typeof window !== "undefined" && window.location.hash.includes("from_checkout=true")) {
           window.location.assign(`/checkout?plan=${plan}`);
         } else {
           window.location.assign(`/signup?plan=${plan}`);

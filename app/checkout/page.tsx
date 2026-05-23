@@ -368,7 +368,10 @@ function CheckoutForm() {
 
             <Link
               href="/#tarifs"
-              onClick={() => localStorage.setItem("from_checkout", "true")}
+              onClick={() => {
+                document.cookie = "from_checkout=true; path=/; max-age=300";
+                window.location.replace("/?nocache=" + Date.now() + "#tarifs");
+              }}
               className="text-[11px] text-zinc-600 hover:text-zinc-400 transition"
             >
               ← Changer de plan
