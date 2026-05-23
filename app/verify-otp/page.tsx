@@ -192,12 +192,6 @@ function VerifyOTPForm() {
               )}
             </p>
           </div>
-
-          <div className="mt-4 text-center">
-            <Link href="/signup" className="text-[12px] text-zinc-500 hover:text-zinc-400 transition">
-              ← Modifier mon email
-            </Link>
-          </div>
         </div>
 
         <p className="mt-6 text-center text-[11px] text-zinc-500">

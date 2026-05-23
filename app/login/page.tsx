@@ -36,8 +36,10 @@ export default function LoginPage() {
       const supabase = createSupabaseBrowserClient();
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (signInError) {
-        if (signInError.message.includes("Invalid login credentials")) {
+        if (signInError.message.includes("Invalid login credentials") || signInError.message.includes("invalid_credentials") || signInError.code === "invalid_credentials") {
           setError("Email ou mot de passe incorrect. Vérifiez vos informations.");
+        } else if (signInError.message.includes("Email not confirmed") || signInError.message.includes("email_not_confirmed")) {
+          setError("Votre email n'est pas encore vérifié. Vérifiez votre boîte mail ou réessayez de vous inscrire.");
         } else {
           setError(signInError.message);
         }
@@ -97,7 +99,7 @@ export default function LoginPage() {
 </div>
           </div>
           <h1 className="text-[22px] tracking-tight text-white">Mon espace Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
-          <p className="mt-2 text-sm text-zinc-400">Connexion praticien</p>
+          <p className="mt-2 text-sm text-zinc-400">Connectez-vous pour accéder à votre espace praticien</p>
         </div>
 
         {sessionExpired && (
