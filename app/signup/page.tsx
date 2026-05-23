@@ -86,10 +86,8 @@ try {
   const checkData = await checkRes.json();
   if (checkData.exists) {
     if (!checkData.isConfirmed) {
-      // Compte non vérifié — renvoyer le code OTP et rediriger
-      const supabase = createSupabaseBrowserClient();
-      await supabase.auth.resend({ type: "signup", email: email.trim() });
-      router.push(`/verify-otp?email=${encodeURIComponent(email.trim())}&plan=${plan}`);
+      setError("__unconfirmed__");
+      setLoading(false);
       return;
     }
     setError(
