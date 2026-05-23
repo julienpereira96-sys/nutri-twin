@@ -896,8 +896,9 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       </ul>
       <Link
   href={`/signup?plan=${plan}`}
-  onClick={() => {
+  onClick={(e) => {
     if (typeof window !== "undefined" && sessionStorage.getItem("from_checkout") === "true") {
+      e.preventDefault();
       window.location.href = `/checkout?plan=${plan}`;
     }
   }}

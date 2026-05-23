@@ -366,7 +366,7 @@ try {
             </div>
           )}
 
-          {error && (
+          {error && error !== "__unconfirmed__" && (
           <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
           <p className="text-sm text-red-400" role="alert">{error}</p>
           {error.includes("compte existe déjà") && (
