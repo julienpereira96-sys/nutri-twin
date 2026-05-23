@@ -360,8 +360,7 @@ function CheckoutForm() {
             <button
               onClick={() => {
                 document.cookie = "changing_plan=true; path=/; max-age=60";
-                window.onbeforeunload = null;
-                window.location.replace("/#tarifs#from_checkout=true");
+                window.location.assign("/#tarifs");
               }}
               className="text-[11px] text-zinc-600 hover:text-zinc-400 transition cursor-pointer"
             >
