@@ -2179,8 +2179,8 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
               ← Retour
             </button>
             <button onClick={() => void sendInvite()} disabled={inviting}
-              style={{ flex: 2, height: 48, borderRadius: 12, background: inviting ? "rgba(255,255,255,0.04)" : emerald, border: "none", color: inviting ? "#64748b" : "black", cursor: inviting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700 }}>
-              {inviting ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Envoi...</span> : "Envoyer l'invitation →"}
+              style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: inviting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: inviting ? 0.7 : 1 }}>
+              {inviting ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Envoi...</span> : "Envoyer l'invitation →"}
             </button>
           </div>
         </>
