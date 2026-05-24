@@ -118,6 +118,20 @@ export async function POST(request: Request) {
              `,
            });
          }
+         
+         const { data: existingRelation } = await supabase
+         .from("patient_practitioner")
+         .select("patient_id")
+         .eq("patient_id", existingPatient.id)
+         .eq("practitioner_id", practitionerId)
+         .single();
+       
+       if (!existingRelation) {
+         await supabase.from("patient_practitioner").insert({
+           patient_id: existingPatient.id,
+           practitioner_id: practitionerId,
+         });
+       }
 
          await supabase.from("patients").upsert({
            user_id: existingPatient.id,
@@ -164,9 +178,9 @@ export async function POST(request: Request) {
      });
    }
 
-   const { error: upsertError } = await supabase.from("patients").upsert({
-    user_id: data.user.id,
-    email,
+   await supabase.from("patients").upsert({
+     user_id: data.user.id,
+     email,
      first_name: sanitize(first_name, 100),
      last_name: sanitize(last_name, 100),
      age: age ?? null,
@@ -182,7 +196,6 @@ export async function POST(request: Request) {
      niveau_activite: sanitize(niveau_activite, 100),
      regime_specifique: sanitize(regime_specifique, 100),
    }, { onConflict: "user_id" });
-   if (upsertError) console.error("Upsert patients error:", upsertError.message);
  }
 
  return Response.json({ success: true });
