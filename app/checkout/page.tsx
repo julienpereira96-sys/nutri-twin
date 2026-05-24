@@ -298,12 +298,12 @@ function CheckoutForm() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-6 py-12">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
         <div className="mb-10">
           <h1 className="text-[32px] font-black text-white">Finalisez votre abonnement</h1>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-16 items-start">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
           <div className="lg:sticky lg:top-24">
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-4" style={{ color: planData.color }}>
               Récapitulatif de votre commande
