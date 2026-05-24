@@ -2157,7 +2157,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
     Suivant →
   </button>
 </div>
-        </>
+        </> 
       ) : (
         <>
           <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 14, border: "1px solid rgba(16,185,129,0.15)", padding: "14px 16px", marginBottom: 20 }}>
