@@ -54,7 +54,6 @@ export default function SetPasswordPage() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!firstName.trim() || !lastName.trim()) { setError("Veuillez renseigner votre prénom et nom."); return; }
     if (!password || password !== confirm) { setError("Les mots de passe ne correspondent pas."); return; }
     if (password.length < 8) { setError("Minimum 8 caractères."); return; }
     if (!acceptCGU) { setError("Vous devez accepter les CGU et la politique de confidentialité."); return; }
@@ -79,13 +78,13 @@ export default function SetPasswordPage() {
       await fetch("/api/create-patient", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, firstName: firstName.trim(), lastName: lastName.trim(), email: user.email }),
+        body: JSON.stringify({ userId: user.id, email: user.email }),
       });
     }
     router.push("/patient-onboarding");
   };
 
-  const isDisabled = loading || !password || !confirm || !firstName || !lastName || !acceptCGU || !acceptData;
+  const isDisabled = loading || !password || !confirm || !acceptCGU || !acceptData;
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
@@ -117,30 +116,6 @@ export default function SetPasswordPage() {
             </div>
           ) : (
             <div className="space-y-4">
-
-              {/* Prénom / Nom */}
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block">
-                  <span className="text-sm font-medium text-zinc-300">Prénom</span>
-                  <input
-                    type="text"
-                    value={firstName}
-                    onChange={e => setFirstName(e.target.value)}
-                    placeholder="Ilona"
-                    className="mt-2 w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
-                  />
-                </label>
-                <label className="block">
-                  <span className="text-sm font-medium text-zinc-300">Nom</span>
-                  <input
-                    type="text"
-                    value={lastName}
-                    onChange={e => setLastName(e.target.value)}
-                    placeholder="Dupont"
-                    className="mt-2 w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
-                  />
-                </label>
-              </div>
 
               {/* Mot de passe */}
               <label className="block">

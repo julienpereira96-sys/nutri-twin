@@ -1066,7 +1066,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                 })}
               </div>
               <div style={{ padding: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                <button onClick={() => setShowInviteModal(true)}
+              <button onClick={() => { setShowInviteModal(true); setInviteSuccess(false); setInviteStep(1); }}
                   style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>

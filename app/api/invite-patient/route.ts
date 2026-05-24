@@ -116,10 +116,19 @@ export async function POST(request: Request) {
 
 
   if (data.user && practitionerId) {
-    await supabase.from("patient_practitioner").insert({
-      patient_id: data.user.id,
-      practitioner_id: practitionerId,
-    });
+    const { data: existing } = await supabase
+      .from("patient_practitioner")
+      .select("patient_id")
+      .eq("patient_id", data.user.id)
+      .eq("practitioner_id", practitionerId)
+      .single();
+    
+    if (!existing) {
+      await supabase.from("patient_practitioner").insert({
+        patient_id: data.user.id,
+        practitioner_id: practitionerId,
+      });
+    }
 
     await supabase.from("patients").upsert({
       user_id: data.user.id,
@@ -139,6 +148,32 @@ export async function POST(request: Request) {
       niveau_activite: sanitize(niveau_activite, 100),
       regime_specifique: sanitize(regime_specifique, 100),
     }, { onConflict: "user_id" });
+  }
+
+  // Mettre à jour les infos si le patient existe déjà
+  if (!data.user) {
+    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    const existingPatient = existingUsers?.users?.find(u => u.email === email);
+    if (existingPatient) {
+      await supabase.from("patients").upsert({
+        user_id: existingPatient.id,
+        email,
+        first_name: sanitize(first_name, 100),
+        last_name: sanitize(last_name, 100),
+        age: age ?? null,
+        sexe: sexe ?? null,
+        taille: taille ?? null,
+        poids: poids ?? null,
+        pathologies: sanitize(pathologies),
+        allergies: sanitize(allergies),
+        traitements: sanitize(traitements),
+        objectif_clinique: sanitize(objectif_clinique),
+        brief_jumeau: sanitize(brief_jumeau, 1000),
+        notes: sanitize(notes, 1000),
+        niveau_activite: sanitize(niveau_activite, 100),
+        regime_specifique: sanitize(regime_specifique, 100),
+      }, { onConflict: "user_id" });
+    }
   }
 
   return Response.json({ success: true });
