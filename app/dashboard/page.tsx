@@ -2005,10 +2005,10 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
           <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-            {inviteSuccess ? "Terminé" : `Étape ${inviteStep} sur 3`}
+          {inviteSuccess ? "" : `Étape ${inviteStep} sur 3`}
           </p>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>
-            {inviteSuccess ? "Invitation envoyée !" : inviteStep === 1 ? "Nouveau patient" : inviteStep === 2 ? "Contexte médical" : "Brief Jumeau"}
+          {inviteSuccess ? "" : inviteStep === 1 ? "Nouveau patient" : inviteStep === 2 ? "Contexte médical" : "Brief Jumeau"}
           </h2>
         </div>
         <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteStep(1); }} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
@@ -2025,6 +2025,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
 
       {inviteSuccess ? (
         <div style={{ textAlign: "center", padding: "20px 0" }}>
+        <p style={{ margin: "0 0 20px", fontSize: 22, fontWeight: 800, color: "white", textAlign: "center" }}>Terminé</p>
         <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg, #6ee7b7, #10b981)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", boxShadow: "0 8px 30px rgba(16,185,129,0.4)" }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
             <path d="M5 13l4 4L19 7" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
