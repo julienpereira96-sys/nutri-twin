@@ -102,11 +102,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // /payment-success — praticien avec plan sans profil uniquement
+  // /payment-success — praticien connecté uniquement
   if (path.startsWith("/payment-success")) {
     if (!user) return NextResponse.redirect(new URL("/", request.url));
-    const practitioner = await getPractitioner();
-    if (!practitioner?.plan) return NextResponse.redirect(new URL("/", request.url));
     const profile = await getProfile();
     if (profile) return NextResponse.redirect(new URL("/dashboard", request.url));
     return supabaseResponse;

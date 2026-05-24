@@ -9,18 +9,30 @@ function PaymentSuccessContent() {
  const [planReady, setPlanReady] = useState(false);
 
  useEffect(() => {
-   const supabase = createSupabaseBrowserClient();
-   const interval = setInterval(async () => {
-     const { data: { user } } = await supabase.auth.getUser();
-     if (!user) return;
-     const { data } = await supabase.from("practitioners").select("plan").eq("user_id", user.id).single();
-     if (data?.plan) {
-       setPlanReady(true);
-       clearInterval(interval);
-     }
-   }, 2000);
-   return () => clearInterval(interval);
- }, []);
+  const supabase = createSupabaseBrowserClient();
+  let attempts = 0;
+  const maxAttempts = 15;
+
+  const interval = setInterval(async () => {
+    attempts++;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      clearInterval(interval);
+      router.push("/");
+      return;
+    }
+    const { data } = await supabase.from("practitioners").select("plan").eq("user_id", user.id).single();
+    if (data?.plan) {
+      setPlanReady(true);
+      clearInterval(interval);
+    } else if (attempts >= maxAttempts) {
+      clearInterval(interval);
+      router.push("/");
+    }
+  }, 2000);
+  return () => clearInterval(interval);
+}, [router]);
+
 
  return (
    <div style={{
