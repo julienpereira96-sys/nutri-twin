@@ -18,21 +18,36 @@ function ResetPasswordForm() {
  const [ready, setReady] = useState(false);
 
  useEffect(() => {
-   const supabase = createSupabaseBrowserClient();
+  const supabase = createSupabaseBrowserClient();
 
-   const timeout = setTimeout(() => {
+  const timeout = setTimeout(() => {
     setError("__expired__");
-  }, 10000);
+  }, 5000);
 
-   supabase.auth.onAuthStateChange(async (event) => {
-     if (event === "PASSWORD_RECOVERY") {
-       clearTimeout(timeout);
-       setReady(true);
-     }
-   });
+  // Détecter le token dans le hash pour Safari
+  const hash = window.location.hash;
+  if (hash.includes("access_token")) {
+    const params = new URLSearchParams(hash.substring(1));
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+    if (accessToken && refreshToken) {
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(() => {
+        clearTimeout(timeout);
+        setReady(true);
+      });
+    }
+  }
 
-   return () => clearTimeout(timeout);
- }, []);
+  supabase.auth.onAuthStateChange(async (event) => {
+    if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
+      clearTimeout(timeout);
+      setReady(true);
+    }
+  });
+
+  return () => clearTimeout(timeout);
+}, []);
+
 
  const handleReset = async () => {
    if (!password || password !== confirm) {
