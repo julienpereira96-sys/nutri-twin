@@ -696,8 +696,8 @@ export default function OnboardingPage() {
                     <p className="text-base font-bold" style={{ color: slot1Done ? "#10b981" : "white" }}>Votre Vision</p>
                     {slot1Done && <span className="text-xs font-semibold text-emerald-400 ml-1">✓ Rempli</span>}
                   </div>
-                  <p className="text-sm text-zinc-400 mb-6 leading-relaxed ml-10">Uploadez vos plans alimentaires types, protocoles ou articles. Votre jumeau les intégrera pour répondre avec votre précision.</p>
-                  <div className="ml-10 space-y-3">
+                  <p className="text-sm text-zinc-400 mb-6 leading-relaxed ml-0 sm:ml-10"> Uploadez vos plans alimentaires types, protocoles ou articles. Votre jumeau les intégrera pour répondre avec votre précision.</p>
+                  <div className="ml-0 sm:ml-10 space-y-3">
                     {slot1IndexedFiles.map((f, i) => <IndexedFileRow key={i} f={f} i={i} slot="slot1" />)}
                     <div className="pt-2">
                       <p className="text-sm font-semibold text-white mb-1">Quel type de document uploadez-vous ?</p>
@@ -823,7 +823,7 @@ export default function OnboardingPage() {
                     {slot2Done && <span className="text-xs font-semibold text-emerald-400 ml-1">✓ Rempli</span>}
                   </div>
                   <p className="text-sm text-zinc-400 mb-6 leading-relaxed ml-10">L'étape finale pour passer de l'intelligence artificielle à votre intelligence émotionnelle.</p>
-                  <div className="ml-10 space-y-3">
+                  <div className="ml-0 sm:ml-10 space-y-3">
                     {slot2IndexedFiles.map((f, i) => <IndexedFileRow key={i} f={f} i={i} slot="slot2" />)}
                     <div className="pt-2">
                       <div className="relative">
@@ -879,14 +879,15 @@ export default function OnboardingPage() {
                   </div>
                 )}
 
-                <div className="mt-10 flex items-center justify-between">
+                  <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <button type="button" onClick={() => setStep(prev => prev - 1)}
-                    className="text-sm text-zinc-500 transition-all duration-200 hover:text-white cursor-pointer">← Retour</button>
+                    className="text-sm text-zinc-500 transition-all duration-200 hover:text-white cursor-pointer sm:order-1 order-last">← Retour</button>
+
                   <div style={{ position: "relative", display: "inline-block" }}
                     onMouseEnter={() => { if (filled < 2) setShowCertTooltip(true); }}
                     onMouseLeave={() => setShowCertTooltip(false)}>
                     {showCertTooltip && filled < 2 && (
-                      <div style={{ position: "absolute", top: "50%", right: "calc(100% + 12px)", transform: "translateY(-50%)", width: 280, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
+                    <div style={{ position: "absolute", bottom: "calc(100% + 8px)", right: 0, width: 260, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
                         🔒 Certification requise — Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.
                       </div>
                     )}
