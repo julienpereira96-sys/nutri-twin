@@ -97,7 +97,7 @@ export async function POST(request: Request) {
         if (!patientData?.onboarding_completed) {
           // Renvoyer le lien d'invitation sans créer de nouveau compte
           await supabase.auth.admin.generateLink({
-            type: "invite",
+            type: "magiclink",
             email,
             options: {
               redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/set-password`,
