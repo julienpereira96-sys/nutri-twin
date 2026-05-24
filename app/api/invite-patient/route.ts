@@ -95,9 +95,13 @@ export async function POST(request: Request) {
       if (existingPatient) {
         const { data: patientData } = await supabase.from("patients").select("onboarding_completed").eq("user_id", existingPatient.id).single();
         if (!patientData?.onboarding_completed) {
-          // Renvoyer l'invitation
-          await supabase.auth.admin.inviteUserByEmail(email, {
-            redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/set-password`,
+          // Renvoyer le lien d'invitation sans créer de nouveau compte
+          await supabase.auth.admin.generateLink({
+            type: "invite",
+            email,
+            options: {
+              redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/set-password`,
+            },
           });
           return Response.json({ success: true, resent: true });
         }
