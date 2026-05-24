@@ -2113,7 +2113,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
     { label: "Activité", value: inviteNiveauActivite, setter: setInviteNiveauActivite, id: "activ", options: ["Sédentaire", "Légère", "Modérée", "Intense", "Athlète"] },
     { label: "Régime", value: inviteRegime, setter: setInviteRegime, id: "regime", options: ["Végétarien", "Vegan", "Sans gluten", "Halal", "Méditerranéen"] },
   ].map(({ label, value, setter, id, options }) => {
-    const isAutre = value !== "" && !options.includes(value);
+    const isAutre = value !== "" && !options.includes(value) && value !== "Aucune" && value !== "Aucun";
     return (
       <div key={id}>
         <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>{label}</p>
