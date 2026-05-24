@@ -21,8 +21,8 @@ function ResetPasswordForm() {
    const supabase = createSupabaseBrowserClient();
 
    const timeout = setTimeout(() => {
-     setError("__expired__");
-   }, 5000);
+    setError("__expired__");
+  }, 10000);
 
    supabase.auth.onAuthStateChange(async (event) => {
      if (event === "PASSWORD_RECOVERY") {
