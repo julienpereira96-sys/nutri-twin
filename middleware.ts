@@ -52,7 +52,6 @@ export async function middleware(request: NextRequest) {
   if (path.startsWith("/verify-otp")) {
     const email = request.nextUrl.searchParams.get("email");
     if (!email) return NextResponse.redirect(new URL("/", request.url));
-    if (user) return NextResponse.redirect(new URL("/checkout?plan=pro", request.url));
     return supabaseResponse;
   }
 
