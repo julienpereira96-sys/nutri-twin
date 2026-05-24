@@ -189,19 +189,16 @@ export default function OnboardingPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-              // Vérifier si onboarding déjà fait
+       // Vérifier si onboarding déjà fait
       const { data } = await supabase.from("practitioners").select("onboarding_done").eq("user_id", user.id).single();
       if (data?.onboarding_done) {
         setAlreadyDone(true);
       } else {
-        // Vider le localStorage si onboarding pas encore fait en base
-        const savedUserId = localStorage.getItem("onboarding_user_id");
-        if (savedUserId !== user.id || !data?.onboarding_done) {
-          localStorage.removeItem("onboarding_step");
-          localStorage.removeItem("onboarding_answers");
-          localStorage.removeItem("onboarding_selected");
-          localStorage.setItem("onboarding_user_id", user.id);
-        }
+        // Toujours vider le localStorage si onboarding pas terminé en base
+        localStorage.removeItem("onboarding_step");
+        localStorage.removeItem("onboarding_answers");
+        localStorage.removeItem("onboarding_selected");
+        localStorage.removeItem("onboarding_user_id");
       }
   
         // Charger les documents indexés

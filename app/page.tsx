@@ -622,7 +622,7 @@ export default function Home() {
               </h2>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3 max-w-5xl mx-auto">
+            <div className="grid gap-4 sm:grid-cols-3 max-w-5xl mx-auto mt-6 sm:mt-0">
               {[
                 { num: "01", title: "La transmission", desc: "Incorporez vos protocoles, vos guides et vos méthodes. Complétez son savoir par un échange guidé pour capturer chaque nuance de votre expertise.", icon: "📚" },
                 { num: "02", title: "L'apprentissage", desc: "Ajustez le ton, le style, les valeurs de votre double. Pour qu'il réponde exactement comme vous le feriez.", icon: "🧠" },
@@ -881,7 +881,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       {featured && (
         <>
           <div className="absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
-          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap">
             <span className="rounded-full px-3 py-1 text-[11px] font-semibold text-black" style={{ backgroundColor: emerald }}>{badge}</span>
           </div>
         </>
