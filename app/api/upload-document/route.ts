@@ -171,13 +171,13 @@ export async function POST(request: Request) {
     }
 
     if (!text.trim()) {
-      return Response.json({ error: "Impossible d'extraire le contenu du fichier." }, { status: 400 });
+      return Response.json({ error: "Impossible de lire ce fichier. Vérifiez qu'il n'est pas corrompu." }, { status: 400 });
     }
     
     const MIN_CHARS = 50;
     if (text.trim().length < MIN_CHARS) {
       return Response.json({ 
-        error: "Le document semble vide ou illisible (scan trop flou, image de mauvaise qualité). Veuillez fournir un document avec du contenu lisible." 
+        error: "Le contenu est trop court pour être indexé. Ajoutez plus de texte." 
       }, { status: 400 });
     }
 

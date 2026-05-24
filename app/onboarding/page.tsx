@@ -310,21 +310,21 @@ export default function OnboardingPage() {
     const pid = await getPid();
     const formData = new FormData();
     formData.append("file", file); formData.append("practitionerId", pid); formData.append("documentType", docType);
+    const isVision = file.name.startsWith("slot1_vision_");
+    const isSignature = file.name.startsWith("slot2_signature_");
+    const isNote = isVision || isSignature;
+    const isAudio = file.name.startsWith("memo_");
+    const displayName = isVision ? "Note de vision" : isSignature ? "Note de signature" : isAudio ? `Mémo vocal (${formatTime(recordingTime)})` : file.name;
     try {
       const res = await fetch("/api/upload-document", { method: "POST", body: formData });
       const data = await res.json() as { success?: boolean; error?: string };
       if (res.ok && data.success) {
-        const isVision = file.name.startsWith("slot1_vision_");
-        const isSignature = file.name.startsWith("slot2_signature_");
-        const isNote = isVision || isSignature;
-        const isAudio = file.name.startsWith("memo_");
-        const displayName = isVision ? "Note de vision" : isSignature ? "Note de signature" : isAudio ? `Mémo vocal (${formatTime(recordingTime)})` : file.name;
         const fileType = isNote ? "note" : isAudio ? "audio" : getFileType(file.name);
         const indexedFile: IndexedFile = { name: displayName, fileName: file.name, type: docType, indexedAt: formatDate(), fileType };
         if (slot === "slot1") { setSlot1IndexedFiles(prev => [...prev, indexedFile]); setSlot1Done(true); }
         else { setSlot2IndexedFiles(prev => [...prev, indexedFile]); setSlot2Done(true); }
-      } else { setUploadErrors(prev => [...prev, `${file.name} : ${data.error ?? "Erreur"}`]); }
-    } catch { setUploadErrors(prev => [...prev, `${file.name} : Erreur réseau`]); }
+      } else { setUploadErrors(prev => [...prev, `${displayName} : ${data.error ?? "Erreur"}`]); }
+    } catch { setUploadErrors(prev => [...prev, `${displayName} : Erreur réseau`]); }
     if (slot === "slot1") setUploadingSlot1(false); else setUploadingSlot2(false);
   };
 
@@ -883,13 +883,19 @@ export default function OnboardingPage() {
                   <button type="button" onClick={() => setStep(prev => prev - 1)}
                     className="text-sm text-zinc-500 transition-all duration-200 hover:text-white cursor-pointer">← Retour</button>
 
-                  <div style={{ position: "relative", display: "inline-block" }}
+                    <div style={{ position: "relative", display: "inline-block" }}
                     onMouseEnter={() => { if (filled < 2) setShowCertTooltip(true); }}
-                    onMouseLeave={() => setShowCertTooltip(false)}>
+                    onMouseLeave={() => setShowCertTooltip(false)}
+                    onClick={() => { if (filled < 2) setShowCertTooltip(prev => !prev); }}>
                     {showCertTooltip && filled < 2 && (
-                    <div className="hidden sm:block" style={{ position: "absolute", top: "50%", right: "calc(100% + 12px)", transform: "translateY(-50%)", width: 280, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
-                      🔒 Certification requise — Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.
-                      </div>
+                      <>
+                        <div className="hidden sm:block" style={{ position: "absolute", top: "50%", right: "calc(100% + 12px)", transform: "translateY(-50%)", width: 280, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
+                          🔒 Certification requise — Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.
+                        </div>
+                        <div className="block sm:hidden" style={{ position: "absolute", bottom: "calc(100% + 8px)", right: 0, width: 240, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
+                          🔒 Certification requise — Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.
+                        </div>
+                      </>
                     )}
                     <button type="button"
                       onClick={filled === 2 ? startGeneration : undefined}
