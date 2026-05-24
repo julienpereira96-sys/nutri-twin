@@ -225,7 +225,7 @@ export default function SetPasswordPage() {
                   e.currentTarget.style.transform = "translateY(0) scale(1)";
                 }}
               >
-                {loading ? "Création en cours..." : "Accéder à mon espace →"}
+                {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Création en cours...</span> : "Accéder à mon espace →"}
               </button>
 
               <p className="mt-2 text-center text-xs text-zinc-500">

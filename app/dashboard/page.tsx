@@ -181,7 +181,7 @@ function LeverAlerteCritique({ alert, patientId, onResolved }: { alert: { type: 
       </label>
       <button onClick={resolve} disabled={!checked || loading}
         style={{ width: "100%", height: 32, borderRadius: 8, background: checked ? "rgba(244,63,94,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${checked ? "rgba(244,63,94,0.3)" : "rgba(255,255,255,0.06)"}`, color: checked ? "#f87171" : "#64748b", fontSize: 11, fontWeight: 600, cursor: checked ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
-        {loading ? "..." : "Confirmer et lever l'alerte"}
+        {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Chargement...</span> : "Confirmer et lever l'alerte"}
       </button>
     </div>
   );
@@ -221,7 +221,7 @@ function LeverAlerteSimple({ alert, patientId, murmureSuggere, onResolved }: { a
         <button onClick={() => setOpen(false)} style={{ flex: 1, height: 28, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 11, cursor: "pointer" }}>Annuler</button>
         <button onClick={resolve} disabled={loading}
           style={{ flex: 2, height: 28, borderRadius: 8, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", color: emerald, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-          {loading ? "..." : "Lever et activer le murmure →"}
+          {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Chargement...</span> : "Lever et activer le murmure →"}
         </button>
       </div>
     </div>
@@ -989,7 +989,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                 ) : (
                   <button onClick={() => void sendVictory(p.id, p.latest_victory ?? "")} disabled={sendingVictory === p.id}
                     style={{ height: 22, borderRadius: 11, padding: "0 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "none", background: emerald, color: "black" }}>
-                    {sendingVictory === p.id ? "..." : "Envoyer un bravo"}
+                    {sendingVictory === p.id ? <span className="flex items-center justify-center gap-2"><span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white" />Envoi...</span> : "Envoyer un bravo"}
                   </button>
                 ))}
               </div>
@@ -1244,7 +1244,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                         onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
                       <button onClick={() => void savePrivateNotes()} disabled={savingPrivateNotes}
                         style={{ marginTop: 4, height: 28, borderRadius: 6, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "none", background: privateNotesSaved ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)", color: privateNotesSaved ? emerald : "#94a3b8" }}>
-                        {privateNotesSaved ? "✅ Sauvegardé" : savingPrivateNotes ? "..." : "Sauvegarder"}
+                        {privateNotesSaved ? "✅ Sauvegardé" : savingPrivateNotes ? <span className="flex items-center justify-center gap-2"><span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white" />Sauvegarde...</span> : "Sauvegarder"}
                       </button>
                     </div>
                   )}

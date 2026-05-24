@@ -1021,7 +1021,7 @@ export default function ChatPage() {
           )}
           <button onClick={() => patientAvatarRef.current?.click()} disabled={uploadingPhoto}
             style={{ position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: ACCENT, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {uploadingPhoto ? <span style={{ fontSize: 10 }}>⏳</span> : <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="black" strokeWidth="2.5" strokeLinecap="round"/></svg>}
+            {uploadingPhoto ? <span style={{ width: 11, height: 11, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", display: "inline-block", animation: "spin 1s linear infinite" }} /> : <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="black" strokeWidth="2.5" strokeLinecap="round"/></svg>}
           </button>
           <input ref={patientAvatarRef} type="file" accept="image/*" style={{ display: "none" }} onChange={async e => {
             const file = e.target.files?.[0]; if (!file || !patientId) return;
