@@ -323,10 +323,10 @@ function CheckoutForm() {
               borderColor: `${planData.color}30`,
               background: `${planData.color}06`,
             }}>
-              <div className="flex items-start justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6 gap-3">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <h2 className="text-[26px] font-black text-white">{planData.name}</h2>
+                    <h2 className="text-[22px] sm:text-[26px] font-black text-white">{planData.name}</h2>
                     {planData.badge && (
                       <span className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold text-black" style={{ backgroundColor: planData.color }}>
                         {planData.badge}
@@ -335,8 +335,8 @@ function CheckoutForm() {
                   </div>
                   <p className="text-[13px]" style={{ color: plan === "pro" ? emerald : "#6b7280" }}>{planData.description}</p>
                 </div>
-                <div className="text-right shrink-0 ml-4">
-                  <p className="text-[38px] font-black text-white leading-none">{planData.price}</p>
+                <div className="sm:text-right shrink-0 sm:ml-4">
+                  <p className="text-[32px] sm:text-[38px] font-black text-white leading-none">{planData.price}</p>
                   <p className="text-[11px] text-zinc-600 mt-1">/mois</p>
                 </div>
               </div>
