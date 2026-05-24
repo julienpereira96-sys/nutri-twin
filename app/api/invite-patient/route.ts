@@ -88,13 +88,28 @@ export async function POST(request: Request) {
   });
 
   if (error) {
-    const errorMessage = error.message.includes("already registered")
-      ? "Un compte existe déjà pour cette adresse email."
-      : error.message.includes("invalid")
+    if (error.message.includes("already registered")) {
+      // Vérifier si le patient existe et n'a pas terminé son onboarding
+      const { data: existingUser } = await supabase.auth.admin.listUsers();
+      const existingPatient = existingUser?.users?.find(u => u.email === email);
+      if (existingPatient) {
+        const { data: patientData } = await supabase.from("patients").select("onboarding_completed").eq("user_id", existingPatient.id).single();
+        if (!patientData?.onboarding_completed) {
+          // Renvoyer l'invitation
+          await supabase.auth.admin.inviteUserByEmail(email, {
+            redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/set-password`,
+          });
+          return Response.json({ success: true, resent: true });
+        }
+      }
+      return Response.json({ error: "Un compte actif existe déjà pour cette adresse email." }, { status: 500 });
+    }
+    const errorMessage = error.message.includes("invalid")
       ? "Adresse email invalide."
       : "Une erreur est survenue lors de l'envoi de l'invitation.";
     return Response.json({ error: errorMessage }, { status: 500 });
   }
+
 
   if (data.user && practitionerId) {
     await supabase.from("patient_practitioner").insert({
