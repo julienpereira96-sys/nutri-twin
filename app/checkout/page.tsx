@@ -242,7 +242,7 @@ function CheckoutForm() {
     try {
       const supabase = createSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
-
+      await supabase.from("practitioners").update({ pending_plan: plan }).eq("user_id", user?.id ?? "");
       if (!user) {
         setError("Vous devez être connecté pour accéder au paiement.");
         return;

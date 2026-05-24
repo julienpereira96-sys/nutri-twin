@@ -24,7 +24,7 @@ export async function middleware(request: NextRequest) {
 
   const getPractitioner = async () => {
     if (!user) return null;
-    const { data } = await supabase.from("practitioners").select("plan, last_active_at").eq("user_id", user.id).single();
+    const { data } = await supabase.from("practitioners").select("plan, last_active_at, pending_plan").eq("user_id", user.id).single();
     return data;
   };
 
@@ -75,9 +75,10 @@ export async function middleware(request: NextRequest) {
       if (!user) return supabaseResponse; 
       const practitioner = await getPractitioner();
       if (!practitioner?.plan) {
+        const pendingPlan = (practitioner as { pending_plan?: string } | null)?.pending_plan || "pro";
         await supabase.auth.signOut();
-        return NextResponse.redirect(new URL("/login", request.url));
-      }   
+        return NextResponse.redirect(new URL(`/login?pending_plan=${pendingPlan}`, request.url));
+      }
       const profile = await getProfile();
       if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
       return NextResponse.redirect(new URL("/dashboard", request.url));

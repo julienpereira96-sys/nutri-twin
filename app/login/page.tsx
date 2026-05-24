@@ -21,10 +21,12 @@ export default function LoginPage() {
   const [resetError, setResetError] = useState("");
 
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState("pro");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("reason") === "session_expired") setSessionExpired(true);
+    if (params.get("pending_plan")) setPendingPlan(params.get("pending_plan") || "pro");
   }, []);
   
 
@@ -158,7 +160,7 @@ export default function LoginPage() {
 
 
 {error === "__no_plan__" ? (
-            <button onClick={() => router.push("/checkout?plan=pro")}
+            <button onClick={() => { setError(""); router.push(`/checkout?plan=${pendingPlan}`); }}
               className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer"
               style={{ backgroundColor: "#f59e0b" }}
               onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; }}
