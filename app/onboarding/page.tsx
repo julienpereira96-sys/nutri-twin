@@ -154,6 +154,8 @@ export default function OnboardingPage() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [activating, setActivating] = useState(false);
+  const [navigating, setNavigating] = useState(false);
 
   const total = questions.length;
   const isUploadStep = step === total;
@@ -487,11 +489,11 @@ export default function OnboardingPage() {
             <p className="text-sm text-zinc-400 leading-relaxed mb-8">
               Même si vous avez quitté la page, votre profil a bien été enregistré. Votre Jumeau est prêt à prendre le relais auprès de vos patients.
             </p>
-            <button type="button" onClick={() => router.push("/dashboard")}
+            <button type="button" onClick={() => { setNavigating(true); setTimeout(() => router.push("/dashboard"), 800); }}
               style={{ background: "#10b981", color: "black", borderRadius: 9999, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 0 20px rgba(16,185,129,0.3)" }}
               onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 40px rgba(16,185,129,0.5)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
               onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 0 20px rgba(16,185,129,0.3)"; e.currentTarget.style.transform = "translateY(0)"; }}>
-              Accéder à mon cabinet numérique →
+              {navigating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement...</span> : "Accéder à mon cabinet numérique →"}
             </button>
           </div>
         </div>
@@ -597,11 +599,11 @@ export default function OnboardingPage() {
                     </p>
                     <p className="text-xs font-mono text-[#10b981]/50 mb-10">[NT-006] Certification validée — Jumeau opérationnel</p>
                     {saveError && <p className="mb-4 text-sm text-red-400">{saveError}</p>}
-                    <button type="button" onClick={() => router.push("/dashboard")}
+                    <button type="button" onClick={() => { setNavigating(true); setTimeout(() => router.push("/dashboard"), 800); }}
                       style={{ background: "#10b981", color: "black", borderRadius: 9999, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 0 30px rgba(16,185,129,0.3)" }}
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 40px rgba(16,185,129,0.5)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 0 30px rgba(16,185,129,0.3)"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                      Accéder à mon cabinet numérique →
+                      {navigating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement...</span> : "Accéder à mon cabinet numérique →"}
                     </button>
                   </div>
                 ) : (
@@ -753,7 +755,6 @@ export default function OnboardingPage() {
                           style={{ ...btnStyle, marginTop: 4, opacity: uploadingSlot1 ? 0.7 : 1, cursor: uploadingSlot1 ? "not-allowed" : "pointer" }} {...btnHover}>
                           {uploadingSlot1 ? <><Spinner />Indexation en cours...</> : `Indexer ${slot1Files.length} fichier${slot1Files.length > 1 ? "s" : ""} →`}
                         </button>
-                        {uploadingSlot1 && <p className="text-xs text-amber-400 text-center">Patientez, l'indexation peut prendre quelques instants.</p>}
                       </div>
                     )}
                     <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
@@ -898,7 +899,13 @@ export default function OnboardingPage() {
                       </>
                     )}
                     <button type="button"
-                      onClick={filled === 2 ? startGeneration : undefined}
+                      onClick={filled === 2 ? () => {
+                        setActivating(true);
+                        setTimeout(() => {
+                          setActivating(false);
+                          startGeneration();
+                        }, 1500);
+                      } : undefined}
                       style={{
                         background: filled === 2 ? "#10b981" : "transparent",
                         color: filled === 2 ? "black" : "#64748b",
@@ -909,7 +916,7 @@ export default function OnboardingPage() {
                       }}
                       onMouseEnter={e => { if (filled === 2) { e.currentTarget.style.background = "rgba(16,185,129,0.8)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
                       onMouseLeave={e => { e.currentTarget.style.background = filled === 2 ? "#10b981" : "transparent"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                      Activer mon Jumeau {filled === 2 ? "🌿" : ""}
+                      {activating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Activation...</span> : `Activer mon Jumeau ${filled === 2 ? "🌿" : ""}`}
                     </button>
                   </div>
                 </div>
