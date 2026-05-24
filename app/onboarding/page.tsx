@@ -879,16 +879,16 @@ export default function OnboardingPage() {
                   </div>
                 )}
 
-                  <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="mt-10 flex items-center justify-between">
                   <button type="button" onClick={() => setStep(prev => prev - 1)}
-                    className="text-sm text-zinc-500 transition-all duration-200 hover:text-white cursor-pointer sm:order-1 order-last">← Retour</button>
+                    className="text-sm text-zinc-500 transition-all duration-200 hover:text-white cursor-pointer">← Retour</button>
 
                   <div style={{ position: "relative", display: "inline-block" }}
                     onMouseEnter={() => { if (filled < 2) setShowCertTooltip(true); }}
                     onMouseLeave={() => setShowCertTooltip(false)}>
                     {showCertTooltip && filled < 2 && (
-                    <div style={{ position: "absolute", bottom: "calc(100% + 8px)", right: 0, width: 260, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
-                        🔒 Certification requise — Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.
+                    <div className="hidden sm:block" style={{ position: "absolute", top: "50%", right: "calc(100% + 12px)", transform: "translateY(-50%)", width: 280, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
+                      🔒 Certification requise — Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.
                       </div>
                     )}
                     <button type="button"
