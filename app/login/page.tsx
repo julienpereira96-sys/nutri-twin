@@ -21,6 +21,7 @@ export default function LoginPage() {
   const [resetError, setResetError] = useState("");
 
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [resending, setResending] = useState(false);
   const [pendingPlan, setPendingPlan] = useState("pro");
 
   useEffect(() => {
@@ -160,23 +161,26 @@ export default function LoginPage() {
 
 
 {error === "__no_plan__" ? (
-              <button onClick={() => { router.push(`/checkout?plan=${pendingPlan}`); }}
-              className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer"
+            <button onClick={() => { setResending(true); router.push(`/checkout?plan=${pendingPlan}`); }}
+              disabled={resending}
+              className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer disabled:opacity-60"
               style={{ backgroundColor: "#f59e0b" }}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; }}
+              onMouseEnter={e => { if (!resending) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
               onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
-              Finaliser mon abonnement →
+              {resending ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Chargement...</span> : "Finaliser mon abonnement →"}
             </button>
           ) : error === "__unconfirmed__" ? (
             <button onClick={async () => {
+              setResending(true);
               const supabase = createSupabaseBrowserClient();
               await supabase.auth.resend({ type: "signup", email: email.trim() });
               router.push(`/verify-otp?email=${encodeURIComponent(email.trim())}&plan=${pendingPlan}`);
-            }} className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer"
+            }} disabled={resending}
+              className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer disabled:opacity-60"
               style={{ backgroundColor: "#f59e0b" }}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; }}
+              onMouseEnter={e => { if (!resending) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
               onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
-              Recevoir mon code de vérification →
+              {resending ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Envoi...</span> : "Recevoir mon code de vérification →"}
             </button>
           ) : (
           <button type="submit" disabled={loading}
