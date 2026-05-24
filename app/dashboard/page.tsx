@@ -388,13 +388,6 @@ export default function DashboardPage() {
   const [patternInsight, setPatternInsight] = useState("");
   const [patternLoading, setPatternLoading] = useState(false);
 
-  useEffect(() => {
-    if (inviteSuccess) {
-      const timer = setTimeout(() => { setInviteSuccess(false); setShowInviteModal(false); }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [inviteSuccess]);
-
   const loadDocuments = async (pid: string) => {
     setLoadingDocs(true);
     const { data } = await supabase.from("documents").select("id, file_name, file_type, created_at").eq("practitioner_id", pid).order("created_at", { ascending: false });
@@ -2032,10 +2025,19 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
 
       {inviteSuccess ? (
         <div style={{ textAlign: "center", padding: "20px 0" }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
-          <p style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "white" }}>C'est parti !</p>
-          <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{inviteEmail} va recevoir son invitation.</p>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg, #6ee7b7, #10b981)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", boxShadow: "0 8px 30px rgba(16,185,129,0.4)" }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <path d="M5 13l4 4L19 7" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </div>
+        <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 500, color: "#6ee7b7", letterSpacing: "0.05em" }}>Invitation envoyée</p>
+        <p style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 800, color: "white" }}>C'est parti !</p>
+        <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b" }}>{inviteFirstName ? `${inviteFirstName} va recevoir son invitation.` : `${inviteEmail} va recevoir son invitation.`}</p>
+        <button onClick={() => { setShowInviteModal(false); resetInviteForm(); }}
+          style={{ height: 40, borderRadius: 20, padding: "0 20px", background: emerald, border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          Fermer
+        </button>
+      </div>
       ) : inviteStep === 1 ? (
         <>
           <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Les informations de base pour créer l'espace de votre patient.</p>
@@ -2176,7 +2178,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
             </button>
             <button onClick={() => void sendInvite()} disabled={inviting}
               style={{ flex: 2, height: 48, borderRadius: 12, background: inviting ? "rgba(255,255,255,0.04)" : emerald, border: "none", color: inviting ? "#64748b" : "black", cursor: inviting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700 }}>
-              {inviting ? "Envoi..." : "Envoyer l'invitation →"}
+              {inviting ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Envoi...</span> : "Envoyer l'invitation →"}
             </button>
           </div>
         </>
