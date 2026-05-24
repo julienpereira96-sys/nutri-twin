@@ -68,7 +68,7 @@ export default function SetPasswordPage() {
       if (updateError.message.includes("Auth session missing")) {
         setError("Lien invalide ou expiré. Contactez votre praticien pour recevoir une nouvelle invitation.");
       } else {
-        setError(updateError.message);
+        setError("Une erreur est survenue. Veuillez réessayer.");
       }
       setLoading(false);
       return;

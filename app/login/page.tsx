@@ -44,7 +44,7 @@ export default function LoginPage() {
         } else if (signInError.message.includes("Email not confirmed") || signInError.message.includes("email_not_confirmed")) {
           setError("__unconfirmed__");
         } else {
-          setError(signInError.message);
+          setError("Une erreur est survenue. Veuillez réessayer.");
         }
         return;
       }

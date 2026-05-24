@@ -48,7 +48,7 @@ export default function PatientLoginPage() {
         } else if (signInError.message.includes("Email not confirmed") || signInError.message.includes("email_not_confirmed")) {
           setError("Vous n'avez pas encore activé votre compte. Consultez l'email d'invitation envoyé par votre praticien.");
         } else {
-          setError(signInError.message);
+          setError("Une erreur est survenue. Veuillez réessayer.");
         }
         return;
       }

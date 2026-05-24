@@ -116,7 +116,7 @@ try {
       });
     
       if (signUpError) {
-        setError(signUpError.message);
+        setError("Une erreur est survenue. Veuillez réessayer.");
         return;
       }
     
@@ -391,10 +391,10 @@ try {
     {error.includes("finaliser") ? "Finaliser mon abonnement →" : "Se connecter →"}
   </button>
 
-) : (
-<button
-  type="submit"
-  disabled={loading || !acceptCGU}
+) : !error.includes("compte existe déjà") && (
+  <button
+    type="submit"
+    disabled={loading || !acceptCGU}  
   className="mt-6 w-full rounded-xl - bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
   onMouseEnter={(e) => {
     if (!loading && acceptCGU) {

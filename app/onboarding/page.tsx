@@ -188,6 +188,15 @@ export default function OnboardingPage() {
         const supabase = createSupabaseBrowserClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
+
+              // Vider le localStorage si c'est un nouvel utilisateur
+      const savedUserId = localStorage.getItem("onboarding_user_id");
+      if (savedUserId !== user.id) {
+        localStorage.removeItem("onboarding_step");
+        localStorage.removeItem("onboarding_answers");
+        localStorage.removeItem("onboarding_selected");
+        localStorage.setItem("onboarding_user_id", user.id);
+      }
   
         // Vérifier si onboarding déjà fait
         const { data } = await supabase.from("practitioners").select("onboarding_done").eq("user_id", user.id).single();
