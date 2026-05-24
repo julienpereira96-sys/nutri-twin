@@ -278,7 +278,7 @@ function CheckoutForm() {
 
   return (
     <div className="min-h-screen bg-[#070707] text-white">
-      <header className="border-b border-white/[0.04] bg-[#070707]/80 backdrop-blur-2xl px-6 py-4 sticky top-0 z-50">
+            <header className="border-b border-white/[0.04] bg-[#070707]/80 backdrop-blur-2xl px-4 sm:px-6 py-4 sticky top-0 z-50">
         <div className="mx-auto max-w-6xl flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="relative">
@@ -300,7 +300,7 @@ function CheckoutForm() {
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
         <div className="mb-10">
-          <h1 className="text-[32px] font-black text-white">Finalisez votre abonnement</h1>
+        <h1 className="text-[24px] sm:text-[32px] font-black text-white">Finalisez votre abonnement</h1>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
