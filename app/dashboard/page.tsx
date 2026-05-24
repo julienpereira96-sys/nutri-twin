@@ -783,7 +783,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
         age: inviteAge ? parseInt(inviteAge) : null, sexe: inviteSexe || null, taille: inviteTaille ? parseInt(inviteTaille) : null, poids: invitePoids ? parseFloat(invitePoids) : null, pathologies: invitePathologies || null, allergies: inviteAllergies || null, traitements: inviteTraitements || null, objectif_clinique: inviteObjectifClinique || null, brief_jumeau: inviteBriefJumeau || null, notes: inviteNotes || null, niveau_activite: inviteNiveauActivite || null, regime_specifique: inviteRegime || null }) });
       const data = await res.json() as { error?: string };
       if (!res.ok) setInviteError(data.error ?? "Une erreur est survenue.");
-      else { setInviteSuccess(true); resetInviteForm(); if (practitionerId) await loadPatients(practitionerId); }
+      else { const savedFirstName = inviteFirstName; resetInviteForm(); setInviteFirstName(savedFirstName); setInviteSuccess(true); if (practitionerId) await loadPatients(practitionerId); }
     } catch { setInviteError("Impossible d'envoyer l'invitation."); }
     finally { setInviting(false); }
   };
