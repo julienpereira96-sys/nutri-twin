@@ -2065,15 +2065,26 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
               </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
               {[
-                { label: "Âge", value: inviteAge, setter: setInviteAge, placeholder: "34", type: "number" },
-                { label: "Taille (cm)", value: inviteTaille, setter: setInviteTaille, placeholder: "168", type: "number" },
-                { label: "Poids (kg)", value: invitePoids, setter: setInvitePoids, placeholder: "72", type: "number" },
-              ].map(({ label, value, setter, placeholder, type }) => (
+                { label: "Âge", value: inviteAge, setter: setInviteAge, placeholder: "34", min: 0, max: 110 },
+                { label: "Taille (cm)", value: inviteTaille, setter: setInviteTaille, placeholder: "168", min: 0, max: 250 },
+                { label: "Poids (kg)", value: invitePoids, setter: setInvitePoids, placeholder: "72", min: 0, max: 500 },
+              ].map(({ label, value, setter, placeholder, min, max }) => (
                 <div key={label}>
                   <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
-                  <input type={type} value={value} onChange={e => setter(e.target.value)} placeholder={placeholder}
-                    style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-                    onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                  <input
+                    type="number"
+                    value={value}
+                    onChange={e => {
+                      const val = parseInt(e.target.value);
+                      if (e.target.value === "" || (val >= min && val <= max)) setter(e.target.value);
+                    }}
+                    placeholder={placeholder}
+                    min={min}
+                    max={max}
+                    style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", MozAppearance: "textfield" } as React.CSSProperties}
+                    onFocus={e => e.target.style.borderColor = emerald}
+                    onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+                  />
                 </div>
               ))}
               <div>
