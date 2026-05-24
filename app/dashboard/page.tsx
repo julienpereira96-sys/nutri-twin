@@ -2148,8 +2148,12 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
 </div>
 
 <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+<button onClick={() => setInviteStep(1)}
+    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
+    ← Retour
+  </button>
   <button onClick={() => setInviteStep(3)}
-    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
     Suivant →
   </button>
 </div>
