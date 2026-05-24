@@ -1739,7 +1739,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                   <span style={{ fontSize: 18, flexShrink: 0 }}>{fileTypeIcon(doc.file_type)}</span>
                   <div style={{ minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13, color: "white", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {doc.file_name.startsWith("dashboard_note_") ? "Note personnalisée" : doc.file_name.startsWith("memo_vocal_") ? "Mémo vocal" : doc.file_name}
+                    {doc.file_name.startsWith("dashboard_note_") ? "Note personnalisée" : doc.file_name.startsWith("memo_vocal_") ? "Mémo vocal" : doc.file_name.startsWith("slot1_vision_") ? "Note de vision" : doc.file_name.startsWith("slot2_signature_") ? "Note de signature" : doc.file_name.startsWith("memo_") ? "Mémo vocal" : doc.file_name}
                     </p>
                     <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{new Date(doc.created_at).toLocaleDateString("fr-FR")}</p>
                   </div>
