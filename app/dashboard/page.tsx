@@ -2035,7 +2035,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
         <p style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 800, color: "white" }}>C'est parti !</p>
         <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b" }}>{inviteFirstName ? `${inviteFirstName} va recevoir son invitation.` : `${inviteEmail} va recevoir son invitation.`}</p>
         <button onClick={() => { setShowInviteModal(false); resetInviteForm(); }}
-          style={{ height: 40, borderRadius: 20, padding: "0 20px", background: emerald, border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          style={{ height: 44, borderRadius: 10, padding: "0 20px", background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
           Fermer
         </button>
       </div>
