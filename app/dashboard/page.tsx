@@ -2125,6 +2125,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
           style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}
         >
           <option value="">Choisir</option>
+          <option value="Aucune">{["Pathologies", "Allergies", "Activité"].includes(label) ? "Aucune" : "Aucun"}</option>
           {options.map(o => <option key={o} value={o}>{o}</option>)}
           <option value="Autre">Autre...</option>
         </select>
