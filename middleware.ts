@@ -76,8 +76,7 @@ export async function middleware(request: NextRequest) {
       const practitioner = await getPractitioner();
       if (!practitioner?.plan) {
         const pendingPlan = (practitioner as { pending_plan?: string } | null)?.pending_plan || "pro";
-        await supabase.auth.signOut();
-        return NextResponse.redirect(new URL(`/login?pending_plan=${pendingPlan}`, request.url));
+        return NextResponse.redirect(new URL(`/checkout?plan=${pendingPlan}`, request.url));
       }
       const profile = await getProfile();
       if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
