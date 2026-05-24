@@ -136,6 +136,7 @@ try {
             specialty: finalSpecialty,
             email: email.trim(),
             marketingConsent: acceptMarketing,
+            pendingPlan: plan,
           }),
         });
     

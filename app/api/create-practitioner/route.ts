@@ -1,13 +1,14 @@
 import { createClient } from "@supabase/supabase-js";
 
 export async function POST(request: Request) {
-  const { userId, firstName, lastName, specialty, email, marketingConsent } = await request.json() as {
+  const { userId, firstName, lastName, specialty, email, marketingConsent, pendingPlan } = await request.json() as {
     userId: string;
     firstName: string;
     lastName: string;
     specialty: string;
     email: string;
     marketingConsent?: boolean;
+    pendingPlan?: string;
   };
 
   const supabase = createClient(
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
     email,
     rgpd_accepted_at: now,
     rgpd_marketing: marketingConsent ?? false,
+    pending_plan: pendingPlan ?? "pro",
   }, { onConflict: "user_id" });
 
   if (error) {
