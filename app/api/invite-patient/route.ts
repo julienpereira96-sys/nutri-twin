@@ -88,6 +88,7 @@ export async function POST(request: Request) {
   });
 
   if (error) {
+    console.error("Invite error:", error.message);
     if (error.message.includes("already registered")) {
       // Vérifier si le patient existe et n'a pas terminé son onboarding
       const { data: existingUser } = await supabase.auth.admin.listUsers();
