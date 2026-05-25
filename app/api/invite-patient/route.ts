@@ -23,6 +23,7 @@ export async function POST(request: Request) {
    traitements,
    objectif_clinique,
    brief_jumeau,
+   murmure_duration,
    notes,
    niveau_activite,
    regime_specifique,
@@ -40,6 +41,7 @@ export async function POST(request: Request) {
    traitements?: string | null;
    objectif_clinique?: string | null;
    brief_jumeau?: string | null;
+   murmure_duration?: string | null;
    notes?: string | null;
    niveau_activite?: string | null;
    regime_specifique?: string | null;
@@ -147,6 +149,15 @@ export async function POST(request: Request) {
            traitements: sanitize(traitements),
            objectif_clinique: sanitize(objectif_clinique),
            brief_jumeau: sanitize(brief_jumeau, 1000),
+           practitioner_instruction: sanitize(brief_jumeau, 1000),
+           practitioner_instruction_expires_at: murmure_duration && murmure_duration !== "permanent"
+             ? new Date(Date.now() + (
+                 murmure_duration === "24h" ? 24 * 60 * 60 * 1000 :
+                 murmure_duration === "3j" ? 3 * 24 * 60 * 60 * 1000 :
+                 murmure_duration === "1s" ? 7 * 24 * 60 * 60 * 1000 :
+                 30 * 24 * 60 * 60 * 1000
+               )).toISOString()
+             : null,     
            notes: sanitize(notes, 1000),
            niveau_activite: sanitize(niveau_activite, 100),
            regime_specifique: sanitize(regime_specifique, 100),
@@ -197,7 +208,6 @@ export async function POST(request: Request) {
      regime_specifique: sanitize(regime_specifique, 100),
    }, { onConflict: "user_id" });
    if (upsertError) console.error("Upsert patients error:", upsertError.message);
-   else console.log("Upsert patients success for:", data.user.id);
  }
 
  return Response.json({ success: true });

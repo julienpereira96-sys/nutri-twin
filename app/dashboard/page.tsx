@@ -268,8 +268,7 @@ export default function DashboardPage() {
   const [inviteStep, setInviteStep] = useState(1);
   const [inviteFirstName, setInviteFirstName] = useState("");
   const [inviteLastName, setInviteLastName] = useState("");
-
-
+  const [inviteMurmureDuration, setInviteMurmureDuration] = useState<string>("permanent");
 
   const AVATARS = [
     <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 3C13 3 4 8 4 15C4 19.4 8.1 23 13 23C17.9 23 22 19.4 22 15C22 8 13 3 13 3Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/><path d="M13 23V13" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/><path d="M13 13C13 13 9 10 9 7" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/><path d="M13 13C13 13 17 10 17 7" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/></svg>,
@@ -772,6 +771,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
     setInviteEmail(""); setInviteFirstName(""); setInviteLastName(""); setInviteAge(""); setInviteSexe(""); setInviteTaille(""); setInvitePoids("");
     setInvitePathologies(""); setInviteAllergies(""); setInviteTraitements(""); setInviteObjectifClinique("");
     setInviteBriefJumeau(""); setInviteNotes(""); setInviteNiveauActivite(""); setInviteRegime(""); setInviteError("");
+    setInviteMurmureDuration("permanent");
     setInviteStep(1);
   };
 
@@ -780,7 +780,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
     setInviting(true); setInviteError("");
     try {
       const res = await fetch("/api/invite-patient", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId: practitionerId ?? "", first_name: inviteFirstName || null, last_name: inviteLastName || null,
-        age: inviteAge ? parseInt(inviteAge) : null, sexe: inviteSexe || null, taille: inviteTaille ? parseInt(inviteTaille) : null, poids: invitePoids ? parseFloat(invitePoids) : null, pathologies: invitePathologies || null, allergies: inviteAllergies || null, traitements: inviteTraitements || null, objectif_clinique: inviteObjectifClinique || null, brief_jumeau: inviteBriefJumeau || null, notes: inviteNotes || null, niveau_activite: inviteNiveauActivite || null, regime_specifique: inviteRegime || null }) });
+        age: inviteAge ? parseInt(inviteAge) : null, sexe: inviteSexe || null, taille: inviteTaille ? parseInt(inviteTaille) : null, poids: invitePoids ? parseFloat(invitePoids) : null, pathologies: invitePathologies || null, allergies: inviteAllergies || null, traitements: inviteTraitements || null, objectif_clinique: inviteObjectifClinique || null, brief_jumeau: inviteBriefJumeau || null, notes: inviteNotes || null, niveau_activite: inviteNiveauActivite || null, regime_specifique: inviteRegime || null, murmure_duration: inviteMurmureDuration }) });
       const data = await res.json() as { error?: string };
       if (!res.ok) setInviteError(data.error ?? "Une erreur est survenue.");
       else { const savedFirstName = inviteFirstName; resetInviteForm(); setInviteFirstName(savedFirstName); setInviteSuccess(true); if (practitionerId) await loadPatients(practitionerId); }
@@ -2008,7 +2008,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
           {inviteSuccess ? "" : `Étape ${inviteStep} sur 3`}
           </p>
           <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>
-          {inviteSuccess ? "" : inviteStep === 1 ? "Nouveau patient" : inviteStep === 2 ? "Contexte médical" : "Brief Jumeau"}
+          {inviteSuccess ? "" : inviteStep === 1 ? "Nouveau patient" : inviteStep === 2 ? "Contexte médical" : "Murmure"}
           </h2>
         </div>
         <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteStep(1); }} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
@@ -2172,14 +2172,30 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
       ) : (
         <>
           <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 14, border: "1px solid rgba(16,185,129,0.15)", padding: "14px 16px", marginBottom: 20 }}>
-            <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.6 }}>🌿 C'est ici que vous donnez une personnalité à votre jumeau pour ce patient. Ton, priorités, ce qu'il doit éviter... Plus c'est précis, plus il sera juste.</p>
+          <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.6 }}>🌿 C'est ici que vous glissez vos consignes spécifiques pour ce patient. Points de vigilance, blessures à éviter, passions pour le motiver... Le Jumeau s'adaptera instantanément à ces nuances.</p>
           </div>
           <textarea value={inviteBriefJumeau} onChange={e => setInviteBriefJumeau(e.target.value)}
             placeholder="Ex: Sophie est anxieuse autour de la balance — évite ce sujet. Elle se culpabilise facilement, reste bienveillant avant d'être technique. Elle adore cuisiner, utilise ça pour l'engager."
             rows={5}
             style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 12 }}
             onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.2)"} />
-                    <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Notes internes <span style={{ fontWeight: 400, color: "#4b5563" }}>— visibles uniquement par vous</span></p>
+          <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+            {[
+              { label: "Toujours actif", value: "permanent" },
+              { label: "24h", value: "24h" },
+              { label: "3 jours", value: "3j" },
+              { label: "1 semaine", value: "1s" },
+              { label: "1 mois", value: "1m" },
+            ].map(({ label, value }) => (
+              <button key={value} type="button"
+                onClick={() => setInviteMurmureDuration(value)}
+                style={{ height: 30, borderRadius: 20, padding: "0 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: inviteMurmureDuration === value ? `1px solid ${emerald}` : "1px solid rgba(255,255,255,0.08)", background: inviteMurmureDuration === value ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", color: inviteMurmureDuration === value ? emerald : "#64748b", transition: "all 0.2s" }}>
+                {label}
+              </button>
+            ))}
+          </div>
+                    <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Notes internes
+ <span style={{ fontWeight: 400, color: "#4b5563" }}>— visibles uniquement par vous</span></p>
           <textarea value={inviteNotes} onChange={e => setInviteNotes(e.target.value)}
             placeholder="Contexte de la prise en charge, source de la recommandation..."
             rows={2}
