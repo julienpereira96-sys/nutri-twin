@@ -1128,40 +1128,30 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
               )}
             </div>
 
-            {/* Fiche patient */}
-            <div style={{ overflowY: "auto", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 16 }}>
+                        {/* Fiche patient */}
+                        <div style={{ overflowY: "auto", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 16 }}>
               {selectedPatient ? (
                 <>
-                  <div style={{ textAlign: "center", marginBottom: 16 }}>
-                    <div style={{ width: 56, height: 56, borderRadius: "50%", background: selectedPatient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: "white", margin: "0 auto 10px" }}>
-                      {selectedPatient.initials}
+                  {/* Bloc identité */}
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: "50%", background: selectedPatient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "white", flexShrink: 0 }}>
+                        {selectedPatient.initials}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, filter: discretMode ? "blur(4px)" : "none" }}>{selectedPatient.firstName} {selectedPatient.lastName}</p>
+                        <p style={{ margin: 0, fontSize: 11, color: "#64748b", filter: discretMode ? "blur(4px)" : "none" }}>{onboardingDemoMode ? "patient@email.fr" : (selectedPatient as RealPatient).email}</p>
+                      </div>
                     </div>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{selectedPatient.firstName} {selectedPatient.lastName}</p>
-                    <p style={{ margin: "2px 0 8px", fontSize: 12, color: "#64748b", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{onboardingDemoMode ? "patient@email.fr" : (selectedPatient as RealPatient).email}</p>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 20, padding: "4px 12px", background: `${getStatusColor(selectedPatient.emotional_status)}15`, border: `1px solid ${getStatusColor(selectedPatient.emotional_status)}30` }}>
-                      <span style={{ fontSize: 10 }}>{getStatusEmoji(selectedPatient.emotional_status)}</span>
-                      <span style={{ fontSize: 11, fontWeight: 600, color: getStatusColor(selectedPatient.emotional_status), filter: discretMode ? "blur(4px)" : "none" }}>
-                        {selectedPatient.emotional_insight || (selectedPatient.emotional_status === "green" ? "Adhésion positive" : selectedPatient.emotional_status === "orange" ? "Vigilance modérée" : "Attention requise")}
-                      </span>
-                    </div>
+                    <button onClick={() => !onboardingDemoMode && openProfileModal()}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#64748b", textDecoration: "underline", padding: 0 }}>
+                      ✏️ Modifier le profil
+                    </button>
                   </div>
 
-                  <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 12px", marginBottom: 10 }}>
-                    {[
-                      { label: "Messages", value: String(selectedPatient.totalMessages) },
-                      { label: "Âge", value: onboardingDemoMode ? "34 ans" : (selectedPatient as RealPatient).age ? `${(selectedPatient as RealPatient).age} ans` : "—" },
-                      { label: "Poids", value: onboardingDemoMode ? "68 kg" : (selectedPatient as RealPatient).poids ? `${(selectedPatient as RealPatient).poids} kg` : "—" },
-                    ].map((item) => (
-                      <div key={item.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                        <span style={{ fontSize: 11, color: "#64748b" }}>{item.label}</span>
-                        <span style={{ fontSize: 11, color: "#e2e8f0", fontWeight: 500 }}>{item.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                  
                   {/* Alerte admin */}
                   {(selectedPatient.admin_alerts?.filter(a => !a.seen).length ?? 0) > 0 && !onboardingDemoMode && (
-                    <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
+                    <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                         <span style={{ fontSize: 12 }}>⚠️</span>
                         <span style={{ fontSize: 11, fontWeight: 700, color: amber }}>Action requise</span>
@@ -1178,17 +1168,13 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                           {alert.type === "crisis" ? (
                             <LeverAlerteCritique alert={alert} patientId={selectedPatient.id} onResolved={() => {
                               setPatients(prev => prev.map(p => p.id === selectedPatient.id ? {
-                                ...p,
-                                emotional_status: "green",
-                                admin_alerts: []
+                                ...p, emotional_status: "green", admin_alerts: []
                               } : p));
                             }} />
                           ) : (
                             <LeverAlerteSimple alert={alert} patientId={selectedPatient.id} murmureSuggere={(alert as { murmure?: string }).murmure ?? ""} onResolved={(murmure) => {
                               setPatients(prev => prev.map(p => p.id === selectedPatient.id ? {
-                                ...p,
-                                emotional_status: "green",
-                                practitioner_instruction: murmure || p.practitioner_instruction,
+                                ...p, emotional_status: "green", practitioner_instruction: murmure || p.practitioner_instruction,
                                 admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a)
                               } : p));
                             }} />
@@ -1198,59 +1184,59 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                     </div>
                   )}
 
-                   {/* Murmure */}
-                   <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px", marginBottom: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                      <span style={{ fontSize: 11 }}>🎙️</span>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: emerald }}>Murmure actif</span>
+                  {/* Bloc Murmure */}
+                  <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 12, border: "1px solid rgba(16,185,129,0.15)", padding: "12px 14px", marginBottom: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: emerald }}>🎙️ Murmure</span>
+                      <button onClick={() => !onboardingDemoMode && openMurmureModal()}
+                        style={{ height: 26, borderRadius: 6, padding: "0 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.1)", color: emerald }}>
+                        {!onboardingDemoMode && (selectedPatient as RealPatient).practitioner_instruction ? "Modifier" : "Ajouter"}
+                      </button>
                     </div>
                     {(() => {
-                    const p = selectedPatient as RealPatient;
-                    const expires = p.practitioner_instruction_expires_at;
-                    const isExpired = expires && new Date(expires) < new Date();
-                    return (
-                      <>
-                        {isExpired && (
-                          <p style={{ margin: "0 0 6px", fontSize: 11, color: "#f59e0b", fontWeight: 600 }}>
-                            ⚠️ Murmure expiré — Le jumeau a repris son comportement standard.
+                      const p = selectedPatient as RealPatient;
+                      const expires = p.practitioner_instruction_expires_at;
+                      const isExpired = expires && new Date(expires) < new Date();
+                      return (
+                        <>
+                          {isExpired && (
+                            <p style={{ margin: "0 0 4px", fontSize: 11, color: "#f59e0b", fontWeight: 600 }}>
+                              ⚠️ Murmure expiré
+                            </p>
+                          )}
+                          <p style={{ margin: 0, fontSize: 11, color: isExpired ? "#64748b" : "#94a3b8", lineHeight: 1.5, textDecoration: isExpired ? "line-through" : "none" }}>
+                            {onboardingDemoMode ? "Sois plus doux cette semaine, elle traverse une période difficile." : (p.practitioner_instruction || "Aucune consigne active")}
                           </p>
-                        )}
-                        <p style={{ margin: 0, fontSize: 11, color: isExpired ? "#64748b" : "#94a3b8", lineHeight: 1.5, textDecoration: isExpired ? "line-through" : "none" }}>
-                          {onboardingDemoMode ? "Sois plus doux cette semaine, elle traverse une période difficile." : (p.practitioner_instruction || "Aucune consigne active")}
-                        </p>
-                        {expires && !isExpired && (
-                          <p style={{ margin: "4px 0 0", fontSize: 10, color: "#64748b" }}>
-                            Expire le {new Date(expires).toLocaleDateString("fr-FR")}
-                          </p>
-                        )}
-                      </>
-                    );
-                  })()}
+                          {expires && !isExpired && (
+                            <p style={{ margin: "6px 0 0", fontSize: 10, color: "#64748b" }}>
+                              Expire le {new Date(expires).toLocaleDateString("fr-FR")}
+                            </p>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
 
+                  {/* Bloc Notes privées */}
                   {!onboardingDemoMode && (
-                    <div style={{ marginBottom: 10 }}>
-                      <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Notes privées</p>
+                    <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", padding: "12px 14px", marginBottom: 12 }}>
+                      <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#94a3b8" }}>📝 Notes privées</p>
                       <textarea value={privateNotes} onChange={(e) => setPrivateNotes(e.target.value)} placeholder="Notes visibles uniquement par vous..." rows={3}
                         style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "white", padding: "8px 10px", fontSize: 12, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.5 }}
                         onFocus={(e) => e.target.style.borderColor = "rgba(16,185,129,0.3)"}
                         onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
                       <button onClick={() => void savePrivateNotes()} disabled={savingPrivateNotes}
-                        style={{ marginTop: 4, height: 28, borderRadius: 6, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "none", background: privateNotesSaved ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)", color: privateNotesSaved ? emerald : "#94a3b8" }}>
+                        style={{ marginTop: 6, height: 28, borderRadius: 6, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "none", background: privateNotesSaved ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)", color: privateNotesSaved ? emerald : "#94a3b8" }}>
                         {privateNotesSaved ? "✅ Sauvegardé" : savingPrivateNotes ? <span className="flex items-center justify-center gap-2"><span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white" />Sauvegarde...</span> : "Sauvegarder"}
                       </button>
                     </div>
                   )}
-                
 
+                  {/* Bloc Actions */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <button onClick={() => !onboardingDemoMode && openMurmureModal()}
-                      style={{ height: 38, borderRadius: 8, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: emerald, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                      🎙️ {!onboardingDemoMode && (selectedPatient as RealPatient).practitioner_instruction ? "Modifier le murmure" : "Ajouter un murmure"}
-                    </button>
-                    <button onClick={() => !onboardingDemoMode && openProfileModal()}
-                      style={{ height: 38, borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                      ✏️ Modifier le profil
+                    <button onClick={() => { if (!onboardingDemoMode) { setShowBilanModal(true); void generateBilan(); } }}
+                      style={{ height: 38, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      ✨ Préparer ma séance
                     </button>
                     <button onClick={() => { if (!onboardingDemoMode) { setShowReportModal(true); setReportContent(""); } }}
                       style={{ height: 38, borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
