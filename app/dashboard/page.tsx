@@ -934,7 +934,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
               return (
                 <button key={tab} onClick={() => setActiveTab(tab)}
                   style={{ height: 36, borderRadius: 8, padding: "0 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: isActive ? "1px solid rgba(16,185,129,0.18)" : "1px solid transparent", background: isActive ? "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))" : "transparent", color: isActive ? emerald : "#64748b", transition: "all 0.2s", boxShadow: isActive ? "0 2px 12px rgba(0,0,0,0.3)" : "none" }}
-                  onMouseEnter={e => { if (!isActive) { e.currentTarget.style.color = emerald; e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02))"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.15)"; } }}
+                  onMouseEnter={e => { if (!isActive) { e.currentTarget.style.color = "#94a3b8"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; } }}
                   onMouseLeave={e => { if (!isActive) { e.currentTarget.style.color = "#64748b"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; } }}>
                   {labels[tab]}
                 </button>
@@ -1611,7 +1611,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 480, border: "1px solid rgba(16,185,129,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Murmure du praticien</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "emerald" }}>Murmure du praticien</h2>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>Consigne prioritaire pour {selectedPatient?.firstName} · Choisissez la durée appropriée</p>
               </div>
               <button onClick={() => setShowMurmureModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>×</button>
@@ -1623,7 +1623,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
               style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.6 }} />
             <div style={{ marginBottom: 16 }}>
             <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Durée du murmure</p>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
               {[
                   { value: "permanent", label: "Permanent" },
                   { value: "24h", label: "24h" },
@@ -2287,7 +2287,9 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                     ← Retour
                   </button>
                   <button onClick={() => void sendInvite()} disabled={inviting}
-                    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: inviting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: inviting ? 0.7 : 1 }}>
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: inviting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: inviting ? 0.7 : 1, transition: "all 0.2s" }}
+                    onMouseEnter={e => { if (!inviting) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
                     {inviting ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Envoi...</span> : "Envoyer l'invitation →"}
                   </button>
                 </div>
