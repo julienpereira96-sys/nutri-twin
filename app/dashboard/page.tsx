@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
@@ -80,7 +79,6 @@ const OnboardingTour = ({ step, practitionerName, onNext, onSkip }: OnboardingPr
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 200, pointerEvents: "none" }}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(1.5px)", pointerEvents: "auto" }} onClick={onSkip} />
-
       <div style={{ ...getBubblePosition(), pointerEvents: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
           <div style={{ width: 38, height: 38, borderRadius: 11, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
@@ -91,15 +89,12 @@ const OnboardingTour = ({ step, practitionerName, onNext, onSkip }: OnboardingPr
             {step === 0 && <p style={{ margin: 0, fontSize: 11, color: emerald }}>Bonjour {firstName} 👋</p>}
           </div>
         </div>
-
         <p style={{ margin: "0 0 18px", fontSize: 13, color: "#94a3b8", lineHeight: 1.7 }}>{current.text}</p>
-
         <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
           {ONBOARDING_STEPS.map((_, i) => (
             <div key={i} style={{ flex: 1, height: 2, borderRadius: 1, background: i <= step ? emerald : "rgba(255,255,255,0.1)", transition: "background 0.3s" }} />
           ))}
         </div>
-
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={onSkip}
             style={{ flex: 1, height: 36, borderRadius: 9, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 12, cursor: "pointer", transition: "all 0.2s" }}
@@ -114,11 +109,8 @@ const OnboardingTour = ({ step, practitionerName, onNext, onSkip }: OnboardingPr
             {isLast ? "C'est parti 🌿" : "Suivant →"}
           </button>
         </div>
-
         <p style={{ margin: "10px 0 0", fontSize: 11, color: "#374151", textAlign: "center" }}>{step + 1} / {ONBOARDING_STEPS.length}</p>
       </div>
-
-      {/* Lueurs sur les éléments */}
       {current.highlight === "patients" && (
         <div style={{ position: "fixed", top: 120, left: 24, width: 268, height: "calc(100vh - 200px)", borderRadius: 16, boxShadow: `0 0 0 2px ${emerald}, 0 0 24px rgba(16,185,129,0.3)`, pointerEvents: "none", animation: "onboardingPulse 2s ease-in-out infinite" }} />
       )}
@@ -141,19 +133,21 @@ const OnboardingTour = ({ step, practitionerName, onNext, onSkip }: OnboardingPr
 // ═══ TYPES ═══
 type RealPatient = {
   id: string; firstName: string; lastName: string; initials: string; avatarColor: string; email: string;
-  lastMessage: string; lastMessageTime: string; lastMessageRole: string; totalMessages: number;admin_alerts?: { type: string; date: string; seen: boolean; alert_type?: string; murmure?: string }[];
+  lastMessage: string; lastMessageTime: string; lastMessageRole: string; totalMessages: number;
+  admin_alerts?: { type: string; date: string; seen: boolean; alert_type?: string; murmure?: string }[];
   age?: number; sexe?: string; taille?: number; poids?: number; objective?: string; pathologies?: string;
   allergies?: string; traitements?: string; objectif_clinique?: string; niveau_activite?: string;
-  regime_specifique?: string; notes?: string; brief_jumeau?: string; practitioner_instruction?: string; practitioner_instruction_expires_at?: string;
-  emotional_status?: string; emotional_insight?: string; latest_victory?: string; private_notes?: string; created_at?: string;
+  regime_specifique?: string; notes?: string; brief_jumeau?: string; practitioner_instruction?: string;
+  practitioner_instruction_expires_at?: string; emotional_status?: string; emotional_insight?: string;
+  latest_victory?: string; private_notes?: string; created_at?: string;
+  lastActive?: string | null; streak?: number; sosResolved?: number;
 };
 
 type Conversation = { id: string; role: "user" | "assistant"; content: string; created_at: string; };
 type ReportPeriod = "week" | "month" | "custom";
-type ActiveTab = "patients" | "vue_ensemble" | "analyse";
+type ActiveTab = "patients" | "vue_ensemble";
 type Document = { id: string; file_name: string; file_type: string; created_at: string; };
 type MonthlyStats = { messages_geres: number; crises_nocturnes: number; temps_economise_heures: number; temps_accompagnement_heures: number; taux_retention: number; questions_repetitives_pct: number; sos_resolutions?: number; chat_resolutions?: number; delta_stress_avant?: number | null; delta_stress_apres?: number | null; };
-
 
 const AVATAR_COLORS = ["#f43f5e", "#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ec4899", "#06b6d4", "#f97316"];
 
@@ -228,7 +222,6 @@ function LeverAlerteSimple({ alert, patientId, murmureSuggere, onResolved }: { a
   );
 }
 
-
 export default function DashboardPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
@@ -271,14 +264,14 @@ export default function DashboardPage() {
   const [inviteMurmureDuration, setInviteMurmureDuration] = useState<string>("permanent");
 
   const AVATARS = [
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 3C13 3 4 8 4 15C4 19.4 8.1 23 13 23C17.9 23 22 19.4 22 15C22 8 13 3 13 3Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/><path d="M13 23V13" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/><path d="M13 13C13 13 9 10 9 7" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/><path d="M13 13C13 13 17 10 17 7" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/></svg>,
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M3 20L10 8L14 14L17 10L23 20H3Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/></svg>,
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M3 13C5.5 10 8.5 10 11 13C13.5 16 16.5 16 19 13C20.2 11.5 21.5 11 23 11" stroke={emerald} strokeWidth="1.5" strokeLinecap="round" fill="none"/></svg>,
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="4" stroke={emerald} strokeWidth="1.4"/><path d="M13 4V6M13 20V22M4 13H6M20 13H22" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/></svg>,
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 22V12" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/><path d="M13 16C13 16 8 14 7 9C7 9 12 8 15 12" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/></svg>,
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 22C13 22 6 17 6 11C6 7.7 9.1 5 13 5C13 5 13 10 13 22Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/><path d="M13 22C13 22 20 17 20 11C20 7.7 16.9 5 13 5C13 5 13 10 13 22Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/></svg>,
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 4C13 4 6 12 6 16.5C6 19.5 9.1 22 13 22C16.9 22 20 19.5 20 16.5C20 12 13 4 13 4Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/></svg>,
-    <svg width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M20 14C18.5 17.5 15 20 11 20C6.6 20 3 16.4 3 12C3 7.6 6.6 4 11 4C9.5 6.5 9.5 11.5 13 14C15.5 15.5 18 14.5 20 14Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/></svg>,
+    <svg key={0} width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 3C13 3 4 8 4 15C4 19.4 8.1 23 13 23C17.9 23 22 19.4 22 15C22 8 13 3 13 3Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/><path d="M13 23V13" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/><path d="M13 13C13 13 9 10 9 7" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/><path d="M13 13C13 13 17 10 17 7" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/></svg>,
+    <svg key={1} width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M3 20L10 8L14 14L17 10L23 20H3Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/></svg>,
+    <svg key={2} width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M3 13C5.5 10 8.5 10 11 13C13.5 16 16.5 16 19 13C20.2 11.5 21.5 11 23 11" stroke={emerald} strokeWidth="1.5" strokeLinecap="round" fill="none"/></svg>,
+    <svg key={3} width="26" height="26" viewBox="0 0 26 26" fill="none"><circle cx="13" cy="13" r="4" stroke={emerald} strokeWidth="1.4"/><path d="M13 4V6M13 20V22M4 13H6M20 13H22" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/></svg>,
+    <svg key={4} width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 22V12" stroke={emerald} strokeWidth="1.4" strokeLinecap="round"/><path d="M13 16C13 16 8 14 7 9C7 9 12 8 15 12" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/></svg>,
+    <svg key={5} width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 22C13 22 6 17 6 11C6 7.7 9.1 5 13 5C13 5 13 10 13 22Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/><path d="M13 22C13 22 20 17 20 11C20 7.7 16.9 5 13 5C13 5 13 10 13 22Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/></svg>,
+    <svg key={6} width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M13 4C13 4 6 12 6 16.5C6 19.5 9.1 22 13 22C16.9 22 20 19.5 20 16.5C20 12 13 4 13 4Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/></svg>,
+    <svg key={7} width="26" height="26" viewBox="0 0 26 26" fill="none"><path d="M20 14C18.5 17.5 15 20 11 20C6.6 20 3 16.4 3 12C3 7.6 6.6 4 11 4C9.5 6.5 9.5 11.5 13 14C15.5 15.5 18 14.5 20 14Z" stroke={emerald} strokeWidth="1.4" strokeLinejoin="round"/></svg>,
   ];
 
   useEffect(() => {
@@ -361,13 +354,8 @@ export default function DashboardPage() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const fidelityScore = 
-  documents.length === 0 ? 70 : 
-  documents.length === 1 ? 85 : 
-  documents.length === 2 ? 95 : 100;
-  const fidelityColor = 
-  documents.length === 0 ? amber : 
-  documents.length >= 3 ? emerald : "#06b6d4"; 
+  const fidelityScore = documents.length === 0 ? 70 : documents.length === 1 ? 85 : documents.length === 2 ? 95 : 100;
+  const fidelityColor = documents.length === 0 ? amber : documents.length >= 3 ? emerald : "#06b6d4";
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
   const [editAge, setEditAge] = useState("");
@@ -384,8 +372,6 @@ export default function DashboardPage() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportContent, setReportContent] = useState("");
   const [reportMonth, setReportMonth] = useState(new Date());
-  const [patternInsight, setPatternInsight] = useState("");
-  const [patternLoading, setPatternLoading] = useState(false);
 
   const loadDocuments = async (pid: string) => {
     setLoadingDocs(true);
@@ -404,15 +390,9 @@ export default function DashboardPage() {
     const feedbacksWithData = (sosFeedbacks ?? []).filter(f => f.stress_before_proxy > 0 && f.score_after > 0);
     const avgBefore = feedbacksWithData.length > 0 ? Math.round(feedbacksWithData.reduce((sum, f) => sum + f.stress_before_proxy, 0) / feedbacksWithData.length * 10) / 10 : null;
     const avgAfter = feedbacksWithData.length > 0 ? Math.round(feedbacksWithData.reduce((sum, f) => sum + f.score_after, 0) / feedbacksWithData.length * 10) / 10 : null;
-
-  
     const msgs = totalMessages ?? 0;
     const tempsLibere = Math.round(((msgs * 0.75) + ((sosCount ?? 0) * 5)) / 60 * 10) / 10;
-  
-    const { data: sessions } = await supabase
-      .from("conversations_sessions")
-      .select("created_at, last_message_at")
-      .eq("practitioner_id", pid);
+    const { data: sessions } = await supabase.from("conversations_sessions").select("created_at, last_message_at").eq("practitioner_id", pid);
     const tempsAccompagnement = Math.round(
       (sessions ?? []).reduce((sum, s) => {
         if (!s.last_message_at) return sum;
@@ -420,7 +400,6 @@ export default function DashboardPage() {
         return sum + Math.min(dur, 60);
       }, 0) / 60 * 10
     ) / 10;
-  
     setMonthlyStats({
       messages_geres: msgs,
       crises_nocturnes: 0,
@@ -432,21 +411,26 @@ export default function DashboardPage() {
       chat_resolutions: chatResolutions,
       delta_stress_avant: avgBefore,
       delta_stress_apres: avgAfter,
-    });  
-  };  
+    });
+  };
 
   const loadPatients = async (pid: string) => {
     const { data: relations } = await supabase.from("patient_practitioner").select("patient_id").eq("practitioner_id", pid);
     if (!relations || relations.length === 0) { setLoading(false); return; }
     const patientIds = relations.map((r) => r.patient_id);
-    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, notes, brief_jumeau, practitioner_instruction, practitioner_instruction_expires_at, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at")
-    .in("user_id", patientIds);
+    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, notes, brief_jumeau, practitioner_instruction, practitioner_instruction_expires_at, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at").in("user_id", patientIds);
     if (!patientsData) { setLoading(false); return; }
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const patientsWithStats = await Promise.all(
       patientsData.map(async (p, i) => {
         const { data: convs } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", p.user_id).eq("practitioner_id", pid).order("created_at", { ascending: false }).limit(1);
         const lastConv = convs?.[0];
         const { count } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("patient_id", p.user_id).eq("practitioner_id", pid);
+        // Assiduité — jours distincts avec messages dans les 30 derniers jours
+        const { data: recentConvs } = await supabase.from("conversations").select("created_at").eq("patient_id", p.user_id).eq("practitioner_id", pid).eq("role", "user").gte("created_at", thirtyDaysAgo);
+        const distinctDays = new Set((recentConvs ?? []).map(c => c.created_at.split("T")[0])).size;
+        // Crises désamorcées
+        const { count: sosCount } = await supabase.from("sos_events").select("*", { count: "exact", head: true }).eq("patient_id", p.user_id);
         const initials = `${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase();
         return {
           id: p.user_id, firstName: p.first_name ?? "Patient", lastName: p.last_name ?? "", initials,
@@ -454,15 +438,18 @@ export default function DashboardPage() {
           lastMessage: lastConv?.content ?? "Aucun message pour l'instant",
           lastMessageTime: lastConv?.created_at ? new Date(lastConv.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "",
           lastMessageRole: lastConv?.role ?? "", totalMessages: count ?? 0,
+          lastActive: lastConv?.created_at ?? null,
+          streak: distinctDays,
+          sosResolved: sosCount ?? 0,
           age: p.age, sexe: p.sexe, taille: p.taille, poids: p.poids, traitements: p.traitements,
           objectif_clinique: p.objectif_clinique, niveau_activite: p.niveau_activite, regime_specifique: p.regime_specifique,
           objective: p.objective, pathologies: p.pathologies, allergies: p.allergies, notes: p.notes,
-          brief_jumeau: p.brief_jumeau, practitioner_instruction: p.practitioner_instruction, practitioner_instruction_expires_at: p.practitioner_instruction_expires_at,
+          brief_jumeau: p.brief_jumeau, practitioner_instruction: p.practitioner_instruction,
+          practitioner_instruction_expires_at: p.practitioner_instruction_expires_at,
           emotional_status: p.emotional_status ?? "green", emotional_insight: p.emotional_insight ?? "",
           created_at: p.created_at,
-latest_victory: p.latest_victory ?? "", private_notes: p.private_notes ?? "",
-admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[] | null) ?? [],
-
+          latest_victory: p.latest_victory ?? "", private_notes: p.private_notes ?? "",
+          admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[] | null) ?? [],
         };
       })
     );
@@ -470,7 +457,6 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
     if (patientsWithStats.length > 0) setSelectedPatientId(patientsWithStats[0].id);
     setLoading(false);
   };
-
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) return;
@@ -502,7 +488,6 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
     setPrivateNotesSaved(false);
   }, [selectedPatientId, practitionerId, onboardingDemoMode]);
 
-  // En mode démo onboarding, on affiche les conversations fictives
   const displayedConversations = onboardingDemoMode ? DEMO_CONVERSATIONS : conversations;
   const displayedPatients = onboardingDemoMode ? DEMO_PATIENTS as unknown as RealPatient[] : patients;
   const displayedSelectedPatient = onboardingDemoMode
@@ -523,25 +508,22 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
   const saveMurmure = async () => {
     if (!selectedPatientId) return;
     setSavingMurmure(true);
-  
     const expiresAt = murmureDuration === "permanent" ? null
       : murmureDuration === "24h" ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       : murmureDuration === "3j" ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
       : murmureDuration === "7j" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       : murmureDuration === "14j" ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-  
     await supabase.from("patients").update({
       practitioner_instruction: murmureText || null,
       practitioner_instruction_expires_at: expiresAt,
     }).eq("user_id", selectedPatientId);
-  
     await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: selectedPatientId }) });
     setPatients((prev) => prev.map((p) => p.id === selectedPatientId ? { ...p, practitioner_instruction: murmureText || undefined } : p));
     setSavingMurmure(false);
     setMurmureDuration("permanent");
     setShowMurmureModal(false);
-  };  
+  };
 
   const savePrivateNotes = async () => {
     if (!selectedPatientId) return;
@@ -564,46 +546,6 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
     setSendingVictory(null);
   };
 
-  const generatePatternInsight = async () => {
-    if (!selectedPatientId || !practitionerId) return;
-    setPatternLoading(true); setPatternInsight("");
-    const { data: journalEntries } = await supabase.from("journal_entries").select("date, mood, food_rating, emotions").eq("patient_id", selectedPatientId).order("date", { ascending: false }).limit(30);
-    const { data: chatMessages } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", selectedPatientId).eq("practitioner_id", practitionerId).order("created_at", { ascending: false }).limit(50);
-    if (!journalEntries?.length && !chatMessages?.length) { setPatternInsight("Pas encore assez de données pour détecter des patterns."); setPatternLoading(false); return; }
-    const journalData = `| Date | Humeur | Alimentation | Émotions |\n| :--- | :--- | :--- | :--- |\n${journalEntries?.map((e) => `| ${e.date} | ${e.mood}/10 | ${e.food_rating}/3 | ${(e.emotions as string[])?.join(", ")} |`).join("\n") ?? ""}`;
-    const chatData = chatMessages?.filter((m) => m.role === "user").slice(0, 20).map((m) => m.content.slice(0, 100)).join(" | ") ?? "";
-    const prompt = `Tu es un analyste de données nutritionnelles expert. Analyse ces données d'un patient et détecte des corrélations ou patterns comportementaux.
-
-      Journal (30 derniers jours) :
-      ${journalData}
-
-      Messages du patient (extraits) :
-      ${chatData}
-
-      Génère exactement 3 insights structurés. Pour chaque insight, réponds UNIQUEMENT en JSON valide sans markdown ni backticks :
-      [
-        {
-          "observation": "Fait brut observable dans les données",
-          "correlation": "Lien avec un autre facteur détecté",
-          "hypothese": "Interprétation probable du pattern",
-          "action": "Suggestion concrète pour le praticien"
-        }
-      ]`;
-    try {
-      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: prompt, practitionerId }) });
-      const data = await res.json() as { response?: string };
-      const raw = data.response ?? "";
-      try {
-        const cleaned = raw.replace(/```json|```/g, "").trim();
-        const parsed = JSON.parse(cleaned) as { observation: string; correlation: string; hypothese: string; action: string }[];
-        setPatternInsight(JSON.stringify(parsed));
-      } catch {
-        setPatternInsight(raw);
-      }
-    } catch { setPatternInsight("Erreur lors de l'analyse."); }
-    setPatternLoading(false);
-  };
-
   const exportPDF = async () => {
     if (!displayedSelectedPatient || !reportContent) return;
     const res = await fetch("/api/generate-pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: displayedSelectedPatient.id, practitionerId, reportContent, patientName: `${displayedSelectedPatient.firstName} ${displayedSelectedPatient.lastName}`, practitionerName }) });
@@ -617,7 +559,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
   const openJumeauModal = async () => {
     setShowJumeauModal(true); setUploadedFiles([]); setUploadSuccess([]); setUploadErrors([]); setDocumentType(null);
     if (practitionerId) void loadDocuments(practitionerId);
-  };  
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -673,26 +615,29 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
     if (!patient) return;
     setEditFirstName(patient.firstName ?? "");
     setEditLastName(patient.lastName ?? "");
-    setEditAge(patient.age ? String(patient.age) : ""); setEditObjective(patient.objective ?? "");
-    setEditPathologies(patient.pathologies ?? ""); setEditAllergies(patient.allergies ?? ""); setEditNotes(patient.notes ?? "");
+    setEditAge(patient.age ? String(patient.age) : "");
+    setEditObjective(patient.objective ?? "");
+    setEditPathologies(patient.pathologies ?? "");
+    setEditAllergies(patient.allergies ?? "");
+    setEditNotes(patient.notes ?? "");
     setProfileSaved(false); setShowProfileModal(true);
   };
 
   const saveProfile = async () => {
     if (!selectedPatientId) return;
     setSavingProfile(true);
-    await supabase.from("patients").update({ 
+    await supabase.from("patients").update({
       first_name: editFirstName || null,
       last_name: editLastName || null,
-      age: editAge ? parseInt(editAge) : null, 
-      objective: editObjective || null, 
-      pathologies: editPathologies || null, 
-      allergies: editAllergies || null, 
-      notes: editNotes || null 
-    }).eq("user_id", selectedPatientId); 
+      age: editAge ? parseInt(editAge) : null,
+      objective: editObjective || null,
+      pathologies: editPathologies || null,
+      allergies: editAllergies || null,
+      notes: editNotes || null
+    }).eq("user_id", selectedPatientId);
     const patient = patients.find(p => p.id === selectedPatientId);
     const alerts = (patient?.admin_alerts ?? []).filter((a: { alert_type?: string }) => a.alert_type !== "identity_correction");
-    await supabase.from("patients").update({ admin_alerts: alerts }).eq("user_id", selectedPatientId);   
+    await supabase.from("patients").update({ admin_alerts: alerts }).eq("user_id", selectedPatientId);
     setPatients((prev) => prev.map((p) => { if (p.id !== selectedPatientId) return p; return { ...p, age: editAge ? parseInt(editAge) : undefined, objective: editObjective || undefined, pathologies: editPathologies || undefined, allergies: editAllergies || undefined, notes: editNotes || undefined }; }));
     setSavingProfile(false); setProfileSaved(true);
     setTimeout(() => setShowProfileModal(false), 1500);
@@ -779,8 +724,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
     if (!inviteEmail.trim()) return;
     setInviting(true); setInviteError("");
     try {
-      const res = await fetch("/api/invite-patient", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId: practitionerId ?? "", first_name: inviteFirstName || null, last_name: inviteLastName || null,
-        age: inviteAge ? parseInt(inviteAge) : null, sexe: inviteSexe || null, taille: inviteTaille ? parseInt(inviteTaille) : null, poids: invitePoids ? parseFloat(invitePoids) : null, pathologies: invitePathologies || null, allergies: inviteAllergies || null, traitements: inviteTraitements || null, objectif_clinique: inviteObjectifClinique || null, brief_jumeau: inviteBriefJumeau || null, notes: inviteNotes || null, niveau_activite: inviteNiveauActivite || null, regime_specifique: inviteRegime || null, murmure_duration: inviteMurmureDuration }) });
+      const res = await fetch("/api/invite-patient", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId: practitionerId ?? "", first_name: inviteFirstName || null, last_name: inviteLastName || null, age: inviteAge ? parseInt(inviteAge) : null, sexe: inviteSexe || null, taille: inviteTaille ? parseInt(inviteTaille) : null, poids: invitePoids ? parseFloat(invitePoids) : null, pathologies: invitePathologies || null, allergies: inviteAllergies || null, traitements: inviteTraitements || null, objectif_clinique: inviteObjectifClinique || null, brief_jumeau: inviteBriefJumeau || null, notes: inviteNotes || null, niveau_activite: inviteNiveauActivite || null, regime_specifique: inviteRegime || null, murmure_duration: inviteMurmureDuration }) });
       const data = await res.json() as { error?: string };
       if (!res.ok) setInviteError(data.error ?? "Une erreur est survenue.");
       else { const savedFirstName = inviteFirstName; resetInviteForm(); setInviteFirstName(savedFirstName); setInviteSuccess(true); if (practitionerId) await loadPatients(practitionerId); }
@@ -789,65 +733,47 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
   };
 
   const formatTime = (seconds: number) => { const m = Math.floor(seconds / 60).toString().padStart(2, "0"); const s = (seconds % 60).toString().padStart(2, "0"); return `${m}:${s}`; };
-  const fileTypeIcon = (type: string) => { if (["jpg","jpeg","png"].includes(type)) return "🖼️"; if (["mp3","wav","m4a"].includes(type)) return "🎙️"; if (["xlsx","csv"].includes(type)) return "📊"; if (type === "pdf") return "📕"; if (type === "docx") return "📝"; return "📄"; };
+  const fileTypeIcon = (type: string) => { if (["jpg","jpeg","png"].includes(type)) return "🖼️"; if (["mp3","wav","m4a"].includes(type)) return "🎙"; if (["xlsx","csv"].includes(type)) return "📊"; if (type === "pdf") return "📕"; if (type === "docx") return "📝"; return "📄"; };
   const today = new Date().toISOString().split("T")[0];
 
   const generateBilan = async () => {
     if (!selectedPatientId || !practitionerId) return;
     setBilanLoading(true); setBilanContent("");
-    
-    const { data: chatMessages } = await supabase
-      .from("conversations")
-      .select("role, content, created_at")
-      .eq("patient_id", selectedPatientId)
-      .eq("practitioner_id", practitionerId)
-      .order("created_at", { ascending: false })
-      .limit(50);
-  
-    const { data: journalEntries } = await supabase
-      .from("journal_entries")
-      .select("date, mood, food_rating, emotions, content")
-      .eq("patient_id", selectedPatientId)
-      .order("date", { ascending: false })
-      .limit(14);
-  
+    const { data: chatMessages } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", selectedPatientId).eq("practitioner_id", practitionerId).order("created_at", { ascending: false }).limit(50);
+    const { data: journalEntries } = await supabase.from("journal_entries").select("date, mood, food_rating, emotions, content").eq("patient_id", selectedPatientId).order("date", { ascending: false }).limit(14);
     const chatData = chatMessages?.filter(m => m.role === "user").slice(0, 20).map(m => m.content.slice(0, 150)).join(" | ") ?? "";
     const journalData = journalEntries?.map(e => `${e.date}: humeur ${e.mood}/10, ${(e.emotions as string[])?.join(", ")}`).join(" | ") ?? "";
-  
+    const patternData = journalEntries?.map(e => `${e.date}: humeur ${e.mood}/10, ${(e.emotions as string[])?.join(", ")}`).join(" | ") ?? "";
     const prompt = `Tu es l'assistant d'un nutritionniste qui prépare sa prochaine consultation avec un patient.
-  
-  Voici les derniers échanges du patient avec le jumeau numérique :
-  ${chatData || "Pas de conversations récentes"}
-  
-  Voici son journal des 14 derniers jours :
-  ${journalData || "Pas d'entrées journal"}
-  
-  Génère exactement 3 questions clés que le praticien devrait poser lors de la prochaine consultation, basées sur ce qui a été dit. Les questions doivent être précises, personnalisées et montrer que le praticien a suivi de près l'évolution du patient. Réponds UNIQUEMENT en JSON sans markdown :
-  [
-    {"question": "...", "contexte": "Pourquoi cette question est importante"},
-    {"question": "...", "contexte": "Pourquoi cette question est importante"},
-    {"question": "...", "contexte": "Pourquoi cette question est importante"}
-  ]`;
-  
+
+Voici les derniers échanges du patient avec le jumeau numérique :
+${chatData || "Pas de conversations récentes"}
+
+Voici son journal des 14 derniers jours :
+${journalData || "Pas d'entrées journal"}
+
+Données journal (patterns comportementaux) :
+${patternData || "Pas de données"}
+
+Génère exactement 3 questions clés que le praticien devrait poser lors de la prochaine consultation, basées sur ce qui a été dit et les patterns détectés. Les questions doivent être précises, personnalisées et montrer que le praticien a suivi de près l'évolution du patient. Réponds UNIQUEMENT en JSON sans markdown :
+[
+  {"question": "...", "contexte": "Pourquoi cette question est importante"},
+  {"question": "...", "contexte": "Pourquoi cette question est importante"},
+  {"question": "...", "contexte": "Pourquoi cette question est importante"}
+]`;
     try {
       const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: prompt, practitionerId }) });
       const data = await res.json() as { response?: string };
       setBilanContent(data.response ?? "");
     } catch { setBilanContent(""); }
     setBilanLoading(false);
-  };  
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: "#070B09", color: "white", fontFamily: "Inter, sans-serif" }}>
 
-      {/* ═══ ONBOARDING ═══ */}
       {showOnboarding && (
-        <OnboardingTour
-          step={onboardingStep}
-          practitionerName={practitionerName}
-          onNext={handleOnboardingNext}
-          onSkip={handleOnboardingSkip}
-        />
+        <OnboardingTour step={onboardingStep} practitionerName={practitionerName} onNext={handleOnboardingNext} onSkip={handleOnboardingSkip} />
       )}
 
       {/* ═══ HEADER ═══ */}
@@ -921,12 +847,12 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {(["patients", "vue_ensemble", "analyse"] as ActiveTab[]).map((tab) => {
-              const labels: Record<ActiveTab, string> = { patients: "Suivi", vue_ensemble: "Vue d'ensemble", analyse: "Analyse" };
+            {(["patients", "vue_ensemble"] as ActiveTab[]).map((tab) => {
+              const labels: Record<ActiveTab, string> = { patients: "Suivi", vue_ensemble: "Vue d'ensemble" };
               const isActive = activeTab === tab;
               return (
                 <button key={tab} onClick={() => setActiveTab(tab)}
-                  style={{ height: 36, borderRadius: 8, padding: "0 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: isActive ? "1px solid rgba(16,185,129,0.18)" : "1px solid transparent", background: isActive ? "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))" : "transparent", color: isActive ? emerald : "#64748b", transition: "all 0.2s", boxShadow: isActive ? "0 2px 12px rgba(0,0,0,0.3)" : "none", position: "relative" }}
+                  style={{ height: 36, borderRadius: 8, padding: "0 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: isActive ? "1px solid rgba(16,185,129,0.18)" : "1px solid transparent", background: isActive ? "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))" : "transparent", color: isActive ? emerald : "#64748b", transition: "all 0.2s", boxShadow: isActive ? "0 2px 12px rgba(0,0,0,0.3)" : "none" }}
                   onMouseEnter={e => { if (!isActive) { e.currentTarget.style.color = emerald; e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02))"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.15)"; } }}
                   onMouseLeave={e => { if (!isActive) { e.currentTarget.style.color = "#64748b"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; } }}>
                   {labels[tab]}
@@ -951,22 +877,21 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
 
       {/* Bandeau critique global */}
       {patients.some(p => p.emotional_status === "red_critical") && (
-  <div style={{ background: "rgba(244,63,94,0.12)", borderBottom: "1px solid rgba(244,63,94,0.4)", padding: "10px 24px", animation: "criticalPulse 2s ease-in-out infinite", position: "sticky", top: 64, zIndex: 45 }}>
-    <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", alignItems: "center", gap: 12 }}>
-      <span style={{ fontSize: 18, flexShrink: 0 }}>🚨</span>
-      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: coral }}>Alerte critique — Intervention immédiate requise</p>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginLeft: 8 }}>
-        {patients.filter(p => p.emotional_status === "red_critical").map(p => (
-          <button key={p.id} onClick={() => { setSelectedPatientId(p.id); setActiveTab("patients"); }}
-            style={{ background: "rgba(244,63,94,0.15)", border: "1px solid rgba(244,63,94,0.4)", borderRadius: 20, padding: "3px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: coral, filter: discretMode ? "blur(4px)" : "none" }}>
-            {p.firstName} {p.lastName}
-          </button>
-        ))}
-      </div>
-    </div>
-  </div>
-)}
-
+        <div style={{ background: "rgba(244,63,94,0.12)", borderBottom: "1px solid rgba(244,63,94,0.4)", padding: "10px 24px", animation: "criticalPulse 2s ease-in-out infinite", position: "sticky", top: 64, zIndex: 45 }}>
+          <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 18, flexShrink: 0 }}>🚨</span>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: coral }}>Alerte critique — Intervention immédiate requise</p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginLeft: 8 }}>
+              {patients.filter(p => p.emotional_status === "red_critical").map(p => (
+                <button key={p.id} onClick={() => { setSelectedPatientId(p.id); setActiveTab("patients"); }}
+                  style={{ background: "rgba(244,63,94,0.15)", border: "1px solid rgba(244,63,94,0.4)", borderRadius: 20, padding: "3px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: coral, filter: discretMode ? "blur(4px)" : "none" }}>
+                  {p.firstName} {p.lastName}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bandeau victoires */}
       {victoryPatients.length > 0 && (
@@ -1048,12 +973,8 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                             <span style={{ fontSize: 13, fontWeight: 600, color: isSelected ? emerald : "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{patient.firstName}</span>
                             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                            {patient.latest_victory && <span style={{ fontSize: 10 }}>🏆</span>}
-                            {patient.created_at && (new Date().getTime() - new Date(patient.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000 && (
-                              <span style={{ fontSize: 10 }} title="Nouveau patient — 7 premiers jours">🔵</span>
-                            )}
+                              {patient.latest_victory && <span style={{ fontSize: 10 }}>🏆</span>}
                               <span style={{ fontSize: 10, color: statusColor }}>●</span>
-
                             </div>
                           </div>
                           <p style={{ margin: 0, fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
@@ -1066,7 +987,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                 })}
               </div>
               <div style={{ padding: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-              <button onClick={() => { setShowInviteModal(true); setInviteSuccess(false); setInviteStep(1); }}
+                <button onClick={() => { setShowInviteModal(true); setInviteSuccess(false); setInviteStep(1); }}
                   style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
@@ -1096,10 +1017,9 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                       </div>
                     </div>
                     <button onClick={() => { if (!onboardingDemoMode) { setShowBilanModal(true); void generateBilan(); } }}
-                    style={{ height: 38, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                    ✨ Préparer ma séance
-                  </button>
-
+                      style={{ height: 38, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: "0 14px" }}>
+                      ✨ Préparer ma séance
+                    </button>
                   </div>
                   <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", background: "#070707", display: "flex", flexDirection: "column", gap: 12 }}>
                     {displayedConversations.length === 0 ? (
@@ -1128,30 +1048,60 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
               )}
             </div>
 
-                        {/* Fiche patient */}
-                        <div style={{ overflowY: "auto", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 16 }}>
+            {/* Fiche patient */}
+            <div style={{ overflowY: "auto", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 16 }}>
               {selectedPatient ? (
                 <>
-                  {/* Bloc identité */}
-                  <div style={{ marginBottom: 16 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                      <div style={{ width: 40, height: 40, borderRadius: "50%", background: selectedPatient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "white", flexShrink: 0 }}>
-                        {selectedPatient.initials}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontSize: 14, fontWeight: 700, filter: discretMode ? "blur(4px)" : "none" }}>{selectedPatient.firstName} {selectedPatient.lastName}</p>
-                        <p style={{ margin: 0, fontSize: 11, color: "#64748b", filter: discretMode ? "blur(4px)" : "none" }}>{onboardingDemoMode ? "patient@email.fr" : (selectedPatient as RealPatient).email}</p>
-                      </div>
+                  {/* Identité */}
+                  <div style={{ textAlign: "center", marginBottom: 16 }}>
+                    <div style={{ width: 56, height: 56, borderRadius: "50%", background: selectedPatient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: "white", margin: "0 auto 10px" }}>
+                      {selectedPatient.initials}
                     </div>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{selectedPatient.firstName} {selectedPatient.lastName}</p>
+                    <p style={{ margin: "2px 0 4px", fontSize: 12, color: "#64748b", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{onboardingDemoMode ? "patient@email.fr" : (selectedPatient as RealPatient).email}</p>
                     <button onClick={() => !onboardingDemoMode && openProfileModal()}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#64748b", textDecoration: "underline", padding: 0 }}>
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#4b5563", textDecoration: "underline", padding: "0 0 8px", display: "block", margin: "0 auto" }}>
                       ✏️ Modifier le profil
                     </button>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 20, padding: "4px 12px", background: `${getStatusColor(selectedPatient.emotional_status)}15`, border: `1px solid ${getStatusColor(selectedPatient.emotional_status)}30` }}>
+                      <span style={{ fontSize: 10 }}>{getStatusEmoji(selectedPatient.emotional_status)}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: getStatusColor(selectedPatient.emotional_status), filter: discretMode ? "blur(4px)" : "none" }}>
+                        {selectedPatient.emotional_insight || (selectedPatient.emotional_status === "green" ? "Adhésion positive" : selectedPatient.emotional_status === "orange" ? "Vigilance modérée" : "Attention requise")}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Métriques */}
+                  <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 12px", marginBottom: 10 }}>
+                    {(() => {
+                      const p = selectedPatient as RealPatient;
+                      const lastActiveStr = onboardingDemoMode ? "Il y a 2h" : p.lastActive ? (() => {
+                        const diff = Date.now() - new Date(p.lastActive).getTime();
+                        const mins = Math.floor(diff / 60000);
+                        const hours = Math.floor(diff / 3600000);
+                        const days = Math.floor(diff / 86400000);
+                        if (mins < 60) return `Il y a ${mins}min`;
+                        if (hours < 24) return `Il y a ${hours}h`;
+                        return `Il y a ${days}j`;
+                      })() : "Jamais";
+                      const streak = onboardingDemoMode ? 5 : (p.streak ?? 0);
+                      const sos = onboardingDemoMode ? 2 : (p.sosResolved ?? 0);
+                      return [
+                        { label: "Dernière connexion", value: lastActiveStr },
+                        { label: "Assiduité", value: streak > 0 ? `🔥 ${streak} jours actifs` : "Aucune activité" },
+                        { label: "Crises désamorcées", value: sos > 0 ? `🛡️ ${sos}` : "Aucune" },
+                      ].map((item) => (
+                        <div key={item.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, color: "#64748b" }}>{item.label}</span>
+                          <span style={{ fontSize: 11, color: "#e2e8f0", fontWeight: 500 }}>{item.value}</span>
+                        </div>
+                      ));
+                    })()}
                   </div>
 
                   {/* Alerte admin */}
                   {(selectedPatient.admin_alerts?.filter(a => !a.seen).length ?? 0) > 0 && !onboardingDemoMode && (
-                    <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 10, padding: "10px 12px", marginBottom: 12 }}>
+                    <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                         <span style={{ fontSize: 12 }}>⚠️</span>
                         <span style={{ fontSize: 11, fontWeight: 700, color: amber }}>Action requise</span>
@@ -1167,16 +1117,11 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                           </p>
                           {alert.type === "crisis" ? (
                             <LeverAlerteCritique alert={alert} patientId={selectedPatient.id} onResolved={() => {
-                              setPatients(prev => prev.map(p => p.id === selectedPatient.id ? {
-                                ...p, emotional_status: "green", admin_alerts: []
-                              } : p));
+                              setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", admin_alerts: [] } : p));
                             }} />
                           ) : (
                             <LeverAlerteSimple alert={alert} patientId={selectedPatient.id} murmureSuggere={(alert as { murmure?: string }).murmure ?? ""} onResolved={(murmure) => {
-                              setPatients(prev => prev.map(p => p.id === selectedPatient.id ? {
-                                ...p, emotional_status: "green", practitioner_instruction: murmure || p.practitioner_instruction,
-                                admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a)
-                              } : p));
+                              setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", practitioner_instruction: murmure || p.practitioner_instruction, admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a) } : p));
                             }} />
                           )}
                         </div>
@@ -1184,14 +1129,11 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                     </div>
                   )}
 
-                  {/* Bloc Murmure */}
-                  <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 12, border: "1px solid rgba(16,185,129,0.15)", padding: "12px 14px", marginBottom: 12 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: emerald }}>🎙️ Murmure</span>
-                      <button onClick={() => !onboardingDemoMode && openMurmureModal()}
-                        style={{ height: 26, borderRadius: 6, padding: "0 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.1)", color: emerald }}>
-                        {!onboardingDemoMode && (selectedPatient as RealPatient).practitioner_instruction ? "Modifier" : "Ajouter"}
-                      </button>
+                  {/* Murmure */}
+                  <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px", marginBottom: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <span style={{ fontSize: 11 }}>🎙️</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: emerald }}>Murmure actif</span>
                     </div>
                     {(() => {
                       const p = selectedPatient as RealPatient;
@@ -1200,15 +1142,15 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                       return (
                         <>
                           {isExpired && (
-                            <p style={{ margin: "0 0 4px", fontSize: 11, color: "#f59e0b", fontWeight: 600 }}>
-                              ⚠️ Murmure expiré
+                            <p style={{ margin: "0 0 6px", fontSize: 11, color: "#f59e0b", fontWeight: 600 }}>
+                              ⚠️ Murmure expiré — Le jumeau a repris son comportement standard.
                             </p>
                           )}
                           <p style={{ margin: 0, fontSize: 11, color: isExpired ? "#64748b" : "#94a3b8", lineHeight: 1.5, textDecoration: isExpired ? "line-through" : "none" }}>
                             {onboardingDemoMode ? "Sois plus doux cette semaine, elle traverse une période difficile." : (p.practitioner_instruction || "Aucune consigne active")}
                           </p>
                           {expires && !isExpired && (
-                            <p style={{ margin: "6px 0 0", fontSize: 10, color: "#64748b" }}>
+                            <p style={{ margin: "4px 0 0", fontSize: 10, color: "#64748b" }}>
                               Expire le {new Date(expires).toLocaleDateString("fr-FR")}
                             </p>
                           )}
@@ -1217,26 +1159,26 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
                     })()}
                   </div>
 
-                  {/* Bloc Notes privées */}
+                  {/* Notes privées */}
                   {!onboardingDemoMode && (
-                    <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", padding: "12px 14px", marginBottom: 12 }}>
-                      <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "#94a3b8" }}>📝 Notes privées</p>
+                    <div style={{ marginBottom: 10 }}>
+                      <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Notes privées</p>
                       <textarea value={privateNotes} onChange={(e) => setPrivateNotes(e.target.value)} placeholder="Notes visibles uniquement par vous..." rows={3}
                         style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "white", padding: "8px 10px", fontSize: 12, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.5 }}
                         onFocus={(e) => e.target.style.borderColor = "rgba(16,185,129,0.3)"}
                         onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
                       <button onClick={() => void savePrivateNotes()} disabled={savingPrivateNotes}
-                        style={{ marginTop: 6, height: 28, borderRadius: 6, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "none", background: privateNotesSaved ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)", color: privateNotesSaved ? emerald : "#94a3b8" }}>
+                        style={{ marginTop: 4, height: 28, borderRadius: 6, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "none", background: privateNotesSaved ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)", color: privateNotesSaved ? emerald : "#94a3b8" }}>
                         {privateNotesSaved ? "✅ Sauvegardé" : savingPrivateNotes ? <span className="flex items-center justify-center gap-2"><span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white" />Sauvegarde...</span> : "Sauvegarder"}
                       </button>
                     </div>
                   )}
 
-                  {/* Bloc Actions */}
+                  {/* Actions */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <button onClick={() => { if (!onboardingDemoMode) { setShowBilanModal(true); void generateBilan(); } }}
-                      style={{ height: 38, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                      ✨ Préparer ma séance
+                    <button onClick={() => !onboardingDemoMode && openMurmureModal()}
+                      style={{ height: 38, borderRadius: 8, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: emerald, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      🎙️ {!onboardingDemoMode && (selectedPatient as RealPatient).practitioner_instruction ? "Modifier le murmure" : "Ajouter un murmure"}
                     </button>
                     <button onClick={() => { if (!onboardingDemoMode) { setShowReportModal(true); setReportContent(""); } }}
                       style={{ height: 38, borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
@@ -1253,227 +1195,137 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
           </div>
         )}
 
-       
-{activeTab === "vue_ensemble" && (
-  <div>
-    {/* ═══ BANDEAU CRITIQUE ═══ */}
-    {displayedPatients.some(p => p.emotional_status === "red_critical") && (
-      <div style={{ background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.4)", borderRadius: 16, padding: "16px 20px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12, animation: "criticalPulse 2s ease-in-out infinite" }}>
-        <span style={{ fontSize: 20, flexShrink: 0 }}>🚨</span>
-        <div style={{ flex: 1 }}>
-          <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: coral }}>Alerte critique — Intervention immédiate requise</p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {displayedPatients.filter(p => p.emotional_status === "red_critical").map(p => (
-              <button key={p.id} onClick={() => { setSelectedPatientId(p.id); setActiveTab("patients"); }}
-                style={{ background: "rgba(244,63,94,0.15)", border: "1px solid rgba(244,63,94,0.4)", borderRadius: 20, padding: "3px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: coral, filter: discretMode ? "blur(4px)" : "none" }}>
-                {p.firstName} {p.lastName}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    )}
-
-    {/* ═══ HEADER RÉSILIENCE ═══ */}
-    <div style={{ marginBottom: 28 }}>
-      <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Vue d'ensemble</h2>
-      <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Suivi en cours · Statut IA mis à jour à chaque message</p>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
-
-        {/* Carte 1 — Delta stress */}
-        <div style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 16, padding: 20 }}>
-          <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Delta de stress moyen</p>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginBottom: 12 }}>
-            <div style={{ flex: 1 }}>
-              <p style={{ margin: "0 0 4px", fontSize: 10, color: "#64748b" }}>Avant</p>
-              <div style={{ height: 6, background: "rgba(244,63,94,0.15)", borderRadius: 3, marginBottom: 4 }}>
-              <div style={{ height: "100%", width: `${((monthlyStats?.delta_stress_avant ?? 0) / 10) * 100}%`, background: coral, borderRadius: 3 }} />
-
-              </div>
-              <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: coral }}>{monthlyStats?.delta_stress_avant ?? "—"}</p>
-            </div>
-            <div style={{ fontSize: 18, color: "#64748b", paddingBottom: 4 }}>→</div>
-            <div style={{ flex: 1 }}>
-              <p style={{ margin: "0 0 4px", fontSize: 10, color: "#64748b" }}>Après</p>
-              <div style={{ height: 6, background: "rgba(16,185,129,0.15)", borderRadius: 3, marginBottom: 4 }}>
-              <div style={{ height: "100%", width: `${((monthlyStats?.delta_stress_apres ?? 0) / 10) * 100}%`, background: emerald, borderRadius: 3 }} />
-              </div>
-              <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: emerald }}>{monthlyStats?.delta_stress_apres ?? "—"}</p>
-            </div>
-          </div>
-          <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 12 }}>📉</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: emerald }}>
-            {monthlyStats?.delta_stress_avant && monthlyStats?.delta_stress_apres
-              ? `-${Math.round((1 - monthlyStats.delta_stress_apres / monthlyStats.delta_stress_avant) * 100)}% de stress moyen`
-              : "Pas encore de données"}
-          </span>
-          </div>
-        </div>
-
-        {/* Carte 2 — Crises apaisées */}
-        <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: 20 }}>
-          <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Crises apaisées</p>
-          <p style={{ margin: "0 0 4px", fontSize: 48, fontWeight: 900, color: "#818cf8", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
-            {patients.reduce((sum, p) => sum + (p.totalMessages > 0 ? 1 : 0), 0) || 0}
-          </p>
-          <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>En toute autonomie</p>
-          <div style={{ background: "rgba(99,102,241,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 12 }}>🛡️</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#818cf8" }}>Sans votre intervention</span>
-          </div>
-        </div>
-
-
-        {/* Carte 4 — Interventions hors-cabinet */}
-        <div style={{ background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 16, padding: 20 }}>
-          <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Interventions hors-cabinet</p>
-          <p style={{ margin: "0 0 4px", fontSize: 48, fontWeight: 900, color: amber, lineHeight: 1 }}>
-            {monthlyStats?.messages_geres ?? 0}
-          </p>
-          <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>messages gérés</p>
-          <div style={{ background: "rgba(245,158,11,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 12 }}>⏱️</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: amber }}>{monthlyStats?.temps_economise_heures ?? 0}h libérées</span>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Séparateur */}
-      <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 24 }} />
-    </div>
-
-    {/* ═══ GRID PATIENTS ═══ */}
-    {displayedPatients.length === 0 ? (
-      <p style={{ textAlign: "center", color: "#64748b", marginTop: 60 }}>Aucun patient</p>
-    ) : (
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-        {[...displayedPatients].sort((a, b) => {
-          const order = { red_critical: 0, red: 1, orange: 2, green: 3 };
-          return (order[a.emotional_status as keyof typeof order] ?? 3) - (order[b.emotional_status as keyof typeof order] ?? 3);
-        }).map((patient) => {
-          const isCritical = patient.emotional_status === "red_critical";
-          const isRed = patient.emotional_status === "red" || isCritical;
-          const statusColor = isCritical ? coral : getStatusColor(patient.emotional_status);
-          return (
-            <div key={patient.id} style={{ borderRadius: 16, padding: "20px", background: isCritical ? "rgba(244,63,94,0.08)" : isRed ? "rgba(244,63,94,0.05)" : "rgba(255,255,255,0.02)", border: `1px solid ${isCritical ? "rgba(244,63,94,0.5)" : isRed ? "rgba(244,63,94,0.25)" : "rgba(255,255,255,0.06)"}`, boxShadow: isCritical ? "0 0 32px rgba(244,63,94,0.25)" : isRed ? "0 0 24px rgba(244,63,94,0.12)" : "none", transition: "all 0.3s", animation: isCritical ? "criticalPulse 2s ease-in-out infinite" : "none" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
-                <button onClick={() => { setSelectedPatientId(patient.id); setActiveTab("patients"); }} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "white" }}>{patient.initials}</div>
-                  <div style={{ textAlign: "left" }}>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: isCritical ? coral : "white", filter: discretMode ? "blur(4px)" : "none" }}>{patient.firstName} {patient.lastName}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{patient.totalMessages} messages</p>
-                  </div>
-                </button>
-                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                {patient.created_at && (new Date().getTime() - new Date(patient.created_at).getTime()) < 7 * 24 * 60 * 60 * 1000 && (
-                  <span style={{ fontSize: 12 }} title="Nouveau patient">🔵</span>
-                )}
-                <span style={{ fontSize: 18 }}>{isCritical ? "🚨" : getStatusEmoji(patient.emotional_status)}</span>
-              </div>
-              </div>
-              {patient.emotional_insight && (
-                <p style={{ margin: "0 0 10px", fontSize: 12, color: statusColor, lineHeight: 1.5, fontStyle: "italic", filter: discretMode ? "blur(4px)" : "none" }}>
-                  "{patient.emotional_insight}"
-                </p>
-              )}
-              {isCritical && (
-                <div style={{ background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: coral }}>⚡ Intervention immédiate</span>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    )}
-
-    <style>{`
-      @keyframes criticalPulse {
-        0%, 100% { box-shadow: 0 0 32px rgba(244,63,94,0.25); }
-        50% { box-shadow: 0 0 48px rgba(244,63,94,0.5); }
-      }
-    `}</style>
-  </div>
-)}
-
-        {/* ═══ VUE INSIGHTS ═══ */}
-        {activeTab === "analyse" && (
+        {activeTab === "vue_ensemble" && (
           <div>
-            <div style={{ marginBottom: 24 }}>
-              <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Analyses comportementales</h2>
-              <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>L'IA détecte ce que l'œil humain ne voit pas</p>
-            </div>
-            <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Analyser le patient</p>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {patients.map((p) => (
-                  <button key={p.id} onClick={() => setSelectedPatientId(p.id)}
-                    style={{ height: 36, borderRadius: 20, padding: "0 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: selectedPatientId === p.id ? "1px solid rgba(16,185,129,0.3)" : "1px solid transparent", background: selectedPatientId === p.id ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)", color: selectedPatientId === p.id ? emerald : "#64748b", transition: "all 0.2s", filter: discretMode ? "blur(4px)" : "none" }}>
-                    {p.firstName} {p.lastName}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {selectedPatient && !onboardingDemoMode && (
-              <div style={{ marginBottom: 20 }}>
-                <button onClick={() => void generatePatternInsight()} disabled={patternLoading}
-                  style={{ height: 44, borderRadius: 20, padding: "0 24px", fontSize: 14, fontWeight: 600, cursor: patternLoading ? "not-allowed" : "pointer", border: "none", background: patternLoading ? "rgba(255,255,255,0.05)" : emerald, color: patternLoading ? "#64748b" : "black", transition: "all 0.2s" }}>
-                  {patternLoading ? "Analyse en cours... 🧬" : `Analyser ${selectedPatient.firstName} →`}
-                </button>
-              </div>
-            )}
-            {patternInsight && (
-              <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "24px" }}>
-                <p style={{ margin: "0 0 16px", fontSize: 13, fontWeight: 700, color: emerald, letterSpacing: "0.08em", textTransform: "uppercase" }}>🧬 Insights — {selectedPatient?.firstName}</p>
-                {(() => {
-  try {
-    const insights = JSON.parse(patternInsight) as { observation: string; correlation: string; hypothese: string; action: string }[];
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {insights.map((insight, i) => (
-          <div key={i} style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 20 }}>
-            <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: emerald, letterSpacing: "0.1em", textTransform: "uppercase" }}>Insight {i + 1}</p>
-            {[
-              { label: "📊 Observation", value: insight.observation, color: "#e2e8f0" },
-              { label: "🔗 Corrélation", value: insight.correlation, color: "#94a3b8" },
-              { label: "💡 Hypothèse", value: insight.hypothese, color: "#c084fc" },
-              { label: "✅ Action suggérée", value: insight.action, color: emerald },
-            ].map(({ label, value, color }) => (
-              <div key={label} style={{ marginBottom: 10 }}>
-                <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 700, color: "#64748b" }}>{label}</p>
-                <p style={{ margin: 0, fontSize: 13, color, lineHeight: 1.6 }}>{value}</p>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-    );
-              } catch {
-                return patternInsight.split("\n").filter(Boolean).map((line, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: emerald, flexShrink: 0, marginTop: 7 }} />
-                    <p style={{ margin: 0, fontSize: 14, color: "#e2e8f0", lineHeight: 1.7 }}>{line.replace(/^[-•*]\s*/, "")}</p>
+            {displayedPatients.some(p => p.emotional_status === "red_critical") && (
+              <div style={{ background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.4)", borderRadius: 16, padding: "16px 20px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12, animation: "criticalPulse 2s ease-in-out infinite" }}>
+                <span style={{ fontSize: 20, flexShrink: 0 }}>🚨</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: coral }}>Alerte critique — Intervention immédiate requise</p>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {displayedPatients.filter(p => p.emotional_status === "red_critical").map(p => (
+                      <button key={p.id} onClick={() => { setSelectedPatientId(p.id); setActiveTab("patients"); }}
+                        style={{ background: "rgba(244,63,94,0.15)", border: "1px solid rgba(244,63,94,0.4)", borderRadius: 20, padding: "3px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: coral, filter: discretMode ? "blur(4px)" : "none" }}>
+                        {p.firstName} {p.lastName}
+                      </button>
+                    ))}
                   </div>
-                ));
+                </div>
+              </div>
+            )}
+
+            <div style={{ marginBottom: 28 }}>
+              <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Vue d'ensemble</h2>
+              <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Suivi en cours · Statut IA mis à jour à chaque message</p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
+                <div style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 16, padding: 20 }}>
+                  <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Delta de stress moyen</p>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginBottom: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: "0 0 4px", fontSize: 10, color: "#64748b" }}>Avant</p>
+                      <div style={{ height: 6, background: "rgba(244,63,94,0.15)", borderRadius: 3, marginBottom: 4 }}>
+                        <div style={{ height: "100%", width: `${((monthlyStats?.delta_stress_avant ?? 0) / 10) * 100}%`, background: coral, borderRadius: 3 }} />
+                      </div>
+                      <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: coral }}>{monthlyStats?.delta_stress_avant ?? "—"}</p>
+                    </div>
+                    <div style={{ fontSize: 18, color: "#64748b", paddingBottom: 4 }}>→</div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: "0 0 4px", fontSize: 10, color: "#64748b" }}>Après</p>
+                      <div style={{ height: 6, background: "rgba(16,185,129,0.15)", borderRadius: 3, marginBottom: 4 }}>
+                        <div style={{ height: "100%", width: `${((monthlyStats?.delta_stress_apres ?? 0) / 10) * 100}%`, background: emerald, borderRadius: 3 }} />
+                      </div>
+                      <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: emerald }}>{monthlyStats?.delta_stress_apres ?? "—"}</p>
+                    </div>
+                  </div>
+                  <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 12 }}>📉</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: emerald }}>
+                      {monthlyStats?.delta_stress_avant && monthlyStats?.delta_stress_apres
+                        ? `-${Math.round((1 - monthlyStats.delta_stress_apres / monthlyStats.delta_stress_avant) * 100)}% de stress moyen`
+                        : "Pas encore de données"}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: 20 }}>
+                  <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Crises apaisées</p>
+                  <p style={{ margin: "0 0 4px", fontSize: 48, fontWeight: 900, color: "#818cf8", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+                    {patients.reduce((sum, p) => sum + (p.totalMessages > 0 ? 1 : 0), 0) || 0}
+                  </p>
+                  <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>En toute autonomie</p>
+                  <div style={{ background: "rgba(99,102,241,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 12 }}>🛡️</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#818cf8" }}>Sans votre intervention</span>
+                  </div>
+                </div>
+
+                <div style={{ background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 16, padding: 20 }}>
+                  <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Interventions hors-cabinet</p>
+                  <p style={{ margin: "0 0 4px", fontSize: 48, fontWeight: 900, color: amber, lineHeight: 1 }}>
+                    {monthlyStats?.messages_geres ?? 0}
+                  </p>
+                  <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>messages gérés</p>
+                  <div style={{ background: "rgba(245,158,11,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 12 }}>⏱️</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: amber }}>{monthlyStats?.temps_economise_heures ?? 0}h libérées</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 24 }} />
+            </div>
+
+            {displayedPatients.length === 0 ? (
+              <p style={{ textAlign: "center", color: "#64748b", marginTop: 60 }}>Aucun patient</p>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+                {[...displayedPatients].sort((a, b) => {
+                  const order = { red_critical: 0, red: 1, orange: 2, green: 3 };
+                  return (order[a.emotional_status as keyof typeof order] ?? 3) - (order[b.emotional_status as keyof typeof order] ?? 3);
+                }).map((patient) => {
+                  const isCritical = patient.emotional_status === "red_critical";
+                  const isRed = patient.emotional_status === "red" || isCritical;
+                  const statusColor = isCritical ? coral : getStatusColor(patient.emotional_status);
+                  return (
+                    <div key={patient.id} style={{ borderRadius: 16, padding: "20px", background: isCritical ? "rgba(244,63,94,0.08)" : isRed ? "rgba(244,63,94,0.05)" : "rgba(255,255,255,0.02)", border: `1px solid ${isCritical ? "rgba(244,63,94,0.5)" : isRed ? "rgba(244,63,94,0.25)" : "rgba(255,255,255,0.06)"}`, boxShadow: isCritical ? "0 0 32px rgba(244,63,94,0.25)" : isRed ? "0 0 24px rgba(244,63,94,0.12)" : "none", transition: "all 0.3s", animation: isCritical ? "criticalPulse 2s ease-in-out infinite" : "none" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
+                        <button onClick={() => { setSelectedPatientId(patient.id); setActiveTab("patients"); }} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                          <div style={{ width: 40, height: 40, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "white" }}>{patient.initials}</div>
+                          <div style={{ textAlign: "left" }}>
+                            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: isCritical ? coral : "white", filter: discretMode ? "blur(4px)" : "none" }}>{patient.firstName} {patient.lastName}</p>
+                            <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{patient.totalMessages} messages</p>
+                          </div>
+                        </button>
+                        <span style={{ fontSize: 18 }}>{isCritical ? "🚨" : getStatusEmoji(patient.emotional_status)}</span>
+                      </div>
+                      {patient.emotional_insight && (
+                        <p style={{ margin: "0 0 10px", fontSize: 12, color: statusColor, lineHeight: 1.5, fontStyle: "italic", filter: discretMode ? "blur(4px)" : "none" }}>
+                          "{patient.emotional_insight}"
+                        </p>
+                      )}
+                      {isCritical && (
+                        <div style={{ background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: coral }}>⚡ Intervention immédiate</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <style>{`
+              @keyframes criticalPulse {
+                0%, 100% { box-shadow: 0 0 32px rgba(244,63,94,0.25); }
+                50% { box-shadow: 0 0 48px rgba(244,63,94,0.5); }
               }
-            })()}
-              </div>
-            )}
-            {!patternInsight && !patternLoading && (
-              <div style={{ textAlign: "center", padding: "60px 20px" }}>
-                <p style={{ fontSize: 32, marginBottom: 12 }}>🔬</p>
-                <p style={{ fontSize: 15, fontWeight: 600, color: "white", marginBottom: 6 }}>Détection de patterns comportementaux</p>
-                <p style={{ fontSize: 13, color: "#64748b", maxWidth: 400, margin: "0 auto" }}>Sélectionnez un patient et lancez l'analyse. L'IA croisera journal de bord et conversations pour révéler des corrélations invisibles.</p>
-              </div>
-            )}
+            `}</style>
           </div>
         )}
       </main>
 
-      {/* ═══ MODALES (identiques à l'original) ═══ */}
+      {/* ═══ MODALES ═══ */}
 
       {showPinModal && (
         <div onClick={e => { if (e.target === e.currentTarget) setShowPinModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
@@ -1487,8 +1339,8 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
               style={{ width: "100%", height: 52, borderRadius: 12, border: `1px solid ${pinError ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: "0 16px", fontSize: 20, outline: "none", boxSizing: "border-box", textAlign: "center", letterSpacing: "0.3em", fontFamily: "monospace", marginBottom: 8 }} />
             {pinError && <p style={{ margin: "0 0 12px", fontSize: 13, color: "#f87171" }}>{pinError}</p>}
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-              <button onClick={() => setShowPinModal(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
-              <button onClick={verifyPin} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", color: amber, fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(245,158,11,0.2)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(245,158,11,0.12)"; }}>Déverrouiller</button>
+              <button onClick={() => setShowPinModal(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
+              <button onClick={verifyPin} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", color: amber, fontSize: 14, fontWeight: 600, cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(245,158,11,0.2)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(245,158,11,0.12)"; }}>Déverrouiller</button>
             </div>
           </div>
         </div>
@@ -1503,8 +1355,8 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
             <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Se déconnecter ?</h2>
             <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b" }}>Vous devrez vous reconnecter pour accéder à votre dashboard.</p>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setShowLogoutModal(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
-              <button onClick={async () => { const s = createSupabaseBrowserClient(); await s.auth.signOut(); window.location.href = "/login"; }} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.35)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; }}>Se déconnecter</button>
+              <button onClick={() => setShowLogoutModal(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
+              <button onClick={async () => { const s = createSupabaseBrowserClient(); await s.auth.signOut(); window.location.href = "/login"; }} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.35)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; }}>Se déconnecter</button>
             </div>
           </div>
         </div>
@@ -1522,8 +1374,8 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
               style={{ width: "100%", height: 48, borderRadius: 12, border: `1px solid ${deletePinError ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: "0 16px", fontSize: 18, outline: "none", boxSizing: "border-box", textAlign: "center", letterSpacing: "0.3em", fontFamily: "Inter, sans-serif", marginBottom: 8 }} />
             {deletePinError && <p style={{ margin: "0 0 8px", fontSize: 13, color: "#f87171" }}>{deletePinError}</p>}
             <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-              <button onClick={() => { setShowDeletePinModal(false); setDeletePinInput(""); setDeletePinError(""); }} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
-              <button onClick={async () => { if (deletePinInput === savedPin) { await supabase.from("practitioners").update({ discrete_pin: null }).eq("user_id", practitionerId!); setSavedPin(""); setShowDeletePinModal(false); setDeletePinInput(""); setDeletePinError(""); } else { setDeletePinError("Code incorrect"); setDeletePinInput(""); } }} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.35)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; }}>Supprimer</button>
+              <button onClick={() => { setShowDeletePinModal(false); setDeletePinInput(""); setDeletePinError(""); }} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
+              <button onClick={async () => { if (deletePinInput === savedPin) { await supabase.from("practitioners").update({ discrete_pin: null }).eq("user_id", practitionerId!); setSavedPin(""); setShowDeletePinModal(false); setDeletePinInput(""); setDeletePinError(""); } else { setDeletePinError("Code incorrect"); setDeletePinInput(""); } }} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.35)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; }}>Supprimer</button>
             </div>
           </div>
         </div>
@@ -1547,8 +1399,8 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
               <>
                 <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Un lien de réinitialisation sera envoyé à <strong style={{ color: "white" }}>{practitionerEmail}</strong></p>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={() => setShowPasswordModal(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
-                  <button onClick={async () => { const s = createSupabaseBrowserClient(); await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/reset-password` }); setPasswordResetSent(true); }} style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>Envoyer le lien →</button>
+                  <button onClick={() => setShowPasswordModal(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
+                  <button onClick={async () => { const s = createSupabaseBrowserClient(); await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/reset-password` }); setPasswordResetSent(true); }} style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>Envoyer le lien →</button>
                 </div>
               </>
             )}
@@ -1642,7 +1494,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
             </div>
             <textarea value={murmureText} onChange={(e) => setMurmureText(e.target.value)} placeholder="Ex: Sois plus doux cette semaine, elle traverse une période difficile au travail." rows={5}
               style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.6 }} />
-              <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 16 }}>
               <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#64748b" }}>DURÉE DU MURMURE</p>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {[
@@ -1670,212 +1522,195 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
         </div>
       )}
 
-{showJumeauModal && (
-  <div onClick={(e) => { e.stopPropagation(); }}
-  style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-    <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 560, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
-      
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div>
-          <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>Votre expertise</p>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>Mon Jumeau</h2>
-        </div>
-        <button onClick={() => setShowJumeauModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
-      </div>
-
-      {/* Score de fidélité */}
-      {(() => {
-        const count = documents.length;
-        const score = count === 0 ? 70 : count === 1 ? 85 : 100;
-        const color = count === 0 ? "#f59e0b" : count === 1 ? "#06b6d4" : "#10b981";
-        const msg = count === 0
-          ? "⚠️ Jumeau initialisé — Votre jumeau connaît votre personnalité mais il lui manque encore votre expertise. Partagez votre vision et votre signature pour lui donner votre pleine précision."
-          : count === 1
-          ? "🔹 Jumeau Personnalisé — Une première brique de votre expertise a été intégrée. Ajoutez un second document pour que votre double soit parfaitement opérationnel et certifié."
-          : "✅ Jumeau certifié — Précision maximale atteinte. Votre jumeau possède désormais votre expertise.";
-        return (
-          <div style={{ background: `${color}10`, borderRadius: 16, border: `2px solid ${color}40`, padding: "16px", marginBottom: 20, transition: "all 0.5s" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>Score de fidélité du jumeau</span>
-              <span style={{ fontSize: 16, fontWeight: 800, color }}>{score}%</span>
+      {showJumeauModal && (
+        <div onClick={(e) => { e.stopPropagation(); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 560, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div>
+                <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>Votre expertise</p>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>Mon Jumeau</h2>
+              </div>
+              <button onClick={() => setShowJumeauModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
             </div>
-            <div style={{ height: 10, background: "rgba(255,255,255,0.08)", borderRadius: 5 }}>
-              <div style={{ height: "100%", borderRadius: 5, backgroundColor: color, width: `${score}%`, transition: "width 0.7s" }} />
-            </div>
-            <p style={{ margin: "10px 0 0", fontSize: 13, color, fontWeight: 500 }}>{msg}</p>
-          </div>
-        );
-      })()}
 
-      {/* Documents indexés */}
-      <div style={{ marginBottom: 20 }}>
-        <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>Documents indexés ({documents.length})</p>
-        {loadingDocs ? (
-          <p style={{ fontSize: 13, color: "#64748b" }}>Chargement...</p>
-        ) : documents.length === 0 ? (
-          <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", padding: "20px", textAlign: "center" }}>
-            <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Aucun document indexé</p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {documents.map((doc) => (
-              <div key={doc.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                  <span style={{ fontSize: 18, flexShrink: 0 }}>{fileTypeIcon(doc.file_type)}</span>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: 13, color: "white", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {doc.file_name.startsWith("dashboard_note_") ? "Note personnalisée" : doc.file_name.startsWith("memo_vocal_") ? "Mémo vocal" : doc.file_name.startsWith("slot1_vision_") ? "Note de vision" : doc.file_name.startsWith("slot2_signature_") ? "Note de signature" : doc.file_name.startsWith("memo_") ? "Mémo vocal" : doc.file_name}
-                    </p>
-                    <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{new Date(doc.created_at).toLocaleDateString("fr-FR")}</p>
+            {(() => {
+              const count = documents.length;
+              const score = count === 0 ? 70 : count === 1 ? 85 : 100;
+              const color = count === 0 ? "#f59e0b" : count === 1 ? "#06b6d4" : "#10b981";
+              const msg = count === 0
+                ? "⚠️ Jumeau initialisé — Votre jumeau connaît votre personnalité mais il lui manque encore votre expertise. Partagez votre vision et votre signature pour lui donner votre pleine précision."
+                : count === 1
+                ? "🔹 Jumeau Personnalisé — Une première brique de votre expertise a été intégrée. Ajoutez un second document pour que votre double soit parfaitement opérationnel et certifié."
+                : "✅ Jumeau certifié — Précision maximale atteinte. Votre jumeau possède désormais votre expertise.";
+              return (
+                <div style={{ background: `${color}10`, borderRadius: 16, border: `2px solid ${color}40`, padding: "16px", marginBottom: 20, transition: "all 0.5s" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>Score de fidélité du jumeau</span>
+                    <span style={{ fontSize: 16, fontWeight: 800, color }}>{score}%</span>
                   </div>
+                  <div style={{ height: 10, background: "rgba(255,255,255,0.08)", borderRadius: 5 }}>
+                    <div style={{ height: "100%", borderRadius: 5, backgroundColor: color, width: `${score}%`, transition: "width 0.7s" }} />
+                  </div>
+                  <p style={{ margin: "10px 0 0", fontSize: 13, color, fontWeight: 500 }}>{msg}</p>
                 </div>
-                <button onClick={() => void deleteDocument(doc.id, doc.file_name)}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", flexShrink: 0, marginLeft: 8, padding: "4px 8px", borderRadius: 6, transition: "color 0.2s" }}
-                  onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-                  onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                  </svg>
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              );
+            })()}
 
-      {/* Encadrés upload */}
-      <div style={{ marginBottom: 16 }}>
-        <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>Ajouter des documents</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-          {[
-            { type: "protocole" as const, icon: "📋", label: "Protocoles & méthodes", desc: "Articles, plans alimentaires", note: "✓ Indexé tel quel", noteColor: emerald },
-            { type: "patient" as const, icon: "🗂️", label: "Données patients", desc: "Bilans, comptes-rendus", note: "✓ Anonymisé avant indexation", noteColor: "#60a5fa" }
-          ].map(({ type, icon, label, desc, note, noteColor }) => (
-            <label key={type} style={{ borderRadius: 12, border: `2px dashed ${documentType === type ? (type === "patient" ? "#60a5fa" : emerald) : "rgba(255,255,255,0.15)"}`, background: documentType === type ? (type === "patient" ? "rgba(96,165,250,0.08)" : "rgba(16,185,129,0.08)") : "rgba(255,255,255,0.02)", padding: "14px", textAlign: "left", cursor: "pointer", transition: "all 0.2s", display: "block" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = type === "patient" ? "rgba(96,165,250,0.6)" : "rgba(16,185,129,0.6)"; e.currentTarget.style.background = type === "patient" ? "rgba(96,165,250,0.05)" : "rgba(16,185,129,0.05)"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = documentType === type ? (type === "patient" ? "#60a5fa" : emerald) : "rgba(255,255,255,0.15)"; e.currentTarget.style.background = documentType === type ? (type === "patient" ? "rgba(96,165,250,0.08)" : "rgba(16,185,129,0.08)") : "rgba(255,255,255,0.02)"; }}>
-              <input type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a"
-                onChange={e => { setDocumentType(type); handleFileChange(e); }}
-                style={{ display: "none" }} />
-              <p style={{ margin: "0 0 6px", fontSize: 22 }}>{icon}</p>
-              <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "white" }}>{label}</p>
-              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>{desc}</p>
-              <p style={{ margin: "0 0 8px", fontSize: 12, color: noteColor, fontWeight: 600 }}>{note}</p>
-              <div style={{ borderRadius: 8, border: "1px dashed rgba(255,255,255,0.12)", padding: "6px 10px", textAlign: "center" }}>
-                <span style={{ fontSize: 11, color: "#64748b" }}>Cliquez pour sélectionner · PDF, DOCX, TXT, MP3...</span>
-              </div>
-            </label>
-          ))}
-        </div>
-
-        {/* Fichiers en attente */}
-        {uploadedFiles.length > 0 && (
-          <div style={{ marginBottom: 8 }}>
-            {uploadedFiles.map((f, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", marginBottom: 6 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                  </svg>
-                  <span style={{ fontSize: 13, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>Documents indexés ({documents.length})</p>
+              {loadingDocs ? (
+                <p style={{ fontSize: 13, color: "#64748b" }}>Chargement...</p>
+              ) : documents.length === 0 ? (
+                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", padding: "20px", textAlign: "center" }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Aucun document indexé</p>
                 </div>
-                <button onClick={() => setUploadedFiles(prev => prev.filter((_, j) => j !== i))}
-                  style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4, flexShrink: 0 }}
-                  onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-                  onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                  </svg>
-                </button>
-              </div>
-            ))}
-            <button onClick={async () => {
-              await uploadFiles();
-              if (practitionerId) await loadDocuments(practitionerId);
-            }} disabled={uploading || !documentType}
-              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 12px", borderRadius: 12, background: uploading || !documentType ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: `1px solid ${uploading || !documentType ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.18)"}`, color: uploading || !documentType ? "#64748b" : emerald, fontSize: 14, fontWeight: 600, cursor: uploading || !documentType ? "not-allowed" : "pointer", transition: "all 0.2s" }}
-              onMouseEnter={e => { if (!uploading && documentType) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
-              onMouseLeave={e => { e.currentTarget.style.background = uploading || !documentType ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
-              {uploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation en cours...</> : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""} →`}
-            </button>
-            {uploading && <p style={{ fontSize: 12, color: "#f59e0b", textAlign: "center", marginTop: 6 }}>Patientez, l'indexation peut prendre quelques instants.</p>}
-          </div>
-        )}
-      </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {documents.map((doc) => (
+                    <div key={doc.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                        <span style={{ fontSize: 18, flexShrink: 0 }}>{fileTypeIcon(doc.file_type)}</span>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ margin: 0, fontSize: 13, color: "white", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {doc.file_name.startsWith("dashboard_note_") ? "Note personnalisée" : doc.file_name.startsWith("memo_vocal_") ? "Mémo vocal" : doc.file_name.startsWith("slot1_vision_") ? "Note de vision" : doc.file_name.startsWith("slot2_signature_") ? "Note de signature" : doc.file_name.startsWith("memo_") ? "Mémo vocal" : doc.file_name}
+                          </p>
+                          <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{new Date(doc.created_at).toLocaleDateString("fr-FR")}</p>
+                        </div>
+                      </div>
+                      <button onClick={() => void deleteDocument(doc.id, doc.file_name)}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", flexShrink: 0, marginLeft: 8, padding: "4px 8px", borderRadius: 6, transition: "color 0.2s" }}
+                        onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                        onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-      {/* Textarea + micro */}
-      <div style={{ marginBottom: 12 }}>
-        <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "white" }}>Ajouter une instruction</p>
-        <div style={{ position: "relative" }}>
-          <textarea value={jumeauText} onChange={e => setJumeauText(e.target.value)}
-            placeholder="Ajoutez une nuance, une nouvelle méthode ou une instruction à votre jumeau..."
-            rows={4}
-            style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px 48px 14px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", transition: "border-color 0.2s" }}
-            onFocus={e => e.target.style.borderColor = emerald}
-            onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-          <div style={{ position: "absolute", bottom: 12, right: 12, display: "flex", alignItems: "center", gap: 6 }}>
-            {isRecording && <span style={{ fontSize: 11, color: "#f87171" }}>{formatTime(recordingTime)}</span>}
-            {!audioBlob && (
-              <button onClick={isRecording ? stopRecording : startRecording} title="Mémo vocal"
-                style={{ width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: isRecording ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.3)", background: isRecording ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.15)", transition: "all 0.2s" }}>
-                {isRecording ? <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", animation: "breathe 1s ease-in-out infinite" }} /> : <span style={{ fontSize: 13 }}>🎙️</span>}
-              </button>
-            )}
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>Ajouter des documents</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
+                {[
+                  { type: "protocole" as const, icon: "📋", label: "Protocoles & méthodes", desc: "Articles, plans alimentaires", note: "✓ Indexé tel quel", noteColor: emerald },
+                  { type: "patient" as const, icon: "🗂️", label: "Données patients", desc: "Bilans, comptes-rendus", note: "✓ Anonymisé avant indexation", noteColor: "#60a5fa" }
+                ].map(({ type, icon, label, desc, note, noteColor }) => (
+                  <label key={type} style={{ borderRadius: 12, border: `2px dashed ${documentType === type ? (type === "patient" ? "#60a5fa" : emerald) : "rgba(255,255,255,0.15)"}`, background: documentType === type ? (type === "patient" ? "rgba(96,165,250,0.08)" : "rgba(16,185,129,0.08)") : "rgba(255,255,255,0.02)", padding: "14px", textAlign: "left", cursor: "pointer", transition: "all 0.2s", display: "block" }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = type === "patient" ? "rgba(96,165,250,0.6)" : "rgba(16,185,129,0.6)"; e.currentTarget.style.background = type === "patient" ? "rgba(96,165,250,0.05)" : "rgba(16,185,129,0.05)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = documentType === type ? (type === "patient" ? "#60a5fa" : emerald) : "rgba(255,255,255,0.15)"; e.currentTarget.style.background = documentType === type ? (type === "patient" ? "rgba(96,165,250,0.08)" : "rgba(16,185,129,0.08)") : "rgba(255,255,255,0.02)"; }}>
+                    <input type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a" onChange={e => { setDocumentType(type); handleFileChange(e); }} style={{ display: "none" }} />
+                    <p style={{ margin: "0 0 6px", fontSize: 22 }}>{icon}</p>
+                    <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "white" }}>{label}</p>
+                    <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>{desc}</p>
+                    <p style={{ margin: "0 0 8px", fontSize: 12, color: noteColor, fontWeight: 600 }}>{note}</p>
+                    <div style={{ borderRadius: 8, border: "1px dashed rgba(255,255,255,0.12)", padding: "6px 10px", textAlign: "center" }}>
+                      <span style={{ fontSize: 11, color: "#64748b" }}>Cliquez pour sélectionner · PDF, DOCX, TXT, MP3...</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              {uploadedFiles.length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  {uploadedFiles.map((f, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.08)", marginBottom: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        <span style={{ fontSize: 13, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                      </div>
+                      <button onClick={() => setUploadedFiles(prev => prev.filter((_, j) => j !== i))}
+                        style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4, flexShrink: 0 }}
+                        onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                        onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                  <button onClick={async () => { await uploadFiles(); if (practitionerId) await loadDocuments(practitionerId); }} disabled={uploading || !documentType}
+                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 12px", borderRadius: 12, background: uploading || !documentType ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: `1px solid ${uploading || !documentType ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.18)"}`, color: uploading || !documentType ? "#64748b" : emerald, fontSize: 14, fontWeight: 600, cursor: uploading || !documentType ? "not-allowed" : "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => { if (!uploading && documentType) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+                    onMouseLeave={e => { e.currentTarget.style.background = uploading || !documentType ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                    {uploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation en cours...</> : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""} →`}
+                  </button>
+                  {uploading && <p style={{ fontSize: 12, color: "#f59e0b", textAlign: "center", marginTop: 6 }}>Patientez, l'indexation peut prendre quelques instants.</p>}
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "white" }}>Ajouter une instruction</p>
+              <div style={{ position: "relative" }}>
+                <textarea value={jumeauText} onChange={e => setJumeauText(e.target.value)}
+                  placeholder="Ajoutez une nuance, une nouvelle méthode ou une instruction à votre jumeau..."
+                  rows={4}
+                  style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px 48px 14px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", transition: "border-color 0.2s" }}
+                  onFocus={e => e.target.style.borderColor = emerald}
+                  onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                <div style={{ position: "absolute", bottom: 12, right: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                  {isRecording && <span style={{ fontSize: 11, color: "#f87171" }}>{formatTime(recordingTime)}</span>}
+                  {!audioBlob && (
+                    <button onClick={isRecording ? stopRecording : startRecording} title="Mémo vocal"
+                      style={{ width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: isRecording ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.3)", background: isRecording ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.15)", transition: "all 0.2s" }}>
+                      {isRecording ? <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", animation: "breathe 1s ease-in-out infinite" }} /> : <span style={{ fontSize: 13 }}>🎙️</span>}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {audioBlob && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)" }}>
+                  <span style={{ fontSize: 13, color: emerald, flex: 1 }}>✅ Mémo enregistré ({formatTime(recordingTime)})</span>
+                  <button onClick={async () => { uploadAudioMemo(); if (practitionerId) { await new Promise(r => setTimeout(r, 2000)); await loadDocuments(practitionerId); } }}
+                    style={{ borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)", color: emerald, cursor: "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                    Indexer ce mémo →
+                  </button>
+                  <button onClick={() => setAudioBlob(null)}
+                    style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4 }}
+                    onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                    onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                    </svg>
+                  </button>
+                </div>
+              )}
+
+              {jumeauText.trim() && !audioBlob && (
+                <button onClick={async () => {
+                  setJumeauTextUploading(true);
+                  const blob = new Blob([jumeauText], { type: "text/plain" });
+                  const file = new File([blob], `note_praticien_${Date.now()}.txt`, { type: "text/plain" });
+                  const formData = new FormData();
+                  formData.append("file", file);
+                  formData.append("practitionerId", practitionerId ?? "");
+                  formData.append("documentType", "protocole");
+                  try {
+                    const res = await fetch("/api/upload-document", { method: "POST", body: formData });
+                    const data = await res.json() as { success?: boolean };
+                    if (res.ok && data.success) { setJumeauText(""); if (practitionerId) await loadDocuments(practitionerId); }
+                  } catch { /* silencieux */ }
+                  setJumeauTextUploading(false);
+                }} disabled={jumeauTextUploading}
+                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 12px", borderRadius: 12, background: jumeauTextUploading ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: `1px solid ${jumeauTextUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.18)"}`, color: jumeauTextUploading ? "#64748b" : emerald, fontSize: 13, fontWeight: 600, cursor: jumeauTextUploading ? "not-allowed" : "pointer", transition: "all 0.2s", marginTop: 8 }}
+                  onMouseEnter={e => { if (!jumeauTextUploading) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+                  onMouseLeave={e => { e.currentTarget.style.background = jumeauTextUploading ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                  {jumeauTextUploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation en cours...</> : "Indexer cette note →"}
+                </button>
+              )}
+              {jumeauTextUploading && <p style={{ fontSize: 12, color: "#f59e0b", textAlign: "center", marginTop: 6 }}>Patientez, l'indexation peut prendre quelques instants.</p>}
+            </div>
           </div>
         </div>
-
-        {audioBlob && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)" }}>
-            <span style={{ fontSize: 13, color: emerald, flex: 1 }}>✅ Mémo enregistré ({formatTime(recordingTime)})</span>
-            <button onClick={async () => { uploadAudioMemo(); if (practitionerId) { await new Promise(r => setTimeout(r, 2000)); await loadDocuments(practitionerId); } }}
-              style={{ borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)", color: emerald, cursor: "pointer", transition: "all 0.2s" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
-              Indexer ce mémo →
-            </button>
-            <button onClick={() => setAudioBlob(null)}
-              style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4 }}
-              onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-              onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {jumeauText.trim() && !audioBlob && (
-          <button onClick={async () => {
-            setJumeauTextUploading(true);
-            const blob = new Blob([jumeauText], { type: "text/plain" });
-            const file = new File([blob], `note_praticien_${Date.now()}.txt`, { type: "text/plain" });
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("practitionerId", practitionerId ?? "");
-            formData.append("documentType", "protocole");
-            try {
-              const res = await fetch("/api/upload-document", { method: "POST", body: formData });
-              const data = await res.json() as { success?: boolean };
-              if (res.ok && data.success) {
-                setJumeauText("");
-                if (practitionerId) await loadDocuments(practitionerId);
-              }
-            } catch { /* silencieux */ }
-            setJumeauTextUploading(false);
-          }} disabled={jumeauTextUploading}
-            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 12px", borderRadius: 12, background: jumeauTextUploading ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: `1px solid ${jumeauTextUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.18)"}`, color: jumeauTextUploading ? "#64748b" : emerald, fontSize: 13, fontWeight: 600, cursor: jumeauTextUploading ? "not-allowed" : "pointer", transition: "all 0.2s", marginTop: 8 }}
-            onMouseEnter={e => { if (!jumeauTextUploading) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
-            onMouseLeave={e => { e.currentTarget.style.background = jumeauTextUploading ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
-            {jumeauTextUploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation en cours...</> : "Indexer cette note →"}
-          </button>
-        )}
-        {jumeauTextUploading && <p style={{ fontSize: 12, color: "#f59e0b", textAlign: "center", marginTop: 6 }}>Patientez, l'indexation peut prendre quelques instants.</p>}
-      </div>
-
-    </div>
-  </div>
-)}
+      )}
 
       {showProfileModal && (
         <div onClick={(e) => { if (e.target === e.currentTarget) setShowProfileModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
@@ -1885,7 +1720,14 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
               <button onClick={() => setShowProfileModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {[{ label: "Prénom", value: editFirstName, onChange: setEditFirstName, placeholder: "Ex: Sophie", type: "text" }, { label: "Nom", value: editLastName, onChange: setEditLastName, placeholder: "Ex: Martin", type: "text" }, { label: "Âge", value: editAge, onChange: setEditAge, placeholder: "Ex: 34", type: "number" },{ label: "Objectif principal", value: editObjective, onChange: setEditObjective, placeholder: "Ex: Perte de poids", type: "text" }, { label: "Pathologies", value: editPathologies, onChange: setEditPathologies, placeholder: "Ex: Diabète type 2", type: "text" }, { label: "Allergies", value: editAllergies, onChange: setEditAllergies, placeholder: "Ex: Gluten, lactose", type: "text" }].map(({ label, value, onChange, placeholder, type }) => (
+              {[
+                { label: "Prénom", value: editFirstName, onChange: setEditFirstName, placeholder: "Ex: Sophie", type: "text" },
+                { label: "Nom", value: editLastName, onChange: setEditLastName, placeholder: "Ex: Martin", type: "text" },
+                { label: "Âge", value: editAge, onChange: setEditAge, placeholder: "Ex: 34", type: "number" },
+                { label: "Objectif principal", value: editObjective, onChange: setEditObjective, placeholder: "Ex: Perte de poids", type: "text" },
+                { label: "Pathologies", value: editPathologies, onChange: setEditPathologies, placeholder: "Ex: Diabète type 2", type: "text" },
+                { label: "Allergies", value: editAllergies, onChange: setEditAllergies, placeholder: "Ex: Gluten, lactose", type: "text" },
+              ].map(({ label, value, onChange, placeholder, type }) => (
                 <div key={label}>
                   <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
                   <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
@@ -1956,10 +1798,7 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
             {reportError && (
               <div style={{ background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", borderRadius: 12, padding: "12px 16px", marginBottom: 12, fontSize: 13, color: "#f87171", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span>{reportError}</span>
-                <button onClick={() => void generateReport()}
-                  style={{ background: "rgba(244,63,94,0.12)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 8, padding: "6px 14px", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                  Réessayer →
-                </button>
+                <button onClick={() => void generateReport()} style={{ background: "rgba(244,63,94,0.12)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 8, padding: "6px 14px", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Réessayer →</button>
               </div>
             )}
             {!reportContent && (
@@ -1982,280 +1821,248 @@ admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[]
         </div>
       )}
 
-{showInviteModal && (
-  <div onClick={(e) => { e.stopPropagation(); }}
-  style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-    <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 500, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", position: "relative" }}>
-      
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <div>
-          <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-          {inviteSuccess ? "" : `Étape ${inviteStep} sur 3`}
-          </p>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>
-          {inviteSuccess ? "" : inviteStep === 1 ? "Nouveau patient" : inviteStep === 2 ? "Contexte médical" : "Murmure"}
-          </h2>
-        </div>
-        <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteStep(1); }} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
-      </div>
-
-      {/* Barre de progression */}
-      {!inviteSuccess && (
-        <div style={{ display: "flex", gap: 6, marginBottom: 28 }}>
-          {[1, 2, 3].map(i => (
-            <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= inviteStep ? emerald : "rgba(255,255,255,0.08)", transition: "background 0.3s" }} />
-          ))}
-        </div>
-      )}
-
-      {inviteSuccess ? (
-        <div style={{ textAlign: "center", padding: "20px 0" }}>
-        <p style={{ margin: "0 0 20px", fontSize: 22, fontWeight: 800, color: "white", textAlign: "center" }}>Terminé</p>
-        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg, #6ee7b7, #10b981)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", boxShadow: "0 8px 30px rgba(16,185,129,0.4)" }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-            <path d="M5 13l4 4L19 7" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
-        <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 500, color: "#6ee7b7", letterSpacing: "0.05em" }}>Invitation envoyée</p>
-        <p style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 800, color: "white" }}>C'est parti !</p>
-        <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b" }}>{inviteFirstName ? `${inviteFirstName} va recevoir son invitation.` : `${inviteEmail} va recevoir son invitation.`}</p>
-        <button onClick={() => { setShowInviteModal(false); resetInviteForm(); }}
-          style={{ height: 44, borderRadius: 10, padding: "0 20px", background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-          Fermer
-        </button>
-      </div>
-      ) : inviteStep === 1 ? (
-        <>
-          <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Les informations de base pour créer l'espace de votre patient.</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-              <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Email *</p>
-              <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="patient@email.fr"
-                style={{ width: "100%", height: 46, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 10 }}
-                onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
-                <div>
-                  <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Prénom</p>
-                  <input type="text" value={inviteFirstName} onChange={e => setInviteFirstName(e.target.value)} placeholder="Sophie"
-                    style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
-                    onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-                </div>
-                <div>
-                  <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Nom</p>
-                  <input type="text" value={inviteLastName} onChange={e => setInviteLastName(e.target.value)} placeholder="Martin"
-                    style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
-                    onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-                </div>
-              </div>
-              </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
-              {[
-                { label: "Âge", value: inviteAge, setter: setInviteAge, placeholder: "34", min: 0, max: 110 },
-                { label: "Taille (cm)", value: inviteTaille, setter: setInviteTaille, placeholder: "168", min: 0, max: 250 },
-                { label: "Poids (kg)", value: invitePoids, setter: setInvitePoids, placeholder: "72", min: 0, max: 500 },
-              ].map(({ label, value, setter, placeholder, min, max }) => (
-                <div key={label}>
-                  <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
-                  <input
-                    type="number"
-                    value={value}
-                    onChange={e => {
-                      const val = parseInt(e.target.value);
-                      if (e.target.value === "" || (val >= min && val <= max)) setter(e.target.value);
-                    }}
-                    placeholder={placeholder}
-                    min={min}
-                    max={max}
-                    style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", MozAppearance: "textfield" } as React.CSSProperties}
-                    onFocus={e => e.target.style.borderColor = emerald}
-                    onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
-                  />
-                </div>
-              ))}
+      {showInviteModal && (
+        <div onClick={(e) => { e.stopPropagation(); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 500, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", position: "relative" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
               <div>
-                <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
-                <select value={inviteSexe} onChange={e => setInviteSexe(e.target.value)}
-                  style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: inviteSexe ? "white" : "#64748b", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
-                  <option value="">Choisir</option>
-                  <option value="Femme">Femme</option><option value="Homme">Homme</option><option value="Autre">Autre</option>
-                </select>
+                <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                  {inviteSuccess ? "" : `Étape ${inviteStep} sur 3`}
+                </p>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>
+                  {inviteSuccess ? "" : inviteStep === 1 ? "Nouveau patient" : inviteStep === 2 ? "Contexte médical" : "Murmure"}
+                </h2>
               </div>
+              <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteStep(1); }} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
             </div>
-          </div>
 
-          {inviteError && <p style={{ margin: "16px 0 0", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
-          <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
-            <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteStep(1); }}
-              style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
-              Annuler
-            </button>
-            <button onClick={() => { if (!inviteEmail.trim()) { setInviteError("L'email est requis."); return; } if (!inviteFirstName.trim()) { setInviteError("Le prénom est requis."); return; } setInviteError(""); setInviteStep(2); }}
-              style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
-              Suivant →
-            </button>
-          </div>
-        </>
-      ) : inviteStep === 2 ? (
-        <>
-          <p style={{ margin: "0 0 4px", fontSize: 13, color: "#94a3b8" }}>Pour que le jumeau ne donne jamais un conseil inadapté.</p>
-<p style={{ margin: "0 0 20px", fontSize: 12, color: "#4b5563" }}>Vous pourrez compléter depuis la fiche patient.</p>
-
-<div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-  {[
-    { label: "Pathologies", value: invitePathologies, setter: setInvitePathologies, id: "path", options: ["Diabète type 2", "Hypertension", "Hypothyroïdie", "SOPK", "Cholestérol", "TCA", "Surpoids"] },
-    { label: "Allergies", value: inviteAllergies, setter: setInviteAllergies, id: "allerg", options: ["Gluten", "Lactose", "Fruits à coque", "Œufs", "Fruits de mer"] },
-    { label: "Traitements", value: inviteTraitements, setter: setInviteTraitements, id: "trait", options: ["Metformine", "Lévothyrox", "Pilule contraceptive", "Antidépresseurs", "Insuline"] },
-    { label: "Objectif", value: inviteObjectifClinique, setter: setInviteObjectifClinique, id: "obj", options: ["Perte de poids", "Prise de masse", "Équilibre glycémique", "Bien-être général", "Grossesse"] },
-    { label: "Activité", value: inviteNiveauActivite, setter: setInviteNiveauActivite, id: "activ", options: ["Sédentaire", "Légère", "Modérée", "Intense", "Athlète"] },
-    { label: "Régime", value: inviteRegime, setter: setInviteRegime, id: "regime", options: ["Végétarien", "Vegan", "Sans gluten", "Halal", "Méditerranéen"] },
-  ].map(({ label, value, setter, id, options }) => {
-    const isAutre = value !== "" && !options.includes(value) && value !== "Aucune" && value !== "Aucun";
-    return (
-      <div key={id}>
-        <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>{label}</p>
-        <select
-          value={isAutre ? "Autre" : value}
-          onChange={e => {
-            if (e.target.value === "Autre") setter("__autre__");
-            else setter(e.target.value);
-          }}
-          style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}
-        >
-          <option value="">Choisir</option>
-          <option value="Aucune">{["Pathologies", "Allergies", "Activité"].includes(label) ? "Aucune" : "Aucun"}</option>
-          {options.map(o => <option key={o} value={o}>{o}</option>)}
-          <option value="Autre">Autre...</option>
-        </select>
-        {(value === "__autre__" || isAutre) && (
-          <input
-            type="text"
-            value={value === "__autre__" ? "" : value}
-            onChange={e => setter(e.target.value)}
-            placeholder={`Précisez...`}
-            autoFocus
-            style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", marginTop: 6 }}
-            onFocus={e => e.target.style.borderColor = emerald}
-            onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.3)"}
-          />
-        )}
-      </div>
-    );
-  })}
-</div>
-
-<div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-<button onClick={() => setInviteStep(1)}
-    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
-    ← Retour
-  </button>
-  <button onClick={() => setInviteStep(3)}
-    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
-    Suivant →
-  </button>
-</div>
-        </> 
-      ) : (
-        <>
-          <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 14, border: "1px solid rgba(16,185,129,0.15)", padding: "14px 16px", marginBottom: 20 }}>
-          <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.6 }}>🌿 C'est ici que vous glissez vos consignes spécifiques pour ce patient. Points de vigilance, blessures à éviter, passions pour le motiver... Le Jumeau s'adaptera instantanément à ces nuances.</p>
-          </div>
-          <textarea value={inviteBriefJumeau} onChange={e => setInviteBriefJumeau(e.target.value)}
-            placeholder="Ex: Sophie est anxieuse autour de la balance — évite ce sujet. Elle se culpabilise facilement, reste bienveillant avant d'être technique. Elle adore cuisiner, utilise ça pour l'engager."
-            rows={5}
-            style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 12 }}
-            onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.2)"} />
-          <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-            {[
-              { label: "Toujours actif", value: "permanent" },
-              { label: "24h", value: "24h" },
-              { label: "3 jours", value: "3j" },
-              { label: "1 semaine", value: "1s" },
-              { label: "1 mois", value: "1m" },
-            ].map(({ label, value }) => (
-              <button key={value} type="button"
-                onClick={() => setInviteMurmureDuration(value)}
-                style={{ height: 30, borderRadius: 20, padding: "0 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: inviteMurmureDuration === value ? `1px solid ${emerald}` : "1px solid rgba(255,255,255,0.08)", background: inviteMurmureDuration === value ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", color: inviteMurmureDuration === value ? emerald : "#64748b", transition: "all 0.2s" }}>
-                {label}
-              </button>
-            ))}
-          </div>
-                    <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Notes internes
- <span style={{ fontWeight: 400, color: "#4b5563" }}>— visibles uniquement par vous</span></p>
-          <textarea value={inviteNotes} onChange={e => setInviteNotes(e.target.value)}
-            placeholder="Contexte de la prise en charge, source de la recommandation..."
-            rows={2}
-            style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "10px 12px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif" }}
-            onFocus={e => e.target.style.borderColor = "rgba(255,255,255,0.2)"}
-            onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
-
-          {inviteError && <p style={{ margin: "0 0 12px", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
-          <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-            <button onClick={() => setInviteStep(2)}
-              style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
-              ← Retour
-            </button>
-            <button onClick={() => void sendInvite()} disabled={inviting}
-              style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: inviting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: inviting ? 0.7 : 1 }}>
-              {inviting ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Envoi...</span> : "Envoyer l'invitation →"}
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  </div>
-)}
-
-{showBilanModal && (
-  <div onClick={e => { if (e.target === e.currentTarget) setShowBilanModal(false); }}
-    style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-    <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 520, border: "1px solid rgba(99,102,241,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "85vh", overflowY: "auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>✨ Préparer ma séance</h2>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>3 questions clés pour {selectedPatient?.firstName}</p>
-        </div>
-        <button onClick={() => setShowBilanModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
-      </div>
-
-      {bilanLoading ? (
-        <div style={{ textAlign: "center", padding: "40px 0" }}>
-          <p style={{ fontSize: 13, color: "#64748b" }}>Analyse des échanges en cours... 🧬</p>
-        </div>
-      ) : bilanContent ? (
-        (() => {
-          try {
-            const questions = JSON.parse(bilanContent.replace(/```json|```/g, "").trim()) as { question: string; contexte: string }[];
-            return (
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {questions.map((q, i) => (
-                  <div key={i} style={{ background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: 20 }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#818cf8", textTransform: "uppercase", letterSpacing: "0.1em" }}>Question {i + 1}</p>
-                    <p style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 600, color: "white", lineHeight: 1.5 }}>"{q.question}"</p>
-                    <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>💡 {q.contexte}</p>
-                  </div>
+            {!inviteSuccess && (
+              <div style={{ display: "flex", gap: 6, marginBottom: 28 }}>
+                {[1, 2, 3].map(i => (
+                  <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= inviteStep ? emerald : "rgba(255,255,255,0.08)", transition: "background 0.3s" }} />
                 ))}
-                <button onClick={() => void navigator.clipboard.writeText(questions.map((q, i) => `${i + 1}. ${q.question}`).join("\n"))}
-                  style={{ height: 44, borderRadius: 12, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", color: "#818cf8", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                  📋 Copier les questions
+              </div>
+            )}
+
+            {inviteSuccess ? (
+              <div style={{ textAlign: "center", padding: "20px 0" }}>
+                <p style={{ margin: "0 0 20px", fontSize: 22, fontWeight: 800, color: "white", textAlign: "center" }}>Terminé</p>
+                <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg, #6ee7b7, #10b981)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", boxShadow: "0 8px 30px rgba(16,185,129,0.4)" }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 13l4 4L19 7" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 500, color: "#6ee7b7", letterSpacing: "0.05em" }}>Invitation envoyée</p>
+                <p style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 800, color: "white" }}>C'est parti !</p>
+                <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b" }}>{inviteFirstName ? `${inviteFirstName} va recevoir son invitation.` : `${inviteEmail} va recevoir son invitation.`}</p>
+                <button onClick={() => { setShowInviteModal(false); resetInviteForm(); }}
+                  style={{ height: 44, borderRadius: 10, padding: "0 20px", background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  Fermer
                 </button>
               </div>
-            );
-          } catch {
-            return <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7 }}>{bilanContent}</p>;
-          }
-        })()
-      ) : (
-        <p style={{ fontSize: 13, color: "#64748b", textAlign: "center", padding: "40px 0" }}>Impossible de générer le bilan.</p>
+            ) : inviteStep === 1 ? (
+              <>
+                <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Les informations de base pour créer l'espace de votre patient.</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Email *</p>
+                    <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="patient@email.fr"
+                      style={{ width: "100%", height: 46, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 10 }}
+                      onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                      <div>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Prénom</p>
+                        <input type="text" value={inviteFirstName} onChange={e => setInviteFirstName(e.target.value)} placeholder="Sophie"
+                          style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                          onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                      </div>
+                      <div>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Nom</p>
+                        <input type="text" value={inviteLastName} onChange={e => setInviteLastName(e.target.value)} placeholder="Martin"
+                          style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                          onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+                    {[
+                      { label: "Âge", value: inviteAge, setter: setInviteAge, placeholder: "34", min: 0, max: 110 },
+                      { label: "Taille (cm)", value: inviteTaille, setter: setInviteTaille, placeholder: "168", min: 0, max: 250 },
+                      { label: "Poids (kg)", value: invitePoids, setter: setInvitePoids, placeholder: "72", min: 0, max: 500 },
+                    ].map(({ label, value, setter, placeholder, min, max }) => (
+                      <div key={label}>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
+                        <input type="number" value={value}
+                          onChange={e => { const val = parseInt(e.target.value); if (e.target.value === "" || (val >= min && val <= max)) setter(e.target.value); }}
+                          placeholder={placeholder} min={min} max={max}
+                          style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", MozAppearance: "textfield" } as React.CSSProperties}
+                          onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                      </div>
+                    ))}
+                    <div>
+                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
+                      <select value={inviteSexe} onChange={e => setInviteSexe(e.target.value)}
+                        style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: inviteSexe ? "white" : "#64748b", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
+                        <option value="">Choisir</option>
+                        <option value="Femme">Femme</option>
+                        <option value="Homme">Homme</option>
+                        <option value="Autre">Autre</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                {inviteError && <p style={{ margin: "16px 0 0", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
+                <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
+                  <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteStep(1); }}
+                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
+                    Annuler
+                  </button>
+                  <button onClick={() => { if (!inviteEmail.trim()) { setInviteError("L'email est requis."); return; } if (!inviteFirstName.trim()) { setInviteError("Le prénom est requis."); return; } setInviteError(""); setInviteStep(2); }}
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+                    Suivant →
+                  </button>
+                </div>
+              </>
+            ) : inviteStep === 2 ? (
+              <>
+                <p style={{ margin: "0 0 4px", fontSize: 13, color: "#94a3b8" }}>Pour que le jumeau ne donne jamais un conseil inadapté.</p>
+                <p style={{ margin: "0 0 20px", fontSize: 12, color: "#4b5563" }}>Vous pourrez compléter depuis la fiche patient.</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                  {[
+                    { label: "Pathologies", value: invitePathologies, setter: setInvitePathologies, id: "path", options: ["Diabète type 2", "Hypertension", "Hypothyroïdie", "SOPK", "Cholestérol", "TCA", "Surpoids"] },
+                    { label: "Allergies", value: inviteAllergies, setter: setInviteAllergies, id: "allerg", options: ["Gluten", "Lactose", "Fruits à coque", "Œufs", "Fruits de mer"] },
+                    { label: "Traitements", value: inviteTraitements, setter: setInviteTraitements, id: "trait", options: ["Metformine", "Lévothyrox", "Pilule contraceptive", "Antidépresseurs", "Insuline"] },
+                    { label: "Objectif", value: inviteObjectifClinique, setter: setInviteObjectifClinique, id: "obj", options: ["Perte de poids", "Prise de masse", "Équilibre glycémique", "Bien-être général", "Grossesse"] },
+                    { label: "Activité", value: inviteNiveauActivite, setter: setInviteNiveauActivite, id: "activ", options: ["Sédentaire", "Légère", "Modérée", "Intense", "Athlète"] },
+                    { label: "Régime", value: inviteRegime, setter: setInviteRegime, id: "regime", options: ["Végétarien", "Vegan", "Sans gluten", "Halal", "Méditerranéen"] },
+                  ].map(({ label, value, setter, id, options }) => {
+                    const isAutre = value !== "" && !options.includes(value) && value !== "Aucune" && value !== "Aucun";
+                    return (
+                      <div key={id}>
+                        <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>{label}</p>
+                        <select value={isAutre ? "Autre" : value} onChange={e => { if (e.target.value === "Autre") setter("__autre__"); else setter(e.target.value); }}
+                          style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}>
+                          <option value="">Choisir</option>
+                          <option value="Aucune">{["Pathologies", "Allergies", "Activité"].includes(label) ? "Aucune" : "Aucun"}</option>
+                          {options.map(o => <option key={o} value={o}>{o}</option>)}
+                          <option value="Autre">Autre...</option>
+                        </select>
+                        {(value === "__autre__" || isAutre) && (
+                          <input type="text" value={value === "__autre__" ? "" : value} onChange={e => setter(e.target.value)} placeholder="Précisez..." autoFocus
+                            style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", marginTop: 6 }}
+                            onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.3)"} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+                  <button onClick={() => setInviteStep(1)}
+                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
+                    ← Retour
+                  </button>
+                  <button onClick={() => setInviteStep(3)}
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+                    Suivant →
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 14, border: "1px solid rgba(16,185,129,0.15)", padding: "14px 16px", marginBottom: 20 }}>
+                  <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.6 }}>🌿 C'est ici que vous glissez vos consignes spécifiques pour ce patient. Points de vigilance, blessures à éviter, passions pour le motiver... Le Jumeau s'adaptera instantanément à ces nuances.</p>
+                </div>
+                <textarea value={inviteBriefJumeau} onChange={e => setInviteBriefJumeau(e.target.value)}
+                  placeholder="Ex: Sophie est anxieuse autour de la balance — évite ce sujet. Elle se culpabilise facilement, reste bienveillant avant d'être technique. Elle adore cuisiner, utilise ça pour l'engager."
+                  rows={5}
+                  style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 12 }}
+                  onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.2)"} />
+                <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+                  {[
+                    { label: "Toujours actif", value: "permanent" },
+                    { label: "24h", value: "24h" },
+                    { label: "3 jours", value: "3j" },
+                    { label: "1 semaine", value: "1s" },
+                    { label: "1 mois", value: "1m" },
+                  ].map(({ label, value }) => (
+                    <button key={value} type="button" onClick={() => setInviteMurmureDuration(value)}
+                      style={{ height: 30, borderRadius: 20, padding: "0 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: inviteMurmureDuration === value ? `1px solid ${emerald}` : "1px solid rgba(255,255,255,0.08)", background: inviteMurmureDuration === value ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", color: inviteMurmureDuration === value ? emerald : "#64748b", transition: "all 0.2s" }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Notes internes <span style={{ fontWeight: 400, color: "#4b5563" }}>— visibles uniquement par vous</span></p>
+                <textarea value={inviteNotes} onChange={e => setInviteNotes(e.target.value)}
+                  placeholder="Contexte de la prise en charge, source de la recommandation..."
+                  rows={2}
+                  style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "10px 12px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif" }}
+                  onFocus={e => e.target.style.borderColor = "rgba(255,255,255,0.2)"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
+                {inviteError && <p style={{ margin: "0 0 12px", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
+                <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                  <button onClick={() => setInviteStep(2)}
+                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
+                    ← Retour
+                  </button>
+                  <button onClick={() => void sendInvite()} disabled={inviting}
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: inviting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: inviting ? 0.7 : 1 }}>
+                    {inviting ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Envoi...</span> : "Envoyer l'invitation →"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
-    </div>
-  </div>
-)}
+
+      {showBilanModal && (
+        <div onClick={e => { if (e.target === e.currentTarget) setShowBilanModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 520, border: "1px solid rgba(99,102,241,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "85vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>✨ Préparer ma séance</h2>
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>3 questions clés pour {selectedPatient?.firstName}</p>
+              </div>
+              <button onClick={() => setShowBilanModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
+            </div>
+            {bilanLoading ? (
+              <div style={{ textAlign: "center", padding: "40px 0" }}>
+                <p style={{ fontSize: 13, color: "#64748b" }}>Analyse des échanges en cours... 🧬</p>
+              </div>
+            ) : bilanContent ? (
+              (() => {
+                try {
+                  const questions = JSON.parse(bilanContent.replace(/```json|```/g, "").trim()) as { question: string; contexte: string }[];
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      {questions.map((q, i) => (
+                        <div key={i} style={{ background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: 20 }}>
+                          <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#818cf8", textTransform: "uppercase", letterSpacing: "0.1em" }}>Question {i + 1}</p>
+                          <p style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 600, color: "white", lineHeight: 1.5 }}>"{q.question}"</p>
+                          <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>💡 {q.contexte}</p>
+                        </div>
+                      ))}
+                      <button onClick={() => void navigator.clipboard.writeText(questions.map((q, i) => `${i + 1}. ${q.question}`).join("\n"))}
+                        style={{ height: 44, borderRadius: 12, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", color: "#818cf8", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                        📋 Copier les questions
+                      </button>
+                    </div>
+                  );
+                } catch {
+                  return <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7 }}>{bilanContent}</p>;
+                }
+              })()
+            ) : (
+              <p style={{ fontSize: 13, color: "#64748b", textAlign: "center", padding: "40px 0" }}>Impossible de générer le bilan.</p>
+            )}
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
         @keyframes onboardingPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes criticalPulse { 0%, 100% { box-shadow: 0 0 32px rgba(244,63,94,0.25); } 50% { box-shadow: 0 0 48px rgba(244,63,94,0.5); } }
       `}</style>
     </div>
   );
