@@ -1244,7 +1244,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                   {/* Notes privées */}
                   {!onboardingDemoMode && (
                     <div style={{ marginBottom: 10 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "white" }}>Notes privées</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "94a3b8" }}>Notes privées</span>
                     <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", padding: "10px 12px", marginTop: 6 }}>
                         {(() => {
                           const p = selectedPatient as RealPatient;
@@ -1598,7 +1598,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 480, border: "1px solid rgba(16,185,129,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "emerald" }}>Murmure du praticien</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Murmure du praticien</h2>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>Consigne prioritaire pour {selectedPatient?.firstName} · Choisissez la durée appropriée</p>
               </div>
               <button onClick={() => setShowMurmureModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>×</button>
@@ -2210,7 +2210,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                   style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 12 }}
                   onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.2)"} />
                 <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-                  {[
+                {[
                     { label: "Toujours actif", value: "permanent" },
                     { label: "24h", value: "24h" },
                     { label: "3 jours", value: "3j" },
@@ -2218,14 +2218,16 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                     { label: "1 mois", value: "1m" },
                   ].map(({ label, value }) => (
                     <button key={value} type="button" onClick={() => setInviteMurmureDuration(value)}
-                      style={{ height: 30, borderRadius: 20, padding: "0 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: inviteMurmureDuration === value ? `1px solid ${emerald}` : "1px solid rgba(255,255,255,0.08)", background: inviteMurmureDuration === value ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", color: inviteMurmureDuration === value ? emerald : "#64748b", transition: "all 0.2s" }}>
+                      style={{ height: 32, borderRadius: 8, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: inviteMurmureDuration === value ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.08)", background: inviteMurmureDuration === value ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.02)", color: inviteMurmureDuration === value ? emerald : "#64748b", transition: "all 0.2s" }}
+                      onMouseEnter={e => { if (inviteMurmureDuration !== value) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#94a3b8"; } }}
+                      onMouseLeave={e => { if (inviteMurmureDuration !== value) { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#64748b"; } }}>
                       {label}
                     </button>
                   ))}
                 </div>
                 <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Notes internes <span style={{ fontWeight: 400, color: "#4b5563" }}>— visibles uniquement par vous</span></p>
                 <textarea value={inviteNotes} onChange={e => setInviteNotes(e.target.value)}
-                  placeholder="Contexte de la prise en charge, source de la recommandation..."
+                  placeholder="Contexte de la prise en charge, objectifs du moment, points de vigilance, blocages..."
                   rows={2}
                   style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "10px 12px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif" }}
                   onFocus={e => e.target.style.borderColor = "rgba(255,255,255,0.2)"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
@@ -2253,7 +2255,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 440, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Nouvelle note</h2>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "94a3b8" }}>Nouvelle note</h2>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>Visible uniquement par vous</p>
               </div>
               <button onClick={() => setShowNoteModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>×</button>
