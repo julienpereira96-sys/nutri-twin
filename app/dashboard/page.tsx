@@ -516,6 +516,8 @@ export default function DashboardPage() {
   const saveMurmure = async () => {
     if (!selectedPatientId || !murmureText.trim()) return;
     setSavingMurmure(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    console.log("Session:", session?.user?.id, "Patient:", selectedPatientId);
     const expiresAt = murmureDuration === "permanent" ? null
       : murmureDuration === "24h" ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       : murmureDuration === "3j" ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
