@@ -516,12 +516,25 @@ export default function DashboardPage() {
   const saveMurmure = async () => {
     if (!selectedPatientId || !murmureText.trim()) return;
     setSavingMurmure(true);
-    const expiresAt = murmureDuration === "permanent" ? null
-      : murmureDuration === "24h" ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-      : murmureDuration === "3j" ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
-      : murmureDuration === "7j" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-      : murmureDuration === "14j" ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const getExpiresAt = () => {
+      if (murmureDuration === "permanent") return null;
+      if (murmureDuration === "24h") return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      if (murmureDuration === "3j") return new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+      if (murmureDuration === "7j") return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      if (murmureDuration === "30j") return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      if (murmureDuration.startsWith("custom_")) {
+        const parts = murmureDuration.split("_");
+        const amount = parseInt(parts[1]);
+        const unit = parts[2];
+        if (!amount || isNaN(amount)) return null;
+        const ms = unit === "semaines" ? amount * 7 * 24 * 60 * 60 * 1000
+          : unit === "mois" ? amount * 30 * 24 * 60 * 60 * 1000
+          : amount * 24 * 60 * 60 * 1000;
+        return new Date(Date.now() + ms).toISOString();
+      }
+      return null;
+    };
+    const expiresAt = getExpiresAt();
     const patient = patients.find(p => p.id === selectedPatientId);
     const currentMurmures = (patient?.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? [];
     const newMurmure = { id: crypto.randomUUID(), text: murmureText.trim(), expires_at: expiresAt, created_at: new Date().toISOString() };
@@ -1611,21 +1624,37 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
             <div style={{ marginBottom: 16 }}>
             <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Durée du murmure</p>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {[
+              {[
                   { value: "permanent", label: "Permanent" },
                   { value: "24h", label: "24h" },
                   { value: "3j", label: "3 jours" },
                   { value: "7j", label: "7 jours" },
-                  { value: "14j", label: "14 jours" },
                   { value: "30j", label: "30 jours" },
+                  { value: "custom", label: "Personnalisé" },
                 ].map(({ value, label }) => (
                   <button key={value} onClick={() => setMurmureDuration(value)}
-                    style={{ height: 32, borderRadius: 8, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: murmureDuration === value ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.08)", background: murmureDuration === value ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.02)", color: murmureDuration === value ? emerald : "#64748b", transition: "all 0.2s" }}
+                    style={{ height: 32, borderRadius: 8, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: murmureDuration === value || (value === "custom" && murmureDuration.startsWith("custom_")) ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.08)", background: murmureDuration === value || (value === "custom" && murmureDuration.startsWith("custom_")) ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.02)", color: murmureDuration === value || (value === "custom" && murmureDuration.startsWith("custom_")) ? emerald : "#64748b", transition: "all 0.2s" }}
                     onMouseEnter={e => { if (murmureDuration !== value) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#94a3b8"; } }}
                     onMouseLeave={e => { if (murmureDuration !== value) { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#64748b"; } }}>
                     {label}
                   </button>
                 ))}
+                {murmureDuration.startsWith("custom_") || murmureDuration === "custom" ? (
+                  <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center" }}>
+                    <input type="number" min={1} max={365} placeholder="Ex: 5"
+                      value={murmureDuration.startsWith("custom_") ? murmureDuration.split("_")[1] : ""}
+                      onChange={e => setMurmureDuration(`custom_${e.target.value}_${murmureDuration.startsWith("custom_") ? murmureDuration.split("_")[2] : "jours"}`)}
+                      style={{ width: 70, height: 32, borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none" }} />
+                    <select
+                      value={murmureDuration.startsWith("custom_") ? murmureDuration.split("_")[2] : "jours"}
+                      onChange={e => setMurmureDuration(`custom_${murmureDuration.startsWith("custom_") ? murmureDuration.split("_")[1] : ""}_${e.target.value}`)}
+                      style={{ height: 32, borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", cursor: "pointer" }}>
+                      <option value="jours">jours</option>
+                      <option value="semaines">semaines</option>
+                      <option value="mois">mois</option>
+                    </select>
+                  </div>
+                ) : null}
               </div>
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
@@ -2139,9 +2168,10 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                     if (!inviteFirstName.trim()) { setInviteError("Le prénom est requis."); return; }
                     setCheckingEmail(true); setInviteError("");
                     const res = await fetch("/api/check-patient-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId }) });
-                    const data = await res.json() as { exists: boolean };
+                    const data = await res.json() as { exists: boolean; canResend?: boolean };
                     setCheckingEmail(false);
-                    if (data.exists) { setInviteError("Ce patient est déjà associé à votre cabinet."); return; }
+                    if (data.exists && !data.canResend) { setInviteError("Ce patient est déjà associé à votre cabinet."); return; }
+                    if (data.exists && data.canResend) { setInviteError("Ce patient a déjà reçu une invitation mais n'a pas encore activé son compte. Continuer pour renvoyer le lien."); }
                     setInviteStep(2);
                   }} disabled={checkingEmail}
                     style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: checkingEmail ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s", opacity: checkingEmail ? 0.7 : 1 }}
@@ -2211,19 +2241,36 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                   onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.2)"} />
                 <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
                 {[
-                    { label: "Toujours actif", value: "permanent" },
+                    { label: "Permanent", value: "permanent" },
                     { label: "24h", value: "24h" },
                     { label: "3 jours", value: "3j" },
-                    { label: "1 semaine", value: "1s" },
-                    { label: "1 mois", value: "1m" },
+                    { label: "7 jours", value: "7j" },
+                    { label: "30 jours", value: "30j" },
+                    { label: "Personnalisé", value: "custom" },
                   ].map(({ label, value }) => (
                     <button key={value} type="button" onClick={() => setInviteMurmureDuration(value)}
-                      style={{ height: 32, borderRadius: 8, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: inviteMurmureDuration === value ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.08)", background: inviteMurmureDuration === value ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.02)", color: inviteMurmureDuration === value ? emerald : "#64748b", transition: "all 0.2s" }}
+                      style={{ height: 32, borderRadius: 8, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: inviteMurmureDuration === value || (value === "custom" && inviteMurmureDuration.startsWith("custom_")) ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.08)", background: inviteMurmureDuration === value || (value === "custom" && inviteMurmureDuration.startsWith("custom_")) ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.02)", color: inviteMurmureDuration === value || (value === "custom" && inviteMurmureDuration.startsWith("custom_")) ? emerald : "#64748b", transition: "all 0.2s" }}
                       onMouseEnter={e => { if (inviteMurmureDuration !== value) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#94a3b8"; } }}
                       onMouseLeave={e => { if (inviteMurmureDuration !== value) { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#64748b"; } }}>
                       {label}
                     </button>
                   ))}
+                  {inviteMurmureDuration.startsWith("custom_") || inviteMurmureDuration === "custom" ? (
+                    <div style={{ display: "flex", gap: 6, marginTop: 8, alignItems: "center" }}>
+                      <input type="number" min={1} max={365} placeholder="Ex: 5"
+                        value={inviteMurmureDuration.startsWith("custom_") ? inviteMurmureDuration.split("_")[1] : ""}
+                        onChange={e => setInviteMurmureDuration(`custom_${e.target.value}_${inviteMurmureDuration.startsWith("custom_") ? inviteMurmureDuration.split("_")[2] : "jours"}`)}
+                        style={{ width: 70, height: 32, borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none" }} />
+                      <select
+                        value={inviteMurmureDuration.startsWith("custom_") ? inviteMurmureDuration.split("_")[2] : "jours"}
+                        onChange={e => setInviteMurmureDuration(`custom_${inviteMurmureDuration.startsWith("custom_") ? inviteMurmureDuration.split("_")[1] : ""}_${e.target.value}`)}
+                        style={{ height: 32, borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", cursor: "pointer" }}>
+                        <option value="jours">jours</option>
+                        <option value="semaines">semaines</option>
+                        <option value="mois">mois</option>
+                      </select>
+                    </div>
+                  ) : null}
                 </div>
                 <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Notes internes <span style={{ fontWeight: 400, color: "#4b5563" }}>— visibles uniquement par vous</span></p>
                 <textarea value={inviteNotes} onChange={e => setInviteNotes(e.target.value)}
