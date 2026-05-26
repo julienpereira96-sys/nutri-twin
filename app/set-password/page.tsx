@@ -64,13 +64,17 @@ export default function SetPasswordPage() {
     setLoading(true); setError("");
 
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-    if (updateError) {
-      if (updateError.message.includes("Auth session missing")) {
-        setError("Lien invalide ou expiré. Contactez votre praticien pour recevoir une nouvelle invitation.");
-      } else {
-        setError("Une erreur est survenue. Veuillez réessayer.");
-      }
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) { setError("Session expirée. Contactez votre praticien."); setLoading(false); return; }
+    
+    const res = await fetch("/api/set-patient-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: currentUser.id, password }),
+    });
+    const resData = await res.json() as { error?: string };
+    if (!res.ok) {
+      setError("Une erreur est survenue. Veuillez réessayer.");
       setLoading(false);
       return;
     }
