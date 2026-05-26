@@ -87,8 +87,7 @@ export default function SetPasswordPage() {
     const cpData = await cpRes.json();
     console.log("create-patient response:", cpRes.status, cpData);
 
-    await supabase.auth.refreshSession();
-    router.push("/patient-onboarding");
+    window.location.href = "/patient-onboarding";
   };
 
   const isDisabled = loading || !password || !confirm || !acceptCGU || !acceptData;
