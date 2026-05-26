@@ -329,6 +329,7 @@ export default function DashboardPage() {
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
+  const [inviteError, setInviteError] = useState("");
   const [inviteAge, setInviteAge] = useState("");
   const [inviteSexe, setInviteSexe] = useState("");
   const [inviteTaille, setInviteTaille] = useState("");
@@ -2130,11 +2131,21 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                     onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
                     Annuler
                   </button>
-                  <button onClick={() => { if (!inviteEmail.trim()) { setInviteError("L'email est requis."); return; } if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) { setInviteError("Veuillez entrer un email valide."); return; } if (!inviteFirstName.trim()) { setInviteError("Le prénom est requis."); return; } setInviteError(""); setInviteStep(2); }}
-                    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
+                  <button onClick={async () => {
+                    if (!inviteEmail.trim()) { setInviteError("L'email est requis."); return; }
+                    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) { setInviteError("Veuillez entrer un email valide."); return; }
+                    if (!inviteFirstName.trim()) { setInviteError("Le prénom est requis."); return; }
+                    setCheckingEmail(true); setInviteError("");
+                    const res = await fetch("/api/check-patient-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId }) });
+                    const data = await res.json() as { exists: boolean };
+                    setCheckingEmail(false);
+                    if (data.exists) { setInviteError("Ce patient est déjà associé à votre cabinet."); return; }
+                    setInviteStep(2);
+                  }} disabled={checkingEmail}
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: checkingEmail ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s", opacity: checkingEmail ? 0.7 : 1 }}
+                    onMouseEnter={e => { if (!checkingEmail) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
                     onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                    Suivant →
+                    {checkingEmail ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Vérification...</span> : "Suivant →"}
                   </button>
                 </div>
               </>
