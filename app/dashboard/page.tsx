@@ -1343,7 +1343,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                         }}
                           style={{ background: "none", border: "none", cursor: resentInviteLoading ? "not-allowed" : "pointer", fontSize: 11, color: "#4b5563", textDecoration: "underline", padding: "4px 0", display: "flex", alignItems: "center", gap: 6, margin: "8px auto 0", transition: "color 0.2s", opacity: resentInviteLoading ? 0.7 : 1 }}
                           onMouseEnter={e => { if (!resentInviteLoading) e.currentTarget.style.color = "#94a3b8"; }}
-                          onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
+                          onMouseLeave={e => { if (!resentInviteLoading) e.currentTarget.style.color = "#94a3b8"; }}>
                           {resentInviteLoading && <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white" style={{ flexShrink: 0 }} />}
                           {resentInviteLoading ? "Envoi en cours..." : "Renvoyer le lien d'invitation"}
                         </button>
@@ -1521,7 +1521,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
             <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b" }}>Vous devrez vous reconnecter pour accéder à votre dashboard.</p>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setShowLogoutModal(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
-              <button onClick={async () => { const s = createSupabaseBrowserClient(); await s.auth.signOut(); window.location.href = "/login"; }} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.35)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; }}>Se déconnecter</button>
+              <button onClick={async (e) => { e.currentTarget.innerHTML = '<span class="flex items-center justify-center gap-2"><span class="h-4 w-4 animate-spin rounded-full border-2 border-red-500/20 border-t-red-400"></span>Déconnexion...</span>'; const s = createSupabaseBrowserClient(); await s.auth.signOut(); window.location.href = "/login"; }} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.35)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; }}>Se déconnecter</button>
             </div>
           </div>
         </div>
@@ -2139,7 +2139,9 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                 <p style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 800, color: "white" }}>C'est parti !</p>
                 <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b" }}>{inviteFirstName ? `${inviteFirstName} va recevoir son invitation.` : `${inviteEmail} va recevoir son invitation.`}</p>
                 <button onClick={() => { setShowInviteModal(false); resetInviteForm(); }}
-                  style={{ height: 44, borderRadius: 10, padding: "0 20px", background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                  style={{ height: 44, borderRadius: 10, padding: "0 20px", background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
                   Fermer
                 </button>
               </div>
