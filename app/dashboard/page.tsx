@@ -1292,6 +1292,27 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                     </div>
                   )}
 
+                                    {/* Renvoyer invitation */}
+                                    {!onboardingDemoMode && selectedPatient && !(selectedPatient as RealPatient).email?.includes("demo") && (
+                    (() => {
+                      const p = selectedPatient as RealPatient;
+                      // On vérifie via le nombre de messages — si 0 message et pas de lastActive, le patient n'a pas encore activé
+                      const notActivated = !p.lastActive && p.totalMessages === 0;
+                      if (!notActivated) return null;
+                      return (
+                        <button onClick={async () => {
+                          if (!p.email || !practitionerId) return;
+                          await fetch("/api/invite-patient", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: p.email, practitionerId }) });
+                        }}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#4b5563", textDecoration: "underline", padding: "4px 0", display: "block", margin: "8px auto 0", transition: "color 0.2s" }}
+                          onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+                          onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
+                          Renvoyer le lien d'invitation
+                        </button>
+                      );
+                    })()
+                  )}
+
                   {/* Analyses IA */}
                   <div>
                   <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#818cf8" }}>Analyses IA</p>
