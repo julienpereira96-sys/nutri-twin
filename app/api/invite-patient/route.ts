@@ -86,6 +86,21 @@ export async function POST(request: Request) {
    }, { status: 403 });
  }
 
+  // Vérifier si l'email est déjà un patient de ce praticien
+  const { data: allUsers } = await supabase.auth.admin.listUsers();
+  const existingUser = allUsers?.users?.find(u => u.email === email);
+  if (existingUser) {
+    const { data: existingRelation } = await supabase
+      .from("patient_practitioner")
+      .select("patient_id")
+      .eq("patient_id", existingUser.id)
+      .eq("practitioner_id", practitionerId)
+      .single();
+    if (existingRelation) {
+      return Response.json({ error: "Ce patient est déjà associé à votre cabinet." }, { status: 400 });
+    }
+  }
+
  const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
    redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/set-password`,
  });

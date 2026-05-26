@@ -328,7 +328,7 @@ export default function DashboardPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
-  const [inviteError, setInviteError] = useState("");
+  const [checkingEmail, setCheckingEmail] = useState(false);
   const [inviteAge, setInviteAge] = useState("");
   const [inviteSexe, setInviteSexe] = useState("");
   const [inviteTaille, setInviteTaille] = useState("");
