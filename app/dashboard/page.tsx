@@ -330,6 +330,7 @@ export default function DashboardPage() {
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
   const [resentInvite, setResentInvite] = useState(false);
+  const [resentInviteLoading, setResentInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteAge, setInviteAge] = useState("");
   const [inviteSexe, setInviteSexe] = useState("");
@@ -1333,15 +1334,18 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                       );
                       return (
                         <button onClick={async () => {
-                          if (!p.email || !practitionerId) return;
+                          if (!p.email || !practitionerId || resentInviteLoading) return;
+                          setResentInviteLoading(true);
                           await fetch("/api/invite-patient", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: p.email, practitionerId }) });
+                          setResentInviteLoading(false);
                           setResentInvite(true);
-                          setTimeout(() => setResentInvite(false), 10000);
+                          setTimeout(() => setResentInvite(false), 5000);
                         }}
-                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#4b5563", textDecoration: "underline", padding: "4px 0", display: "block", margin: "8px auto 0", transition: "color 0.2s" }}
-                          onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+                          style={{ background: "none", border: "none", cursor: resentInviteLoading ? "not-allowed" : "pointer", fontSize: 11, color: "#4b5563", textDecoration: "underline", padding: "4px 0", display: "flex", alignItems: "center", gap: 6, margin: "8px auto 0", transition: "color 0.2s", opacity: resentInviteLoading ? 0.7 : 1 }}
+                          onMouseEnter={e => { if (!resentInviteLoading) e.currentTarget.style.color = "#94a3b8"; }}
                           onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
-                          Renvoyer le lien d'invitation
+                          {resentInviteLoading && <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white" style={{ flexShrink: 0 }} />}
+                          {resentInviteLoading ? "Envoi en cours..." : "Renvoyer le lien d'invitation"}
                         </button>
                       );
                     })()
