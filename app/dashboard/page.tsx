@@ -359,10 +359,17 @@ export default function DashboardPage() {
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
   const [editAge, setEditAge] = useState("");
+  const [editTaille, setEditTaille] = useState("");
+  const [editPoids, setEditPoids] = useState("");
+  const [editSexe, setEditSexe] = useState("");
   const [murmureDuration, setMurmureDuration] = useState("permanent");
   const [editObjective, setEditObjective] = useState("");
   const [editPathologies, setEditPathologies] = useState("");
   const [editAllergies, setEditAllergies] = useState("");
+  const [editTraitements, setEditTraitements] = useState("");
+  const [editObjectifClinique, setEditObjectifClinique] = useState("");
+  const [editNiveauActivite, setEditNiveauActivite] = useState("");
+  const [editRegime, setEditRegime] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
@@ -642,11 +649,19 @@ export default function DashboardPage() {
     setEditFirstName(patient.firstName ?? "");
     setEditLastName(patient.lastName ?? "");
     setEditAge(patient.age ? String(patient.age) : "");
+    setEditTaille(patient.taille ? String(patient.taille) : "");
+    setEditPoids(patient.poids ? String(patient.poids) : "");
+    setEditSexe(patient.sexe ?? "");
     setEditObjective(patient.objective ?? "");
     setEditPathologies(patient.pathologies ?? "");
     setEditAllergies(patient.allergies ?? "");
+    setEditTraitements(patient.traitements ?? "");
+    setEditObjectifClinique(patient.objectif_clinique ?? "");
+    setEditNiveauActivite(patient.niveau_activite ?? "");
+    setEditRegime(patient.regime_specifique ?? "");
     setEditNotes(patient.notes ?? "");
-    setProfileSaved(false); setShowProfileModal(true);
+    setProfileSaved(false);
+    setShowProfileModal(true);
   };
 
   const saveProfile = async () => {
@@ -656,17 +671,43 @@ export default function DashboardPage() {
       first_name: editFirstName || null,
       last_name: editLastName || null,
       age: editAge ? parseInt(editAge) : null,
+      taille: editTaille ? parseInt(editTaille) : null,
+      poids: editPoids ? parseFloat(editPoids) : null,
+      sexe: editSexe || null,
       objective: editObjective || null,
       pathologies: editPathologies || null,
       allergies: editAllergies || null,
-      notes: editNotes || null
+      traitements: editTraitements || null,
+      objectif_clinique: editObjectifClinique || null,
+      niveau_activite: editNiveauActivite || null,
+      regime_specifique: editRegime || null,
+      notes: editNotes || null,
     }).eq("user_id", selectedPatientId);
     const patient = patients.find(p => p.id === selectedPatientId);
     const alerts = (patient?.admin_alerts ?? []).filter((a: { alert_type?: string }) => a.alert_type !== "identity_correction");
     await supabase.from("patients").update({ admin_alerts: alerts }).eq("user_id", selectedPatientId);
-    setPatients((prev) => prev.map((p) => { if (p.id !== selectedPatientId) return p; return { ...p, age: editAge ? parseInt(editAge) : undefined, objective: editObjective || undefined, pathologies: editPathologies || undefined, allergies: editAllergies || undefined, notes: editNotes || undefined }; }));
-    setSavingProfile(false); setProfileSaved(true);
-    setTimeout(() => setShowProfileModal(false), 1500);
+    setPatients((prev) => prev.map((p) => {
+      if (p.id !== selectedPatientId) return p;
+      return {
+        ...p,
+        firstName: editFirstName || p.firstName,
+        lastName: editLastName || p.lastName,
+        age: editAge ? parseInt(editAge) : p.age,
+        taille: editTaille ? parseInt(editTaille) : p.taille,
+        poids: editPoids ? parseFloat(editPoids) : p.poids,
+        sexe: editSexe || p.sexe,
+        objective: editObjective || p.objective,
+        pathologies: editPathologies || p.pathologies,
+        allergies: editAllergies || p.allergies,
+        traitements: editTraitements || p.traitements,
+        objectif_clinique: editObjectifClinique || p.objectif_clinique,
+        niveau_activite: editNiveauActivite || p.niveau_activite,
+        regime_specifique: editRegime || p.regime_specifique,
+        notes: editNotes || p.notes,
+      };
+    }));
+    setSavingProfile(false);
+    setShowProfileModal(false);
   };
 
   const saveSettings = async () => {
@@ -1042,7 +1083,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                         <p style={{ margin: 0, fontSize: 12, color: "#64748b", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{onboardingDemoMode ? "patient@email.fr" : (selectedPatient as RealPatient).email}</p>
                       </div>
                     </div>
-                    <button onClick={() => { if (!onboardingDemoMode) { setShowBilanModal(true); void generateBilan(); } }}
+                    <button onClick={() => { if (!onboardingDemoMode) { setBilanContent(""); setShowBilanModal(true); } }}
                       style={{ height: 38, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: "0 14px" }}>
                       ✨ Préparer ma séance
                     </button>
@@ -1156,8 +1197,8 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                   )}
 
                   {/* Murmures */}
-                  <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px", marginBottom: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                       <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Murmures</span>
                       <button onClick={() => !onboardingDemoMode && openMurmureModal()}
                         style={{ width: 22, height: 22, borderRadius: 6, fontSize: 14, fontWeight: 400, cursor: "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.08)", color: emerald, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
@@ -1166,6 +1207,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                         +
                       </button>
                     </div>
+                    <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px" }}>
                     {(() => {
                       const p = selectedPatient as RealPatient;
                       const murmures = onboardingDemoMode
@@ -1196,12 +1238,13 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                         );
                       });
                     })()}
+                    </div>
                   </div>
 
                   {/* Notes privées */}
                   {!onboardingDemoMode && (
-                    <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 12px", marginBottom: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Notes privées</span>
                         <button onClick={() => { setNewNoteText(""); setShowNoteModal(true); }}
                           style={{ width: 22, height: 22, borderRadius: 6, fontSize: 14, fontWeight: 400, cursor: "pointer", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.04)", color: "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
@@ -1210,33 +1253,36 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                           +
                         </button>
                       </div>
-                      {(() => {
-                        const p = selectedPatient as RealPatient;
-                        const notes = (p.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
-                        if (notes.length === 0) return <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Aucune note</p>;
-                        return notes.map(n => (
-                          <div key={n.id} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                            <p style={{ margin: "0 0 3px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>{n.text}</p>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                              <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{new Date(n.created_at).toLocaleDateString("fr-FR")}</p>
-                              <button onClick={() => void deleteNote(n.id)}
-                                style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2 }}
-                                onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-                                onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                                </svg>
-                              </button>
+                      <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 12px" }}>
+                        {(() => {
+                          const p = selectedPatient as RealPatient;
+                          const notes = (p.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
+                          if (notes.length === 0) return <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Aucune note</p>;
+                          return notes.map(n => (
+                            <div key={n.id} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                              <p style={{ margin: "0 0 3px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>{n.text}</p>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{new Date(n.created_at).toLocaleDateString("fr-FR")}</p>
+                                <button onClick={() => void deleteNote(n.id)}
+                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2 }}
+                                  onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                                  onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                                  </svg>
+                                </button>
+                              </div>
                             </div>
-                          </div>
-                        ));
-                      })()}
+                          ));
+                        })()}
+                      </div>
                     </div>
                   )}
 
                   {/* Analyses IA */}
-                  <div style={{ background: "rgba(99,102,241,0.04)", borderRadius: 10, border: "1px solid rgba(99,102,241,0.15)", padding: "10px 12px" }}>
-                  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Analyses IA</p>
+                  <div>
+                  <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Analyses IA</p>
+                  <div style={{ background: "rgba(16,185,129,0.04)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.15)", padding: "10px 12px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       <button onClick={() => { if (!onboardingDemoMode) { setShowBilanModal(true); void generateBilan(); } }}
                         style={{ height: 36, borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: amber, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
@@ -1250,7 +1296,8 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                         onMouseLeave={e => { e.currentTarget.style.background = "rgba(245,158,11,0.04)"; e.currentTarget.style.borderColor = "rgba(245,158,11,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}>
                         Rapport IA
                       </button>
-                    </div>
+                      </div>
+                  </div>
                   </div>
                 </>
               ) : (
@@ -1787,40 +1834,125 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
         </div>
       )}
 
-      {showProfileModal && (
-        <div onClick={(e) => { if (e.target === e.currentTarget) setShowProfileModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 460, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", maxHeight: "85vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>✏️ Profil — {selectedPatient?.firstName}</h2>
-              <button onClick={() => setShowProfileModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {[
-                { label: "Prénom", value: editFirstName, onChange: setEditFirstName, placeholder: "Ex: Sophie", type: "text" },
-                { label: "Nom", value: editLastName, onChange: setEditLastName, placeholder: "Ex: Martin", type: "text" },
-                { label: "Âge", value: editAge, onChange: setEditAge, placeholder: "Ex: 34", type: "number" },
-                { label: "Objectif principal", value: editObjective, onChange: setEditObjective, placeholder: "Ex: Perte de poids", type: "text" },
-                { label: "Pathologies", value: editPathologies, onChange: setEditPathologies, placeholder: "Ex: Diabète type 2", type: "text" },
-                { label: "Allergies", value: editAllergies, onChange: setEditAllergies, placeholder: "Ex: Gluten, lactose", type: "text" },
-              ].map(({ label, value, onChange, placeholder, type }) => (
-                <div key={label}>
-                  <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
-                  <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-                    style={{ width: "100%", height: 44, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
-                    onFocus={(e) => e.target.style.borderColor = emerald} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-                </div>
-              ))}
+{showProfileModal && (
+        <div onClick={(e) => { if (e.target === e.currentTarget) setShowProfileModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 760, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
               <div>
-                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "#94a3b8" }}>Notes internes</p>
-                <textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} placeholder="Notes visibles uniquement par vous..." rows={3}
-                  style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "12px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif" }}
-                  onFocus={(e) => e.target.style.borderColor = emerald} onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>Modifier le profil</p>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>{selectedPatient?.firstName} {selectedPatient?.lastName}</h2>
+              </div>
+              <button onClick={() => setShowProfileModal(false)} style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+              {/* Colonne gauche — Informations patient */}
+              <div>
+                <p style={{ margin: "0 0 16px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Informations patient</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Email</p>
+                    <input type="email" value={(selectedPatient as RealPatient)?.email ?? ""} disabled
+                      style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)", color: "#64748b", padding: "0 14px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "not-allowed" }} />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Prénom</p>
+                      <input type="text" value={editFirstName} onChange={e => setEditFirstName(e.target.value)} placeholder="Sophie"
+                        style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                        onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                    </div>
+                    <div>
+                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Nom</p>
+                      <input type="text" value={editLastName} onChange={e => setEditLastName(e.target.value)} placeholder="Martin"
+                        style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                        onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                    </div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+                    {[
+                      { label: "Âge", value: editAge, setter: setEditAge, placeholder: "34", min: 0, max: 110 },
+                      { label: "Taille (cm)", value: editTaille, setter: setEditTaille, placeholder: "168", min: 0, max: 250 },
+                      { label: "Poids (kg)", value: editPoids, setter: setEditPoids, placeholder: "72", min: 0, max: 500 },
+                    ].map(({ label, value, setter, placeholder, min, max }) => (
+                      <div key={label}>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
+                        <input type="number" value={value}
+                          onChange={e => { const val = parseInt(e.target.value); if (e.target.value === "" || (val >= min && val <= max)) setter(e.target.value); }}
+                          placeholder={placeholder} min={min} max={max}
+                          style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", MozAppearance: "textfield" } as React.CSSProperties}
+                          onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                      </div>
+                    ))}
+                    <div>
+                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
+                      <select value={editSexe} onChange={e => setEditSexe(e.target.value)}
+                        style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: editSexe ? "white" : "#64748b", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
+                        <option value="">Choisir</option>
+                        <option value="Femme">Femme</option>
+                        <option value="Homme">Homme</option>
+                        <option value="Autre">Autre</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Notes internes</p>
+                    <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Notes visibles uniquement par vous..." rows={4}
+                      style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "12px 14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif" }}
+                      onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Colonne droite — Contexte médical */}
+              <div>
+                <p style={{ margin: "0 0 16px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Contexte médical</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  {[
+                    { label: "Pathologies", value: editPathologies, setter: setEditPathologies, id: "path", options: ["Diabète type 2", "Hypertension", "Hypothyroïdie", "SOPK", "Cholestérol", "TCA", "Surpoids"] },
+                    { label: "Allergies", value: editAllergies, setter: setEditAllergies, id: "allerg", options: ["Gluten", "Lactose", "Fruits à coque", "Œufs", "Fruits de mer"] },
+                    { label: "Traitements", value: editTraitements, setter: setEditTraitements, id: "trait", options: ["Metformine", "Lévothyrox", "Pilule contraceptive", "Antidépresseurs", "Insuline"] },
+                    { label: "Objectif", value: editObjectifClinique, setter: setEditObjectifClinique, id: "obj", options: ["Perte de poids", "Prise de masse", "Équilibre glycémique", "Bien-être général", "Grossesse"] },
+                    { label: "Activité", value: editNiveauActivite, setter: setEditNiveauActivite, id: "activ", options: ["Sédentaire", "Légère", "Modérée", "Intense", "Athlète"] },
+                    { label: "Régime", value: editRegime, setter: setEditRegime, id: "regime", options: ["Végétarien", "Vegan", "Sans gluten", "Halal", "Méditerranéen"] },
+                  ].map(({ label, value, setter, id, options }) => {
+                    const isAutre = value !== "" && !options.includes(value) && value !== "Aucune" && value !== "Aucun";
+                    return (
+                      <div key={id}>
+                        <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>{label}</p>
+                        <select value={isAutre ? "Autre" : value} onChange={e => { if (e.target.value === "Autre") setter("__autre__"); else setter(e.target.value); }}
+                          style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}>
+                          <option value="">Choisir</option>
+                          <option value="Aucune">{["Pathologies", "Allergies", "Activité"].includes(label) ? "Aucune" : "Aucun"}</option>
+                          {options.map(o => <option key={o} value={o}>{o}</option>)}
+                          <option value="Autre">Autre...</option>
+                        </select>
+                        {(value === "__autre__" || isAutre) && (
+                          <input type="text" value={value === "__autre__" ? "" : value} onChange={e => setter(e.target.value)} placeholder="Précisez..." autoFocus
+                            style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", marginTop: 6 }}
+                            onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.3)"} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-            <button onClick={() => void saveProfile()} disabled={savingProfile}
-              style={{ width: "100%", height: 48, borderRadius: 12, background: profileSaved ? "rgba(16,185,129,0.2)" : emerald, border: profileSaved ? `1px solid ${emerald}` : "none", color: profileSaved ? emerald : "black", fontSize: 15, fontWeight: 600, cursor: "pointer", marginTop: 20 }}>
-              {profileSaved ? "✅ Sauvegardé !" : savingProfile ? "Sauvegarde..." : "Sauvegarder"}
-            </button>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+              <button onClick={() => setShowProfileModal(false)}
+                style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                Annuler
+              </button>
+              <button onClick={() => void saveProfile()} disabled={savingProfile}
+                style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: savingProfile ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: savingProfile ? 0.7 : 1, transition: "all 0.2s" }}
+                onMouseEnter={e => { if (!savingProfile) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
+                {savingProfile ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Sauvegarde...</span> : "Mettre à jour les informations →"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1832,21 +1964,32 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>📊 Rapport — {selectedPatient?.firstName}</h2>
               <button onClick={() => setShowReportModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
             </div>
+            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 16px", marginBottom: 20 }}>
+              <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>L'IA génère un compte rendu professionnel basé sur les conversations et le journal de votre patient sur la période choisie.</p>
+            </div>
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                {[{ value: "week", label: "Cette semaine" }, { value: "month", label: "Ce mois" }, { value: "custom", label: "Calendrier" }].map((option) => (
+                {[{ value: "week", label: "Cette semaine" }, { value: "month", label: "Ce mois" }, { value: "custom", label: "Personnalisé" }].map((option) => (
                   <button key={option.value} onClick={() => { setReportPeriod(option.value as ReportPeriod); setReportDateFrom(""); setReportDateTo(""); }}
-                    style={{ flex: 1, height: 38, borderRadius: 8, border: `1.5px solid ${reportPeriod === option.value ? emerald : "rgba(255,255,255,0.1)"}`, background: reportPeriod === option.value ? "rgba(16,185,129,0.15)" : "transparent", color: reportPeriod === option.value ? emerald : "#94a3b8", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    style={{ flex: 1, height: 38, borderRadius: 8, border: `1px solid ${reportPeriod === option.value ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.08)"}`, background: reportPeriod === option.value ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.02)", color: reportPeriod === option.value ? emerald : "#64748b", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => { if (reportPeriod !== option.value) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#94a3b8"; } }}
+                    onMouseLeave={e => { if (reportPeriod !== option.value) { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#64748b"; } }}>
                     {option.label}
                   </button>
                 ))}
               </div>
               {reportPeriod === "custom" && (
-                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 16, border: "1px solid rgba(255,255,255,0.08)", padding: 16 }}>
+                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", padding: 16 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <button onClick={() => setReportMonth(new Date(reportMonth.getFullYear(), reportMonth.getMonth() - 1))} style={{ background: "rgba(255,255,255,0.05)", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "white", fontSize: 16 }}>←</button>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: "white", textTransform: "capitalize" }}>{reportMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</span>
-                    <button onClick={() => setReportMonth(new Date(reportMonth.getFullYear(), reportMonth.getMonth() + 1))} style={{ background: "rgba(255,255,255,0.05)", border: "none", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "white", fontSize: 16 }}>→</button>
+                    <button onClick={() => setReportMonth(new Date(reportMonth.getFullYear(), reportMonth.getMonth() - 1))}
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#94a3b8", fontSize: 14, transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>←</button>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "white", textTransform: "capitalize" }}>{reportMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</span>
+                    <button onClick={() => setReportMonth(new Date(reportMonth.getFullYear(), reportMonth.getMonth() + 1))}
+                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#94a3b8", fontSize: 14, transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>→</button>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
                     {["L","M","M","J","V","S","D"].map((d, i) => <div key={i} style={{ textAlign: "center", fontSize: 11, fontWeight: 600, color: "#64748b", padding: "4px 0" }}>{d}</div>)}
@@ -2130,6 +2273,17 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
               </div>
               <button onClick={() => setShowBilanModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
             </div>
+            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 16px", marginBottom: 20 }}>
+              <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>L'IA analyse les derniers échanges et le journal de votre patient pour vous suggérer 3 questions clés à poser lors de votre prochaine consultation.</p>
+            </div>
+            {!bilanContent && !bilanLoading && (
+              <button onClick={() => void generateBilan()}
+                style={{ width: "100%", height: 44, borderRadius: 12, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 16, transition: "all 0.2s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>
+                Générer les questions →
+              </button>
+            )}
             {bilanLoading ? (
               <div style={{ textAlign: "center", padding: "40px 0" }}>
                 <p style={{ fontSize: 13, color: "#64748b" }}>Analyse des échanges en cours... 🧬</p>
