@@ -315,7 +315,7 @@ async function getPatientProfile(patientId: string): Promise<string> {
     const supabase = createSupabaseClient();
     const { data } = await supabase
       .from("patients")
-      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, brief_jumeau, practitioner_instruction, practitioner_instruction_expires_at, notes, motivation, defi, aliments_aimes, aliments_detestes, niveau_activite, regime_specifique")
+      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, practitioner_instruction, motivation, defi, aliments_aimes, aliments_detestes, niveau_activite, regime_specifique")
       .eq("user_id", patientId)
       .single();
 
@@ -323,7 +323,7 @@ async function getPatientProfile(patientId: string): Promise<string> {
       first_name?: string; last_name?: string; age?: number; sexe?: string;
       taille?: number; poids?: number; objective?: string; pathologies?: string;
       allergies?: string; traitements?: string; objectif_clinique?: string;
-      brief_jumeau?: string; notes?: string; motivation?: string; defi?: string;
+      motivation?: string; defi?: string;
       aliments_aimes?: string; aliments_detestes?: string; niveau_activite?: string;
       regime_specifique?: string; practitioner_instruction?: string;
     } | null;
@@ -347,14 +347,15 @@ async function getPatientProfile(patientId: string): Promise<string> {
     if (patient.defi) parts.push(`Plus gros défi : ${patient.defi}`);
     if (patient.aliments_aimes) parts.push(`Aliments aimés : ${patient.aliments_aimes}`);
     if (patient.aliments_detestes) parts.push(`Aliments détestés : ${patient.aliments_detestes}`);
-    if (patient.notes) parts.push(`Notes praticien : ${patient.notes}`);
 
     const instructionDate = (patient as { instruction_updated_at?: string }).instruction_updated_at
       ? `(mis à jour le ${new Date((patient as { instruction_updated_at?: string }).instruction_updated_at!).toLocaleDateString("fr-FR")})`
       : "";
 
     const briefSection = [
-      patient.brief_jumeau ? `CONTEXTE DE DÉPART : ${patient.brief_jumeau}` : "",
+      Array.isArray(patient.practitioner_instruction) && (patient.practitioner_instruction as { text: string; expires_at?: string | null }[]).filter(m => !m.expires_at || new Date(m.expires_at) > new Date()).length > 0
+        ? `CONSIGNES PRATICIEN : ${(patient.practitioner_instruction as { text: string; expires_at?: string | null }[]).filter(m => !m.expires_at || new Date(m.expires_at) > new Date()).map(m => m.text).join(" | ")}`
+        : "",
       (() => {
         if (!patient.practitioner_instruction) return "";
         const expires = (patient as { practitioner_instruction_expires_at?: string }).practitioner_instruction_expires_at;
@@ -590,7 +591,7 @@ export async function POST(request: Request) {
     
       const mirrorContext = [
         patient?.practitioner_instruction ? `Consigne actuelle du praticien : "${patient.practitioner_instruction}"` : "",
-        patient?.notes ? `Notes de suivi : "${patient.notes}"` : "",
+        "",
         patient?.defi ? `Plus gros défi du patient : "${patient.defi}"` : "",
         patient?.motivation ? `État d'esprit actuel : "${patient.motivation}"` : "",
         patient?.pathologies ? `Pathologies : "${patient.pathologies}"` : "",
