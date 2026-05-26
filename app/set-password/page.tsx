@@ -37,11 +37,23 @@ export default function SetPasswordPage() {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    // Timeout — si après 5 secondes toujours pas de session, lien expiré
     const timeout = setTimeout(() => {
       setReady(false);
       setError("__expired__");
     }, 5000);
+
+    // Détection manuelle du token dans l'URL (hash ou query)
+    const hash = window.location.hash;
+    const params = new URLSearchParams(hash.replace("#", "?"));
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+
+    if (accessToken && refreshToken) {
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(() => { clearTimeout(timeout); setReady(true); })
+        .catch(() => { clearTimeout(timeout); setError("__expired__"); });
+      return () => clearTimeout(timeout);
+    }
 
     supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "INITIAL_SESSION") {

@@ -140,7 +140,7 @@ type RealPatient = {
   regime_specifique?: string; notes?: string; brief_jumeau?: string;   practitioner_instruction?: { id: string; text: string; expires_at?: string | null; created_at: string }[];
   emotional_status?: string; emotional_insight?: string;
   latest_victory?: string; private_notes?: { id: string; text: string; created_at: string }[]; created_at?: string;
-  lastActive?: string | null; streak?: number; sosResolved?: number;
+  lastActive?: string | null; streak?: number; sosResolved?: number; onboardingCompleted?: boolean;
 };
 
 type Conversation = { id: string; role: "user" | "assistant"; content: string; created_at: string; };
@@ -427,7 +427,7 @@ export default function DashboardPage() {
     const { data: relations } = await supabase.from("patient_practitioner").select("patient_id").eq("practitioner_id", pid);
     if (!relations || relations.length === 0) { setLoading(false); return; }
     const patientIds = relations.map((r) => r.patient_id);
-    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, notes, brief_jumeau, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at")    .in("user_id", patientIds);
+    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, notes, brief_jumeau, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at, onboarding_completed")   .in("user_id", patientIds);
     if (!patientsData) { setLoading(false); return; }
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const patientsWithStats = await Promise.all(
@@ -459,6 +459,7 @@ export default function DashboardPage() {
           emotional_status: p.emotional_status ?? "green", emotional_insight: p.emotional_insight ?? "",
           created_at: p.created_at,
           latest_victory: p.latest_victory ?? "",
+          onboardingCompleted: p.onboarding_completed ?? false,
           admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[] | null) ?? [],
         };
       })
@@ -1320,7 +1321,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                   {!onboardingDemoMode && selectedPatient && !(selectedPatient as RealPatient).email?.includes("demo") && (
                     (() => {
                       const p = selectedPatient as RealPatient;
-                      const notActivated = !p.lastActive && p.totalMessages === 0;
+                      const notActivated = !p.onboardingCompleted;
                       if (!notActivated) return null;
                       if (resentInvite) return (
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, margin: "8px auto 0" }}>
@@ -1335,7 +1336,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                           if (!p.email || !practitionerId) return;
                           await fetch("/api/invite-patient", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: p.email, practitionerId }) });
                           setResentInvite(true);
-                          setTimeout(() => setResentInvite(false), 3000);
+                          setTimeout(() => setResentInvite(false), 10000);
                         }}
                           style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#4b5563", textDecoration: "underline", padding: "4px 0", display: "block", margin: "8px auto 0", transition: "color 0.2s" }}
                           onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
