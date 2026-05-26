@@ -1198,7 +1198,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
 
                   {/* Murmures */}
                   <div style={{ marginBottom: 10 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Murmures</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: emerald }}>Murmures</span>
                     <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px", marginTop: 6 }}>
                     {(() => {
                       const p = selectedPatient as RealPatient;
@@ -1220,7 +1220,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                                   style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2, fontSize: 11 }}
                                   onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
                                   onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
-                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                     <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
                                   </svg>
                                 </button>
@@ -1259,7 +1259,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                                   style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2 }}
                                   onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
                                   onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
-                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                                     <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
                                   </svg>
                                 </button>
@@ -1281,7 +1281,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
 
                   {/* Analyses IA */}
                   <div>
-                    <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Analyses IA</p>
+                  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#818cf8" }}>Analyses IA</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <button onClick={() => { if (!onboardingDemoMode) { setBilanContent(""); setShowBilanModal(true); } }}
                         style={{ height: 36, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
