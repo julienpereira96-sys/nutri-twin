@@ -137,7 +137,7 @@ type RealPatient = {
   admin_alerts?: { type: string; date: string; seen: boolean; alert_type?: string; murmure?: string }[];
   age?: number; sexe?: string; taille?: number; poids?: number; objective?: string; pathologies?: string;
   allergies?: string; traitements?: string; objectif_clinique?: string; niveau_activite?: string;
-  regime_specifique?: string; notes?: string; brief_jumeau?: string;   practitioner_instruction?: { id: string; text: string; expires_at?: string | null; created_at: string }[];
+  regime_specifique?: string;   practitioner_instruction?: { id: string; text: string; expires_at?: string | null; created_at: string }[];
   emotional_status?: string; emotional_insight?: string;
   latest_victory?: string; private_notes?: { id: string; text: string; created_at: string }[]; created_at?: string;
   lastActive?: string | null; streak?: number; sosResolved?: number; onboardingCompleted?: boolean;
@@ -428,7 +428,7 @@ export default function DashboardPage() {
     const { data: relations } = await supabase.from("patient_practitioner").select("patient_id").eq("practitioner_id", pid);
     if (!relations || relations.length === 0) { setLoading(false); return; }
     const patientIds = relations.map((r) => r.patient_id);
-    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, notes, brief_jumeau, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at, onboarding_completed")   .in("user_id", patientIds);
+    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at, onboarding_completed").in("user_id", patientIds);
     if (!patientsData) { setLoading(false); return; }
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const patientsWithStats = await Promise.all(
@@ -453,8 +453,7 @@ export default function DashboardPage() {
           sosResolved: sosCount ?? 0,
           age: p.age, sexe: p.sexe, taille: p.taille, poids: p.poids, traitements: p.traitements,
           objectif_clinique: p.objectif_clinique, niveau_activite: p.niveau_activite, regime_specifique: p.regime_specifique,
-          objective: p.objective, pathologies: p.pathologies, allergies: p.allergies, notes: p.notes,
-          brief_jumeau: p.brief_jumeau,
+          objective: p.objective, pathologies: p.pathologies, allergies: p.allergies,
           practitioner_instruction: (p.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[] | null) ?? [],
           private_notes: (p.private_notes as { id: string; text: string; created_at: string }[] | null) ?? [],
           emotional_status: p.emotional_status ?? "green", emotional_insight: p.emotional_insight ?? "",
