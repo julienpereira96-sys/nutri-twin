@@ -10,6 +10,7 @@ export async function POST(request: Request) {
 
   const { data: allUsers } = await supabase.auth.admin.listUsers();
   const existingUser = allUsers?.users?.find(u => u.email === email);
+  
   if (existingUser) {
     const { data: existingRelation } = await supabase
       .from("patient_practitioner")
@@ -17,8 +18,22 @@ export async function POST(request: Request) {
       .eq("patient_id", existingUser.id)
       .eq("practitioner_id", practitionerId)
       .single();
+    
     if (existingRelation) {
-      return Response.json({ exists: true });
+      // Patient déjà dans la liste — vérifier si onboarding complété
+      const { data: patientData } = await supabase
+        .from("patients")
+        .select("onboarding_completed")
+        .eq("user_id", existingUser.id)
+        .single();
+      
+      if (patientData?.onboarding_completed) {
+        // Compte actif — vraiment bloqué
+        return Response.json({ exists: true, canResend: false });
+      } else {
+        // Pas encore activé — on peut renvoyer
+        return Response.json({ exists: true, canResend: true });
+      }
     }
   }
   return Response.json({ exists: false });
