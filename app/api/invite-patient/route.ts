@@ -179,10 +179,8 @@ export async function POST(request: Request) {
       allergies: sanitize(allergies),
       traitements: sanitize(traitements),
       objectif_clinique: sanitize(objectif_clinique),
-      brief_jumeau: sanitize(brief_jumeau, 1000),
-      practitioner_instruction: practitionerInstruction,  
-      private_notes: [],
-      notes: sanitize(notes, 1000),
+      practitioner_instruction: practitionerInstruction.length > 0 ? practitionerInstruction : undefined,
+      private_notes: notes ? [{ id: crypto.randomUUID(), text: sanitize(notes, 1000) ?? "", created_at: new Date().toISOString() }] : undefined,
       niveau_activite: sanitize(niveau_activite, 100),
       regime_specifique: sanitize(regime_specifique, 100),
     }, { onConflict: "user_id" });
