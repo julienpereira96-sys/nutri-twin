@@ -516,8 +516,6 @@ export default function DashboardPage() {
   const saveMurmure = async () => {
     if (!selectedPatientId || !murmureText.trim()) return;
     setSavingMurmure(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    console.log("Session:", session?.user?.id, "Patient:", selectedPatientId);
     const expiresAt = murmureDuration === "permanent" ? null
       : murmureDuration === "24h" ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       : murmureDuration === "3j" ? new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
@@ -1246,8 +1244,8 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                   {/* Notes privées */}
                   {!onboardingDemoMode && (
                     <div style={{ marginBottom: 10 }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Notes privées</span>
-                    <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 12px", marginTop: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "white" }}>Notes privées</span>
+                    <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", padding: "10px 12px", marginTop: 6 }}>
                         {(() => {
                           const p = selectedPatient as RealPatient;
                           const notes = (p.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
@@ -1600,8 +1598,8 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 480, border: "1px solid rgba(16,185,129,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Murmure du praticien</h2>
-                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>Consigne prioritaire pour {selectedPatient?.firstName} · Persistante jusqu'à suppression</p>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "emerald" }}>Murmure du praticien</h2>
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>Consigne prioritaire pour {selectedPatient?.firstName} · Choisissez la durée appropriée</p>
               </div>
               <button onClick={() => setShowMurmureModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>×</button>
             </div>
@@ -1611,7 +1609,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
             <textarea value={murmureText} onChange={(e) => setMurmureText(e.target.value)} placeholder="Ex: Sois plus doux cette semaine, elle traverse une période difficile au travail." rows={5}
               style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.6 }} />
             <div style={{ marginBottom: 16 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#64748b" }}>DURÉE DU MURMURE</p>
+            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Durée du murmure</p>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {[
                   { value: "permanent", label: "Permanent" },
@@ -1622,7 +1620,9 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                   { value: "30j", label: "30 jours" },
                 ].map(({ value, label }) => (
                   <button key={value} onClick={() => setMurmureDuration(value)}
-                    style={{ height: 32, borderRadius: 20, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: murmureDuration === value ? "1px solid rgba(16,185,129,0.4)" : "1px solid rgba(255,255,255,0.1)", background: murmureDuration === value ? "rgba(16,185,129,0.12)" : "transparent", color: murmureDuration === value ? "#10b981" : "#64748b", transition: "all 0.2s" }}>
+                    style={{ height: 32, borderRadius: 8, padding: "0 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", border: murmureDuration === value ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.08)", background: murmureDuration === value ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.02)", color: murmureDuration === value ? emerald : "#64748b", transition: "all 0.2s" }}
+                    onMouseEnter={e => { if (murmureDuration !== value) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#94a3b8"; } }}
+                    onMouseLeave={e => { if (murmureDuration !== value) { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#64748b"; } }}>
                     {label}
                   </button>
                 ))}
@@ -2253,7 +2253,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 440, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>📝 Nouvelle note</h2>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Nouvelle note</h2>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>Visible uniquement par vous</p>
               </div>
               <button onClick={() => setShowNoteModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>×</button>
