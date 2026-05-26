@@ -1157,11 +1157,13 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
 
                   {/* Murmures */}
                   <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px", marginBottom: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: emerald }}>🎙️ Murmures</span>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Murmures</span>
                       <button onClick={() => !onboardingDemoMode && openMurmureModal()}
-                        style={{ height: 22, borderRadius: 6, padding: "0 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.1)", color: emerald }}>
-                        + Ajouter
+                        style={{ width: 22, height: 22, borderRadius: 6, fontSize: 14, fontWeight: 400, cursor: "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.08)", color: emerald, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
+                        +
                       </button>
                     </div>
                     {(() => {
@@ -1200,10 +1202,12 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                   {!onboardingDemoMode && (
                     <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 12px", marginBottom: 10 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>📝 Notes privées</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Notes privées</span>
                         <button onClick={() => { setNewNoteText(""); setShowNoteModal(true); }}
-                          style={{ height: 22, borderRadius: 6, padding: "0 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "#94a3b8" }}>
-                          + Ajouter
+                          style={{ width: 22, height: 22, borderRadius: 6, fontSize: 14, fontWeight: 400, cursor: "pointer", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.04)", color: "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}>
+                          +
                         </button>
                       </div>
                       {(() => {
@@ -1232,15 +1236,19 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
 
                   {/* Analyses IA */}
                   <div style={{ background: "rgba(99,102,241,0.04)", borderRadius: 10, border: "1px solid rgba(99,102,241,0.15)", padding: "10px 12px" }}>
-                    <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#818cf8" }}>✨ Analyses IA</p>
+                  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Analyses IA</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       <button onClick={() => { if (!onboardingDemoMode) { setShowBilanModal(true); void generateBilan(); } }}
-                        style={{ height: 34, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                        ✨ Préparer ma séance
+                        style={{ height: 36, borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: amber, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(245,158,11,0.15)"; e.currentTarget.style.borderColor = "rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(245,158,11,0.08)"; e.currentTarget.style.borderColor = "rgba(245,158,11,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                        Préparer ma séance
                       </button>
                       <button onClick={() => { if (!onboardingDemoMode) { setShowReportModal(true); setReportContent(""); } }}
-                        style={{ height: 34, borderRadius: 8, background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.15)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                        📊 Rapport IA
+                        style={{ height: 36, borderRadius: 8, background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.15)", color: amber, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(245,158,11,0.12)"; e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(245,158,11,0.04)"; e.currentTarget.style.borderColor = "rgba(245,158,11,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                        Rapport IA
                       </button>
                     </div>
                   </div>
@@ -1543,7 +1551,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 480, border: "1px solid rgba(16,185,129,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>🎙️ Murmure du praticien</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Murmure du praticien</h2>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>Consigne prioritaire pour {selectedPatient?.firstName} · Persistante jusqu'à suppression</p>
               </div>
               <button onClick={() => setShowMurmureModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>×</button>
@@ -1573,11 +1581,16 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <button onClick={() => setShowMurmureModal(false)}
-                style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
+                style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
                 Annuler
               </button>
-              <button onClick={() => void saveMurmure()} disabled={savingMurmure || !murmureText.trim()} style={{ flex: 2, height: 44, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: savingMurmure || !murmureText.trim() ? "not-allowed" : "pointer", border: "none", background: emerald, color: "black", opacity: savingMurmure || !murmureText.trim() ? 0.6 : 1 }}>
-                {savingMurmure ? "Sauvegarde..." : "Ajouter ce murmure →"}
+              <button onClick={() => void saveMurmure()} disabled={savingMurmure || !murmureText.trim()}
+                style={{ flex: 2, height: 44, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: savingMurmure || !murmureText.trim() ? "not-allowed" : "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.12)", color: emerald, opacity: savingMurmure || !murmureText.trim() ? 0.6 : 1, transition: "all 0.2s" }}
+                onMouseEnter={e => { if (!savingMurmure && murmureText.trim()) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
+                {savingMurmure ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Sauvegarde...</span> : "Ajouter ce murmure →"}
               </button>
             </div>
           </div>
@@ -2091,11 +2104,15 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
               onFocus={e => e.target.style.borderColor = "rgba(255,255,255,0.3)"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setShowNoteModal(false)}
-                style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
+                style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
                 Annuler
               </button>
               <button onClick={() => void addNote()} disabled={savingNote || !newNoteText.trim()}
-                style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "white", cursor: savingNote || !newNoteText.trim() ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: savingNote || !newNoteText.trim() ? 0.5 : 1 }}>
+                style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "white", cursor: savingNote || !newNoteText.trim() ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: savingNote || !newNoteText.trim() ? 0.5 : 1, transition: "all 0.2s" }}
+                onMouseEnter={e => { if (!savingNote && newNoteText.trim()) { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)"; } }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}>
                 {savingNote ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />Sauvegarde...</span> : "Sauvegarder →"}
               </button>
             </div>
