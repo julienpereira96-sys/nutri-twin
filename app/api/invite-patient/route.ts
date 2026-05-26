@@ -97,7 +97,15 @@ export async function POST(request: Request) {
       .eq("practitioner_id", practitionerId)
       .single();
     if (existingRelation) {
-      return Response.json({ error: "Ce patient est déjà associé à votre cabinet." }, { status: 400 });
+      const { data: patientData } = await supabase
+        .from("patients")
+        .select("onboarding_completed")
+        .eq("user_id", existingUser.id)
+        .single();
+      if (patientData?.onboarding_completed) {
+        return Response.json({ error: "Ce patient est déjà associé à votre cabinet." }, { status: 400 });
+      }
+      // Pas encore activé — on laisse passer pour renvoyer le lien
     }
   }
 
