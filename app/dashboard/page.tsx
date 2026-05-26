@@ -811,7 +811,7 @@ export default function DashboardPage() {
       const res = await fetch("/api/invite-patient", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId: practitionerId ?? "", first_name: inviteFirstName || null, last_name: inviteLastName || null, age: inviteAge ? parseInt(inviteAge) : null, sexe: inviteSexe || null, taille: inviteTaille ? parseInt(inviteTaille) : null, poids: invitePoids ? parseFloat(invitePoids) : null, pathologies: invitePathologies || null, allergies: inviteAllergies || null, traitements: inviteTraitements || null, objectif_clinique: inviteObjectifClinique || null, brief_jumeau: inviteBriefJumeau || null, notes: inviteNotes || null, niveau_activite: inviteNiveauActivite || null, regime_specifique: inviteRegime || null, murmure_duration: inviteMurmureDuration }) });
       const data = await res.json() as { error?: string };
       if (!res.ok) setInviteError(data.error ?? "Une erreur est survenue.");
-      else { const savedFirstName = inviteFirstName; resetInviteForm(); setInviteFirstName(savedFirstName); setInviteSuccess(true); if (practitionerId) await loadPatients(practitionerId); }
+      else { const savedFirstName = inviteFirstName; resetInviteForm(); setInviteFirstName(savedFirstName); setInviteSuccess(true); if (practitionerId) { await new Promise(r => setTimeout(r, 500)); await loadPatients(practitionerId); } }
     } catch { setInviteError("Impossible d'envoyer l'invitation."); }
     finally { setInviting(false); }
   };
