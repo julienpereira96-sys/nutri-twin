@@ -87,6 +87,19 @@ export default function SetPasswordPage() {
     const cpData = await cpRes.json();
     console.log("create-patient response:", cpRes.status, cpData);
 
+    // Stocker un flag pour indiquer que l'onboarding doit commencer
+    sessionStorage.setItem("from_set_password", "true");
+    // Se reconnecter avec le nouveau mot de passe
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: currentUser.email!,
+      password,
+    });
+    if (signInError) {
+      console.error("SignIn error:", signInError.message);
+      setError("Erreur de connexion. Veuillez vous connecter manuellement.");
+      setLoading(false);
+      return;
+    }
     window.location.href = "/patient-onboarding";
   };
 
