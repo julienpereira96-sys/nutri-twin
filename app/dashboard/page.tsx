@@ -329,6 +329,7 @@ export default function DashboardPage() {
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
+  const [resentInvite, setResentInvite] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteAge, setInviteAge] = useState("");
   const [inviteSexe, setInviteSexe] = useState("");
@@ -1321,10 +1322,20 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                       const p = selectedPatient as RealPatient;
                       const notActivated = !p.lastActive && p.totalMessages === 0;
                       if (!notActivated) return null;
+                      if (resentInvite) return (
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, margin: "8px auto 0" }}>
+                          <div style={{ width: 18, height: 18, borderRadius: "50%", background: "linear-gradient(135deg, #6ee7b7, #10b981)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </div>
+                          <p style={{ margin: 0, fontSize: 11, color: emerald }}>Lien envoyé !</p>
+                        </div>
+                      );
                       return (
                         <button onClick={async () => {
                           if (!p.email || !practitionerId) return;
                           await fetch("/api/invite-patient", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: p.email, practitionerId }) });
+                          setResentInvite(true);
+                          setTimeout(() => setResentInvite(false), 3000);
                         }}
                           style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#4b5563", textDecoration: "underline", padding: "4px 0", display: "block", margin: "8px auto 0", transition: "color 0.2s" }}
                           onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
