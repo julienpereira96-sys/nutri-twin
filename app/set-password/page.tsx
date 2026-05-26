@@ -80,7 +80,7 @@ export default function SetPasswordPage() {
       await fetch("/api/create-patient", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, email: user.email }),
+        body: JSON.stringify({ userId: user.id, email: user.email, firstName: "", lastName: "" }),
       });
     }
     router.push("/patient-onboarding");
