@@ -23,8 +23,6 @@ export default function SetPasswordPage() {
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
@@ -65,28 +63,31 @@ export default function SetPasswordPage() {
 
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     const { data: { user: currentUser } } = await supabase.auth.getUser();
+    console.log("currentUser:", currentUser?.id);
     if (!currentUser) { setError("Session expirée. Contactez votre praticien."); setLoading(false); return; }
-    
+
     const res = await fetch("/api/set-patient-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: currentUser.id, password }),
     });
     const resData = await res.json() as { error?: string };
+    console.log("set-patient-password response:", res.status, resData);
     if (!res.ok) {
       setError("Une erreur est survenue. Veuillez réessayer.");
       setLoading(false);
       return;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await fetch("/api/create-patient", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, email: user.email, firstName: "", lastName: "" }),
-      });
-    }
+    const cpRes = await fetch("/api/create-patient", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: currentUser.id, email: currentUser.email, firstName: "", lastName: "" }),
+    });
+    const cpData = await cpRes.json();
+    console.log("create-patient response:", cpRes.status, cpData);
+
+    await supabase.auth.refreshSession();
     router.push("/patient-onboarding");
   };
 
@@ -95,21 +96,19 @@ export default function SetPasswordPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-12 sm:px-6">
-
-        {/* Logo */}
         <div className="mb-8 text-center">
           <div className="relative mx-auto mb-3 w-fit">
             <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
             <div style={{ position: "relative", width: 75, height: 75, margin: "0 auto" }}>
-  <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, animation: "pulse-ring 2s ease-in-out infinite" }}>🌿</div>
-</div>
+              <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, animation: "pulse-ring 2s ease-in-out infinite" }}>🌿</div>
+            </div>
           </div>
           <h1 className="text-[22px] tracking-tight text-white mt-3">Bienvenue sur Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
           <p className="mt-2 text-base text-zinc-400">Créez votre espace personnel</p>
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
-        {error === "__expired__" ? (
+          {error === "__expired__" ? (
             <div className="py-8 text-center">
               <p style={{ fontSize: 32, marginBottom: 12 }}>⏱️</p>
               <p className="text-sm font-semibold text-white mb-2">Lien expiré</p>
@@ -122,96 +121,52 @@ export default function SetPasswordPage() {
             </div>
           ) : (
             <div className="space-y-4">
-
-              {/* Mot de passe */}
               <label className="block">
                 <span className="text-sm font-medium text-zinc-300">Mot de passe</span>
                 <div className="relative mt-2">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder="Minimum 8 caractères"
-                    className="w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 pr-12 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
-                  />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition">
+                  <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="Minimum 8 caractères"
+                    className="w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 pr-12 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition">
                     {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
                 </div>
               </label>
-
-              {/* Confirmer */}
               <label className="block">
                 <span className="text-sm font-medium text-zinc-300">Confirmer le mot de passe</span>
                 <div className="relative mt-2">
-                  <input
-                    type={showConfirm ? "text" : "password"}
-                    value={confirm}
-                    onChange={e => setConfirm(e.target.value)}
-                    placeholder="Répétez votre mot de passe"
+                  <input type={showConfirm ? "text" : "password"} value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Répétez votre mot de passe"
                     onKeyDown={e => { if (e.key === "Enter") void handleSubmit(); }}
-                    className="w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 pr-12 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
-                  />
-                  <button type="button" onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition">
+                    className="w-full rounded-xl border border-white/15 bg-[#1a1a1a] px-4 py-3 pr-12 text-[15px] text-white outline-none transition focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25" />
+                  <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition">
                     {showConfirm ? <EyeOffIcon /> : <EyeIcon />}
                   </button>
                 </div>
               </label>
-
-              {/* RGPD */}
               <div className="space-y-3 pt-2">
                 <label className="flex cursor-pointer items-start gap-3">
-                  <input type="checkbox" checked={acceptCGU} onChange={e => setAcceptCGU(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-[#10b981]" />
+                  <input type="checkbox" checked={acceptCGU} onChange={e => setAcceptCGU(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#10b981]" />
                   <span className="text-xs leading-relaxed text-zinc-400">
-                    J'accepte les{" "}
-                    <a href="/cgu" target="_blank" className="text-[#34d399] hover:underline">CGU</a>
-                    {" "}et la{" "}
-                    <a href="/confidentialite" target="_blank" className="text-[#34d399] hover:underline">Politique de Confidentialité</a>
-                    {" "}*
+                    J'accepte les <a href="/cgu" target="_blank" className="text-[#34d399] hover:underline">CGU</a> et la <a href="/confidentialite" target="_blank" className="text-[#34d399] hover:underline">Politique de Confidentialité</a> *
                   </span>
                 </label>
-
                 <label className="flex cursor-pointer items-start gap-3">
-                  <input type="checkbox" checked={acceptData} onChange={e => setAcceptData(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-[#10b981]" />
-                  <span className="text-xs leading-relaxed text-zinc-400">
-                    Je consens au traitement de mes données nutritionnelles pour mon accompagnement personnalisé. *
-                  </span>
+                  <input type="checkbox" checked={acceptData} onChange={e => setAcceptData(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#10b981]" />
+                  <span className="text-xs leading-relaxed text-zinc-400">Je consens au traitement de mes données nutritionnelles pour mon accompagnement personnalisé. *</span>
                 </label>
-
                 <p className="text-[11px] text-zinc-200">* Champs obligatoires</p>
               </div>
-
               {error && (
                 <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
                   <p className="text-sm text-red-400">{error}</p>
                 </div>
               )}
-
-              <button
-                onClick={() => void handleSubmit()}
-                disabled={isDisabled}
+              <button onClick={() => void handleSubmit()} disabled={isDisabled}
                 className="mt-2 w-full rounded-xl bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
-                onMouseEnter={e => {
-                  if (!isDisabled) {
-                    e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
-                    e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
-                  }
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.boxShadow = "none";
-                  e.currentTarget.style.transform = "translateY(0) scale(1)";
-                }}
-              >
+                onMouseEnter={e => { if (!isDisabled) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
                 {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Création en cours...</span> : "Accéder à mon espace →"}
               </button>
-
-              <p className="mt-2 text-center text-xs text-zinc-500">
-                🔒 Chiffrement de bout en bout · Données traitées en Europe (RGPD)
-              </p>
+              <p className="mt-2 text-center text-xs text-zinc-500">🔒 Chiffrement de bout en bout · Données traitées en Europe (RGPD)</p>
             </div>
           )}
         </div>
