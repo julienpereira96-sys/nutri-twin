@@ -1083,10 +1083,6 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                         <p style={{ margin: 0, fontSize: 12, color: "#64748b", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{onboardingDemoMode ? "patient@email.fr" : (selectedPatient as RealPatient).email}</p>
                       </div>
                     </div>
-                    <button onClick={() => { if (!onboardingDemoMode) { setBilanContent(""); setShowBilanModal(true); } }}
-                      style={{ height: 38, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: "0 14px" }}>
-                      ✨ Préparer ma séance
-                    </button>
                   </div>
                   <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", background: "#070707", display: "flex", flexDirection: "column", gap: 12 }}>
                     {displayedConversations.length === 0 ? (
@@ -1127,8 +1123,11 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                     <p style={{ margin: 0, fontSize: 15, fontWeight: 700, filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{selectedPatient.firstName} {selectedPatient.lastName}</p>
                     <p style={{ margin: "2px 0 4px", fontSize: 12, color: "#64748b", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{onboardingDemoMode ? "patient@email.fr" : (selectedPatient as RealPatient).email}</p>
                     <button onClick={() => !onboardingDemoMode && openProfileModal()}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#4b5563", textDecoration: "underline", padding: "0 0 8px", display: "block", margin: "0 auto" }}>
-                      ✏️ Modifier le profil
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#4b5563", padding: "0 0 8px", display: "flex", alignItems: "center", gap: 4, margin: "0 auto", transition: "color 0.2s" }}
+                      onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+                      onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      Modifier le profil
                     </button>
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 20, padding: "4px 12px", background: `${getStatusColor(selectedPatient.emotional_status)}15`, border: `1px solid ${getStatusColor(selectedPatient.emotional_status)}30` }}>
                       <span style={{ fontSize: 10 }}>{getStatusEmoji(selectedPatient.emotional_status)}</span>
@@ -1198,22 +1197,14 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
 
                   {/* Murmures */}
                   <div style={{ marginBottom: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Murmures</span>
-                      <button onClick={() => !onboardingDemoMode && openMurmureModal()}
-                        style={{ width: 22, height: 22, borderRadius: 6, fontSize: 14, fontWeight: 400, cursor: "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.08)", color: emerald, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                        +
-                      </button>
-                    </div>
-                    <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Murmures</span>
+                    <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px", marginTop: 6 }}>
                     {(() => {
                       const p = selectedPatient as RealPatient;
                       const murmures = onboardingDemoMode
                         ? [{ id: "demo", text: "Sois plus doux cette semaine, elle traverse une période difficile.", expires_at: null, created_at: new Date().toISOString() }]
                         : (p.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[] ?? []);
-                      if (murmures.length === 0) return <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Aucune consigne active</p>;
+                        if (murmures.length === 0) return <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Aucune consigne active</p>; 
                       return murmures.map(m => {
                         const isExpired = m.expires_at && new Date(m.expires_at) < new Date();
                         return (
@@ -1238,22 +1229,22 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                         );
                       });
                     })()}
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+                      <button onClick={() => !onboardingDemoMode && openMurmureModal()}
+                        style={{ width: 22, height: 22, borderRadius: 6, fontSize: 14, fontWeight: 400, cursor: "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.08)", color: emerald, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
+                        +
+                      </button>
+                    </div>
                     </div>
                   </div>
 
                   {/* Notes privées */}
                   {!onboardingDemoMode && (
                     <div style={{ marginBottom: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Notes privées</span>
-                        <button onClick={() => { setNewNoteText(""); setShowNoteModal(true); }}
-                          style={{ width: 22, height: 22, borderRadius: 6, fontSize: 14, fontWeight: 400, cursor: "pointer", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.04)", color: "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
-                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}>
-                          +
-                        </button>
-                      </div>
-                      <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 12px" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Notes privées</span>
+                    <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 12px", marginTop: 6 }}>
                         {(() => {
                           const p = selectedPatient as RealPatient;
                           const notes = (p.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
@@ -1275,29 +1266,37 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                             </div>
                           ));
                         })()}
+                        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+                          <button onClick={() => { setNewNoteText(""); setShowNoteModal(true); }}
+                            style={{ width: 22, height: 22, borderRadius: 6, fontSize: 14, fontWeight: 400, cursor: "pointer", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.04)", color: "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}>
+                            +
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
 
                   {/* Analyses IA */}
                   <div>
-                  <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Analyses IA</p>
-                  <div style={{ background: "rgba(16,185,129,0.04)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.15)", padding: "10px 12px" }}>
+                    <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Analyses IA</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <button onClick={() => { if (!onboardingDemoMode) { setShowBilanModal(true); void generateBilan(); } }}
-                        style={{ height: 36, borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: amber, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(245,158,11,0.15)"; e.currentTarget.style.borderColor = "rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(245,158,11,0.08)"; e.currentTarget.style.borderColor = "rgba(245,158,11,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                    <button onClick={() => { if (!onboardingDemoMode) { setBilanContent(""); setShowBilanModal(true); } }}
+                        style={{ height: 36, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(99,102,241,0.15)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(99,102,241,0.08)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                         Préparer ma séance
                       </button>
                       <button onClick={() => { if (!onboardingDemoMode) { setShowReportModal(true); setReportContent(""); } }}
-                        style={{ height: 36, borderRadius: 8, background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.15)", color: amber, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(245,158,11,0.12)"; e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(245,158,11,0.04)"; e.currentTarget.style.borderColor = "rgba(245,158,11,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                        style={{ height: 36, borderRadius: 8, background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.15)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(99,102,241,0.12)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.3)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(99,102,241,0.04)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                         Rapport IA
                       </button>
-                      </div>
-                  </div>
+                    </div>
                   </div>
                 </>
               ) : (
@@ -1887,19 +1886,13 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                     <div>
                       <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
                       <select value={editSexe} onChange={e => setEditSexe(e.target.value)}
-                        style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: editSexe ? "white" : "#64748b", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
+                        style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
                         <option value="">Choisir</option>
                         <option value="Femme">Femme</option>
                         <option value="Homme">Homme</option>
                         <option value="Autre">Autre</option>
                       </select>
                     </div>
-                  </div>
-                  <div>
-                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Notes internes</p>
-                    <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} placeholder="Notes visibles uniquement par vous..." rows={4}
-                      style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "12px 14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif" }}
-                      onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
                   </div>
                 </div>
               </div>
@@ -1919,9 +1912,9 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                     const isAutre = value !== "" && !options.includes(value) && value !== "Aucune" && value !== "Aucun";
                     return (
                       <div key={id}>
-                        <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>{label}</p>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
                         <select value={isAutre ? "Autre" : value} onChange={e => { if (e.target.value === "Autre") setter("__autre__"); else setter(e.target.value); }}
-                          style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}>
+                          style={{ width: "100%", height: 42, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}>
                           <option value="">Choisir</option>
                           <option value="Aucune">{["Pathologies", "Allergies", "Activité"].includes(label) ? "Aucune" : "Aucun"}</option>
                           {options.map(o => <option key={o} value={o}>{o}</option>)}
@@ -2120,7 +2113,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                     <div>
                       <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
                       <select value={inviteSexe} onChange={e => setInviteSexe(e.target.value)}
-                        style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: inviteSexe ? "white" : "#64748b", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
+                        style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
                         <option value="">Choisir</option>
                         <option value="Femme">Femme</option>
                         <option value="Homme">Homme</option>
@@ -2131,12 +2124,16 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                 </div>
                 {inviteError && <p style={{ margin: "16px 0 0", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
                 <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
-                  <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteStep(1); }}
-                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
+                <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteStep(1); }}
+                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
                     Annuler
                   </button>
-                  <button onClick={() => { if (!inviteEmail.trim()) { setInviteError("L'email est requis."); return; } if (!inviteFirstName.trim()) { setInviteError("Le prénom est requis."); return; } setInviteError(""); setInviteStep(2); }}
-                    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+                  <button onClick={() => { if (!inviteEmail.trim()) { setInviteError("L'email est requis."); return; } if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) { setInviteError("Veuillez entrer un email valide."); return; } if (!inviteFirstName.trim()) { setInviteError("Le prénom est requis."); return; } setInviteError(""); setInviteStep(2); }}
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
                     Suivant →
                   </button>
                 </div>
@@ -2157,7 +2154,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                     const isAutre = value !== "" && !options.includes(value) && value !== "Aucune" && value !== "Aucun";
                     return (
                       <div key={id}>
-                        <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>{label}</p>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
                         <select value={isAutre ? "Autre" : value} onChange={e => { if (e.target.value === "Autre") setter("__autre__"); else setter(e.target.value); }}
                           style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}>
                           <option value="">Choisir</option>
@@ -2175,12 +2172,16 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                   })}
                 </div>
                 <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-                  <button onClick={() => setInviteStep(1)}
-                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
+                <button onClick={() => setInviteStep(1)}
+                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
                     ← Retour
                   </button>
                   <button onClick={() => setInviteStep(3)}
-                    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
                     Suivant →
                   </button>
                 </div>
@@ -2217,8 +2218,10 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                   onFocus={e => e.target.style.borderColor = "rgba(255,255,255,0.2)"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
                 {inviteError && <p style={{ margin: "0 0 12px", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
                 <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-                  <button onClick={() => setInviteStep(2)}
-                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
+                <button onClick={() => setInviteStep(2)}
+                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
                     ← Retour
                   </button>
                   <button onClick={() => void sendInvite()} disabled={inviting}
