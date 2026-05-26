@@ -1611,7 +1611,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 480, border: "1px solid rgba(16,185,129,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "emerald" }}>Murmure du praticien</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: emerald }}>Murmure du praticien</h2>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>Consigne prioritaire pour {selectedPatient?.firstName} · Choisissez la durée appropriée</p>
               </div>
               <button onClick={() => setShowMurmureModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>×</button>
@@ -2239,7 +2239,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                   rows={5}
                   style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 12 }}
                   onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.2)"} />
-                <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 16 }}>
                 {[
                     { label: "Permanent", value: "permanent" },
                     { label: "24h", value: "24h" },
