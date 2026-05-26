@@ -675,7 +675,7 @@ export default function DashboardPage() {
     setEditObjectifClinique(patient.objectif_clinique ?? "");
     setEditNiveauActivite(patient.niveau_activite ?? "");
     setEditRegime(patient.regime_specifique ?? "");
-    setEditNotes(patient.notes ?? "");
+    setEditNotes("");
     setProfileSaved(false);
     setShowProfileModal(true);
   };
@@ -719,7 +719,6 @@ export default function DashboardPage() {
         objectif_clinique: editObjectifClinique || p.objectif_clinique,
         niveau_activite: editNiveauActivite || p.niveau_activite,
         regime_specifique: editRegime || p.regime_specifique,
-        notes: editNotes || p.notes,
       };
     }));
     setSavingProfile(false);
