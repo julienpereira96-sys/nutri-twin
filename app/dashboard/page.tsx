@@ -2076,7 +2076,9 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                   {inviteSuccess ? "" : inviteStep === 1 ? "Nouveau patient" : inviteStep === 2 ? "Contexte médical" : "Murmure"}
                 </h2>
               </div>
-              <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteStep(1); }} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+              <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteStep(1); }} style={{ background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "white"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#94a3b8"; }}>×</button>
             </div>
 
             {!inviteSuccess && (
