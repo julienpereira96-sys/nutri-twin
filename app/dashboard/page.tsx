@@ -137,9 +137,9 @@ type RealPatient = {
   admin_alerts?: { type: string; date: string; seen: boolean; alert_type?: string; murmure?: string }[];
   age?: number; sexe?: string; taille?: number; poids?: number; objective?: string; pathologies?: string;
   allergies?: string; traitements?: string; objectif_clinique?: string; niveau_activite?: string;
-  regime_specifique?: string; notes?: string; brief_jumeau?: string; practitioner_instruction?: string;
-  practitioner_instruction_expires_at?: string; emotional_status?: string; emotional_insight?: string;
-  latest_victory?: string; private_notes?: string; created_at?: string;
+  regime_specifique?: string; notes?: string; brief_jumeau?: string;   practitioner_instruction?: { id: string; text: string; expires_at?: string | null; created_at: string }[];
+  emotional_status?: string; emotional_insight?: string;
+  latest_victory?: string; private_notes?: { id: string; text: string; created_at: string }[]; created_at?: string;
   lastActive?: string | null; streak?: number; sosResolved?: number;
 };
 
@@ -192,7 +192,7 @@ function LeverAlerteSimple({ alert, patientId, murmureSuggere, onResolved }: { a
     await supabase.from("patients").update({
       emotional_status: "green",
       admin_alerts: [],
-      ...(murmure ? { practitioner_instruction: murmure } : {}),
+      ...(murmure ? { practitioner_instruction: [] } : {}),
     }).eq("user_id", patientId);
     onResolved(murmure);
     setLoading(false);
@@ -320,9 +320,9 @@ export default function DashboardPage() {
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStats | null>(null);
   const [murmureText, setMurmureText] = useState("");
   const [savingMurmure, setSavingMurmure] = useState(false);
-  const [privateNotes, setPrivateNotes] = useState("");
-  const [savingPrivateNotes, setSavingPrivateNotes] = useState(false);
-  const [privateNotesSaved, setPrivateNotesSaved] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
   const [sendingVictory, setSendingVictory] = useState<string | null>(null);
   const [victorySent, setVictorySent] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -418,7 +418,7 @@ export default function DashboardPage() {
     const { data: relations } = await supabase.from("patient_practitioner").select("patient_id").eq("practitioner_id", pid);
     if (!relations || relations.length === 0) { setLoading(false); return; }
     const patientIds = relations.map((r) => r.patient_id);
-    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, notes, brief_jumeau, practitioner_instruction, practitioner_instruction_expires_at, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at").in("user_id", patientIds);
+    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, notes, brief_jumeau, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at")    .in("user_id", patientIds);
     if (!patientsData) { setLoading(false); return; }
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const patientsWithStats = await Promise.all(
@@ -444,11 +444,12 @@ export default function DashboardPage() {
           age: p.age, sexe: p.sexe, taille: p.taille, poids: p.poids, traitements: p.traitements,
           objectif_clinique: p.objectif_clinique, niveau_activite: p.niveau_activite, regime_specifique: p.regime_specifique,
           objective: p.objective, pathologies: p.pathologies, allergies: p.allergies, notes: p.notes,
-          brief_jumeau: p.brief_jumeau, practitioner_instruction: p.practitioner_instruction,
-          practitioner_instruction_expires_at: p.practitioner_instruction_expires_at,
+          brief_jumeau: p.brief_jumeau,
+          practitioner_instruction: (p.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[] | null) ?? [],
+          private_notes: (p.private_notes as { id: string; text: string; created_at: string }[] | null) ?? [],
           emotional_status: p.emotional_status ?? "green", emotional_insight: p.emotional_insight ?? "",
           created_at: p.created_at,
-          latest_victory: p.latest_victory ?? "", private_notes: p.private_notes ?? "",
+          latest_victory: p.latest_victory ?? "",
           admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[] | null) ?? [],
         };
       })
@@ -484,8 +485,7 @@ export default function DashboardPage() {
     if (!selectedPatientId || !practitionerId || onboardingDemoMode) return;
     supabase.from("conversations").select("id, role, content, created_at").eq("patient_id", selectedPatientId).eq("practitioner_id", practitionerId).order("created_at", { ascending: true }).then(({ data }) => setConversations((data as Conversation[]) ?? []));
     const patient = patients.find((p) => p.id === selectedPatientId);
-    setPrivateNotes(patient?.private_notes ?? "");
-    setPrivateNotesSaved(false);
+    void patient;
   }, [selectedPatientId, practitionerId, onboardingDemoMode]);
 
   const displayedConversations = onboardingDemoMode ? DEMO_CONVERSATIONS : conversations;
@@ -500,13 +500,13 @@ export default function DashboardPage() {
   const victoryPatients = displayedPatients.filter((p) => p.latest_victory);
 
   const openMurmureModal = () => {
-    const patient = patients.find((p) => p.id === selectedPatientId);
-    setMurmureText(patient?.practitioner_instruction ?? "");
+    setMurmureText("");
+    setMurmureDuration("permanent");
     setShowMurmureModal(true);
   };
 
   const saveMurmure = async () => {
-    if (!selectedPatientId) return;
+    if (!selectedPatientId || !murmureText.trim()) return;
     setSavingMurmure(true);
     const expiresAt = murmureDuration === "permanent" ? null
       : murmureDuration === "24h" ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
@@ -514,24 +514,50 @@ export default function DashboardPage() {
       : murmureDuration === "7j" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       : murmureDuration === "14j" ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-    await supabase.from("patients").update({
-      practitioner_instruction: murmureText || null,
-      practitioner_instruction_expires_at: expiresAt,
-    }).eq("user_id", selectedPatientId);
+    const patient = patients.find(p => p.id === selectedPatientId);
+    const currentMurmures = (patient?.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? [];
+    const newMurmure = { id: crypto.randomUUID(), text: murmureText.trim(), expires_at: expiresAt, created_at: new Date().toISOString() };
+    const updatedMurmures = [...currentMurmures, newMurmure];
+    await supabase.from("patients").update({ practitioner_instruction: updatedMurmures }).eq("user_id", selectedPatientId);
     await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: selectedPatientId }) });
-    setPatients((prev) => prev.map((p) => p.id === selectedPatientId ? { ...p, practitioner_instruction: murmureText || undefined } : p));
+    setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, practitioner_instruction: updatedMurmures } : p));
     setSavingMurmure(false);
     setMurmureDuration("permanent");
+    setMurmureText("");
     setShowMurmureModal(false);
   };
 
-  const savePrivateNotes = async () => {
+  const addNote = async () => {
+    if (!selectedPatientId || !newNoteText.trim()) return;
+    setSavingNote(true);
+    const patient = patients.find(p => p.id === selectedPatientId);
+    const currentNotes = (patient?.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
+    const newNote = { id: crypto.randomUUID(), text: newNoteText.trim(), created_at: new Date().toISOString() };
+    const updatedNotes = [...currentNotes, newNote];
+    await supabase.from("patients").update({ private_notes: updatedNotes }).eq("user_id", selectedPatientId);
+    setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, private_notes: updatedNotes } : p));
+    setNewNoteText("");
+    setSavingNote(false);
+    setShowNoteModal(false);
+  };
+
+  const deleteNote = async (noteId: string) => {
     if (!selectedPatientId) return;
-    setSavingPrivateNotes(true);
-    await supabase.from("patients").update({ private_notes: privateNotes || null }).eq("user_id", selectedPatientId);
-    setPatients((prev) => prev.map((p) => p.id === selectedPatientId ? { ...p, private_notes: privateNotes } : p));
-    setSavingPrivateNotes(false); setPrivateNotesSaved(true);
-    setTimeout(() => setPrivateNotesSaved(false), 2000);
+    const patient = patients.find(p => p.id === selectedPatientId);
+    const currentNotes = (patient?.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
+    const updatedNotes = currentNotes.filter(n => n.id !== noteId);
+    await supabase.from("patients").update({ private_notes: updatedNotes }).eq("user_id", selectedPatientId);
+    setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, private_notes: updatedNotes } : p));
+  };
+
+  const deleteMurmure = async (murmureId: string) => {
+    if (!selectedPatientId) return;
+    const patient = patients.find(p => p.id === selectedPatientId);
+    const currentMurmures = (patient?.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? [];
+    const updatedMurmures = currentMurmures.filter(m => m.id !== murmureId);
+    await supabase.from("patients").update({ practitioner_instruction: updatedMurmures }).eq("user_id", selectedPatientId);
+    await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: selectedPatientId }) });
+    setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, practitioner_instruction: updatedMurmures } : p));
   };
 
   const sendVictory = async (patientId: string, victoryText: string) => {
@@ -1121,7 +1147,7 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                             }} />
                           ) : (
                             <LeverAlerteSimple alert={alert} patientId={selectedPatient.id} murmureSuggere={(alert as { murmure?: string }).murmure ?? ""} onResolved={(murmure) => {
-                              setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", practitioner_instruction: murmure || p.practitioner_instruction, admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a) } : p));
+                              setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", practitioner_instruction: murmure ? [...(p.practitioner_instruction ?? []), { id: crypto.randomUUID(), text: murmure, expires_at: null, created_at: new Date().toISOString() }] : p.practitioner_instruction, admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a) } : p));
                             }} />
                           )}
                         </div>
@@ -1129,61 +1155,94 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                     </div>
                   )}
 
-                  {/* Murmure */}
+                  {/* Murmures */}
                   <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px", marginBottom: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                      <span style={{ fontSize: 11 }}>🎙️</span>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: emerald }}>Murmure actif</span>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: emerald }}>🎙️ Murmures</span>
+                      <button onClick={() => !onboardingDemoMode && openMurmureModal()}
+                        style={{ height: 22, borderRadius: 6, padding: "0 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.1)", color: emerald }}>
+                        + Ajouter
+                      </button>
                     </div>
                     {(() => {
                       const p = selectedPatient as RealPatient;
-                      const expires = p.practitioner_instruction_expires_at;
-                      const isExpired = expires && new Date(expires) < new Date();
-                      return (
-                        <>
-                          {isExpired && (
-                            <p style={{ margin: "0 0 6px", fontSize: 11, color: "#f59e0b", fontWeight: 600 }}>
-                              ⚠️ Murmure expiré — Le jumeau a repris son comportement standard.
-                            </p>
-                          )}
-                          <p style={{ margin: 0, fontSize: 11, color: isExpired ? "#64748b" : "#94a3b8", lineHeight: 1.5, textDecoration: isExpired ? "line-through" : "none" }}>
-                            {onboardingDemoMode ? "Sois plus doux cette semaine, elle traverse une période difficile." : (p.practitioner_instruction || "Aucune consigne active")}
-                          </p>
-                          {expires && !isExpired && (
-                            <p style={{ margin: "4px 0 0", fontSize: 10, color: "#64748b" }}>
-                              Expire le {new Date(expires).toLocaleDateString("fr-FR")}
-                            </p>
-                          )}
-                        </>
-                      );
+                      const murmures = onboardingDemoMode
+                        ? [{ id: "demo", text: "Sois plus doux cette semaine, elle traverse une période difficile.", expires_at: null, created_at: new Date().toISOString() }]
+                        : (p.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[] ?? []);
+                      if (murmures.length === 0) return <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Aucune consigne active</p>;
+                      return murmures.map(m => {
+                        const isExpired = m.expires_at && new Date(m.expires_at) < new Date();
+                        return (
+                          <div key={m.id} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                            <p style={{ margin: "0 0 3px", fontSize: 11, color: isExpired ? "#64748b" : "#94a3b8", lineHeight: 1.5, textDecoration: isExpired ? "line-through" : "none" }}>{m.text}</p>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <p style={{ margin: 0, fontSize: 10, color: isExpired ? "#f59e0b" : "#4b5563" }}>
+                                {isExpired ? "⚠️ Expiré" : m.expires_at ? `Expire le ${new Date(m.expires_at).toLocaleDateString("fr-FR")}` : "Permanent"}
+                              </p>
+                              {!onboardingDemoMode && (
+                                <button onClick={() => void deleteMurmure(m.id)}
+                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2, fontSize: 11 }}
+                                  onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                                  onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                                  </svg>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      });
                     })()}
                   </div>
 
                   {/* Notes privées */}
                   {!onboardingDemoMode && (
-                    <div style={{ marginBottom: 10 }}>
-                      <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Notes privées</p>
-                      <textarea value={privateNotes} onChange={(e) => setPrivateNotes(e.target.value)} placeholder="Notes visibles uniquement par vous..." rows={3}
-                        style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "white", padding: "8px 10px", fontSize: 12, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.5 }}
-                        onFocus={(e) => e.target.style.borderColor = "rgba(16,185,129,0.3)"}
-                        onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
-                      <button onClick={() => void savePrivateNotes()} disabled={savingPrivateNotes}
-                        style={{ marginTop: 4, height: 28, borderRadius: 6, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "none", background: privateNotesSaved ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)", color: privateNotesSaved ? emerald : "#94a3b8" }}>
-                        {privateNotesSaved ? "✅ Sauvegardé" : savingPrivateNotes ? <span className="flex items-center justify-center gap-2"><span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white" />Sauvegarde...</span> : "Sauvegarder"}
-                      </button>
+                    <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 12px", marginBottom: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>📝 Notes privées</span>
+                        <button onClick={() => { setNewNoteText(""); setShowNoteModal(true); }}
+                          style={{ height: 22, borderRadius: 6, padding: "0 8px", fontSize: 10, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "#94a3b8" }}>
+                          + Ajouter
+                        </button>
+                      </div>
+                      {(() => {
+                        const p = selectedPatient as RealPatient;
+                        const notes = (p.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
+                        if (notes.length === 0) return <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Aucune note</p>;
+                        return notes.map(n => (
+                          <div key={n.id} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                            <p style={{ margin: "0 0 3px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>{n.text}</p>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                              <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{new Date(n.created_at).toLocaleDateString("fr-FR")}</p>
+                              <button onClick={() => void deleteNote(n.id)}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2 }}
+                                onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                                onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   )}
 
-                  {/* Actions */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <button onClick={() => !onboardingDemoMode && openMurmureModal()}
-                      style={{ height: 38, borderRadius: 8, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: emerald, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                      🎙️ {!onboardingDemoMode && (selectedPatient as RealPatient).practitioner_instruction ? "Modifier le murmure" : "Ajouter un murmure"}
-                    </button>
-                    <button onClick={() => { if (!onboardingDemoMode) { setShowReportModal(true); setReportContent(""); } }}
-                      style={{ height: 38, borderRadius: 8, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                      📊 Rapport IA
-                    </button>
+                  {/* Analyses IA */}
+                  <div style={{ background: "rgba(99,102,241,0.04)", borderRadius: 10, border: "1px solid rgba(99,102,241,0.15)", padding: "10px 12px" }}>
+                    <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#818cf8" }}>✨ Analyses IA</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      <button onClick={() => { if (!onboardingDemoMode) { setShowBilanModal(true); void generateBilan(); } }}
+                        style={{ height: 34, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                        ✨ Préparer ma séance
+                      </button>
+                      <button onClick={() => { if (!onboardingDemoMode) { setShowReportModal(true); setReportContent(""); } }}
+                        style={{ height: 34, borderRadius: 8, background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.15)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                        📊 Rapport IA
+                      </button>
+                    </div>
                   </div>
                 </>
               ) : (
@@ -1513,9 +1572,12 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
               </div>
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-              {murmureText && <button onClick={() => setMurmureText("")} style={{ height: 44, borderRadius: 10, padding: "0 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(244,63,94,0.3)", background: "rgba(244,63,94,0.08)", color: "#f87171" }}>Supprimer</button>}
-              <button onClick={() => void saveMurmure()} disabled={savingMurmure} style={{ flex: 1, height: 44, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: "pointer", border: "none", background: emerald, color: "black" }}>
-                {savingMurmure ? "Sauvegarde..." : "Activer le murmure →"}
+              <button onClick={() => setShowMurmureModal(false)}
+                style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
+                Annuler
+              </button>
+              <button onClick={() => void saveMurmure()} disabled={savingMurmure || !murmureText.trim()} style={{ flex: 2, height: 44, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: savingMurmure || !murmureText.trim() ? "not-allowed" : "pointer", border: "none", background: emerald, color: "black", opacity: savingMurmure || !murmureText.trim() ? 0.6 : 1 }}>
+                {savingMurmure ? "Sauvegarde..." : "Ajouter ce murmure →"}
               </button>
             </div>
           </div>
@@ -2010,6 +2072,33 @@ Génère exactement 3 questions clés que le praticien devrait poser lors de la 
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+{showNoteModal && (
+        <div onClick={e => { if (e.target === e.currentTarget) setShowNoteModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 440, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>📝 Nouvelle note</h2>
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>Visible uniquement par vous</p>
+              </div>
+              <button onClick={() => setShowNoteModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>×</button>
+            </div>
+            <textarea value={newNoteText} onChange={e => setNewNoteText(e.target.value)} placeholder="Ex: Patiente recommandée par Dr Martin. Attention au sujet du poids en consultation." rows={5}
+              style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 16 }}
+              onFocus={e => e.target.style.borderColor = "rgba(255,255,255,0.3)"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setShowNoteModal(false)}
+                style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}>
+                Annuler
+              </button>
+              <button onClick={() => void addNote()} disabled={savingNote || !newNoteText.trim()}
+                style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "white", cursor: savingNote || !newNoteText.trim() ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: savingNote || !newNoteText.trim() ? 0.5 : 1 }}>
+                {savingNote ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />Sauvegarde...</span> : "Sauvegarder →"}
+              </button>
+            </div>
           </div>
         </div>
       )}
