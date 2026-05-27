@@ -127,7 +127,7 @@ try {
       }
     
       if (data.user) {
-        await fetch("/api/create-practitioner", {
+        const practRes = await fetch("/api/create-practitioner", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -140,7 +140,12 @@ try {
             pendingPlan: plan,
           }),
         });
-    
+
+        if (!practRes.ok) {
+          setError("Une erreur est survenue lors de la création de votre compte. Veuillez réessayer.");
+          return;
+        }
+
         router.push(`/verify-otp?email=${encodeURIComponent(email.trim())}&plan=${plan}`);
       }
     } catch {

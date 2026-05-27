@@ -17,6 +17,10 @@ export default function PatientLoginPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("reason") === "session_expired") setSessionExpired(true);
+    if (params.get("reason") === "set_password_done") {
+      setSessionExpired(false);
+      setError("Votre mot de passe a bien été créé. Connectez-vous pour accéder à votre espace.");
+    }
   }, []);
 
   const [showForgotModal, setShowForgotModal] = useState(false);

@@ -38,7 +38,7 @@ export default function SetPasswordPage() {
     const timeout = setTimeout(() => {
       setReady(false);
       setError("__expired__");
-    }, 5000);
+    }, 15000); // 15s — couvre les connexions lentes
 
     supabase.auth.onAuthStateChange((event, session) => {
       console.log("Auth event:", event, "Session:", session?.user?.id);
@@ -79,25 +79,27 @@ export default function SetPasswordPage() {
       return;
     }
 
-    const cpRes = await fetch("/api/create-patient", {
+    // Sauvegarder le consentement RGPD et passer onboarding_status à "password_set"
+    // (débloque l'accès à /patient-onboarding via le middleware)
+    const rgpdRes = await fetch("/api/confirm-patient-rgpd", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: currentUser.id, email: currentUser.email, firstName: "", lastName: "" }),
+      body: JSON.stringify({ userId: currentUser.id, email: currentUser.email }),
     });
-    const cpData = await cpRes.json();
-    console.log("create-patient response:", cpRes.status, cpData);
+    if (!rgpdRes.ok) {
+      setError("Une erreur est survenue lors de la validation. Veuillez réessayer.");
+      setLoading(false);
+      return;
+    }
 
-    // Stocker un flag pour indiquer que l'onboarding doit commencer
-    sessionStorage.setItem("from_set_password", "true");
-    // Se reconnecter avec le nouveau mot de passe
+    // Se reconnecter avec le nouveau mot de passe pour rafraîchir la session
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: currentUser.email!,
       password,
     });
     if (signInError) {
-      console.error("SignIn error:", signInError.message);
-      setError("Erreur de connexion. Veuillez vous connecter manuellement.");
-      setLoading(false);
+      // Session toujours active via le magic link — rediriger quand même
+      window.location.href = "/patient-login?reason=set_password_done";
       return;
     }
     window.location.href = "/patient-onboarding";

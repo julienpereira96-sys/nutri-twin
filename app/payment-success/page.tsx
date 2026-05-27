@@ -7,11 +7,12 @@ import { useRouter } from "next/navigation";
 function PaymentSuccessContent() {
  const router = useRouter();
  const [planReady, setPlanReady] = useState(false);
+ const [webhookTimeout, setWebhookTimeout] = useState(false);
 
  useEffect(() => {
   const supabase = createSupabaseBrowserClient();
   let attempts = 0;
-  const maxAttempts = 15;
+  const maxAttempts = 20; // 40 secondes — couvre les webhooks Stripe lents
 
   const interval = setInterval(async () => {
     attempts++;
@@ -27,7 +28,7 @@ function PaymentSuccessContent() {
       clearInterval(interval);
     } else if (attempts >= maxAttempts) {
       clearInterval(interval);
-      router.push("/");
+      setWebhookTimeout(true); // Afficher l'écran d'erreur au lieu de rediriger silencieusement
     }
   }, 2000);
   return () => clearInterval(interval);
@@ -81,7 +82,28 @@ function PaymentSuccessContent() {
 
          <div style={{ padding: "28px" }}>
 
-           <div style={{ textAlign: "center", marginBottom: 40 }}>
+           {webhookTimeout && (
+             <div style={{ textAlign: "center", padding: "16px 0 24px" }}>
+               <p style={{ fontSize: 32, marginBottom: 12 }}>⏳</p>
+               <p style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "white" }}>
+                 Activation en cours...
+               </p>
+               <p style={{ margin: "0 0 20px", fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
+                 Votre paiement a bien été reçu par Stripe. L&apos;activation de votre accès prend plus de temps que prévu.
+                 Rafraîchissez la page dans quelques instants ou contactez-nous à{" "}
+                 <a href="mailto:support@nutritwin.fr" style={{ color: "#10b981" }}>support@nutritwin.fr</a>{" "}
+                 en mentionnant votre adresse email.
+               </p>
+               <button
+                 onClick={() => window.location.reload()}
+                 style={{ padding: "12px 24px", borderRadius: 10, background: "#10b981", color: "black", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer" }}
+               >
+                 Rafraîchir la page
+               </button>
+             </div>
+           )}
+
+           {!webhookTimeout && <div style={{ textAlign: "center", marginBottom: 40 }}>
              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#4b5563", letterSpacing: "0.12em", textTransform: "uppercase" }}>
                Prochaine étape
              </p>
@@ -182,6 +204,7 @@ function PaymentSuccessContent() {
                  </span>
              }
            </button>
+           </div>}
 
          </div>
        </div>
