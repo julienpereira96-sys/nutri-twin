@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   // Chercher directement dans la table patients par email — 1 requête ciblée
   const { data: patient } = await supabase
     .from("patients")
-    .select("user_id, onboarding_completed")
+    .select("user_id, onboarding_completed, onboarding_status")
     .ilike("email", email.trim())
     .single();
 
@@ -29,12 +29,15 @@ export async function POST(request: Request) {
 
   if (existingRelation) {
     if (patient.onboarding_completed) {
-      // Compte actif — vraiment bloqué
+      // Onboarding terminé — bloqué
       return Response.json({ exists: true, canResend: false });
-    } else {
-      // Pas encore activé — on peut renvoyer
-      return Response.json({ exists: true, canResend: true });
     }
+    if (patient.onboarding_status) {
+      // Mot de passe déjà créé (onboarding_status = "password_set") — pas de lien à renvoyer
+      return Response.json({ exists: true, canResend: false });
+    }
+    // Lien jamais cliqué — on peut renvoyer
+    return Response.json({ exists: true, canResend: true });
   }
 
   return Response.json({ exists: false });

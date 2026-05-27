@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Ce patient est déjà associé à votre cabinet." }, { status: 400 });
     }
 
-    // Compte existe mais pas encore activé — renvoyer un lien sans toucher aux données
+    // Compte existe mais pas encore activé — renvoyer un lien et mettre à jour les données
     const { data: linkData } = await supabase.auth.admin.generateLink({
       type: "magiclink",
       email,

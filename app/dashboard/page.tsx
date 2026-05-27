@@ -141,7 +141,7 @@ type RealPatient = {
   regime_specifique?: string;   practitioner_instruction?: { id: string; text: string; expires_at?: string | null; created_at: string }[];
   emotional_status?: string; emotional_insight?: string;
   latest_victory?: string; private_notes?: { id: string; text: string; created_at: string }[]; created_at?: string;
-  lastActive?: string | null; streak?: number; sosResolved?: number; onboardingCompleted?: boolean;
+  lastActive?: string | null; streak?: number; sosResolved?: number; onboardingCompleted?: boolean; onboardingStatus?: string | null;
 };
 
 type Conversation = { id: string; role: "user" | "assistant"; content: string; created_at: string; };
@@ -330,6 +330,9 @@ export default function DashboardPage() {
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
+  const [inviteExistingUnactivated, setInviteExistingUnactivated] = useState(false);
+  const [inviteResentLoading, setInviteResentLoading] = useState(false);
+  const [inviteResentSuccess, setInviteResentSuccess] = useState(false);
   const [resentInvite, setResentInvite] = useState(false);
   const [resentInviteLoading, setResentInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState("");
@@ -430,7 +433,7 @@ export default function DashboardPage() {
     if (!relations || relations.length === 0) { setLoading(false); return; }
     const patientIds = relations.map((r) => r.patient_id as string);
 
-    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at, onboarding_completed").in("user_id", patientIds);
+    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status").in("user_id", patientIds);
     if (!patientsData) { setLoading(false); return; }
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -501,6 +504,7 @@ export default function DashboardPage() {
         created_at: p.created_at,
         latest_victory: p.latest_victory ?? "",
         onboardingCompleted: p.onboarding_completed ?? false,
+        onboardingStatus: p.onboarding_status ?? null,
         admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[] | null) ?? [],
       };
     });
@@ -570,18 +574,28 @@ export default function DashboardPage() {
   const saveMurmure = async () => {
     if (!selectedPatientId || !murmureText.trim()) return;
     setSavingMurmure(true);
-    const expiresAt = buildMurmureExpiry(murmureDuration);
-    const patient = patients.find(p => p.id === selectedPatientId);
-    const currentMurmures = (patient?.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? [];
-    const newMurmure = { id: crypto.randomUUID(), text: murmureText.trim(), expires_at: expiresAt, created_at: new Date().toISOString() };
-    const updatedMurmures = [...currentMurmures, newMurmure];
-    await supabase.from("patients").update({ practitioner_instruction: updatedMurmures }).eq("user_id", selectedPatientId);
-    await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: selectedPatientId }) });
-    setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, practitioner_instruction: updatedMurmures } : p));
-    setSavingMurmure(false);
-    setMurmureDuration("permanent");
-    setMurmureText("");
-    setShowMurmureModal(false);
+    try {
+      const expiresAt = buildMurmureExpiry(murmureDuration);
+      const patient = patients.find(p => p.id === selectedPatientId);
+      const currentMurmures = (patient?.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? [];
+      const newMurmure = { id: crypto.randomUUID(), text: murmureText.trim(), expires_at: expiresAt, created_at: new Date().toISOString() };
+      const updatedMurmures = [...currentMurmures, newMurmure];
+      const res = await fetch("/api/save-murmure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: selectedPatientId, practitionerId, murmures: updatedMurmures }),
+      });
+      if (!res.ok) throw new Error("save-murmure failed");
+      await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: selectedPatientId }) });
+      setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, practitioner_instruction: updatedMurmures } : p));
+      setMurmureDuration("permanent");
+      setMurmureText("");
+      setShowMurmureModal(false);
+    } catch {
+      alert("Une erreur est survenue lors de la sauvegarde du murmure. Veuillez réessayer.");
+    } finally {
+      setSavingMurmure(false);
+    }
   };
 
   const addNote = async () => {
@@ -617,12 +631,21 @@ export default function DashboardPage() {
 
   const deleteMurmure = async (murmureId: string) => {
     if (!selectedPatientId) return;
-    const patient = patients.find(p => p.id === selectedPatientId);
-    const currentMurmures = (patient?.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? [];
-    const updatedMurmures = currentMurmures.filter(m => m.id !== murmureId);
-    await supabase.from("patients").update({ practitioner_instruction: updatedMurmures }).eq("user_id", selectedPatientId);
-    await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: selectedPatientId }) });
-    setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, practitioner_instruction: updatedMurmures } : p));
+    try {
+      const patient = patients.find(p => p.id === selectedPatientId);
+      const currentMurmures = (patient?.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? [];
+      const updatedMurmures = currentMurmures.filter(m => m.id !== murmureId);
+      const res = await fetch("/api/save-murmure", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: selectedPatientId, practitionerId, murmures: updatedMurmures }),
+      });
+      if (!res.ok) throw new Error("delete-murmure failed");
+      await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: selectedPatientId }) });
+      setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, practitioner_instruction: updatedMurmures } : p));
+    } catch {
+      alert("Une erreur est survenue lors de la suppression du murmure. Veuillez réessayer.");
+    }
   };
 
   const sendVictory = async (patientId: string, victoryText: string) => {
@@ -845,7 +868,27 @@ export default function DashboardPage() {
     setInvitePathologies(""); setInviteAllergies(""); setInviteTraitements(""); setInviteObjectifClinique("");
     setInviteBriefJumeau(""); setInviteNotes(""); setInviteNiveauActivite(""); setInviteRegime(""); setInviteError("");
     setInviteMurmureDuration("permanent");
+    setInviteExistingUnactivated(false); setInviteResentLoading(false); setInviteResentSuccess(false);
     setInviteStep(1);
+  };
+
+  const resendFromModal = async () => {
+    if (!practitionerId || !inviteEmail) return;
+    setInviteResentLoading(true);
+    setInviteError("");
+    try {
+      const res = await fetch("/api/invite-patient", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: inviteEmail.trim(), practitionerId }),
+      });
+      if (!res.ok) throw new Error();
+      setInviteResentSuccess(true);
+    } catch {
+      setInviteError("Une erreur est survenue. Veuillez réessayer.");
+    } finally {
+      setInviteResentLoading(false);
+    }
   };
 
   const sendInvite = async () => {
@@ -1352,7 +1395,8 @@ export default function DashboardPage() {
                   {!onboardingDemoMode && selectedPatient && !(selectedPatient as RealPatient).email?.includes("demo") && (
                     (() => {
                       const p = selectedPatient as RealPatient;
-                      const notActivated = !p.onboardingCompleted;
+                      // Bouton visible uniquement si le patient n'a jamais cliqué sur le lien (pas de mot de passe créé)
+                      const notActivated = !p.onboardingCompleted && !p.onboardingStatus;
                       if (!notActivated) return null;
                       if (resentInvite) return (
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, margin: "8px auto 0" }}>
@@ -2177,81 +2221,115 @@ export default function DashboardPage() {
               </div>
             ) : inviteStep === 1 ? (
               <>
-                <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Les informations de base pour créer l'espace de votre patient.</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  <div>
-                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Email *</p>
-                    <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="patient@email.fr"
-                      style={{ width: "100%", height: 46, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 10 }}
-                      onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
-                      <div>
-                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Prénom</p>
-                        <input type="text" value={inviteFirstName} onChange={e => setInviteFirstName(e.target.value)} placeholder="Sophie"
-                          style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
-                          onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                {inviteExistingUnactivated ? (
+                  /* ── Patient existant non activé — UI bloquante ── */
+                  <>
+                    <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
+                      <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "#fbbf24" }}>⚠️ Patient déjà invité</p>
+                      <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
+                        <strong style={{ color: "white" }}>{inviteEmail}</strong> a déjà reçu une invitation mais n&apos;a pas encore créé son mot de passe. Vous ne pouvez pas créer une nouvelle invitation — renvoyez-lui le lien à la place.
+                      </p>
+                    </div>
+                    {inviteResentSuccess ? (
+                      <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 12, padding: "20px", textAlign: "center", marginBottom: 20 }}>
+                        <p style={{ fontSize: 28, marginBottom: 8 }}>✅</p>
+                        <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "white" }}>Lien renvoyé !</p>
+                        <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Un nouvel email d&apos;invitation a été envoyé à <strong style={{ color: emerald }}>{inviteEmail}</strong>.</p>
                       </div>
+                    ) : (
+                      <>
+                        {inviteError && <p style={{ margin: "0 0 12px", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
+                        <button onClick={() => void resendFromModal()} disabled={inviteResentLoading}
+                          style={{ width: "100%", height: 48, borderRadius: 12, background: inviteResentLoading ? "rgba(255,255,255,0.05)" : "rgba(16,185,129,0.12)", border: `1px solid ${inviteResentLoading ? "rgba(255,255,255,0.08)" : "rgba(16,185,129,0.3)"}`, color: inviteResentLoading ? "#64748b" : emerald, cursor: inviteResentLoading ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, marginBottom: 10, transition: "all 0.2s" }}>
+                          {inviteResentLoading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Envoi en cours...</span> : "Renvoyer le lien d'invitation →"}
+                        </button>
+                      </>
+                    )}
+                    <button onClick={() => { setInviteExistingUnactivated(false); setInviteEmail(""); setInviteError(""); setInviteResentSuccess(false); }}
+                      style={{ width: "100%", height: 40, borderRadius: 10, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", cursor: "pointer", fontSize: 13 }}>
+                      ← Modifier l&apos;email
+                    </button>
+                  </>
+                ) : (
+                  /* ── Formulaire normal ── */
+                  <>
+                    <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Les informations de base pour créer l&apos;espace de votre patient.</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       <div>
-                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Nom</p>
-                        <input type="text" value={inviteLastName} onChange={e => setInviteLastName(e.target.value)} placeholder="Martin"
-                          style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Email *</p>
+                        <input type="email" value={inviteEmail} onChange={e => { setInviteEmail(e.target.value); setInviteError(""); }} placeholder="patient@email.fr"
+                          style={{ width: "100%", height: 46, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 10 }}
                           onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+                          <div>
+                            <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Prénom</p>
+                            <input type="text" value={inviteFirstName} onChange={e => setInviteFirstName(e.target.value)} placeholder="Sophie"
+                              style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                              onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                          </div>
+                          <div>
+                            <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Nom</p>
+                            <input type="text" value={inviteLastName} onChange={e => setInviteLastName(e.target.value)} placeholder="Martin"
+                              style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                              onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+                        {[
+                          { label: "Âge", value: inviteAge, setter: setInviteAge, placeholder: "34", min: 0, max: 110 },
+                          { label: "Taille (cm)", value: inviteTaille, setter: setInviteTaille, placeholder: "168", min: 0, max: 250 },
+                          { label: "Poids (kg)", value: invitePoids, setter: setInvitePoids, placeholder: "72", min: 0, max: 500 },
+                        ].map(({ label, value, setter, placeholder, min, max }) => (
+                          <div key={label}>
+                            <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
+                            <input type="number" value={value}
+                              onChange={e => { const val = parseInt(e.target.value); if (e.target.value === "" || (val >= min && val <= max)) setter(e.target.value); }}
+                              placeholder={placeholder} min={min} max={max}
+                              style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", MozAppearance: "textfield" } as React.CSSProperties}
+                              onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                          </div>
+                        ))}
+                        <div>
+                          <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
+                          <select value={inviteSexe} onChange={e => setInviteSexe(e.target.value)}
+                            style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
+                            <option value="">Choisir</option>
+                            <option value="Femme">Femme</option>
+                            <option value="Homme">Homme</option>
+                            <option value="Autre">Autre</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
-                    {[
-                      { label: "Âge", value: inviteAge, setter: setInviteAge, placeholder: "34", min: 0, max: 110 },
-                      { label: "Taille (cm)", value: inviteTaille, setter: setInviteTaille, placeholder: "168", min: 0, max: 250 },
-                      { label: "Poids (kg)", value: invitePoids, setter: setInvitePoids, placeholder: "72", min: 0, max: 500 },
-                    ].map(({ label, value, setter, placeholder, min, max }) => (
-                      <div key={label}>
-                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
-                        <input type="number" value={value}
-                          onChange={e => { const val = parseInt(e.target.value); if (e.target.value === "" || (val >= min && val <= max)) setter(e.target.value); }}
-                          placeholder={placeholder} min={min} max={max}
-                          style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", MozAppearance: "textfield" } as React.CSSProperties}
-                          onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-                      </div>
-                    ))}
-                    <div>
-                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
-                      <select value={inviteSexe} onChange={e => setInviteSexe(e.target.value)}
-                        style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
-                        <option value="">Choisir</option>
-                        <option value="Femme">Femme</option>
-                        <option value="Homme">Homme</option>
-                        <option value="Autre">Autre</option>
-                      </select>
+                    {inviteError && <p style={{ margin: "16px 0 0", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
+                    <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
+                      <button onClick={() => { setShowInviteModal(false); resetInviteForm(); }}
+                        style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                        Annuler
+                      </button>
+                      <button onClick={async () => {
+                        if (!inviteEmail.trim()) { setInviteError("L'email est requis."); return; }
+                        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) { setInviteError("Veuillez entrer un email valide."); return; }
+                        if (!inviteFirstName.trim()) { setInviteError("Le prénom est requis."); return; }
+                        setCheckingEmail(true); setInviteError("");
+                        const res = await fetch("/api/check-patient-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId }) });
+                        const data = await res.json() as { exists: boolean; canResend?: boolean };
+                        setCheckingEmail(false);
+                        if (data.exists && !data.canResend) { setInviteError("Ce patient est déjà actif dans votre cabinet."); return; }
+                        if (data.exists && data.canResend) { setInviteExistingUnactivated(true); return; }
+                        setInviteStep(2);
+                      }} disabled={checkingEmail}
+                        style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: checkingEmail ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s", opacity: checkingEmail ? 0.7 : 1 }}
+                        onMouseEnter={e => { if (!checkingEmail) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
+                        {checkingEmail ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Vérification...</span> : "Suivant →"}
+                      </button>
                     </div>
-                  </div>
-                </div>
-                {inviteError && <p style={{ margin: "16px 0 0", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
-                <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
-                <button onClick={() => { setShowInviteModal(false); resetInviteForm(); setInviteStep(1); }}
-                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
-                    Annuler
-                  </button>
-                  <button onClick={async () => {
-                    if (!inviteEmail.trim()) { setInviteError("L'email est requis."); return; }
-                    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) { setInviteError("Veuillez entrer un email valide."); return; }
-                    if (!inviteFirstName.trim()) { setInviteError("Le prénom est requis."); return; }
-                    setCheckingEmail(true); setInviteError("");
-                    const res = await fetch("/api/check-patient-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId }) });
-                    const data = await res.json() as { exists: boolean; canResend?: boolean };
-                    setCheckingEmail(false);
-                    if (data.exists && !data.canResend) { setInviteError("Ce patient est déjà associé à votre cabinet."); return; }
-                    if (data.exists && data.canResend) { setInviteError("Ce patient a déjà reçu une invitation mais n'a pas encore activé son compte. Continuer pour renvoyer le lien."); }
-                    setInviteStep(2);
-                  }} disabled={checkingEmail}
-                    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: checkingEmail ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s", opacity: checkingEmail ? 0.7 : 1 }}
-                    onMouseEnter={e => { if (!checkingEmail) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                    {checkingEmail ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Vérification...</span> : "Suivant →"}
-                  </button>
-                </div>
+                  </>
+                )}
               </>
             ) : inviteStep === 2 ? (
               <>
