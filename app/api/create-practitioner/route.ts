@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
+import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 export async function POST(request: Request) {
+  const user = await getSessionUser();
+  if (!user) return unauthorized();
+
   const { userId, firstName, lastName, specialty, email, marketingConsent, pendingPlan } = await request.json() as {
     userId: string;
     firstName: string;
@@ -10,6 +14,8 @@ export async function POST(request: Request) {
     marketingConsent?: boolean;
     pendingPlan?: string;
   };
+
+  if (user.id !== userId) return forbidden();
 
   const supabase = createClient(
     process.env.SUPABASE_URL!,

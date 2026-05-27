@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
+import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
+
 function createSupabaseClient() {
   return createClient(
     process.env.SUPABASE_URL!,
@@ -9,6 +11,9 @@ function createSupabaseClient() {
 
 export async function POST(request: Request) {
   try {
+    const user = await getSessionUser();
+    if (!user) return unauthorized();
+
     const { patientId, practitionerId, eventId, stressBeforeProxy, scoreAfter } = await request.json() as {
       patientId: string;
       practitionerId: string;
@@ -20,6 +25,9 @@ export async function POST(request: Request) {
     if (!patientId || !practitionerId || !scoreAfter) {
       return Response.json({ error: "Paramètres manquants." }, { status: 400 });
     }
+
+    // Le patient connecté ne peut soumettre que son propre feedback
+    if (user.id !== patientId) return forbidden();
 
     const supabase = createSupabaseClient();
 

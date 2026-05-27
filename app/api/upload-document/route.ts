@@ -86,6 +86,10 @@ async function extractTextFromAudio(buffer: Buffer, mimeType: string): Promise<s
 
 export async function POST(request: Request) {
   try {
+    const { getSessionUser, unauthorized, forbidden } = await import("@/lib/api-auth");
+    const user = await getSessionUser();
+    if (!user) return unauthorized();
+
     const supabase = createClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -97,6 +101,9 @@ export async function POST(request: Request) {
 
     if (!file || !practitionerId) {
       return Response.json({ error: "Fichier ou practitionerId manquant." }, { status: 400 });
+    }
+
+    if (user.id !== practitionerId) return forbidden();
     }
 
     const { count } = await supabase

@@ -509,8 +509,18 @@ export default function DashboardPage() {
     setLoading(false);
   };
   useEffect(() => {
+    // Écouter l'expiration de session en cours d'utilisation
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        window.location.href = "/login?reason=session_expired";
+      }
+    });
+
     supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return;
+      if (!data.user) {
+        window.location.href = "/login?reason=session_expired";
+        return;
+      }
       const pid = data.user.id;
       setPractitionerId(pid);
       const { data: practitioner } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin, onboarding_done").eq("user_id", pid).single();
@@ -529,6 +539,8 @@ export default function DashboardPage() {
       if ((count ?? 0) > 0) { const hidden = localStorage.getItem("fidelity_hidden"); if (hidden === "true") setShowFidelity(false); }
       await Promise.all([loadPatients(pid), loadMonthlyStats(pid), loadDocuments(pid)]);
     });
+
+    return () => { subscription.unsubscribe(); };
   }, []);
 
   useEffect(() => {
@@ -582,7 +594,7 @@ export default function DashboardPage() {
     await fetch("/api/save-private-notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ patientId: selectedPatientId, notes: updatedNotes }),
+      body: JSON.stringify({ patientId: selectedPatientId, practitionerId, notes: updatedNotes }),
     });
     setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, private_notes: updatedNotes } : p));
     setNewNoteText("");
@@ -598,7 +610,7 @@ export default function DashboardPage() {
     await fetch("/api/save-private-notes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ patientId: selectedPatientId, notes: updatedNotes }),
+      body: JSON.stringify({ patientId: selectedPatientId, practitionerId, notes: updatedNotes }),
     });
     setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, private_notes: updatedNotes } : p));
   };

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { Redis } from "@upstash/redis";
+import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 export async function POST(request: Request) {
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -11,6 +12,9 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+
+  const user = await getSessionUser();
+  if (!user) return unauthorized();
 
   let body: unknown;
   try {
@@ -34,6 +38,8 @@ export async function POST(request: Request) {
   if (!userId) {
     return Response.json({ error: "userId requis." }, { status: 400 });
   }
+
+  if (user.id !== userId) return forbidden();
   
   // Validation server-side des answers
   const ALLOWED_KEYS = ["tone_of_voice","tutoiement","technicite","longueur_reponses","emojis","approche_generale","pathologies","position_regimes","position_glucides","jejune","complements","petit_dejeuner","lifestyle_budget","jamais_dire","conviction","gestion_ecarts","emotions","non_suivi","fetes_vacances","motivation_berne","posture","perimetre","questions_medicales","urgence_detresse","ligne_rouge","approche_libre","situation1","situation2","situation3","situation4","situation5","situation6"];

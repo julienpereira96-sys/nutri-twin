@@ -457,8 +457,21 @@ export default function ChatPage() {
 
   useEffect(() => {
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+
+    // Écouter l'expiration de session en cours d'utilisation
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
+        if (event === "SIGNED_OUT") {
+          window.location.href = "/patient-login?reason=session_expired";
+        }
+      }
+    });
+
     supabase.auth.getUser().then(async ({ data }) => {
-      if (!data.user) return;
+      if (!data.user) {
+        window.location.href = "/patient-login?reason=session_expired";
+        return;
+      }
       setPatientId(data.user.id);
       const { data: rel } = await supabase.from("patient_practitioner").select("practitioner_id").eq("patient_id", data.user.id).single();
       if (rel) {
@@ -491,6 +504,8 @@ export default function ChatPage() {
       }
       await loadSessions(data.user.id);
     });
+
+    return () => { subscription.unsubscribe(); };
   }, [loadSessions]);
 
   useEffect(() => () => { if (breathingIntervalRef.current) clearInterval(breathingIntervalRef.current); }, []);

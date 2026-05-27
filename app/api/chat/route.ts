@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { createClient } from "@supabase/supabase-js";
 import { Redis } from "@upstash/redis";
+import { getSessionUser } from "@/lib/api-auth";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 const redis = new Redis({
@@ -566,6 +567,13 @@ export async function POST(request: Request) {
       imageMimeType,
       isSOS,
     } = await request.json() as ChatRequest;
+
+    // Si un patientId est fourni, vérifier que l'appelant est bien ce patient
+    if (patientId) {
+      const user = await getSessionUser();
+      if (!user) return Response.json({ error: "Non autorisé." }, { status: 401 });
+      if (user.id !== patientId) return Response.json({ error: "Accès refusé." }, { status: 403 });
+    }
 
     if (isSOS && patientId && practitionerId) {
       const supabase = createSupabaseClient();

@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { buildMurmureExpiry } from "@/lib/murmure";
+import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 const PLAN_LIMITS: Record<string, number> = {
   essentiel: 10,
@@ -10,6 +11,9 @@ const PLAN_LIMITS: Record<string, number> = {
 };
 
 export async function POST(request: Request) {
+  const user = await getSessionUser();
+  if (!user) return unauthorized();
+
   const {
     email, practitionerId, first_name, last_name, age, sexe, taille, poids,
     pathologies, allergies, traitements, objectif_clinique, brief_jumeau,
@@ -28,6 +32,8 @@ export async function POST(request: Request) {
   if (!practitionerId || typeof practitionerId !== "string") {
     return Response.json({ error: "practitionerId requis." }, { status: 400 });
   }
+
+  if (user.id !== practitionerId) return forbidden();
 
   const sanitize = (val: string | null | undefined, max = 500): string | null => {
     if (!val || typeof val !== "string") return null;

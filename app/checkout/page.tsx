@@ -251,7 +251,7 @@ function CheckoutForm() {
       const res = await fetch("/api/create-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, userId: user.id }),
+        body: JSON.stringify({ plan }),
       });
 
       if (!res.ok) {

@@ -1,12 +1,21 @@
 import { createClient } from "@supabase/supabase-js";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
+
+const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
 export async function POST(request: Request) {
+  const user = await getSessionUser();
+  if (!user) return unauthorized();
+
   const { patientId, practitionerId, victoryText } = await request.json() as {
     patientId: string;
     practitionerId: string;
     victoryText: string;
   };
+
+  if (user.id !== practitionerId) return forbidden();
 
   const supabase = createClient(
     process.env.SUPABASE_URL!,
@@ -22,18 +31,21 @@ export async function POST(request: Request) {
 
   const firstName = (patient as { first_name?: string } | null)?.first_name ?? "vous";
 
-  // Générer un message d'encouragement via Gemini
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message: `Le praticien a remarqué une victoire importante pour ce patient et veut lui envoyer un message d'encouragement personnalisé. La victoire : "${victoryText}". Génère un message chaleureux, court (2-3 phrases max), comme si le jumeau transmettait les félicitations du praticien. Commence par le prénom ${firstName}. Sans markdown.`,
-      practitionerId,
-    }),
-  });
-
-  const data = await res.json() as { response?: string };
-  const message = data.response ?? `${firstName}, votre praticien a remarqué votre belle victoire. Continuez comme ça ! 🌿`;
+  // Générer un message d'encouragement via Gemini directement (pas d'appel HTTP interne)
+  let message = `${firstName}, votre praticien a remarqué votre belle victoire. Continuez comme ça ! 🌿`;
+  try {
+    const model = genAI.getGenerativeModel({
+      model: "gemini-3.1-flash-lite",
+      generationConfig: { maxOutputTokens: 150, temperature: 0.7 },
+    });
+    const result = await model.generateContent(
+      `Le praticien a remarqué une victoire importante pour ce patient et veut lui envoyer un message d'encouragement personnalisé. La victoire : "${victoryText}". Génère un message chaleureux, court (2-3 phrases max), comme si le jumeau transmettait les félicitations du praticien. Commence par le prénom ${firstName}. Sans markdown.`
+    );
+    const text = result.response.text().trim();
+    if (text) message = text;
+  } catch {
+    // Silencieux — on garde le message par défaut
+  }
 
   // Insérer le message dans les conversations
   await supabase.from("conversations").insert({

@@ -1,7 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 export async function POST(request: Request) {
+  const user = await getSessionUser();
+  if (!user) return unauthorized();
+
   const { patientId, practitionerId, reportContent, patientName, practitionerName } = await request.json() as {
     patientId: string;
     practitionerId: string;
@@ -9,6 +13,8 @@ export async function POST(request: Request) {
     patientName: string;
     practitionerName: string;
   };
+
+  if (user.id !== practitionerId) return forbidden();
 
   const html = `
 <!DOCTYPE html>

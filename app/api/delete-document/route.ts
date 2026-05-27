@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { Redis } from "@upstash/redis";
+import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
@@ -7,8 +8,13 @@ const redis = new Redis({
 });
 
 export async function POST(request: Request) {
+  const user = await getSessionUser();
+  if (!user) return unauthorized();
+
   const { fileName, practitionerId } = await request.json() as { fileName: string; practitionerId: string };
   if (!fileName || !practitionerId) return Response.json({ error: "Données manquantes" }, { status: 400 });
+
+  if (user.id !== practitionerId) return forbidden();
 
   const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 

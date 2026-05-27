@@ -1,11 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
+import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
 export async function POST(request: Request) {
   try {
+    const user = await getSessionUser();
+    if (!user) return unauthorized();
+
     const { patientId, practitionerId } = await request.json() as {
       patientId: string;
       practitionerId: string;
@@ -14,6 +18,8 @@ export async function POST(request: Request) {
     if (!patientId || !practitionerId) {
       return NextResponse.json({ error: "patientId et practitionerId requis." }, { status: 400 });
     }
+
+    if (user.id !== practitionerId) return forbidden();
 
     const supabase = createClient(
       process.env.SUPABASE_URL!,

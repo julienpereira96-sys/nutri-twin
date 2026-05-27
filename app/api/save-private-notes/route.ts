@@ -1,17 +1,25 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 type PrivateNote = { id: string; text: string; created_at: string };
 
 export async function POST(request: Request) {
-  const { patientId, notes } = await request.json() as {
+  const user = await getSessionUser();
+  if (!user) return unauthorized();
+
+  const { patientId, practitionerId, notes } = await request.json() as {
     patientId: string;
+    practitionerId: string;
     notes: PrivateNote[];
   };
 
-  if (!patientId || !Array.isArray(notes)) {
+  if (!patientId || !practitionerId || !Array.isArray(notes)) {
     return NextResponse.json({ error: "Paramètres invalides." }, { status: 400 });
   }
+
+  // Le praticien connecté doit être celui qui modifie les notes
+  if (user.id !== practitionerId) return forbidden();
 
   const supabase = createClient(
     process.env.SUPABASE_URL!,

@@ -23,10 +23,10 @@ export async function POST(request: Request) {
   );
 
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
 
-  const { plan, userId } = await request.json() as {
+  const { plan } = await request.json() as {
     plan: "essentiel" | "pro" | "cabinet" | "fondateur";
-    userId: string;
   };
 
   const priceMap: Record<string, string> = {
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const { data: practitioner } = await supabase
       .from("practitioners")
       .select("stripe_customer_id")
-      .eq("user_id", userId || user?.id)
+      .eq("user_id", user.id)
       .single();
 
       if (practitioner?.stripe_customer_id) {
@@ -57,14 +57,14 @@ export async function POST(request: Request) {
       if (!customerId) {
         const customer = await stripe.customers.create({
           email: user?.email,
-          metadata: { userId: userId || user?.id || "" },
+          metadata: { userId: user.id || "" },
         });
         customerId = customer.id;
       
         await supabase
           .from("practitioners")
           .update({ stripe_customer_id: customerId })
-          .eq("user_id", userId || user?.id);
+          .eq("user_id", user.id);
       }      
 
     // Créer un SetupIntent pour collecter la carte
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       customer: customerId,
       payment_method_types: ["card"],
       metadata: {
-        userId: userId || user?.id || "",
+        userId: user.id || "",
         plan,
         priceId: priceMap[plan],
       },

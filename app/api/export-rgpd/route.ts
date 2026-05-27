@@ -1,10 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
+import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 export async function GET(request: NextRequest) {
+  const user = await getSessionUser();
+  if (!user) return unauthorized();
+
   const { searchParams } = new URL(request.url);
   const patientId = searchParams.get("patientId");
   if (!patientId) return Response.json({ error: "patientId manquant" }, { status: 400 });
+
+  // Un patient ne peut exporter que ses propres données
+  if (user.id !== patientId) return forbidden();
 
   const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
