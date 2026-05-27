@@ -1,29 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
+import { buildMurmureExpiry } from "@/lib/murmure";
 
 const PLAN_LIMITS: Record<string, number> = {
   essentiel: 10,
   pro: 100,
   cabinet: Infinity,
   fondateur: Infinity,
-};
-
-const buildMurmureExpiry = (murmure_duration: string | null | undefined): string | null => {
-  if (!murmure_duration || murmure_duration === "permanent") return null;
-  if (murmure_duration === "24h") return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-  if (murmure_duration === "3j") return new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
-  if (murmure_duration === "7j") return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  if (murmure_duration === "30j") return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-  if (murmure_duration.startsWith("custom_")) {
-    const parts = murmure_duration.split("_");
-    const amount = parseInt(parts[1]);
-    const unit = parts[2];
-    const ms = unit === "semaines" ? amount * 7 * 24 * 60 * 60 * 1000
-      : unit === "mois" ? amount * 30 * 24 * 60 * 60 * 1000
-      : amount * 24 * 60 * 60 * 1000;
-    return new Date(Date.now() + ms).toISOString();
-  }
-  return null;
 };
 
 export async function POST(request: Request) {
@@ -76,27 +59,23 @@ export async function POST(request: Request) {
     }, { status: 403 });
   }
 
-  // Vérifier si le compte existe déjà dans Supabase Auth
-  const { data: allUsers } = await supabase.auth.admin.listUsers();
-  const existingUser = allUsers?.users?.find(u => u.email === email);
+  // Vérifier si le patient existe déjà — 1 requête ciblée, pas de listUsers
+  const { data: existingPatient } = await supabase
+    .from("patients")
+    .select("user_id, onboarding_completed")
+    .ilike("email", email.trim())
+    .single();
 
-  if (existingUser) {
+  if (existingPatient) {
     const { data: existingRelation } = await supabase
       .from("patient_practitioner")
       .select("patient_id")
-      .eq("patient_id", existingUser.id)
+      .eq("patient_id", existingPatient.user_id)
       .eq("practitioner_id", practitionerId)
       .single();
 
-    if (existingRelation) {
-      const { data: patientData } = await supabase
-        .from("patients")
-        .select("onboarding_completed")
-        .eq("user_id", existingUser.id)
-        .single();
-      if (patientData?.onboarding_completed) {
-        return Response.json({ error: "Ce patient est déjà associé à votre cabinet." }, { status: 400 });
-      }
+    if (existingRelation && existingPatient.onboarding_completed) {
+      return Response.json({ error: "Ce patient est déjà associé à votre cabinet." }, { status: 400 });
     }
 
     // Compte existe mais pas encore activé — renvoyer un lien sans toucher aux données
@@ -123,7 +102,7 @@ export async function POST(request: Request) {
 
     if (!existingRelation) {
       await supabase.from("patient_practitioner").insert({
-        patient_id: existingUser.id,
+        patient_id: existingPatient.user_id,
         practitioner_id: practitionerId,
       });
     }

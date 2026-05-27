@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { buildMurmureExpiry } from "@/lib/murmure";
 
 const emerald = "#10b981";
 const amber = "#f59e0b";
@@ -557,25 +558,7 @@ export default function DashboardPage() {
   const saveMurmure = async () => {
     if (!selectedPatientId || !murmureText.trim()) return;
     setSavingMurmure(true);
-    const getExpiresAt = () => {
-      if (murmureDuration === "permanent") return null;
-      if (murmureDuration === "24h") return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-      if (murmureDuration === "3j") return new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
-      if (murmureDuration === "7j") return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-      if (murmureDuration === "30j") return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-      if (murmureDuration.startsWith("custom_")) {
-        const parts = murmureDuration.split("_");
-        const amount = parseInt(parts[1]);
-        const unit = parts[2];
-        if (!amount || isNaN(amount)) return null;
-        const ms = unit === "semaines" ? amount * 7 * 24 * 60 * 60 * 1000
-          : unit === "mois" ? amount * 30 * 24 * 60 * 60 * 1000
-          : amount * 24 * 60 * 60 * 1000;
-        return new Date(Date.now() + ms).toISOString();
-      }
-      return null;
-    };
-    const expiresAt = getExpiresAt();
+    const expiresAt = buildMurmureExpiry(murmureDuration);
     const patient = patients.find(p => p.id === selectedPatientId);
     const currentMurmures = (patient?.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? [];
     const newMurmure = { id: crypto.randomUUID(), text: murmureText.trim(), expires_at: expiresAt, created_at: new Date().toISOString() };
@@ -646,10 +629,14 @@ export default function DashboardPage() {
     if (!displayedSelectedPatient || !reportContent) return;
     const res = await fetch("/api/generate-pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: displayedSelectedPatient.id, practitionerId, reportContent, patientName: `${displayedSelectedPatient.firstName} ${displayedSelectedPatient.lastName}`, practitionerName }) });
     const html = await res.text();
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = `rapport_${displayedSelectedPatient.firstName}.html`; a.click();
-    URL.revokeObjectURL(url);
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.addEventListener("load", () => {
+      printWindow.focus();
+      printWindow.print();
+    });
   };
 
   const openJumeauModal = async () => {
