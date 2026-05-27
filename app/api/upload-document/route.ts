@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Redis } from "@upstash/redis";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
+import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 const redis = new Redis({
@@ -86,7 +87,6 @@ async function extractTextFromAudio(buffer: Buffer, mimeType: string): Promise<s
 
 export async function POST(request: Request) {
   try {
-    const { getSessionUser, unauthorized, forbidden } = await import("@/lib/api-auth");
     const user = await getSessionUser();
     if (!user) return unauthorized();
 
@@ -104,7 +104,6 @@ export async function POST(request: Request) {
     }
 
     if (user.id !== practitionerId) return forbidden();
-    }
 
     const { count } = await supabase
       .from("documents")
