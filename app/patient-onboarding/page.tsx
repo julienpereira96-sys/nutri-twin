@@ -62,11 +62,14 @@ const DIGESTIF = [
   { id: "aucun", label: "Aucun inconfort" },
 ];
 
+const LS_KEY = "patient_onboarding";
+
 export default function PatientOnboardingPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [editMode, setEditMode] = useState(false);
 
   // Étape 1
@@ -103,9 +106,45 @@ export default function PatientOnboardingPage() {
 
   const totalSteps = 4;
 
+  // Restaurer depuis localStorage au montage, puis compléter avec les données Supabase
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) { router.push("/patient-login"); return; }
+
+      // 1. Essayer de restaurer depuis localStorage en priorité
+      try {
+        const saved = localStorage.getItem(LS_KEY);
+        if (saved) {
+          const p = JSON.parse(saved) as Record<string, unknown>;
+          if (typeof p.step === "number") setStep(p.step);
+          if (typeof p.confirmAge === "string") setConfirmAge(p.confirmAge);
+          if (typeof p.confirmSexe === "string") setConfirmSexe(p.confirmSexe);
+          if (typeof p.confirmTaille === "string") setConfirmTaille(p.confirmTaille);
+          if (typeof p.confirmPoids === "string") setConfirmPoids(p.confirmPoids);
+          if (typeof p.confirmPathologies === "string") setConfirmPathologies(p.confirmPathologies);
+          if (typeof p.confirmAllergies === "string") setConfirmAllergies(p.confirmAllergies);
+          if (typeof p.confirmTraitements === "string") setConfirmTraitements(p.confirmTraitements);
+          if (typeof p.confirmNiveauActivite === "string") setConfirmNiveauActivite(p.confirmNiveauActivite);
+          if (typeof p.confirmRegime === "string") setConfirmRegime(p.confirmRegime);
+          if (typeof p.objectif === "string") setObjectif(p.objectif);
+          if (typeof p.objectifCustom === "string") setObjectifCustom(p.objectifCustom);
+          if (typeof p.mood === "string") setMood(p.mood);
+          if (typeof p.moodCustom === "string") setMoodCustom(p.moodCustom);
+          if (typeof p.defi === "string") setDefi(p.defi);
+          if (typeof p.defiCustom === "string") setDefiCustom(p.defiCustom);
+          if (Array.isArray(p.equipement)) setEquipement(p.equipement as string[]);
+          if (typeof p.tempsCuisine === "string") setTempsCuisine(p.tempsCuisine);
+          if (typeof p.budget === "string") setBudget(p.budget);
+          if (Array.isArray(p.repasSautes)) setRepasSautes(p.repasSautes as string[]);
+          if (typeof p.sommeil === "string") setSommeil(p.sommeil);
+          if (Array.isArray(p.digestif)) setDigestif(p.digestif as string[]);
+          if (Array.isArray(p.alimentsAimes)) setAlimentsAimes(p.alimentsAimes as string[]);
+          if (Array.isArray(p.alimentsDetestes)) setAlimentsDetestes(p.alimentsDetestes as string[]);
+          return; // localStorage prime sur les données Supabase
+        }
+      } catch { /* ignore */ }
+
+      // 2. Pas de localStorage — charger les données pré-remplies par le praticien
       const { data: patient } = await supabase.from("patients").select("age, sexe, taille, poids, pathologies, allergies, traitements, niveau_activite, regime_specifique").eq("user_id", data.user.id).single();
       if (patient) {
         setConfirmAge(patient.age ? String(patient.age) : "");
@@ -120,6 +159,28 @@ export default function PatientOnboardingPage() {
       }
     });
   }, []);
+
+  // Sauvegarder dans localStorage à chaque changement de state
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        step,
+        confirmAge, confirmSexe, confirmTaille, confirmPoids,
+        confirmPathologies, confirmAllergies, confirmTraitements,
+        confirmNiveauActivite, confirmRegime,
+        objectif, objectifCustom, mood, moodCustom, defi, defiCustom,
+        equipement, tempsCuisine, budget, repasSautes, sommeil, digestif,
+        alimentsAimes, alimentsDetestes,
+      }));
+    } catch { /* ignore quota errors */ }
+  }, [
+    step, confirmAge, confirmSexe, confirmTaille, confirmPoids,
+    confirmPathologies, confirmAllergies, confirmTraitements,
+    confirmNiveauActivite, confirmRegime,
+    objectif, objectifCustom, mood, moodCustom, defi, defiCustom,
+    equipement, tempsCuisine, budget, repasSautes, sommeil, digestif,
+    alimentsAimes, alimentsDetestes,
+  ]);
 
   const toggleMultiple = (value: string, list: string[], setList: (v: string[]) => void) => {
     setList(list.includes(value) ? list.filter(x => x !== value) : [...list, value]);
@@ -143,42 +204,52 @@ export default function PatientOnboardingPage() {
 
   const saveAndContinue = async () => {
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    setSaveError("");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/patient-login"); return; }
 
-    const finalObjectif = objectif === "autre" ? objectifCustom : objectif;
-    const finalMood = mood === "autre" ? moodCustom : mood;
-    const finalDefi = defi === "autre" ? defiCustom : defi;
+      const finalObjectif = objectif === "autre" ? objectifCustom : objectif;
+      const finalMood = mood === "autre" ? moodCustom : mood;
+      const finalDefi = defi === "autre" ? defiCustom : defi;
 
-    await supabase.from("patients").update({
-      age: confirmAge ? parseInt(confirmAge) : null,
-      sexe: confirmSexe || null,
-      taille: confirmTaille ? parseInt(confirmTaille) : null,
-      poids: confirmPoids ? parseFloat(confirmPoids) : null,
-      pathologies: confirmPathologies || null,
-      allergies: confirmAllergies || null,
-      traitements: confirmTraitements || null,
-      niveau_activite: confirmNiveauActivite || null,
-      regime_specifique: confirmRegime || null,
-      objective: finalObjectif || null,
-      motivation: finalMood || null,
-      defi: finalDefi || null,
-      aliments_aimes: alimentsAimes.join(", ") || null,
-      aliments_detestes: alimentsDetestes.join(", ") || null,
-      notes: [
-        equipement.length > 0 ? `Équipement: ${equipement.join(", ")}` : "",
-        tempsCuisine ? `Temps cuisine: ${tempsCuisine}` : "",
-        budget ? `Budget: ${budget}` : "",
-        repasSautes.length > 0 ? `Repas sautés: ${repasSautes.join(", ")}` : "",
-        sommeil ? `Sommeil: ${sommeil}` : "",
-        digestif.length > 0 ? `Digestif: ${digestif.join(", ")}` : "",
-      ].filter(Boolean).join(" | ") || null,
-      onboarding_completed: true,
-      onboarding_status: "completed",
-    }).eq("user_id", user.id);
+      const { error } = await supabase.from("patients").update({
+        age: confirmAge ? parseInt(confirmAge) : null,
+        sexe: confirmSexe || null,
+        taille: confirmTaille ? parseInt(confirmTaille) : null,
+        poids: confirmPoids ? parseFloat(confirmPoids) : null,
+        pathologies: confirmPathologies || null,
+        allergies: confirmAllergies || null,
+        traitements: confirmTraitements || null,
+        niveau_activite: confirmNiveauActivite || null,
+        regime_specifique: confirmRegime || null,
+        objective: finalObjectif || null,
+        motivation: finalMood || null,
+        defi: finalDefi || null,
+        aliments_aimes: alimentsAimes.join(", ") || null,
+        aliments_detestes: alimentsDetestes.join(", ") || null,
+        notes: [
+          equipement.length > 0 ? `Équipement: ${equipement.join(", ")}` : "",
+          tempsCuisine ? `Temps cuisine: ${tempsCuisine}` : "",
+          budget ? `Budget: ${budget}` : "",
+          repasSautes.length > 0 ? `Repas sautés: ${repasSautes.join(", ")}` : "",
+          sommeil ? `Sommeil: ${sommeil}` : "",
+          digestif.length > 0 ? `Digestif: ${digestif.join(", ")}` : "",
+        ].filter(Boolean).join(" | ") || null,
+        onboarding_completed: true,
+        onboarding_status: "completed",
+      }).eq("user_id", user.id);
 
-    setSaving(false);
-    router.push("/chat");
+      if (error) throw new Error(error.message);
+
+      // Succès — nettoyer le localStorage et rediriger
+      try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
+      router.push("/chat");
+    } catch {
+      setSaveError("Une erreur est survenue lors de la sauvegarde. Veuillez réessayer.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const inputStyle: React.CSSProperties = {
@@ -576,6 +647,12 @@ export default function PatientOnboardingPage() {
                 </div>
               )}
             </div>
+
+            {saveError && (
+              <div style={{ marginBottom: 12, padding: "12px 16px", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                <p style={{ margin: 0, fontSize: 13, color: "#f87171" }}>{saveError}</p>
+              </div>
+            )}
 
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setStep(3)} style={{ flex: 1, height: 48, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>← Retour</button>

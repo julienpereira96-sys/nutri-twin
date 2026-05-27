@@ -103,7 +103,8 @@ function PaymentSuccessContent() {
              </div>
            )}
 
-           {!webhookTimeout && <div style={{ textAlign: "center", marginBottom: 40 }}>
+           {!webhookTimeout && <>
+           <div style={{ textAlign: "center", marginBottom: 40 }}>
              <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#4b5563", letterSpacing: "0.12em", textTransform: "uppercase" }}>
                Prochaine étape
              </p>
@@ -204,7 +205,7 @@ function PaymentSuccessContent() {
                  </span>
              }
            </button>
-           </div>}
+           </>}
 
          </div>
        </div>
