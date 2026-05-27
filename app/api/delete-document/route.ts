@@ -13,7 +13,6 @@ export async function POST(request: Request) {
   const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
   await supabase.from("documents").delete().eq("practitioner_id", practitionerId).eq("file_name", fileName);
-  await supabase.from("document_chunks").delete().eq("practitioner_id", practitionerId).eq("file_name", fileName);
 
   try { await redis.del(`has_docs:${practitionerId}`); } catch { /* silencieux */ }
 

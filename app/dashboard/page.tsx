@@ -427,43 +427,82 @@ export default function DashboardPage() {
   const loadPatients = async (pid: string) => {
     const { data: relations } = await supabase.from("patient_practitioner").select("patient_id").eq("practitioner_id", pid);
     if (!relations || relations.length === 0) { setLoading(false); return; }
-    const patientIds = relations.map((r) => r.patient_id);
+    const patientIds = relations.map((r) => r.patient_id as string);
+
     const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at, onboarding_completed").in("user_id", patientIds);
     if (!patientsData) { setLoading(false); return; }
+
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const patientsWithStats = await Promise.all(
-      patientsData.map(async (p, i) => {
-        const { data: convs } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", p.user_id).eq("practitioner_id", pid).order("created_at", { ascending: false }).limit(1);
-        const lastConv = convs?.[0];
-        const { count } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("patient_id", p.user_id).eq("practitioner_id", pid);
-        // Assiduité — jours distincts avec messages dans les 30 derniers jours
-        const { data: recentConvs } = await supabase.from("conversations").select("created_at").eq("patient_id", p.user_id).eq("practitioner_id", pid).eq("role", "user").gte("created_at", thirtyDaysAgo);
-        const distinctDays = new Set((recentConvs ?? []).map(c => c.created_at.split("T")[0])).size;
-        // Crises désamorcées
-        const { count: sosCount } = await supabase.from("sos_events").select("*", { count: "exact", head: true }).eq("patient_id", p.user_id);
-        const initials = `${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase();
-        return {
-          id: p.user_id, firstName: p.first_name ?? "Patient", lastName: p.last_name ?? "", initials,
-          avatarColor: AVATAR_COLORS[i % AVATAR_COLORS.length], email: p.email ?? "",
-          lastMessage: lastConv?.content ?? "Aucun message pour l'instant",
-          lastMessageTime: lastConv?.created_at ? new Date(lastConv.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "",
-          lastMessageRole: lastConv?.role ?? "", totalMessages: count ?? 0,
-          lastActive: lastConv?.created_at ?? null,
-          streak: distinctDays,
-          sosResolved: sosCount ?? 0,
-          age: p.age, sexe: p.sexe, taille: p.taille, poids: p.poids, traitements: p.traitements,
-          objectif_clinique: p.objectif_clinique, niveau_activite: p.niveau_activite, regime_specifique: p.regime_specifique,
-          objective: p.objective, pathologies: p.pathologies, allergies: p.allergies,
-          practitioner_instruction: (p.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[] | null) ?? [],
-          private_notes: (p.private_notes as { id: string; text: string; created_at: string }[] | null) ?? [],
-          emotional_status: p.emotional_status ?? "green", emotional_insight: p.emotional_insight ?? "",
-          created_at: p.created_at,
-          latest_victory: p.latest_victory ?? "",
-          onboardingCompleted: p.onboarding_completed ?? false,
-          admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[] | null) ?? [],
-        };
-      })
-    );
+
+    // 3 requêtes batch au lieu de 4 × N requêtes individuelles
+    const [
+      { data: allConvs },
+      { data: allRecentConvs },
+      { data: allSosEvents },
+    ] = await Promise.all([
+      supabase.from("conversations")
+        .select("patient_id, role, content, created_at")
+        .in("patient_id", patientIds)
+        .eq("practitioner_id", pid)
+        .order("created_at", { ascending: false }),
+      supabase.from("conversations")
+        .select("patient_id, created_at")
+        .in("patient_id", patientIds)
+        .eq("practitioner_id", pid)
+        .eq("role", "user")
+        .gte("created_at", thirtyDaysAgo),
+      supabase.from("sos_events")
+        .select("patient_id")
+        .in("patient_id", patientIds),
+    ]);
+
+    // Construire les maps de lookup (agrégation côté client, une seule passe)
+    const lastConvByPatient = new Map<string, { role: string; content: string; created_at: string }>();
+    const totalCountByPatient = new Map<string, number>();
+    for (const conv of (allConvs ?? [])) {
+      const p = conv.patient_id as string;
+      if (!lastConvByPatient.has(p)) lastConvByPatient.set(p, conv as { role: string; content: string; created_at: string });
+      totalCountByPatient.set(p, (totalCountByPatient.get(p) ?? 0) + 1);
+    }
+
+    const streakDaysByPatient = new Map<string, Set<string>>();
+    for (const conv of (allRecentConvs ?? [])) {
+      const p = conv.patient_id as string;
+      const day = (conv.created_at as string).split("T")[0];
+      if (!streakDaysByPatient.has(p)) streakDaysByPatient.set(p, new Set());
+      streakDaysByPatient.get(p)!.add(day);
+    }
+
+    const sosCountByPatient = new Map<string, number>();
+    for (const sos of (allSosEvents ?? [])) {
+      const p = sos.patient_id as string;
+      sosCountByPatient.set(p, (sosCountByPatient.get(p) ?? 0) + 1);
+    }
+
+    const patientsWithStats = patientsData.map((p, i) => {
+      const lastConv = lastConvByPatient.get(p.user_id);
+      const initials = `${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase();
+      return {
+        id: p.user_id, firstName: p.first_name ?? "Patient", lastName: p.last_name ?? "", initials,
+        avatarColor: AVATAR_COLORS[i % AVATAR_COLORS.length], email: p.email ?? "",
+        lastMessage: lastConv?.content ?? "Aucun message pour l'instant",
+        lastMessageTime: lastConv?.created_at ? new Date(lastConv.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "",
+        lastMessageRole: lastConv?.role ?? "", totalMessages: totalCountByPatient.get(p.user_id) ?? 0,
+        lastActive: lastConv?.created_at ?? null,
+        streak: streakDaysByPatient.get(p.user_id)?.size ?? 0,
+        sosResolved: sosCountByPatient.get(p.user_id) ?? 0,
+        age: p.age, sexe: p.sexe, taille: p.taille, poids: p.poids, traitements: p.traitements,
+        objectif_clinique: p.objectif_clinique, niveau_activite: p.niveau_activite, regime_specifique: p.regime_specifique,
+        objective: p.objective, pathologies: p.pathologies, allergies: p.allergies,
+        practitioner_instruction: (p.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[] | null) ?? [],
+        private_notes: (p.private_notes as { id: string; text: string; created_at: string }[] | null) ?? [],
+        emotional_status: p.emotional_status ?? "green", emotional_insight: p.emotional_insight ?? "",
+        created_at: p.created_at,
+        latest_victory: p.latest_victory ?? "",
+        onboardingCompleted: p.onboarding_completed ?? false,
+        admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[] | null) ?? [],
+      };
+    });
     setPatients(patientsWithStats);
     if (patientsWithStats.length > 0) setSelectedPatientId(patientsWithStats[0].id);
     setLoading(false);
@@ -557,7 +596,11 @@ export default function DashboardPage() {
     const currentNotes = (patient?.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
     const newNote = { id: crypto.randomUUID(), text: newNoteText.trim(), created_at: new Date().toISOString() };
     const updatedNotes = [...currentNotes, newNote];
-    await supabase.from("patients").update({ private_notes: updatedNotes }).eq("user_id", selectedPatientId);
+    await fetch("/api/save-private-notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ patientId: selectedPatientId, notes: updatedNotes }),
+    });
     setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, private_notes: updatedNotes } : p));
     setNewNoteText("");
     setSavingNote(false);
@@ -569,7 +612,11 @@ export default function DashboardPage() {
     const patient = patients.find(p => p.id === selectedPatientId);
     const currentNotes = (patient?.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
     const updatedNotes = currentNotes.filter(n => n.id !== noteId);
-    await supabase.from("patients").update({ private_notes: updatedNotes }).eq("user_id", selectedPatientId);
+    await fetch("/api/save-private-notes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ patientId: selectedPatientId, notes: updatedNotes }),
+    });
     setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, private_notes: updatedNotes } : p));
   };
 
@@ -821,32 +868,18 @@ export default function DashboardPage() {
   const generateBilan = async () => {
     if (!selectedPatientId || !practitionerId) return;
     setBilanLoading(true); setBilanContent("");
-    const { data: chatMessages } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", selectedPatientId).eq("practitioner_id", practitionerId).order("created_at", { ascending: false }).limit(50);
-    const { data: journalEntries } = await supabase.from("journal_entries").select("date, mood, food_rating, emotions, content").eq("patient_id", selectedPatientId).order("date", { ascending: false }).limit(14);
-    const chatData = chatMessages?.filter(m => m.role === "user").slice(0, 20).map(m => m.content.slice(0, 150)).join(" | ") ?? "";
-    const journalData = journalEntries?.map(e => `${e.date}: humeur ${e.mood}/10, ${(e.emotions as string[])?.join(", ")}`).join(" | ") ?? "";
-    const patternData = journalEntries?.map(e => `${e.date}: humeur ${e.mood}/10, ${(e.emotions as string[])?.join(", ")}`).join(" | ") ?? "";
-    const prompt = `Tu es l'assistant d'un nutritionniste qui prépare sa prochaine consultation avec un patient.
-
-Voici les derniers échanges du patient avec le jumeau numérique :
-${chatData || "Pas de conversations récentes"}
-
-Voici son journal des 14 derniers jours :
-${journalData || "Pas d'entrées journal"}
-
-Données journal (patterns comportementaux) :
-${patternData || "Pas de données"}
-
-Génère exactement 3 questions clés que le praticien devrait poser lors de la prochaine consultation, basées sur ce qui a été dit et les patterns détectés. Les questions doivent être précises, personnalisées et montrer que le praticien a suivi de près l'évolution du patient. Réponds UNIQUEMENT en JSON sans markdown :
-[
-  {"question": "...", "contexte": "Pourquoi cette question est importante"},
-  {"question": "...", "contexte": "Pourquoi cette question est importante"},
-  {"question": "...", "contexte": "Pourquoi cette question est importante"}
-]`;
     try {
-      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: prompt, practitionerId }) });
-      const data = await res.json() as { response?: string };
-      setBilanContent(data.response ?? "");
+      const res = await fetch("/api/generate-bilan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: selectedPatientId, practitionerId }),
+      });
+      const data = await res.json() as { questions?: { question: string; contexte: string }[]; error?: string };
+      if (data.questions) {
+        setBilanContent(JSON.stringify(data.questions));
+      } else {
+        setBilanContent("");
+      }
     } catch { setBilanContent(""); }
     setBilanLoading(false);
   };

@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   const firstName = (patient as { first_name?: string } | null)?.first_name ?? "vous";
 
   // Générer un message d'encouragement via Gemini
-  const res = await fetch("/api/chat", {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
