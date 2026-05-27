@@ -63,7 +63,7 @@ export async function middleware(request: NextRequest) {
         return supabaseResponse;
       }  
     const practitioner = await getPractitioner(); 
-    if (!practitioner?.plan) return NextResponse.redirect(new URL("/checkout?plan=pro", request.url));
+    if (!practitioner?.plan) return NextResponse.redirect(new URL("/choose-plan", request.url));
     const profile = await getProfile();
     if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
     return NextResponse.redirect(new URL("/dashboard", request.url));
@@ -74,13 +74,24 @@ export async function middleware(request: NextRequest) {
       if (!user) return supabaseResponse; 
       const practitioner = await getPractitioner();
       if (!practitioner?.plan) {
-        const pendingPlan = (practitioner as { pending_plan?: string } | null)?.pending_plan || "pro";
-        return NextResponse.redirect(new URL(`/checkout?plan=${pendingPlan}`, request.url));
+        return NextResponse.redirect(new URL("/choose-plan", request.url));
       }
       const profile = await getProfile();
       if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }  
+
+  // /choose-plan — praticien connecté sans plan uniquement
+  if (path.startsWith("/choose-plan")) {
+    if (!user) return NextResponse.redirect(new URL("/login", request.url));
+    const practitioner = await getPractitioner();
+    if (practitioner?.plan) {
+      const profile = await getProfile();
+      if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+    return supabaseResponse;
+  }
 
   // /patient-login — non connecté uniquement
   if (path.startsWith("/patient-login")) {
