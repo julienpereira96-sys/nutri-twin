@@ -61,74 +61,72 @@ function PricingCard({ name, price, badge, description, features, plan, featured
 }) {
   return (
     <div
+      className="relative flex flex-col rounded-2xl p-6 sm:p-8 transition-all duration-300"
       style={{
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-        borderRadius: 20,
-        padding: "28px 24px",
-        background: featured ? "linear-gradient(180deg, rgba(16,185,129,0.07), #0a0a0a)" : "#111111",
+        background: featured ? "linear-gradient(180deg, rgba(16,185,129,0.07), #080808)" : "#0d0d0d",
         border: featured ? "1px solid rgba(16,185,129,0.30)" : "1px solid rgba(255,255,255,0.08)",
-        boxShadow: featured ? "0 20px 40px rgba(16,185,129,0.06)" : "none",
-        transition: "all 0.3s",
+        boxShadow: featured ? "0 20px 40px rgba(16,185,129,0.05)" : "none",
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.border = `1px solid ${featured ? "rgba(16,185,129,0.7)" : "rgba(255,255,255,0.25)"}`;
-        e.currentTarget.style.transform = "translateY(-5px) scale(1.01)";
+        e.currentTarget.style.border = `1px solid ${featured ? "rgba(16,185,129,0.8)" : "rgba(255,255,255,0.35)"}`;
+        e.currentTarget.style.boxShadow = featured
+          ? "0 0 0 1px rgba(16,185,129,0.3), 0 30px 80px rgba(16,185,129,0.25), 0 0 40px rgba(16,185,129,0.1) inset"
+          : "0 0 0 1px rgba(255,255,255,0.15), 0 30px 60px rgba(255,255,255,0.08)";
+        e.currentTarget.style.transform = "translateY(-6px) scale(1.01)";
+        e.currentTarget.style.background = featured
+          ? "linear-gradient(180deg, rgba(16,185,129,0.12), #080808)"
+          : "linear-gradient(180deg, rgba(255,255,255,0.04), #0d0d0d)";
       }}
       onMouseLeave={e => {
         e.currentTarget.style.border = featured ? "1px solid rgba(16,185,129,0.30)" : "1px solid rgba(255,255,255,0.08)";
+        e.currentTarget.style.boxShadow = featured ? "0 20px 40px rgba(16,185,129,0.05)" : "none";
         e.currentTarget.style.transform = "translateY(0) scale(1)";
+        e.currentTarget.style.background = featured ? "linear-gradient(180deg, rgba(16,185,129,0.07), #080808)" : "#0d0d0d";
       }}
     >
-      {featured && badge && (
-        <div style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", whiteSpace: "nowrap" }}>
-          <span style={{ borderRadius: 999, padding: "4px 14px", fontSize: 11, fontWeight: 700, color: "black", background: emerald }}>
-            {badge}
-          </span>
-        </div>
+      {featured && (
+        <>
+          <div className="absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
+          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap">
+            <span className="rounded-full px-3 py-1 text-[11px] font-semibold text-black" style={{ backgroundColor: emerald }}>{badge}</span>
+          </div>
+        </>
       )}
 
-      <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "white" }}>{name}</p>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 10 }}>
-        <span style={{ fontSize: 38, fontWeight: 900, color: "white", letterSpacing: "-1px" }}>{price}</span>
-        <span style={{ fontSize: 12, color: "#52525b" }}>/mois</span>
+      <p className="mb-1 text-[14px] font-bold text-white">{name}</p>
+      <div className="mb-3 flex items-baseline gap-1">
+        <span className="text-[42px] font-black tracking-tight text-white">{price}</span>
+        <span className="text-[12px] text-zinc-600">/mois</span>
       </div>
-      <p style={{ margin: "0 0 20px", fontSize: 12, color: "#71717a", lineHeight: 1.6 }}>{description}</p>
+      <p className="mb-5 text-[12px] leading-relaxed text-zinc-500">{description}</p>
 
-      <ul style={{ margin: "0 0 24px", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+      <ul className="mb-6 flex flex-1 flex-col gap-2.5" style={{ padding: 0, listStyle: "none" }}>
         {features.map((f, i) => (
-          <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-            <svg style={{ width: 15, height: 15, flexShrink: 0, marginTop: 2, color: emerald }} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+          <li key={i} className="flex items-start gap-2">
+            <svg className="mt-0.5 size-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
             </svg>
-            <span style={{ fontSize: 12, lineHeight: 1.5, color: i < 3 ? "#e4e4e7" : "#52525b" }}>{f}</span>
+            <span className={`text-[12px] leading-snug ${i < 3 ? "text-zinc-200" : "text-zinc-500"}`}>{f}</span>
           </li>
         ))}
       </ul>
 
       <button
         onClick={() => window.location.assign(`/checkout?plan=${plan}`)}
-        style={{
-          height: 48,
-          width: "100%",
-          borderRadius: 12,
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: "pointer",
-          transition: "all 0.2s",
-          ...(featured
-            ? { background: emerald, color: "black", border: "none", boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }
-            : { background: "rgba(255,255,255,0.04)", color: "#d1d5db", border: "1px solid rgba(255,255,255,0.12)" }
-          ),
-        }}
+        className="inline-flex h-[50px] w-full items-center justify-center rounded-xl text-[13px] font-semibold transition active:scale-95 mt-2 cursor-pointer"
+        style={featured
+          ? { backgroundColor: emerald, color: "black", boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }
+          : { border: "1.5px solid rgba(255,255,255,0.12)", color: "#d1d5db", background: "rgba(255,255,255,0.03)" }
+        }
         onMouseEnter={e => {
           e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
-          if (featured) e.currentTarget.style.boxShadow = "0 6px 20px rgba(16,185,129,0.45)";
+          e.currentTarget.style.boxShadow = featured
+            ? "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"
+            : "0 0 0 1px rgba(255,255,255,0.2), 0 8px 20px rgba(255,255,255,0.05)";
         }}
         onMouseLeave={e => {
           e.currentTarget.style.transform = "translateY(0) scale(1)";
-          if (featured) e.currentTarget.style.boxShadow = "0 4px 14px rgba(16,185,129,0.3)";
+          e.currentTarget.style.boxShadow = featured ? "0 4px 14px rgba(16,185,129,0.3)" : "none";
         }}
       >
         Choisir ce plan
@@ -189,10 +187,10 @@ export default function ChoosePlanPage() {
       {/* Plans */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-        gap: 20,
+        gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+        gap: 16,
         width: "100%",
-        maxWidth: 900,
+        maxWidth: 1024,
       }}>
         {PLANS.map(p => (
           <PricingCard key={p.plan} {...p} />
