@@ -764,7 +764,7 @@ export default function OnboardingPage() {
                       <p className="text-sm font-semibold text-white mb-1">Quel type de document uploadez-vous ?</p>
                       <p className="text-xs text-zinc-500 mb-4">Cela détermine si vos documents seront anonymisés ou non.</p>
                       <div className="grid grid-cols-2 gap-3 mb-4">
-                        <label className="relative rounded-2xl border-2 border-dashed p-4 text-left cursor-pointer transition-all duration-200 group"
+                        <label className="relative flex flex-col rounded-2xl border-2 border-dashed p-4 text-left cursor-pointer transition-all duration-200 group"
                           style={{ borderColor: slot1TypeHover === "protocole" ? "#10b981" : "rgba(255,255,255,0.15)", background: slot1TypeHover === "protocole" ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)" }}
                           onMouseEnter={() => setSlot1TypeHover("protocole")} onMouseLeave={() => setSlot1TypeHover(null)}>
                           <input type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a" onChange={e => handleSlotFile(e, "slot1", "protocole")} className="hidden" />
@@ -772,21 +772,20 @@ export default function OnboardingPage() {
                           <p className="text-sm font-bold text-white mb-1">Mes protocoles & méthodes</p>
                           <p className="text-xs text-zinc-500 mb-3">Articles, plans alimentaires types, guides nutritionnels</p>
                           <p className="text-xs font-medium text-emerald-400 mb-3">✓ Indexé tel quel</p>
-                          <div className="rounded-xl border border-dashed border-white/15 group-hover:border-emerald-500/40 px-3 py-2 text-center transition-all duration-200">
+                          <div className="mt-auto rounded-xl border border-dashed border-white/15 group-hover:border-emerald-500/40 px-3 py-2 text-center transition-all duration-200">
                             <p className="text-xs text-zinc-500 group-hover:text-zinc-400 transition">Cliquez pour sélectionner</p>
                             <p className="text-xs text-zinc-600 mt-0.5">PDF, DOCX, TXT, JPG, PNG, Excel, CSV, MP3</p>
                           </div>
                         </label>
-                        <label className="relative rounded-2xl border-2 border-dashed p-4 text-left cursor-pointer transition-all duration-200 group"
+                        <label className="relative flex flex-col rounded-2xl border-2 border-dashed p-4 text-left cursor-pointer transition-all duration-200 group"
                           style={{ borderColor: slot1TypeHover === "patient" ? "#60a5fa" : "rgba(255,255,255,0.15)", background: slot1TypeHover === "patient" ? "rgba(96,165,250,0.08)" : "rgba(255,255,255,0.02)" }}
                           onMouseEnter={() => setSlot1TypeHover("patient")} onMouseLeave={() => setSlot1TypeHover(null)}>
                           <input type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a" onChange={e => handleSlotFile(e, "slot1", "patient")} className="hidden" />
                           <p className="text-2xl mb-2">🗂️</p>
                           <p className="text-sm font-bold text-white mb-1">Données patients</p>
                           <p className="text-xs text-zinc-500 mb-3">Bilans, comptes-rendus, analyses sanguines</p>
-                          <br />
-                          <p className="text-xs text-zinc-600 leading-relaxed mb-3">Documents anonymisés par IA avant indexation. Aucune donnée personnelle conservée. Serveurs sécurisés en Europe.</p>
-                          <div className="rounded-xl border border-dashed border-white/15 group-hover:border-blue-500/40 px-3 py-2 text-center transition-all duration-200">
+                          <p className="text-xs font-medium text-blue-400 mb-3 leading-relaxed">🔒 Anonymisés par IA · Aucune donnée personnelle conservée · Serveurs sécurisés en Europe</p>
+                          <div className="mt-auto rounded-xl border border-dashed border-white/15 group-hover:border-blue-500/40 px-3 py-2 text-center transition-all duration-200">
                             <p className="text-xs text-zinc-500 group-hover:text-zinc-400 transition">Cliquez pour sélectionner</p>
                             <p className="text-xs text-zinc-600 mt-0.5">PDF, DOCX, TXT, JPG, PNG, Excel, CSV, MP3</p>
                           </div>
