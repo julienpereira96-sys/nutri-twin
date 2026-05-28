@@ -1050,7 +1050,7 @@ export default function DashboardPage() {
         <div style={{ background: "rgba(244,63,94,0.12)", borderBottom: "1px solid rgba(244,63,94,0.4)", padding: "10px 24px", animation: "criticalPulse 2s ease-in-out infinite", position: "sticky", top: 64, zIndex: 45 }}>
           <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 18, flexShrink: 0 }}>🚨</span>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: coral }}>Alerte critique — Intervention immédiate requise</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: coral }}>Alerte critique - Intervention immédiate requise</p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginLeft: 8 }}>
               {patients.filter(p => p.emotional_status === "red_critical").map(p => (
                 <button key={p.id} onClick={() => { setSelectedPatientId(p.id); setActiveTab("patients"); }}
@@ -1071,7 +1071,7 @@ export default function DashboardPage() {
             {victoryPatients.map((p) => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 20, padding: "4px 12px" }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: emerald, filter: discretMode ? "blur(4px)" : "none" }}>{p.firstName}</span>
-                <span style={{ fontSize: 11, color: "#94a3b8", filter: discretMode ? "blur(4px)" : "none" }}>— {p.latest_victory}</span>
+                <span style={{ fontSize: 11, color: "#94a3b8", filter: discretMode ? "blur(4px)" : "none" }}>- {p.latest_victory}</span>
                 {!onboardingDemoMode && (victorySent === p.id ? (
                   <span style={{ fontSize: 11, color: emerald }}>✅ Envoyé !</span>
                 ) : (
@@ -1096,7 +1096,7 @@ export default function DashboardPage() {
                 style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 20, padding: "4px 12px", cursor: "pointer" }}>
                 <span style={{ fontSize: 10 }}>🔴</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: coral, filter: discretMode ? "blur(4px)" : "none" }}>{p.firstName}</span>
-                {p.emotional_insight && <span style={{ fontSize: 11, color: "#94a3b8", filter: discretMode ? "blur(4px)" : "none" }}>— {p.emotional_insight}</span>}
+                {p.emotional_insight && <span style={{ fontSize: 11, color: "#94a3b8", filter: discretMode ? "blur(4px)" : "none" }}>- {p.emotional_insight}</span>}
               </button>
             ))}
             {orangePatients.map((p) => (
@@ -1104,7 +1104,7 @@ export default function DashboardPage() {
                 style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 20, padding: "4px 12px", cursor: "pointer" }}>
                 <span style={{ fontSize: 10 }}>🟠</span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: amber, filter: discretMode ? "blur(4px)" : "none" }}>{p.firstName}</span>
-                {p.emotional_insight && <span style={{ fontSize: 11, color: "#94a3b8", filter: discretMode ? "blur(4px)" : "none" }}>— {p.emotional_insight}</span>}
+                {p.emotional_insight && <span style={{ fontSize: 11, color: "#94a3b8", filter: discretMode ? "blur(4px)" : "none" }}>- {p.emotional_insight}</span>}
               </button>
             ))}
           </div>
@@ -1281,7 +1281,7 @@ export default function DashboardPage() {
                             {alert.type === "crisis" && alert.alert_type === "suicide" && "Le patient a exprimé des idées suicidaires."}
                             {alert.type === "crisis" && alert.alert_type === "medical" && "Urgence médicale signalée par le patient."}
                             {alert.type === "crisis" && alert.alert_type === "threat" && "Le patient a exprimé une menace envers autrui."}
-                            {alert.type === "alert" && "Comportement sensible détecté — relecture recommandée."}
+                            {alert.type === "alert" && "Comportement sensible détecté - relecture recommandée."}
                             {alert.type === "admin_alert" && alert.alert_type === "identity_correction" && "Le patient signale une erreur dans son nom."}
                           </p>
                           {alert.type === "crisis" ? (
@@ -1453,7 +1453,7 @@ export default function DashboardPage() {
               <div style={{ background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.4)", borderRadius: 16, padding: "16px 20px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12, animation: "criticalPulse 2s ease-in-out infinite" }}>
                 <span style={{ fontSize: 20, flexShrink: 0 }}>🚨</span>
                 <div style={{ flex: 1 }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: coral }}>Alerte critique — Intervention immédiate requise</p>
+                  <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: coral }}>Alerte critique - Intervention immédiate requise</p>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {displayedPatients.filter(p => p.emotional_status === "red_critical").map(p => (
                       <button key={p.id} onClick={() => { setSelectedPatientId(p.id); setActiveTab("patients"); }}
@@ -1479,7 +1479,7 @@ export default function DashboardPage() {
                       <div style={{ height: 6, background: "rgba(244,63,94,0.15)", borderRadius: 3, marginBottom: 4 }}>
                         <div style={{ height: "100%", width: `${((monthlyStats?.delta_stress_avant ?? 0) / 10) * 100}%`, background: coral, borderRadius: 3 }} />
                       </div>
-                      <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: coral }}>{monthlyStats?.delta_stress_avant ?? "—"}</p>
+                      <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: coral }}>{monthlyStats?.delta_stress_avant ?? "-"}</p>
                     </div>
                     <div style={{ fontSize: 18, color: "#64748b", paddingBottom: 4 }}>→</div>
                     <div style={{ flex: 1 }}>
@@ -1487,7 +1487,7 @@ export default function DashboardPage() {
                       <div style={{ height: 6, background: "rgba(16,185,129,0.15)", borderRadius: 3, marginBottom: 4 }}>
                         <div style={{ height: "100%", width: `${((monthlyStats?.delta_stress_apres ?? 0) / 10) * 100}%`, background: emerald, borderRadius: 3 }} />
                       </div>
-                      <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: emerald }}>{monthlyStats?.delta_stress_apres ?? "—"}</p>
+                      <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: emerald }}>{monthlyStats?.delta_stress_apres ?? "-"}</p>
                     </div>
                   </div>
                   <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
@@ -1816,10 +1816,10 @@ export default function DashboardPage() {
               const score = count === 0 ? 70 : count === 1 ? 85 : 100;
               const color = count === 0 ? "#f59e0b" : count === 1 ? "#06b6d4" : "#10b981";
               const msg = count === 0
-                ? "⚠️ Jumeau initialisé — Votre jumeau connaît votre personnalité mais il lui manque encore votre expertise. Partagez votre vision et votre signature pour lui donner votre pleine précision."
+                ? "⚠️ Jumeau initialisé - Votre jumeau connaît votre personnalité mais il lui manque encore votre expertise. Partagez votre vision et votre signature pour lui donner votre pleine précision."
                 : count === 1
-                ? "🔹 Jumeau Personnalisé — Une première brique de votre expertise a été intégrée. Ajoutez un second document pour que votre double soit parfaitement opérationnel et certifié."
-                : "✅ Jumeau certifié — Précision maximale atteinte. Votre jumeau possède désormais votre expertise.";
+                ? "🔹 Jumeau Personnalisé - Une première brique de votre expertise a été intégrée. Ajoutez un second document pour que votre double soit parfaitement opérationnel et certifié."
+                : "✅ Jumeau certifié - Précision maximale atteinte. Votre jumeau possède désormais votre expertise.";
               return (
                 <div style={{ background: `${color}10`, borderRadius: 16, border: `2px solid ${color}40`, padding: "16px", marginBottom: 20, transition: "all 0.5s" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -2002,7 +2002,7 @@ export default function DashboardPage() {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-              {/* Colonne gauche — Informations patient */}
+              {/* Colonne gauche - Informations patient */}
               <div>
                 <p style={{ margin: "0 0 16px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Informations patient</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -2054,7 +2054,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Colonne droite — Contexte médical */}
+              {/* Colonne droite - Contexte médical */}
               <div>
                 <p style={{ margin: "0 0 16px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Contexte médical</p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -2111,7 +2111,7 @@ export default function DashboardPage() {
         <div onClick={(e) => { if (e.target === e.currentTarget) setShowReportModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 580, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>📊 Rapport — {selectedPatient?.firstName}</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>📊 Rapport - {selectedPatient?.firstName}</h2>
               <button onClick={() => setShowReportModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
             </div>
             <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 16px", marginBottom: 20 }}>
@@ -2159,7 +2159,7 @@ export default function DashboardPage() {
                       );
                     })}
                   </div>
-                  {reportDateFrom && <p style={{ margin: "12px 0 0", fontSize: 12, color: emerald, textAlign: "center" }}>{reportDateTo ? `Du ${new Date(reportDateFrom + "T12:00:00").toLocaleDateString("fr-FR")} au ${new Date(reportDateTo + "T12:00:00").toLocaleDateString("fr-FR")}` : `Début : ${new Date(reportDateFrom + "T12:00:00").toLocaleDateString("fr-FR")} — Sélectionnez la fin`}</p>}
+                  {reportDateFrom && <p style={{ margin: "12px 0 0", fontSize: 12, color: emerald, textAlign: "center" }}>{reportDateTo ? `Du ${new Date(reportDateFrom + "T12:00:00").toLocaleDateString("fr-FR")} au ${new Date(reportDateTo + "T12:00:00").toLocaleDateString("fr-FR")}` : `Début : ${new Date(reportDateFrom + "T12:00:00").toLocaleDateString("fr-FR")} - Sélectionnez la fin`}</p>}
                 </div>
               )}
             </div>
@@ -2235,12 +2235,12 @@ export default function DashboardPage() {
             ) : inviteStep === 1 ? (
               <>
                 {inviteExistingUnactivated ? (
-                  /* ── Patient existant non activé — UI bloquante ── */
+                  /* ── Patient existant non activé - UI bloquante ── */
                   <>
                     <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 12, padding: "16px 18px", marginBottom: 20 }}>
                       <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "#fbbf24" }}>⚠️ Patient déjà invité</p>
                       <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
-                        <strong style={{ color: "white" }}>{inviteEmail}</strong> a déjà reçu une invitation mais n&apos;a pas encore créé son mot de passe. Vous ne pouvez pas créer une nouvelle invitation — renvoyez-lui le lien à la place.
+                        <strong style={{ color: "white" }}>{inviteEmail}</strong> a déjà reçu une invitation mais n&apos;a pas encore créé son mot de passe. Vous ne pouvez pas créer une nouvelle invitation - renvoyez-lui le lien à la place.
                       </p>
                     </div>
                     {inviteResentSuccess ? (
@@ -2398,7 +2398,7 @@ export default function DashboardPage() {
                   <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.6 }}>🌿 C'est ici que vous glissez vos consignes spécifiques pour ce patient. Points de vigilance, blessures à éviter, passions pour le motiver... Le Jumeau s'adaptera instantanément à ces nuances.</p>
                 </div>
                 <textarea value={inviteBriefJumeau} onChange={e => setInviteBriefJumeau(e.target.value)}
-                  placeholder="Ex: Sophie est anxieuse autour de la balance — évite ce sujet. Elle se culpabilise facilement, reste bienveillant avant d'être technique. Elle adore cuisiner, utilise ça pour l'engager."
+                  placeholder="Ex: Sophie est anxieuse autour de la balance - évite ce sujet. Elle se culpabilise facilement, reste bienveillant avant d'être technique. Elle adore cuisiner, utilise ça pour l'engager."
                   rows={5}
                   style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 12 }}
                   onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.2)"} />
@@ -2435,7 +2435,7 @@ export default function DashboardPage() {
                     </div>
                   ) : null}
                 </div>
-                <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Notes internes <span style={{ fontWeight: 400, color: "#4b5563" }}>— visibles uniquement par vous</span></p>
+                <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Notes internes <span style={{ fontWeight: 400, color: "#4b5563" }}>- visibles uniquement par vous</span></p>
                 <textarea value={inviteNotes} onChange={e => setInviteNotes(e.target.value)}
                   placeholder="Contexte de la prise en charge, objectifs du moment, points de vigilance, blocages..."
                   rows={2}

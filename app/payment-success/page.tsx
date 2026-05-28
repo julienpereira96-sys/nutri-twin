@@ -116,7 +116,7 @@ function PaymentSuccessContent() {
           ) : (
             <>
               <p style={{ margin: "0 0 20px", fontSize: 11, fontWeight: 600, color: "#4b5563", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "center" }}>
-                Prochaine étape — Configuration du jumeau
+                Prochaine étape - Configuration du jumeau
               </p>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>

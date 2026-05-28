@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     }, { status: 403 });
   }
 
-  // Vérifier si le patient existe déjà — 1 requête ciblée, pas de listUsers
+  // Vérifier si le patient existe déjà - 1 requête ciblée, pas de listUsers
   const { data: existingPatient } = await supabase
     .from("patients")
     .select("user_id, onboarding_completed")
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Ce patient est déjà associé à votre cabinet." }, { status: 400 });
     }
 
-    // Compte existe mais pas encore activé — renvoyer un lien et mettre à jour les données
+    // Compte existe mais pas encore activé - renvoyer un lien et mettre à jour les données
     const { data: linkData } = await supabase.auth.admin.generateLink({
       type: "magiclink",
       email,
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     return Response.json({ success: true, resent: true });
   }
 
-  // Nouveau patient — invitation Supabase
+  // Nouveau patient - invitation Supabase
   const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/set-password`,
   });

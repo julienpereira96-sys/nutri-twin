@@ -282,7 +282,7 @@ function StaticDashboard() {
                 <div style={{ animation: "slideInRight 0.4s cubic-bezier(0.16,1,0.3,1)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
                     <div>
-                      <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "white" }}>📊 Rapport — Julie P.</p>
+                      <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "white" }}>📊 Rapport - Julie P.</p>
                       <p style={{ margin: "3px 0 0", fontSize: 10, color: "#4b5563" }}>Mai 2026</p>
                     </div>
                     <button onClick={() => setShowReport(false)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", fontSize: 14, cursor: "pointer", borderRadius: 6, width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
@@ -343,7 +343,7 @@ function StaticDashboard() {
         <div className="mt-4 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0f0f0f] p-4">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <p className="text-[13px] font-bold text-white">📊 Rapport — Julie P.</p>
+              <p className="text-[13px] font-bold text-white">📊 Rapport - Julie P.</p>
               <p className="text-[10px] text-zinc-600">Mai 2026</p>
             </div>
             <div className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[10px] font-semibold text-violet-400">Mensuel</div>
@@ -818,7 +818,7 @@ function FounderSection() {
           <p className="text-[14px] sm:text-[15px] leading-relaxed text-zinc-400 mb-8 max-w-xl mx-auto">
             En tant que membre fondateur, bénéficiez d'un surclassement permanent :<br />
             profitez de toute la puissance du plan Pro au tarif de l'offre Essentiel.<br />
-            <strong className="text-white">149€/mois — Garanti à vie.</strong>
+            <strong className="text-white">149€/mois - Garanti à vie.</strong>
           </p>
           <div ref={ref} className="mx-auto mb-8 max-w-xs sm:max-w-sm">
             <div className="mb-3 flex items-center justify-between">

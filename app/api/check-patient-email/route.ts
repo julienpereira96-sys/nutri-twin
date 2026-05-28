@@ -8,7 +8,7 @@ export async function POST(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Chercher directement dans la table patients par email — 1 requête ciblée
+  // Chercher directement dans la table patients par email - 1 requête ciblée
   const { data: patient } = await supabase
     .from("patients")
     .select("user_id, onboarding_completed, onboarding_status")
@@ -29,14 +29,14 @@ export async function POST(request: Request) {
 
   if (existingRelation) {
     if (patient.onboarding_completed) {
-      // Onboarding terminé — bloqué
+      // Onboarding terminé - bloqué
       return Response.json({ exists: true, canResend: false });
     }
     if (patient.onboarding_status) {
-      // Mot de passe déjà créé (onboarding_status = "password_set") — pas de lien à renvoyer
+      // Mot de passe déjà créé (onboarding_status = "password_set") - pas de lien à renvoyer
       return Response.json({ exists: true, canResend: false });
     }
-    // Lien jamais cliqué — on peut renvoyer
+    // Lien jamais cliqué - on peut renvoyer
     return Response.json({ exists: true, canResend: true });
   }
 

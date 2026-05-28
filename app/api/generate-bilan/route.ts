@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     const journalData = (journalEntries ?? [])
       .map(e => {
         const emotions = (e.emotions as string[])?.join(", ") || "non renseignées";
-        const note = e.content ? ` — "${(e.content as string).slice(0, 100)}"` : "";
+        const note = e.content ? ` - "${(e.content as string).slice(0, 100)}"` : "";
         return `${e.date}: humeur ${e.mood}/10, alimentation ${e.food_rating}/3, émotions: ${emotions}${note}`;
       })
       .join(" | ") || "Pas d'entrées journal";

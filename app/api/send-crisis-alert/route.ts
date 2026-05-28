@@ -78,7 +78,7 @@ if (authHeader !== process.env.CRISIS_SECRET_TOKEN) {
     body: JSON.stringify({
       from: "NutriTwin Alertes <alertes@nutritwin.fr>",
       to: practitioner.email,
-      subject: `🚨 ${alertLabel} — ${patientName}`,
+      subject: `🚨 ${alertLabel} - ${patientName}`,
       html: emailHtml,
     }),
   });

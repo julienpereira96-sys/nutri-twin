@@ -45,7 +45,7 @@ const PLANS: Record<string, {
     name: "Fondateur",
     price: "149€",
     badge: "Offre limitée",
-    description: "Plan Pro au prix Essentiel — garanti à vie.",
+    description: "Plan Pro au prix Essentiel - garanti à vie.",
     features: ["Jusqu'à 50 patients", "1 praticien", "Upload documents & protocoles", "Rapport IA mensuel par patient", "Accès prioritaire aux nouvelles features", "Influence sur la roadmap"],
     color: amber,
   },

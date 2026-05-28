@@ -28,7 +28,7 @@ export default function CGUPage() {
         <Section title="2. Acceptation des conditions">
           L'accès et l'utilisation de NutriTwin impliquent l'acceptation pleine et entière des présentes
           CGU. Si vous n'acceptez pas ces conditions, vous ne devez pas utiliser le service. Ces conditions
-          peuvent être modifiées à tout moment — les utilisateurs seront informés par email en cas de
+          peuvent être modifiées à tout moment - les utilisateurs seront informés par email en cas de
           modification substantielle.
         </Section>
 

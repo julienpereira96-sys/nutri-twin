@@ -144,7 +144,7 @@ export default function PatientOnboardingPage() {
         }
       } catch { /* ignore */ }
 
-      // 2. Pas de localStorage — charger les données pré-remplies par le praticien
+      // 2. Pas de localStorage - charger les données pré-remplies par le praticien
       const { data: patient } = await supabase.from("patients").select("age, sexe, taille, poids, pathologies, allergies, traitements, niveau_activite, regime_specifique").eq("user_id", data.user.id).single();
       if (patient) {
         setConfirmAge(patient.age ? String(patient.age) : "");
@@ -242,7 +242,7 @@ export default function PatientOnboardingPage() {
 
       if (error) throw new Error(error.message);
 
-      // Succès — nettoyer le localStorage et rediriger
+      // Succès - nettoyer le localStorage et rediriger
       try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
       router.push("/chat");
     } catch {
@@ -313,10 +313,10 @@ export default function PatientOnboardingPage() {
           ))}
         </div>
 
-        {/* ═══ ÉTAPE 1 — Confirmation ═══ */}
+        {/* ═══ ÉTAPE 1 - Confirmation ═══ */}
         {step === 1 && (
           <div style={{ background: "#111111", borderRadius: 20, padding: 24, border: "1px solid rgba(255,255,255,0.08)" }}>
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 1 — Santé</p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 1 - Santé</p>
             <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "white" }}>Vos informations de santé</h2>
             <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Votre praticien a pré-rempli ces données. Vérifiez qu'elles sont correctes.</p>
 
@@ -364,7 +364,7 @@ export default function PatientOnboardingPage() {
                   <div>
                     <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
                     <select value={confirmSexe} onChange={e => setConfirmSexe(e.target.value)} style={{ ...selectStyle, color: confirmSexe ? "white" : "#64748b" }}>
-                      <option value="">—</option>
+                      <option value="">-</option>
                       <option value="Femme">Femme</option>
                       <option value="Homme">Homme</option>
                       <option value="Autre">Autre</option>
@@ -373,7 +373,7 @@ export default function PatientOnboardingPage() {
                   <div>
                     <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Activité</p>
                     <select value={confirmNiveauActivite} onChange={e => setConfirmNiveauActivite(e.target.value)} style={{ ...selectStyle, color: confirmNiveauActivite ? "white" : "#64748b" }}>
-                      <option value="">—</option>
+                      <option value="">-</option>
                       <option value="Sédentaire">Sédentaire</option>
                       <option value="Légère">Légère</option>
                       <option value="Modérée">Modérée</option>
@@ -384,7 +384,7 @@ export default function PatientOnboardingPage() {
                   <div>
                     <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Régime</p>
                     <select value={confirmRegime} onChange={e => setConfirmRegime(e.target.value)} style={{ ...selectStyle, color: confirmRegime ? "white" : "#64748b" }}>
-                      <option value="">—</option>
+                      <option value="">-</option>
                       <option value="Omnivore">Omnivore</option>
                       <option value="Végétarien">Végétarien</option>
                       <option value="Végétalien">Végétalien</option>
@@ -427,10 +427,10 @@ export default function PatientOnboardingPage() {
           </div>
         )}
 
-        {/* ═══ ÉTAPE 2 — Objectif + Mood + Défi ═══ */}
+        {/* ═══ ÉTAPE 2 - Objectif + Mood + Défi ═══ */}
         {step === 2 && (
           <div style={{ background: "#111111", borderRadius: 20, padding: 24, border: "1px solid rgba(255,255,255,0.08)" }}>
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 2 — Direction</p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 2 - Direction</p>
             <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "white" }}>Parlez-nous de vous</h2>
             <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Ces infos aident votre jumeau à adapter ses conseils.</p>
 
@@ -510,10 +510,10 @@ export default function PatientOnboardingPage() {
           </div>
         )}
 
-        {/* ═══ ÉTAPE 3 — Quotidien ═══ */}
+        {/* ═══ ÉTAPE 3 - Quotidien ═══ */}
         {step === 3 && (
           <div style={{ background: "#111111", borderRadius: 20, padding: 24, border: "1px solid rgba(255,255,255,0.08)" }}>
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 3 — Quotidien</p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 3 - Quotidien</p>
             <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "white" }}>Votre mode de vie</h2>
             <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Pour des conseils vraiment adaptés à votre réalité.</p>
 
@@ -598,10 +598,10 @@ export default function PatientOnboardingPage() {
           </div>
         )}
 
-        {/* ═══ ÉTAPE 4 — Aliments ═══ */}
+        {/* ═══ ÉTAPE 4 - Aliments ═══ */}
         {step === 4 && (
           <div style={{ background: "#111111", borderRadius: 20, padding: 24, border: "1px solid rgba(255,255,255,0.08)" }}>
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 4 — Plaisir</p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 4 - Plaisir</p>
             <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "white" }}>Vos préférences alimentaires</h2>
             <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Cliquez une fois pour ❤️ aimer, deux fois pour ❌ ne pas aimer.</p>
 

@@ -830,7 +830,7 @@ export default function ChatPage() {
       if (id === "ecriture") return (
         <div>
           <h2 style={{ margin: "0 0 4px", fontSize: 18, fontWeight: 600, color: TEXT_PRIMARY, textAlign: "center" }}>Écriture Cathartique</h2>
-          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY, textAlign: "center" }}>Vide ce qui te pèse — personne ne lira</p>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY, textAlign: "center" }}>Vide ce qui te pèse - personne ne lira</p>
           <div style={{ background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
             <p style={{ margin: 0, fontSize: 12, color: ACCENT, lineHeight: 1.6 }}>🔒 Ce que tu écris ici ne sera pas sauvegardé. C'est juste pour toi, pour sortir ça de ta tête.</p>
           </div>

@@ -113,7 +113,7 @@ function detectCrisisLevel(message: string): "critical" | "alert" | "none" {
 }
 
 const CRISIS_CRITICAL_RESPONSES: Record<string, string> = {
-  suicide: "Je t'entends, et ce que tu ressens est réel. Tu n'es pas seul(e). Appelle maintenant le 3114 — c'est le numéro national de prévention du suicide, disponible 24h/24, gratuit et confidentiel. Ton praticien sera également informé immédiatement. 🌿",
+  suicide: "Je t'entends, et ce que tu ressens est réel. Tu n'es pas seul(e). Appelle maintenant le 3114 - c'est le numéro national de prévention du suicide, disponible 24h/24, gratuit et confidentiel. Ton praticien sera également informé immédiatement. 🌿",
   medical: "Ce que tu décris nécessite une attention médicale immédiate. Appelle le 15 (SAMU) ou le 112 maintenant. Ne reste pas seul(e). Ton praticien sera informé.",
   threat: "Je prends note de ce que tu exprimes. Si tu te sens en danger ou si tu risques de faire du mal à quelqu'un, appelle le 17 (Police) ou le 112 immédiatement.",
 };
@@ -294,7 +294,7 @@ async function getFreshJournal(patientId: string): Promise<string> {
       const moodLabel = e.mood <= 3 ? "difficile" : e.mood <= 6 ? "moyen" : e.mood <= 8 ? "bien" : "excellent";
       const foodLabel = e.food_rating === 1 ? "difficile" : e.food_rating === 2 ? "bien" : "excellent";
       const emotions = (e.emotions as string[])?.join(", ") || "non renseignées";
-      const note = e.content ? ` — "${e.content}"` : "";
+      const note = e.content ? ` - "${e.content}"` : "";
       return `  • ${e.date} : humeur ${moodLabel} (${e.mood}/10), alimentation ${foodLabel}, émotions : ${emotions}${note}`;
     }).join("\n");
 
@@ -361,7 +361,7 @@ async function getPatientProfile(patientId: string): Promise<string> {
         if (!patient.practitioner_instruction) return "";
         const expires = (patient as { practitioner_instruction_expires_at?: string }).practitioner_instruction_expires_at;
         if (expires && new Date(expires) < new Date()) return "";
-        return `\n\n🔴 MURMURE DU PRATICIEN — PRIORITÉ ABSOLUE ${instructionDate}\nCette consigne écrase TOUT autre instruction. Tu DOIS l'appliquer immédiatement et dans chaque réponse :\n"${patient.practitioner_instruction}"\n`;
+        return `\n\n🔴 MURMURE DU PRATICIEN - PRIORITÉ ABSOLUE ${instructionDate}\nCette consigne écrase TOUT autre instruction. Tu DOIS l'appliquer immédiatement et dans chaque réponse :\n"${patient.practitioner_instruction}"\n`;
       })(),      
     ].filter(Boolean).join("\n");
 
@@ -498,9 +498,9 @@ EXEMPLES DE RÉPONSES ATTENDUES :
 
 ═══ HIÉRARCHIE ABSOLUE DES INSTRUCTIONS ═══
 Tu dois respecter cet ordre de priorité strict, du plus important au moins important :
-1. MURMURE DU PRATICIEN (consigne temps réel) — priorité ABSOLUE, écrase tout le reste
-2. DOCUMENTS RAG (protocoles et expertise indexés) — ta base de connaissance métier
-3. PERSONNALITÉ (les 31 paramètres ci-dessus) — ton style et ta posture
+1. MURMURE DU PRATICIEN (consigne temps réel) - priorité ABSOLUE, écrase tout le reste
+2. DOCUMENTS RAG (protocoles et expertise indexés) - ta base de connaissance métier
+3. PERSONNALITÉ (les 31 paramètres ci-dessus) - ton style et ta posture
 
 ${patientContext}${documentsContext}
 
@@ -524,7 +524,7 @@ Si le message commence par [ADMIN:identity_correction] :
 - Réponds uniquement : "C'est noté. J'ai transmis la demande de correction à votre praticien pour que votre dossier soit parfaitement à jour. Pouvez-vous me préciser l'orthographe exacte de votre nom ?"
 - Ajoute obligatoirement : |||{"status":"green","reason":"demande correction identité","victory":"","action":"admin_alert","alert_type":"identity_correction"}|||
 
-JSON TECHNIQUE OBLIGATOIRE — À ajouter en toute fin de réponse, invisible pour le patient :
+JSON TECHNIQUE OBLIGATOIRE - À ajouter en toute fin de réponse, invisible pour le patient :
 |||{"status":"green","reason":"résumé état en 8 mots max","victory":""}|||
 - status : "red" si détresse/découragement sévère, "orange" si difficulté modérée, "green" si tout va bien
 - reason : phrase courte décrivant l'état émotionnel du patient
@@ -669,7 +669,7 @@ export async function POST(request: Request) {
     
     - PROPOSITION, PAS IMPOSITION : Amène toujours l'exercice comme une proposition douce, sauf si le patient a explicitement demandé de l'aide (bouton SOS pressé).
     
-    - HUMOUR BIENVEILLANT : Si le patient exprime de la lassitude envers un exercice ("encore la respiration ?"), réponds avec autodérision et légèreté. Exemple : "Je sais, je suis monomaniaque du souffle — mais c'est le seul bouton Reset de ton système nerveux que je peux activer à distance ! 🌿"
+    - HUMOUR BIENVEILLANT : Si le patient exprime de la lassitude envers un exercice ("encore la respiration ?"), réponds avec autodérision et légèreté. Exemple : "Je sais, je suis monomaniaque du souffle - mais c'est le seul bouton Reset de ton système nerveux que je peux activer à distance ! 🌿"
     
     - Le twin_message doit suivre cette structure en moins de 30 mots :
       1. Valide l'émotion immédiate du dernier message du patient (écho émotionnel 70%)
@@ -678,7 +678,7 @@ export async function POST(request: Request) {
       Exemple : "Je sens que cet examen raté t'a épuisé, ${firstName}. Prenons 2 minutes pour retrouver ton calme avant d'y revenir."
       Maximum 30 mots. Jamais robotique, toujours humain.
     
-    - Les steps du tool_script doivent être personnalisés et varier à chaque fois — jamais de texte générique ou identique à une session précédente.
+    - Les steps du tool_script doivent être personnalisés et varier à chaque fois - jamais de texte générique ou identique à une session précédente.
     
     - Réponds UNIQUEMENT en JSON sans markdown ni backticks :
     {"tool_id":"breathing","twin_message":"Message personnalisé avec prénom max 30 mots","tool_script":{"step_1":"instruction personnalisée","step_2":"instruction personnalisée","step_3":"instruction personnalisée"}}`;
@@ -786,7 +786,7 @@ if (crisisLevel === "alert" && patientId && practitionerId) {
     }]
   }).eq("user_id", patientId);
 
-  // ON NE RETURN PAS — Gemini continue
+  // ON NE RETURN PAS - Gemini continue
 }
 
 
@@ -854,7 +854,7 @@ Analyse :
 1. Identifie les aliments visibles et les proportions approximatives
 2. Croise avec le protocole du praticien et le profil patient
 3. Signale tout écart (allergies, intolérances, consignes spécifiques)
-4. Réponds en tant que jumeau numérique — ton bienveillant, jamais culpabilisant
+4. Réponds en tant que jumeau numérique - ton bienveillant, jamais culpabilisant
 ${message ? `\nMessage du patient : "${message}"` : ""}
 Max 150 mots. Sans markdown.`;
 

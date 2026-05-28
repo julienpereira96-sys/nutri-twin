@@ -56,8 +56,8 @@ export async function POST(request: Request) {
   </div>
 
   <div class="footer">
-    <div>NutriTwin — Jumeau Numérique</div>
-    <div>Document confidentiel — Usage médical uniquement</div>
+    <div>NutriTwin - Jumeau Numérique</div>
+    <div>Document confidentiel - Usage médical uniquement</div>
   </div>
 </body>
 </html>`;

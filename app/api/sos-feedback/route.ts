@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
       await supabase.from("patients").update({
         emotional_status: "red_critical",
-        emotional_insight: "SOS inefficace — stress non réduit après l'exercice",
+        emotional_insight: "SOS inefficace - stress non réduit après l'exercice",
         admin_alerts: [...alerts, {
           type: "sos_failed",
           date: new Date().toISOString(),

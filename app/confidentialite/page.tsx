@@ -45,7 +45,7 @@ export default function ConfidentialitePage() {
           Le traitement des données est fondé sur :
           <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
             <li>L'exécution du contrat d'abonnement (données Praticien)</li>
-            <li>Le consentement explicite du patient (données de santé — article 9 RGPD)</li>
+            <li>Le consentement explicite du patient (données de santé - article 9 RGPD)</li>
             <li>L'intérêt légitime pour la sécurité et l'amélioration du service</li>
           </ul>
           La preuve du consentement est enregistrée avec horodatage lors de l'inscription.
@@ -68,21 +68,21 @@ export default function ConfidentialitePage() {
           NutriTwin fait appel aux sous-traitants suivants :
           <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
             <li>
-              <strong style={{ color: "white" }}>Google Cloud Vertex AI – Google Ireland Limited</strong> — Traitement par intelligence artificielle des messages et analyses nutritionnelles.
+              <strong style={{ color: "white" }}>Google Cloud Vertex AI – Google Ireland Limited</strong> - Traitement par intelligence artificielle des messages et analyses nutritionnelles.
               Lieu de traitement : Union Européenne (Région europe-west9, Paris).
               Garantie : Conformité totale au RGPD. Google Cloud est certifié HDS v2.0 en France.
             </li>
             <li>
-              <strong style={{ color: "white" }}>Supabase</strong> — Hébergement base de données (région EU West, Paris)
+              <strong style={{ color: "white" }}>Supabase</strong> - Hébergement base de données (région EU West, Paris)
             </li>
             <li>
-              <strong style={{ color: "white" }}>Vercel</strong> — Hébergement applicatif
+              <strong style={{ color: "white" }}>Vercel</strong> - Hébergement applicatif
             </li>
             <li>
-              <strong style={{ color: "white" }}>Resend</strong> — Envoi d'emails transactionnels
+              <strong style={{ color: "white" }}>Resend</strong> - Envoi d'emails transactionnels
             </li>
             <li>
-              <strong style={{ color: "white" }}>Stripe</strong> — Traitement des paiements (certifié PCI-DSS)
+              <strong style={{ color: "white" }}>Stripe</strong> - Traitement des paiements (certifié PCI-DSS)
             </li>
           </ul>
         </Section>

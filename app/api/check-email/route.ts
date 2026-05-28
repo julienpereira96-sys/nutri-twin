@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Chercher directement dans la table practitioners par email — 1 requête ciblée
+  // Chercher directement dans la table practitioners par email - 1 requête ciblée
   const { data: practitioner } = await supabase
     .from("practitioners")
     .select("user_id, plan, pending_plan")

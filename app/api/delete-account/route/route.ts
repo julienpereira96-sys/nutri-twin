@@ -4,7 +4,7 @@ export async function POST(request: Request) {
   const { password, email } = await request.json() as { patientId: string; password: string; email: string };
   if (!password || !email) return Response.json({ error: "Données manquantes" }, { status: 400 });
 
-  // Vérifier le mot de passe — l'ID réel vient de la réponse Auth, jamais du body
+  // Vérifier le mot de passe - l'ID réel vient de la réponse Auth, jamais du body
   const supabaseClient = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
   const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({ email, password });
   if (authError || !authData.user) return Response.json({ error: "Mot de passe incorrect" }, { status: 401 });

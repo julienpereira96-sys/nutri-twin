@@ -38,7 +38,7 @@ export default function SetPasswordPage() {
     const timeout = setTimeout(() => {
       setReady(false);
       setError("__expired__");
-    }, 15000); // 15s — couvre les connexions lentes
+    }, 15000); // 15s - couvre les connexions lentes
 
     supabase.auth.onAuthStateChange((event, session) => {
       console.log("Auth event:", event, "Session:", session?.user?.id);
@@ -98,7 +98,7 @@ export default function SetPasswordPage() {
       password,
     });
     if (signInError) {
-      // Session toujours active via le magic link — rediriger quand même
+      // Session toujours active via le magic link - rediriger quand même
       window.location.href = "/patient-login?reason=set_password_done";
       return;
     }

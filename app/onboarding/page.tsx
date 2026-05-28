@@ -25,11 +25,11 @@ type IndexedFile = {
 };
 
 const questions: Question[] = [
-  { id: "tone_of_voice", block: "Identité & Caractère", label: "Comment doit sonner votre jumeau ?", type: "single", options: ["Le Médical — factuel, précis, sobre, sans émojis", "Le Coach — énergique, motivant, direct", "Le Complice — chaleureux, empathique, humain", "Le Pédagogue — explique, vulgarise, rassure"] },
+  { id: "tone_of_voice", block: "Identité & Caractère", label: "Comment doit sonner votre jumeau ?", type: "single", options: ["Le Médical - factuel, précis, sobre, sans émojis", "Le Coach - énergique, motivant, direct", "Le Complice - chaleureux, empathique, humain", "Le Pédagogue - explique, vulgarise, rassure"] },
   { id: "tutoiement", block: "Identité & Caractère", label: "Comment vous adressez-vous à vos patients ?", type: "single", options: ["Vouvoiement strict", "Vouvoiement bienveillant", "Tutoiement naturel", "Je m'adapte selon le patient"] },
-  { id: "technicite", block: "Identité & Caractère", label: "Quel niveau de langage utilisez-vous ?", type: "single", options: ["Très vulgarisé — zéro jargon", "Quelques termes techniques expliqués", "Scientifique et précis", "Je m'adapte selon le patient"] },
-  { id: "longueur_reponses", block: "Identité & Caractère", label: "Votre style de communication ?", type: "single", options: ["Court et direct — l'essentiel en 2-3 phrases", "Détaillé et complet — j'explique tout", "Adapté à la complexité de la question"] },
-  { id: "emojis", block: "Identité & Caractère", label: "Votre jumeau doit-il utiliser des émojis ?", type: "single", options: ["Jamais — je reste professionnel", "Avec modération — un ou deux maximum", "Souvent — ça humanise les échanges"] },
+  { id: "technicite", block: "Identité & Caractère", label: "Quel niveau de langage utilisez-vous ?", type: "single", options: ["Très vulgarisé - zéro jargon", "Quelques termes techniques expliqués", "Scientifique et précis", "Je m'adapte selon le patient"] },
+  { id: "longueur_reponses", block: "Identité & Caractère", label: "Votre style de communication ?", type: "single", options: ["Court et direct - l'essentiel en 2-3 phrases", "Détaillé et complet - j'explique tout", "Adapté à la complexité de la question"] },
+  { id: "emojis", block: "Identité & Caractère", label: "Votre jumeau doit-il utiliser des émojis ?", type: "single", options: ["Jamais - je reste professionnel", "Avec modération - un ou deux maximum", "Souvent - ça humanise les échanges"] },
   { id: "approche_generale", block: "Philosophie Nutritionnelle", label: "Quelle est votre philosophie principale ?", type: "single", options: ["Rééquilibrage alimentaire progressif", "Alimentation intuitive", "Micronutrition fonctionnelle", "Protocoles structurés et mesurés"] },
   { id: "pathologies", block: "Philosophie Nutritionnelle", label: "Quel est votre cœur de métier ?", sublabel: "Vous pouvez en sélectionner plusieurs", type: "multiple", options: ["Perte de poids / obésité", "TCA (troubles du comportement alimentaire)", "Diabète / glycémie / métabolisme", "Performance sportive", "Inconfort digestif / FODMAP", "Fatigue / micronutrition", "Femme enceinte / post-partum", "Enfants / adolescents"] },
   { id: "position_regimes", block: "Philosophie Nutritionnelle", label: "Votre avis sur les régimes restrictifs ?", type: "single", options: ["Je les déconseille systématiquement", "Je les étudie cas par cas", "Certains sont utiles dans mon protocole", "Je reste neutre et m'adapte"] },
@@ -50,7 +50,7 @@ const questions: Question[] = [
   { id: "questions_medicales", block: "Sécurité & Limites", label: "Face à une question médicale complexe ?", type: "single", options: ["Il répond selon la littérature scientifique", "Il dit qu'il ne sait pas et m'alerte", "Il propose une piste et attend ma validation", "Il redirige systématiquement vers le médecin"] },
   { id: "urgence_detresse", block: "Sécurité & Limites", label: "Un patient exprime une vraie souffrance psychologique ?", type: "single", options: ["Il exprime de l'empathie et m'alerte immédiatement", "Il oriente vers une ligne d'écoute ou un professionnel", "Il gère avec bienveillance dans les limites de son périmètre"] },
   { id: "ligne_rouge", block: "Sécurité & Limites", label: "Votre ligne rouge absolue ?", sublabel: "Ce que votre jumeau ne doit JAMAIS dire ou faire", type: "free", placeholder: "Ex: Ne jamais culpabiliser, Ne jamais donner de calories précises, Ne jamais parler de médicaments..." },
-  { id: "approche_libre", block: "Votre approche en vos mots", label: "Décrivez votre approche en quelques phrases", sublabel: "Parlez librement — comme si vous expliquiez votre méthode à un confrère", type: "free", placeholder: "Ma façon d'accompagner mes patients est..." },
+  { id: "approche_libre", block: "Votre approche en vos mots", label: "Décrivez votre approche en quelques phrases", sublabel: "Parlez librement - comme si vous expliquiez votre méthode à un confrère", type: "free", placeholder: "Ma façon d'accompagner mes patients est..." },
   { id: "situation1", block: "Mises en situation", label: "Il est 22h. Un patient vous écrit :", sublabel: '"J\'ai craqué sur tout le frigo ce soir, je me déteste, je suis nul(le). Je vais jamais y arriver."', type: "free", placeholder: "Votre réponse exacte..." },
   { id: "situation2", block: "Mises en situation", label: "Un patient vous demande :", sublabel: '"Est-ce que je peux faire le régime Dukan ? Ma collègue a perdu 8kg en 1 mois."', type: "free", placeholder: "Votre réponse exacte..." },
   { id: "situation3", block: "Mises en situation", label: "Ça fait 3 semaines qu'un patient ne suit plus votre protocole.", sublabel: "Il ne répond plus à vos messages. Vous lui écrivez quoi ?", type: "free", placeholder: "Votre message de relance..." },
@@ -168,10 +168,10 @@ export default function OnboardingPage() {
   const slotColor = filled === 0 ? "#f59e0b" : filled === 1 ? "#06b6d4" : "#10b981";
   const missing = slot1Done ? "Signature" : "Vision";
   const slotMsg = filled === 0
-    ? "⚠️ Jumeau initialisé — Votre jumeau connaît votre personnalité mais il lui manque encore votre expertise. Partagez votre vision et vos méthodes pour lui donner votre pleine précision."
+    ? "⚠️ Jumeau initialisé - Votre jumeau connaît votre personnalité mais il lui manque encore votre expertise. Partagez votre vision et vos méthodes pour lui donner votre pleine précision."
     : filled === 1
-    ? `🔹 Jumeau Personnalisé — Une première brique de votre expertise a été intégrée. Il ne vous reste plus qu'à transmettre votre ${missing} pour que votre double soit parfaitement opérationnel et certifié.`
-    : "✅ Jumeau certifié — Précision maximale atteinte. Votre jumeau possède désormais votre expertise.";
+    ? `🔹 Jumeau Personnalisé - Une première brique de votre expertise a été intégrée. Il ne vous reste plus qu'à transmettre votre ${missing} pour que votre double soit parfaitement opérationnel et certifié.`
+    : "✅ Jumeau certifié - Précision maximale atteinte. Votre jumeau possède désormais votre expertise.";
 
     useEffect(() => {
       localStorage.setItem("onboarding_step", String(step));
@@ -507,7 +507,7 @@ export default function OnboardingPage() {
 
             <div className="mb-8">
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-medium text-zinc-300">Configuration de votre jumeau — {progress}%</p>
+                <p className="text-sm font-medium text-zinc-300">Configuration de votre jumeau - {progress}%</p>
                 {!isUploadStep && !isGenerating && <p className="text-xs text-zinc-500">{step + 1} / {total}</p>}
               </div>
               <div className="h-1.5 w-full rounded-full bg-white/10">
@@ -567,7 +567,7 @@ export default function OnboardingPage() {
                       className="text-sm text-zinc-500 transition-all duration-200 hover:text-white cursor-pointer">← Retour</button>
                   ) : <div />}
                   <button type="button" onClick={goNext} disabled={!canGoNext()}
-                    className="rounded-full bg-[#10b981] px-7 py-3 text-sm font-semibold text-black transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+                    className="rounded-xl bg-[#10b981] px-7 py-3 text-sm font-semibold text-black transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
                     onMouseEnter={e => { if (canGoNext()) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
                     onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
                     Suivant →
@@ -601,7 +601,7 @@ export default function OnboardingPage() {
                     <p className="text-sm text-zinc-400 max-w-sm leading-relaxed mb-2">
                       Votre double numérique est désormais capable de prendre le relais auprès de vos patients, avec votre philosophie, votre expertise et votre signature.
                     </p>
-                    <p className="text-xs font-mono text-[#10b981]/50 mb-10">[NT-006] Certification validée — Jumeau opérationnel</p>
+                    <p className="text-xs font-mono text-[#10b981]/50 mb-10">[NT-006] Certification validée - Jumeau opérationnel</p>
                     {saveError && <p className="mb-4 text-sm text-red-400">{saveError}</p>}
                     <button type="button" onClick={() => { setNavigating(true); setTimeout(() => router.push("/dashboard"), 800); }}
                       style={{ background: "#10b981", color: "black", borderRadius: 9999, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 0 30px rgba(16,185,129,0.3)" }}
@@ -657,7 +657,7 @@ export default function OnboardingPage() {
                             <span className="text-xs flex-shrink-0 w-20 text-right">
                               {isDone && <span className="text-[#10b981]">✓ OK</span>}
                               {isActive && <span className="text-[#f59e0b] flex items-center justify-end gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />en cours</span>}
-                              {isPending && <span className="text-zinc-700">—</span>}
+                              {isPending && <span className="text-zinc-700">-</span>}
                             </span>
                           </div>
                         );
@@ -671,7 +671,7 @@ export default function OnboardingPage() {
                         {genStep === 3 && "› Injection du profil stylistique dans le LLM..."}
                         {genStep === 4 && "› Fusion des documents d'expertise avec le profil..."}
                         {genStep === 5 && "› Application de la signature émotionnelle unique..."}
-                        {genStep === 6 && "› Jumeau certifié — Lancement imminent..."}
+                        {genStep === 6 && "› Jumeau certifié - Lancement imminent..."}
                       </p>
                     </div>
                   </>
@@ -782,7 +782,7 @@ export default function OnboardingPage() {
                         </div>
                       </div>
                       {isRecording && slot1ActiveRecording && (
-                        <p className="text-xs text-red-400 mt-2 ml-1 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />Enregistrement en cours — {formatTime(recordingTime)}</p>
+                        <p className="text-xs text-red-400 mt-2 ml-1 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />Enregistrement en cours - {formatTime(recordingTime)}</p>
                       )}
                       {audioBlob && slot1ActiveRecording && (
                         <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
@@ -847,7 +847,7 @@ export default function OnboardingPage() {
                         </div>
                       </div>
                       {isRecording && slot2ActiveRecording && (
-                        <p className="text-xs text-red-400 mt-2 ml-1 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />Enregistrement en cours — {formatTime(recordingTime)}</p>
+                        <p className="text-xs text-red-400 mt-2 ml-1 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />Enregistrement en cours - {formatTime(recordingTime)}</p>
                       )}
                       {audioBlob && slot2ActiveRecording && (
                         <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
@@ -895,10 +895,10 @@ export default function OnboardingPage() {
                     {showCertTooltip && filled < 2 && (
                       <>
                         <div className="hidden sm:block" style={{ position: "absolute", top: "50%", right: "calc(100% + 12px)", transform: "translateY(-50%)", width: 280, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
-                          🔒 Certification requise — Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.
+                          🔒 Certification requise - Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.
                         </div>
                         <div className="block sm:hidden" style={{ position: "absolute", bottom: "calc(100% + 8px)", right: 0, width: 240, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
-                          🔒 Certification requise — Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.
+                          🔒 Certification requise - Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.
                         </div>
                       </>
                     )}

@@ -44,7 +44,7 @@ export async function POST(request: Request) {
     const text = result.response.text().trim();
     if (text) message = text;
   } catch {
-    // Silencieux — on garde le message par défaut
+    // Silencieux - on garde le message par défaut
   }
 
   // Insérer le message dans les conversations
