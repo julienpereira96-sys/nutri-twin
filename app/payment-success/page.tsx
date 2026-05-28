@@ -84,7 +84,12 @@ function PaymentSuccessContent() {
 
            {webhookTimeout && (
              <div style={{ textAlign: "center", padding: "16px 0 24px" }}>
-               <p style={{ fontSize: 32, marginBottom: 12 }}>⏳</p>
+               <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                   <path d="M5 3h14M5 21h14M7 3v4.5a5 5 0 0 0 10 0V3M7 21v-4.5a5 5 0 0 1 10 0V21"/>
+                   <path d="M9 10.5c1 .5 2 .75 3 .75s2-.25 3-.75"/>
+                 </svg>
+               </div>
                <p style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "white" }}>
                  Activation en cours...
                </p>
@@ -148,9 +153,36 @@ function PaymentSuccessContent() {
 
            <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 50 }}>
              {[
-               { emoji: "⏱️", label: "Temps estimé", desc: "15 minutes suffisent pour calibrer votre jumeau." },
-               { emoji: "🎯", label: "Répondez naturellement", desc: "Comme si vous parliez à un confrère de confiance." },
-               { emoji: "🧬", label: "Plus vous êtes précis", desc: "Meilleur sera le résultat final." },
+               {
+                 icon: (
+                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                     <circle cx="12" cy="12" r="10"/>
+                     <polyline points="12 6 12 12 16 14"/>
+                   </svg>
+                 ),
+                 label: "Temps estimé",
+                 desc: "15 minutes suffisent pour calibrer votre jumeau.",
+               },
+               {
+                 icon: (
+                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                     <circle cx="12" cy="12" r="10"/>
+                     <circle cx="12" cy="12" r="6"/>
+                     <circle cx="12" cy="12" r="2"/>
+                   </svg>
+                 ),
+                 label: "Répondez naturellement",
+                 desc: "Comme si vous parliez à un confrère de confiance.",
+               },
+               {
+                 icon: (
+                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                     <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/>
+                   </svg>
+                 ),
+                 label: "Plus vous êtes précis",
+                 desc: "Meilleur sera le résultat final.",
+               },
              ].map((item, i) => (
                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                  <div style={{
@@ -158,8 +190,7 @@ function PaymentSuccessContent() {
                    background: "rgba(16,185,129,0.1)",
                    border: "1px solid rgba(16,185,129,0.2)",
                    display: "flex", alignItems: "center", justifyContent: "center",
-                   fontSize: 15,
-                 }}>{item.emoji}</div>
+                 }}>{item.icon}</div>
                  <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.6, textAlign: "left" }}>
                    <strong style={{ color: "white" }}>{item.label}</strong> — {item.desc}
                  </p>

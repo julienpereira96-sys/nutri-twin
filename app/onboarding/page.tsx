@@ -196,11 +196,15 @@ export default function OnboardingPage() {
       if (data?.onboarding_done) {
         setAlreadyDone(true);
       } else {
-        // Toujours vider le localStorage si onboarding pas terminé en base
-        localStorage.removeItem("onboarding_step");
-        localStorage.removeItem("onboarding_answers");
-        localStorage.removeItem("onboarding_selected");
-        localStorage.removeItem("onboarding_user_id");
+        // Vider localStorage seulement si c'est un utilisateur différent (multi-compte sur même navigateur)
+        const savedUserId = localStorage.getItem("onboarding_user_id");
+        if (savedUserId && savedUserId !== user.id) {
+          localStorage.removeItem("onboarding_step");
+          localStorage.removeItem("onboarding_answers");
+          localStorage.removeItem("onboarding_selected");
+        }
+        // Mémoriser l'ID courant pour la prochaine détection
+        localStorage.setItem("onboarding_user_id", user.id);
       }
   
         // Charger les documents indexés
