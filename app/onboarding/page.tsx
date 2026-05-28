@@ -821,7 +821,7 @@ export default function OnboardingPage() {
                     <button type="button" onClick={() => setShowSlot1Text(p => !p)}
                       className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300 transition cursor-pointer pt-1">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.2s", transform: showSlot1Text ? "rotate(90deg)" : "rotate(0deg)" }}><path d="M9 18l6-6-6-6"/></svg>
-                      {showSlot1Text ? "Masquer la note libre" : "Ajouter une note libre (vision, méthode...)"}
+                      {showSlot1Text ? "Masquer la note libre" : "Pas de documents ? Ajouter une note libre"}
                     </button>
                     {showSlot1Text && <div className="pt-2">
                       <div className="relative">
@@ -842,7 +842,7 @@ export default function OnboardingPage() {
                         <p className="text-xs text-red-400 mt-2 ml-1 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />Enregistrement en cours - {formatTime(recordingTime)}</p>
                       )}
                       {audioBlob && slot1ActiveRecording && (
-                        <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                        <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-white/10 bg-[#1a1a1a]">
                           <p className="text-sm text-emerald-400 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(recordingTime)})</p>
                           <button type="button" onClick={() => { setAudioBlob(null); setSlot1ActiveRecording(false); }}
                             className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer" style={{ color: "#64748b" }}
@@ -853,12 +853,12 @@ export default function OnboardingPage() {
                       )}
                     </div>}
                     {hasSlot1Pending && (
-                      <div className="pt-3">
+                      <div className="pt-3 flex items-center justify-end gap-3">
+                        {savingAll1 && <p className="text-xs text-amber-400">Patientez...</p>}
                         <button type="button" onClick={() => void saveSlot1All()} disabled={savingAll1}
-                          style={{ ...btnStyle, opacity: savingAll1 ? 0.7 : 1, cursor: savingAll1 ? "not-allowed" : "pointer" }} {...btnHover}>
-                          {savingAll1 ? <><Spinner />Indexation en cours...</> : getSlot1Label()}
+                          style={{ ...btnStyle, width: "auto", padding: "8px 20px", opacity: savingAll1 ? 0.7 : 1, cursor: savingAll1 ? "not-allowed" : "pointer" }} {...btnHover}>
+                          {savingAll1 ? <><Spinner />Indexation...</> : "Indexer"}
                         </button>
-                        {savingAll1 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
                       </div>
                     )}
                   </div>
@@ -889,7 +889,7 @@ export default function OnboardingPage() {
                     <button type="button" onClick={() => setShowSlot2Text(p => !p)}
                       className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300 transition cursor-pointer pt-1">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.2s", transform: showSlot2Text ? "rotate(90deg)" : "rotate(0deg)" }}><path d="M9 18l6-6-6-6"/></svg>
-                      {showSlot2Text ? "Masquer la note libre" : "Ajouter une note libre (signature, style...)"}
+                      {showSlot2Text ? "Masquer la note libre" : "Pas de documents ? Ajouter une note libre"}
                     </button>
                     {showSlot2Text && <div className="pt-2">
                       <div className="relative">
@@ -911,7 +911,7 @@ export default function OnboardingPage() {
                         <p className="text-xs text-red-400 mt-2 ml-1 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />Enregistrement en cours - {formatTime(recordingTime)}</p>
                       )}
                       {audioBlob && slot2ActiveRecording && (
-                        <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                        <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-white/10 bg-[#1a1a1a]">
                           <p className="text-sm text-emerald-400 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(recordingTime)})</p>
                           <button type="button" onClick={() => { setAudioBlob(null); setSlot2ActiveRecording(false); }}
                             className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer" style={{ color: "#64748b" }}
@@ -922,12 +922,12 @@ export default function OnboardingPage() {
                       )}
                     </div>}
                     {hasSlot2Pending && (
-                      <div className="pt-3">
+                      <div className="pt-3 flex items-center justify-end gap-3">
+                        {savingAll2 && <p className="text-xs text-amber-400">Patientez...</p>}
                         <button type="button" onClick={() => void saveSlot2All()} disabled={savingAll2}
-                          style={{ ...btnStyle, opacity: savingAll2 ? 0.7 : 1, cursor: savingAll2 ? "not-allowed" : "pointer" }} {...btnHover}>
-                          {savingAll2 ? <><Spinner />Indexation en cours...</> : getSlot2Label()}
+                          style={{ ...btnStyle, width: "auto", padding: "8px 20px", opacity: savingAll2 ? 0.7 : 1, cursor: savingAll2 ? "not-allowed" : "pointer" }} {...btnHover}>
+                          {savingAll2 ? <><Spinner />Indexation...</> : "Indexer"}
                         </button>
-                        {savingAll2 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
                       </div>
                     )}
                   </div>
