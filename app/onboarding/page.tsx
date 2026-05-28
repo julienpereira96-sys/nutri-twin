@@ -412,7 +412,7 @@ export default function OnboardingPage() {
     const count = (hasFiles ? 1 : 0) + (hasText ? 1 : 0) + (hasMemo ? 1 : 0);
     if (count === 0) return "Indexer";
     if (count > 1) return "Tout indexer";
-    if (hasFiles) return slot1Files.length > 1 ? `Indexer les ${slot1Files.length} documents` : "Indexer le document";
+    if (hasFiles) return slot1Files.length > 1 ? `Indexer mes ${slot1Files.length} documents` : "Indexer mon document";
     if (hasText) return "Indexer ma vision";
     return "Indexer mon mémo";
   };
@@ -785,7 +785,7 @@ export default function OnboardingPage() {
                           <p className="text-sm font-bold text-white mb-1">Données patients</p>
                           <p className="text-xs text-zinc-500 mb-3">Bilans, comptes-rendus, analyses sanguines</p>
                           <br />
-                          <p className="text-xs font-medium text-blue-400 mb-3">✓ Anonymisé avant indexation</p>
+                          <p className="text-xs text-zinc-600 leading-relaxed mb-3">Documents anonymisés par IA avant indexation. Aucune donnée personnelle conservée. Serveurs sécurisés en Europe.</p>
                           <div className="rounded-xl border border-dashed border-white/15 group-hover:border-blue-500/40 px-3 py-2 text-center transition-all duration-200">
                             <p className="text-xs text-zinc-500 group-hover:text-zinc-400 transition">Cliquez pour sélectionner</p>
                             <p className="text-xs text-zinc-600 mt-0.5">PDF, DOCX, TXT, JPG, PNG, Excel, CSV, MP3</p>
@@ -793,7 +793,6 @@ export default function OnboardingPage() {
                         </label>
                       </div>
                     </div>
-                    <p className="text-[11px] text-zinc-600 mt-1 leading-relaxed">Documents automatiquement anonymisés par IA avant indexation. Aucune donnée personnelle conservée. Stockage sur serveurs sécurisés en Europe.</p>
                     {duplicateError && <p className="text-xs text-amber-400">{duplicateError}</p>}
                     {slot1Files.length > 0 && (
                       <div className="space-y-2">
@@ -850,7 +849,7 @@ export default function OnboardingPage() {
                       )}
                     </div>
                     <div className="pt-3 flex items-center justify-end gap-3">
-                      {savingAll1 && <p className="text-xs text-amber-400">Patientez...</p>}
+                      {savingAll1 && <p className="text-xs text-amber-400">Patientez, cela peut prendre quelques instants...</p>}
                       <button type="button" onClick={() => void saveSlot1All()} disabled={savingAll1 || !hasSlot1Pending}
                         style={{ background: hasSlot1Pending ? "#10b981" : "rgba(255,255,255,0.05)", color: hasSlot1Pending ? "black" : "#52525b", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: (savingAll1 || !hasSlot1Pending) ? "not-allowed" : "pointer", opacity: savingAll1 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, boxShadow: hasSlot1Pending ? "0 4px 14px rgba(16,185,129,0.3)" : "none", transition: "all 0.2s", border: hasSlot1Pending ? "none" : "1px solid rgba(255,255,255,0.08)" }}
                         onMouseEnter={e => { if (!savingAll1 && hasSlot1Pending) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px) scale(1.01)"; } }}
@@ -916,7 +915,7 @@ export default function OnboardingPage() {
                       )}
                     </div>
                     <div className="pt-3 flex items-center justify-end gap-3">
-                      {savingAll2 && <p className="text-xs text-amber-400">Patientez...</p>}
+                      {savingAll2 && <p className="text-xs text-amber-400">Patientez, cela peut prendre quelques instants...</p>}
                       <button type="button" onClick={() => void saveSlot2All()} disabled={savingAll2 || !hasSlot2Pending}
                         style={{ background: hasSlot2Pending ? "#10b981" : "rgba(255,255,255,0.05)", color: hasSlot2Pending ? "black" : "#52525b", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: (savingAll2 || !hasSlot2Pending) ? "not-allowed" : "pointer", opacity: savingAll2 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, boxShadow: hasSlot2Pending ? "0 4px 14px rgba(16,185,129,0.3)" : "none", transition: "all 0.2s", border: hasSlot2Pending ? "none" : "1px solid rgba(255,255,255,0.08)" }}
                         onMouseEnter={e => { if (!savingAll2 && hasSlot2Pending) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px) scale(1.01)"; } }}
