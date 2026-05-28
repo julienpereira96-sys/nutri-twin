@@ -39,7 +39,7 @@ const questions: Question[] = [
   { id: "petit_dejeuner", block: "Philosophie Nutritionnelle", label: "Votre philosophie sur le petit-déjeuner ?", type: "single", options: ["Indispensable, je l'optimise toujours", "Optionnel selon le patient", "Je ne l'impose jamais"] },
   { id: "lifestyle_budget", block: "Philosophie Nutritionnelle", label: "Votre approche lifestyle et budget ?", type: "single", options: ["Je prône le bio et le local", "Je m'adapte au budget du patient", "Je mise sur le moins transformé possible", "Je ne fais pas de distinction"] },
   { id: "jamais_dire", block: "Philosophie Nutritionnelle", label: "Y a-t-il des pratiques que vous refusez catégoriquement ?", sublabel: "Ex: régimes très hypocaloriques, détox, jeûne prolongé...", type: "free", placeholder: "Décrivez ce que votre jumeau ne doit jamais recommander..." },
-  { id: "conviction", block: "Philosophie Nutritionnelle", label: "Quelle est votre règle d'or ?", sublabel: "Votre conviction la plus forte en tant que praticien", type: "free", placeholder: "Ex: Pas d'aliment interdit, Le plaisir avant tout, La régularité prime sur la perfection..." },
+  { id: "conviction", block: "Philosophie Nutritionnelle", label: "Quelle est votre règle d'or ?", sublabel: "Votre conviction la plus forte en tant que praticien", type: "free", placeholder: "Ex: Pas d'aliment interdit, le plaisir avant tout, la régularité prime sur la perfection..." },
   { id: "gestion_ecarts", block: "Gestion Humaine & Émotions", label: "Un patient craque sur une pizza. Vous répondez comment ?", type: "single", options: ["Sans culpabilité, on repart de zéro", "On analyse pourquoi ça s'est passé", "On recadre doucement sur les objectifs", "L'équilibre se fait sur la durée, un écart ne compte pas"] },
   { id: "emotions", block: "Gestion Humaine & Émotions", label: "Un patient mange ses émotions. Votre approche ?", type: "single", options: ["Je travaille uniquement l'alimentation", "J'oriente vers un psy si besoin", "Je travaille les deux en parallèle", "C'est intégré dans mon suivi global"] },
   { id: "non_suivi", block: "Gestion Humaine & Émotions", label: "Un patient ne suit plus votre protocole. Votre réaction ?", type: "single", options: ["Bienveillance totale, on repart sans jugement", "On cherche ensemble pourquoi ça bloque", "Recadrage ferme mais bienveillant", "On remet en question le protocole ensemble"] },
@@ -49,7 +49,7 @@ const questions: Question[] = [
   { id: "perimetre", block: "Sécurité & Limites", label: "Jusqu'où peut aller votre jumeau ?", type: "single", options: ["Autonomie totale sur nutrition et lifestyle", "Prudent sur les pathologies, il me redirige", "Questions simples uniquement, il m'alerte pour tout le reste"] },
   { id: "questions_medicales", block: "Sécurité & Limites", label: "Face à une question médicale complexe ?", type: "single", options: ["Il répond selon la littérature scientifique", "Il dit qu'il ne sait pas et m'alerte", "Il propose une piste et attend ma validation", "Il redirige systématiquement vers le médecin"] },
   { id: "urgence_detresse", block: "Sécurité & Limites", label: "Un patient exprime une vraie souffrance psychologique ?", type: "single", options: ["Il exprime de l'empathie et m'alerte immédiatement", "Il oriente vers une ligne d'écoute ou un professionnel", "Il gère avec bienveillance dans les limites de son périmètre"] },
-  { id: "ligne_rouge", block: "Sécurité & Limites", label: "Votre ligne rouge absolue ?", sublabel: "Ce que votre jumeau ne doit JAMAIS dire ou faire", type: "free", placeholder: "Ex: Ne jamais culpabiliser, Ne jamais donner de calories précises, Ne jamais parler de médicaments..." },
+  { id: "ligne_rouge", block: "Sécurité & Limites", label: "Votre ligne rouge absolue ?", sublabel: "Ce que votre jumeau ne doit JAMAIS dire ou faire", type: "free", placeholder: "Ex: Ne jamais culpabiliser, ne jamais donner de calories précises, ne jamais parler de médicaments..." },
   { id: "approche_libre", block: "Votre approche en vos mots", label: "Décrivez votre approche en quelques phrases", sublabel: "Parlez librement - comme si vous expliquiez votre méthode à un confrère", type: "free", placeholder: "Ma façon d'accompagner mes patients est..." },
   { id: "situation1", block: "Mises en situation", label: "Il est 22h. Un patient vous écrit :", sublabel: '"J\'ai craqué sur tout le frigo ce soir, je me déteste, je suis nul(le). Je vais jamais y arriver."', type: "free", placeholder: "Votre réponse exacte..." },
   { id: "situation2", block: "Mises en situation", label: "Un patient vous demande :", sublabel: '"Est-ce que je peux faire le régime Dukan ? Ma collègue a perdu 8kg en 1 mois."', type: "free", placeholder: "Votre réponse exacte..." },
@@ -486,7 +486,7 @@ export default function OnboardingPage() {
           <div className="rounded-3xl border border-[#10b981]/30 bg-[#121212] p-8 max-w-md w-full text-center">
             <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6"
               style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)" }}>
-              <span className="text-3xl">🌿</span>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
             </div>
             <p className="text-xs font-mono font-bold tracking-widest text-[#10b981] uppercase mb-3">Jumeau opérationnel</p>
             <h1 className="text-xl font-bold text-white mb-3">Votre jumeau s'est finalisé<br />en arrière-plan.</h1>
@@ -596,7 +596,7 @@ export default function OnboardingPage() {
                         </svg>
                       </div>
                     </div>
-                    <p className="text-xs font-mono font-bold tracking-widest text-[#10b981] uppercase mb-3">✅ Configuration terminée</p>
+                    <p className="text-xs font-mono font-bold tracking-widest text-[#10b981] uppercase mb-3 flex items-center justify-center gap-1.5"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Configuration terminée</p>
                     <h2 className="text-2xl font-bold text-white mb-3 leading-tight">Votre Jumeau est prêt.</h2>
                     <p className="text-sm text-zinc-400 max-w-sm leading-relaxed mb-2">
                       Votre double numérique est désormais capable de prendre le relais auprès de vos patients, avec votre philosophie, votre expertise et votre signature.
@@ -633,7 +633,7 @@ export default function OnboardingPage() {
                         <div className="absolute inset-0 flex items-center justify-center">
                           <div className="w-16 h-16 rounded-full flex items-center justify-center"
                             style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                            <span className="text-2xl">🌿</span>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12"/><path d="M12 6v6l4 2"/></svg>
                           </div>
                         </div>
                       </div>
@@ -746,7 +746,7 @@ export default function OnboardingPage() {
                             <div className="flex items-center gap-3 min-w-0">
                               <span className="flex-shrink-0 text-zinc-400">{getFileIcon(getFileType(f.file.name))}</span>
                               <span className="text-sm text-zinc-300 truncate">{f.file.name}</span>
-                              <span className="text-xs flex-shrink-0" style={{ color: f.docType === "patient" ? "#60a5fa" : "#10b981" }}>{f.docType === "patient" ? "🔒 Anonymisé" : "✓ Tel quel"}</span>
+                              <span className="text-xs flex-shrink-0 flex items-center gap-1" style={{ color: f.docType === "patient" ? "#60a5fa" : "#10b981" }}>{f.docType === "patient" ? <><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Anonymisé</> : <>✓ Tel quel</>}</span>
                             </div>
                             <button type="button" onClick={() => setSlot1Files(prev => prev.filter((_, j) => j !== i))}
                               className="ml-3 flex-shrink-0 p-1.5 rounded-lg transition-all duration-200 cursor-pointer" style={{ color: "#64748b" }}
@@ -762,7 +762,7 @@ export default function OnboardingPage() {
                       </div>
                     )}
                     <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
-                      <p className="text-xs text-emerald-400 leading-relaxed">🔒 <strong>Vos documents sont automatiquement anonymisés par l'IA avant indexation.</strong> Aucune donnée personnelle n'est conservée. Tout est stocké sur des serveurs sécurisés en Europe.</p>
+                      <p className="text-xs text-emerald-400 leading-relaxed flex items-start gap-1.5"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span><strong>Vos documents sont automatiquement anonymisés par l'IA avant indexation.</strong> Aucune donnée personnelle n'est conservée. Tout est stocké sur des serveurs sécurisés en Europe.</span></p>
                     </div>
                     <div className="pt-2">
                       <p className="text-sm font-semibold text-white mb-1">Pas de documents prêts ou des nuances à apporter ?</p>
@@ -786,7 +786,7 @@ export default function OnboardingPage() {
                       )}
                       {audioBlob && slot1ActiveRecording && (
                         <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
-                          <p className="text-sm text-emerald-400 flex-1">✅ Mémo enregistré ({formatTime(recordingTime)})</p>
+                          <p className="text-sm text-emerald-400 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(recordingTime)})</p>
                           <button type="button" onClick={() => void saveSlotAudio("slot1")} disabled={uploadingSlot1}
                             style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)", borderRadius: 8, padding: "6px 14px", color: "#10b981", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}
                             onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
@@ -851,7 +851,7 @@ export default function OnboardingPage() {
                       )}
                       {audioBlob && slot2ActiveRecording && (
                         <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
-                          <p className="text-sm text-emerald-400 flex-1">✅ Mémo enregistré ({formatTime(recordingTime)})</p>
+                          <p className="text-sm text-emerald-400 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(recordingTime)})</p>
                           <button type="button" onClick={() => void saveSlotAudio("slot2")} disabled={uploadingSlot2}
                             style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)", borderRadius: 8, padding: "6px 14px", color: "#10b981", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}
                             onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
@@ -880,7 +880,7 @@ export default function OnboardingPage() {
 
                 {uploadErrors.length > 0 && (
                   <div className="mt-5 space-y-1">
-                    {uploadErrors.map((e, i) => <p key={i} className="text-xs text-red-400">❌ {e}</p>)}
+                    {uploadErrors.map((e, i) => <p key={i} className="text-xs text-red-400 flex items-center gap-1.5"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>{e}</p>)}
                   </div>
                 )}
 
@@ -895,10 +895,10 @@ export default function OnboardingPage() {
                     {showCertTooltip && filled < 2 && (
                       <>
                         <div className="hidden sm:block" style={{ position: "absolute", top: "50%", right: "calc(100% + 12px)", transform: "translateY(-50%)", width: 280, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
-                          🔒 Certification requise - Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Certification requise - Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.</span>
                         </div>
                         <div className="block sm:hidden" style={{ position: "absolute", bottom: "calc(100% + 8px)", right: 0, width: 240, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
-                          🔒 Certification requise - Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Certification requise - Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.</span>
                         </div>
                       </>
                     )}
