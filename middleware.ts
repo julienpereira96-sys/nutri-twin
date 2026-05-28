@@ -137,15 +137,6 @@ export async function middleware(request: NextRequest) {
     const profile = await getProfile();
     if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
 
-    // Expiration session 30 jours
-    const lastActive = (practitioner as { last_active_at?: string } | null)?.last_active_at;
-    if (lastActive) {
-      const days = (Date.now() - new Date(lastActive).getTime()) / (1000 * 60 * 60 * 24);
-      if (days > 30) {
-        await supabase.auth.signOut();
-        return NextResponse.redirect(new URL("/login?reason=session_expired", request.url));
-      }
-    }
     await supabase.from("practitioners").update({ last_active_at: new Date().toISOString() }).eq("user_id", user.id);
     return supabaseResponse;
   }

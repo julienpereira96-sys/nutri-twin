@@ -127,8 +127,8 @@ export default function OnboardingPage() {
   const [saveError, setSaveError] = useState("");
   const [slot1Errors, setSlot1Errors] = useState<string[]>([]);
   const [slot2Errors, setSlot2Errors] = useState<string[]>([]);
-  const [showSlot1Text, setShowSlot1Text] = useState(false);
-  const [showSlot2Text, setShowSlot2Text] = useState(false);
+  const [showSlot1Text, setShowSlot1Text] = useState(true);
+  const [showSlot2Text, setShowSlot2Text] = useState(true);
   const [practitionerId, setPractitionerId] = useState<string | null>(null);
   const [alreadyDone, setAlreadyDone] = useState(false);
   const [showCertTooltip, setShowCertTooltip] = useState(false);
@@ -159,6 +159,8 @@ export default function OnboardingPage() {
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [activating, setActivating] = useState(false);
   const [navigating, setNavigating] = useState(false);
+  const [savingAll1, setSavingAll1] = useState(false);
+  const [savingAll2, setSavingAll2] = useState(false);
 
   const total = questions.length;
   const isUploadStep = step === total;
@@ -387,6 +389,44 @@ export default function OnboardingPage() {
     setAudioBlob(null);
     if (slot === "slot1") setSlot1ActiveRecording(false); else setSlot2ActiveRecording(false);
   };
+
+  const saveSlot1All = async () => {
+    setSavingAll1(true);
+    if (slot1Files.length > 0) await indexSlot1Files();
+    if (slot1Text.trim()) await saveSlotText("slot1", slot1Text);
+    if (audioBlob && slot1ActiveRecording) await saveSlotAudio("slot1");
+    setSavingAll1(false);
+  };
+
+  const saveSlot2All = async () => {
+    setSavingAll2(true);
+    if (slot2Text.trim()) await saveSlotText("slot2", slot2Text);
+    if (audioBlob && slot2ActiveRecording) await saveSlotAudio("slot2");
+    setSavingAll2(false);
+  };
+
+  const getSlot1Label = () => {
+    const parts: string[] = [];
+    if (slot1Files.length > 0) parts.push(`${slot1Files.length} fichier${slot1Files.length > 1 ? "s" : ""}`);
+    if (slot1Text.trim()) parts.push("note");
+    if (audioBlob && slot1ActiveRecording) parts.push("mémo");
+    if (parts.length > 1) return `Enregistrer (${parts.join(" + ")}) →`;
+    if (slot1Files.length > 0) return `Indexer ${slot1Files.length} fichier${slot1Files.length > 1 ? "s" : ""} →`;
+    if (slot1Text.trim()) return "Enregistrer ma Vision →";
+    return "Indexer ce mémo →";
+  };
+
+  const getSlot2Label = () => {
+    const parts: string[] = [];
+    if (slot2Text.trim()) parts.push("note");
+    if (audioBlob && slot2ActiveRecording) parts.push("mémo");
+    if (parts.length > 1) return `Enregistrer (${parts.join(" + ")}) →`;
+    if (slot2Text.trim()) return "Enregistrer ma Signature →";
+    return "Indexer ce mémo →";
+  };
+
+  const hasSlot1Pending = slot1Files.length > 0 || slot1Text.trim().length > 0 || (!!audioBlob && slot1ActiveRecording);
+  const hasSlot2Pending = slot2Text.trim().length > 0 || (!!audioBlob && slot2ActiveRecording);
 
   const saveProfile = async (redirect = true) => {
     if (isSaving) return;
@@ -768,11 +808,6 @@ export default function OnboardingPage() {
                             </button>
                           </div>
                         ))}
-                        <button type="button" onClick={() => void indexSlot1Files()} disabled={uploadingSlot1}
-                          style={{ ...btnStyle, marginTop: 4, opacity: uploadingSlot1 ? 0.7 : 1, cursor: uploadingSlot1 ? "not-allowed" : "pointer" }} {...btnHover}>
-                          {uploadingSlot1 ? <><Spinner />Indexation en cours...</> : `Indexer ${slot1Files.length} fichier${slot1Files.length > 1 ? "s" : ""} →`}
-                        </button>
-                        {uploadingSlot1 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
                       </div>
                     )}
                     {slot1Errors.length > 0 && (
@@ -786,7 +821,7 @@ export default function OnboardingPage() {
                     <button type="button" onClick={() => setShowSlot1Text(p => !p)}
                       className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300 transition cursor-pointer pt-1">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.2s", transform: showSlot1Text ? "rotate(90deg)" : "rotate(0deg)" }}><path d="M9 18l6-6-6-6"/></svg>
-                      {showSlot1Text ? "Masquer la note libre" : "Pas de documents ? Ajouter une note libre"}
+                      {showSlot1Text ? "Masquer la note libre" : "Ajouter une note libre (vision, méthode...)"}
                     </button>
                     {showSlot1Text && <div className="pt-2">
                       <div className="relative">
@@ -809,31 +844,23 @@ export default function OnboardingPage() {
                       {audioBlob && slot1ActiveRecording && (
                         <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
                           <p className="text-sm text-emerald-400 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(recordingTime)})</p>
-                          <button type="button" onClick={() => void saveSlotAudio("slot1")} disabled={uploadingSlot1}
-                            style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)", borderRadius: 8, padding: "6px 14px", color: "#10b981", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                            {uploadingSlot1 ? <><Spinner />Indexation...</> : "Indexer ce mémo →"}
+                          <button type="button" onClick={() => { setAudioBlob(null); setSlot1ActiveRecording(false); }}
+                            className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer" style={{ color: "#64748b" }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#f87171"} onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                            <TrashIcon />
                           </button>
-                          {!uploadingSlot1 && (
-                            <button type="button" onClick={() => { setAudioBlob(null); setSlot1ActiveRecording(false); }}
-                              className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer" style={{ color: "#64748b" }}
-                              onMouseEnter={e => e.currentTarget.style.color = "#f87171"} onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                              <TrashIcon />
-                            </button>
-                          )}
                         </div>
                       )}
-                      {slot1Text.trim() && (
-                        <>
-                          <button type="button" onClick={() => void saveSlotText("slot1", slot1Text)} disabled={uploadingSlot1}
-                            style={{ ...btnStyle, marginTop: 12, opacity: uploadingSlot1 ? 0.7 : 1, cursor: uploadingSlot1 ? "not-allowed" : "pointer" }} {...btnHover}>
-                            {uploadingSlot1 ? <><Spinner />Indexation en cours...</> : "Indexer ma vision →"}
-                          </button>
-                          {uploadingSlot1 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
-                        </>
-                      )}
                     </div>}
+                    {hasSlot1Pending && (
+                      <div className="pt-3">
+                        <button type="button" onClick={() => void saveSlot1All()} disabled={savingAll1}
+                          style={{ ...btnStyle, opacity: savingAll1 ? 0.7 : 1, cursor: savingAll1 ? "not-allowed" : "pointer" }} {...btnHover}>
+                          {savingAll1 ? <><Spinner />Indexation en cours...</> : getSlot1Label()}
+                        </button>
+                        {savingAll1 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -862,7 +889,7 @@ export default function OnboardingPage() {
                     <button type="button" onClick={() => setShowSlot2Text(p => !p)}
                       className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300 transition cursor-pointer pt-1">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.2s", transform: showSlot2Text ? "rotate(90deg)" : "rotate(0deg)" }}><path d="M9 18l6-6-6-6"/></svg>
-                      {showSlot2Text ? "Masquer la note libre" : "Pas de documents ? Ajouter une note libre"}
+                      {showSlot2Text ? "Masquer la note libre" : "Ajouter une note libre (signature, style...)"}
                     </button>
                     {showSlot2Text && <div className="pt-2">
                       <div className="relative">
@@ -886,31 +913,23 @@ export default function OnboardingPage() {
                       {audioBlob && slot2ActiveRecording && (
                         <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
                           <p className="text-sm text-emerald-400 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(recordingTime)})</p>
-                          <button type="button" onClick={() => void saveSlotAudio("slot2")} disabled={uploadingSlot2}
-                            style={{ background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)", borderRadius: 8, padding: "6px 14px", color: "#10b981", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                            {uploadingSlot2 ? <><Spinner />Indexation...</> : "Indexer ce mémo →"}
+                          <button type="button" onClick={() => { setAudioBlob(null); setSlot2ActiveRecording(false); }}
+                            className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer" style={{ color: "#64748b" }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#f87171"} onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                            <TrashIcon />
                           </button>
-                          {!uploadingSlot2 && (
-                            <button type="button" onClick={() => { setAudioBlob(null); setSlot2ActiveRecording(false); }}
-                              className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer" style={{ color: "#64748b" }}
-                              onMouseEnter={e => e.currentTarget.style.color = "#f87171"} onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                              <TrashIcon />
-                            </button>
-                          )}
                         </div>
                       )}
-                      {slot2Text.trim() && (
-                        <>
-                          <button type="button" onClick={() => void saveSlotText("slot2", slot2Text)} disabled={uploadingSlot2}
-                            style={{ ...btnStyle, marginTop: 12, opacity: uploadingSlot2 ? 0.7 : 1, cursor: uploadingSlot2 ? "not-allowed" : "pointer" }} {...btnHover}>
-                            {uploadingSlot2 ? <><Spinner />Indexation en cours...</> : "Indexer ma signature →"}
-                          </button>
-                          {uploadingSlot2 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
-                        </>
-                      )}
                     </div>}
+                    {hasSlot2Pending && (
+                      <div className="pt-3">
+                        <button type="button" onClick={() => void saveSlot2All()} disabled={savingAll2}
+                          style={{ ...btnStyle, opacity: savingAll2 ? 0.7 : 1, cursor: savingAll2 ? "not-allowed" : "pointer" }} {...btnHover}>
+                          {savingAll2 ? <><Spinner />Indexation en cours...</> : getSlot2Label()}
+                        </button>
+                        {savingAll2 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -925,10 +944,10 @@ export default function OnboardingPage() {
                     {showCertTooltip && filled < 2 && (
                       <>
                         <div className="hidden sm:block" style={{ position: "absolute", top: "50%", right: "calc(100% + 12px)", transform: "translateY(-50%)", width: 280, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Certification requise - Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.</span>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>🔒 Certification requise - Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.</span>
                         </div>
                         <div className="block sm:hidden" style={{ position: "absolute", bottom: "calc(100% + 8px)", right: 0, width: 240, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Certification requise - Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.</span>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>🔒 Certification requise - Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.</span>
                         </div>
                       </>
                     )}

@@ -47,8 +47,11 @@ export async function POST(request: Request) {
 
       if (practitioner?.stripe_customer_id) {
         try {
-          await stripe.customers.retrieve(practitioner.stripe_customer_id);
-          customerId = practitioner.stripe_customer_id;
+          const retrieved = await stripe.customers.retrieve(practitioner.stripe_customer_id);
+          // retrieve() ne throw pas si le customer est supprimé — il retourne { deleted: true }
+          if (!retrieved.deleted) {
+            customerId = practitioner.stripe_customer_id;
+          }
         } catch {
           customerId = undefined;
         }
