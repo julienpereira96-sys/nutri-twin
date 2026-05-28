@@ -4,256 +4,199 @@ import { Suspense, useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
+const emerald = "#10b981";
+
 function PaymentSuccessContent() {
- const router = useRouter();
- const [planReady, setPlanReady] = useState(false);
- const [webhookTimeout, setWebhookTimeout] = useState(false);
- const [navigating, setNavigating] = useState(false);
+  const router = useRouter();
+  const [planReady, setPlanReady] = useState(false);
+  const [webhookTimeout, setWebhookTimeout] = useState(false);
+  const [navigating, setNavigating] = useState(false);
 
- useEffect(() => {
-  const supabase = createSupabaseBrowserClient();
-  let attempts = 0;
-  const maxAttempts = 20; // 40 secondes — couvre les webhooks Stripe lents
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    let attempts = 0;
+    const maxAttempts = 20;
 
-  const interval = setInterval(async () => {
-    attempts++;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      clearInterval(interval);
-      router.push("/");
-      return;
-    }
-    const { data } = await supabase.from("practitioners").select("plan").eq("user_id", user.id).single();
-    if (data?.plan) {
-      setPlanReady(true);
-      clearInterval(interval);
-    } else if (attempts >= maxAttempts) {
-      clearInterval(interval);
-      setWebhookTimeout(true); // Afficher l'écran d'erreur au lieu de rediriger silencieusement
-    }
-  }, 2000);
-  return () => clearInterval(interval);
-}, [router]);
+    const interval = setInterval(async () => {
+      attempts++;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { clearInterval(interval); router.push("/"); return; }
+      const { data } = await supabase.from("practitioners").select("plan").eq("user_id", user.id).single();
+      if (data?.plan) { setPlanReady(true); clearInterval(interval); }
+      else if (attempts >= maxAttempts) { clearInterval(interval); setWebhookTimeout(true); }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [router]);
 
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "#0a0a0a",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "40px 20px",
+      fontFamily: "'Inter', -apple-system, sans-serif",
+    }}>
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
 
- return (
-   <div style={{
-     minHeight: "100vh",
-     background: "#0a0a0a",
-     display: "flex",
-     alignItems: "center",
-     justifyContent: "center",
-     padding: 20,
-     fontFamily: "'Inter', -apple-system, sans-serif",
-   }}>
-     <div style={{ maxWidth: 500, width: "100%" }}>
+      <div style={{ maxWidth: 460, width: "100%" }}>
 
-       <div style={{
-         background: "rgba(16,185,129,0.05)",
-         border: "1px solid rgba(16,185,129,0.2)",
-         borderRadius: 24,
-         overflow: "hidden",
-       }}>
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 20px" }}>
+            <div style={{
+              position: "absolute", inset: 0, borderRadius: "50%",
+              background: "rgba(16,185,129,0.2)", filter: "blur(12px)",
+            }} />
+            <div style={{
+              position: "relative", width: 72, height: 72, borderRadius: "50%",
+              background: "transparent",
+              border: "2px solid rgba(16,185,129,0.6)",
+              boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+            </div>
+          </div>
 
-         <div style={{
-           background: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.05))",
-           padding: "32px 28px 28px",
-           borderBottom: "1px solid rgba(16,185,129,0.1)",
-           textAlign: "center",
-         }}>
-           <div style={{
-             width: 72, height: 72, borderRadius: 36,
-             background: "linear-gradient(135deg, #6ee7b7, #10b981)",
-             display: "flex", alignItems: "center", justifyContent: "center",
-             margin: "0 auto 16px",
-             boxShadow: "0 8px 30px rgba(16,185,129,0.4)",
-           }}>
-             <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-               <path d="M5 13l4 4L19 7" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-             </svg>
-           </div>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            background: "rgba(16,185,129,0.08)",
+            border: "1px solid rgba(16,185,129,0.2)",
+            borderRadius: 999, padding: "4px 12px", marginBottom: 14,
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: emerald, display: "inline-block" }} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: emerald, letterSpacing: "0.04em" }}>Abonnement activé</span>
+          </div>
 
-           <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 500, color: "#6ee7b7", letterSpacing: "0.05em" }}>
-             Abonnement activé
-           </p>
-           <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: "#10b981" }}>
-             Paiement confirmé
-           </h2>
-         </div>
+          <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 700, color: "white" }}>
+            Paiement confirmé
+          </h1>
+          <p style={{ margin: 0, fontSize: 13, color: "#71717a" }}>
+            Votre accès NutriTwin est prêt à être configuré.
+          </p>
+        </div>
 
-         <div style={{ padding: "28px" }}>
+        {/* Card */}
+        <div style={{
+          background: "#111111",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 20,
+          padding: "24px",
+        }}>
 
-           {webhookTimeout && (
-             <div style={{ textAlign: "center", padding: "16px 0 24px" }}>
-               <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                   <path d="M5 3h14M5 21h14M7 3v4.5a5 5 0 0 0 10 0V3M7 21v-4.5a5 5 0 0 1 10 0V21"/>
-                   <path d="M9 10.5c1 .5 2 .75 3 .75s2-.25 3-.75"/>
-                 </svg>
-               </div>
-               <p style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "white" }}>
-                 Activation en cours...
-               </p>
-               <p style={{ margin: "0 0 20px", fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
-                 Votre paiement a bien été reçu par Stripe. L&apos;activation de votre accès prend plus de temps que prévu.
-                 Rafraîchissez la page dans quelques instants ou contactez-nous à{" "}
-                 <a href="mailto:support@nutritwin.fr" style={{ color: "#10b981" }}>support@nutritwin.fr</a>{" "}
-                 en mentionnant votre adresse email.
-               </p>
-               <button
-                 onClick={() => window.location.reload()}
-                 style={{ padding: "12px 24px", borderRadius: 10, background: "#10b981", color: "black", fontWeight: 700, fontSize: 14, border: "none", cursor: "pointer" }}
-               >
-                 Rafraîchir la page
-               </button>
-             </div>
-           )}
+          {webhookTimeout ? (
+            <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 3h14M5 21h14M7 3v4.5a5 5 0 0 0 10 0V3M7 21v-4.5a5 5 0 0 1 10 0V21"/>
+                  <path d="M9 10.5c1 .5 2 .75 3 .75s2-.25 3-.75"/>
+                </svg>
+              </div>
+              <p style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 700, color: "white" }}>
+                Activation en cours
+              </p>
+              <p style={{ margin: "0 0 20px", fontSize: 13, color: "#71717a", lineHeight: 1.6 }}>
+                Votre paiement a bien été reçu. L&apos;activation prend plus de temps que prévu.
+                Rafraîchissez dans quelques instants ou contactez{" "}
+                <a href="mailto:support@nutritwin.fr" style={{ color: emerald }}>support@nutritwin.fr</a>.
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                style={{ padding: "11px 24px", borderRadius: 10, background: emerald, color: "black", fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer" }}
+              >
+                Rafraîchir la page
+              </button>
+            </div>
+          ) : (
+            <>
+              <p style={{ margin: "0 0 20px", fontSize: 11, fontWeight: 600, color: "#4b5563", letterSpacing: "0.1em", textTransform: "uppercase", textAlign: "center" }}>
+                Prochaine étape — Configuration du jumeau
+              </p>
 
-           {!webhookTimeout && <>
-           <div style={{ textAlign: "center", marginBottom: 40 }}>
-             <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "#4b5563", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-               Prochaine étape
-             </p>
-             <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: "white", lineHeight: 1.3 }}>
-               La configuration de votre<br />Jumeau Numérique
-             </h3>
-           </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+                {[
+                  {
+                    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+                    label: "15 minutes",
+                    desc: "suffisent pour calibrer votre jumeau.",
+                  },
+                  {
+                    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
+                    label: "Répondez naturellement",
+                    desc: "comme si vous parliez à un confrère.",
+                  },
+                  {
+                    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>,
+                    label: "Plus vous êtes précis",
+                    desc: "meilleur sera le résultat final.",
+                  },
+                ].map((item, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                    <div style={{
+                      width: 30, height: 30, borderRadius: 9, flexShrink: 0,
+                      background: "rgba(16,185,129,0.08)",
+                      border: "1px solid rgba(16,185,129,0.15)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>{item.icon}</div>
+                    <p style={{ margin: 0, fontSize: 13, color: "#a1a1aa", lineHeight: 1.6 }}>
+                      <strong style={{ color: "white" }}>{item.label}</strong> {item.desc}
+                    </p>
+                  </div>
+                ))}
+              </div>
 
-           <div style={{
-             background: "rgba(16,185,129,0.08)",
-             border: "1px solid rgba(16,185,129,0.25)",
-             borderRadius: 14,
-             padding: "14px 18px",
-             marginBottom: 50,
-             display: "flex",
-             alignItems: "center",
-             justifyContent: "center",
-             gap: 10,
-           }}>
-             <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#10b981", lineHeight: 1.7, textAlign: "center" }}>
-               Vos réponses permettront à l'IA de reproduire votre manière de penser, conseiller et décider.
-             </p>
-           </div>
+              <button
+                onClick={() => { if (planReady && !navigating) { setNavigating(true); router.push("/onboarding"); } }}
+                disabled={!planReady || navigating}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: "100%", height: 50, borderRadius: 12,
+                  background: planReady ? emerald : "rgba(255,255,255,0.05)",
+                  color: planReady ? "black" : "#4b5563",
+                  fontWeight: 700, fontSize: 14,
+                  cursor: planReady ? "pointer" : "not-allowed",
+                  border: "none", transition: "all 0.2s",
+                  boxShadow: planReady ? "0 4px 14px rgba(16,185,129,0.25)" : "none",
+                }}
+                onMouseEnter={e => { if (planReady && !navigating) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.01)"; } }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = planReady ? "0 4px 14px rgba(16,185,129,0.25)" : "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}
+              >
+                {navigating
+                  ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 15, height: 15, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement</span>
+                  : planReady
+                  ? "Commencer la programmation →"
+                  : <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ width: 15, height: 15, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.15)", borderTop: "2px solid rgba(255,255,255,0.6)", animation: "spin 1s linear infinite", display: "inline-block" }} />
+                      Finalisation de votre accès
+                    </span>
+                }
+              </button>
+            </>
+          )}
+        </div>
 
-           <style>{`
-             @keyframes pulse {
-               0% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
-               70% { box-shadow: 0 0 0 6px rgba(16,185,129,0); }
-               100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
-             }
-             @keyframes spin {
-               from { transform: rotate(0deg); }
-               to { transform: rotate(360deg); }
-             }
-           `}</style>
-
-           <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 50 }}>
-             {[
-               {
-                 icon: (
-                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                     <circle cx="12" cy="12" r="10"/>
-                     <polyline points="12 6 12 12 16 14"/>
-                   </svg>
-                 ),
-                 label: "Temps estimé",
-                 desc: "15 minutes suffisent pour calibrer votre jumeau.",
-               },
-               {
-                 icon: (
-                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                     <circle cx="12" cy="12" r="10"/>
-                     <circle cx="12" cy="12" r="6"/>
-                     <circle cx="12" cy="12" r="2"/>
-                   </svg>
-                 ),
-                 label: "Répondez naturellement",
-                 desc: "Comme si vous parliez à un confrère de confiance.",
-               },
-               {
-                 icon: (
-                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                     <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/>
-                   </svg>
-                 ),
-                 label: "Plus vous êtes précis",
-                 desc: "Meilleur sera le résultat final.",
-               },
-             ].map((item, i) => (
-               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                 <div style={{
-                   width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-                   background: "rgba(16,185,129,0.1)",
-                   border: "1px solid rgba(16,185,129,0.2)",
-                   display: "flex", alignItems: "center", justifyContent: "center",
-                 }}>{item.icon}</div>
-                 <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.6, textAlign: "left" }}>
-                   <strong style={{ color: "white" }}>{item.label}</strong> — {item.desc}
-                 </p>
-               </div>
-             ))}
-           </div>
-
-           <button
-             onClick={() => { if (planReady && !navigating) { setNavigating(true); router.push("/onboarding"); } }}
-             disabled={!planReady || navigating}
-             style={{
-               display: "flex",
-               alignItems: "center",
-               justifyContent: "center",
-               width: "100%",
-               height: 52,
-               borderRadius: 12,
-               background: planReady ? "linear-gradient(135deg, #34d399, #10b981)" : "rgba(255,255,255,0.05)",
-               color: planReady ? "black" : "#64748b",
-               fontWeight: 700,
-               fontSize: 15,
-               cursor: planReady ? "pointer" : "not-allowed",
-               border: "none",
-               transition: "all 0.2s",
-               boxSizing: "border-box",
-             }}
-             onMouseEnter={(e) => {
-               if (planReady) {
-                 e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
-                 e.currentTarget.style.transform = "translateY(-2px) scale(1.01)";
-               }
-             }}
-             onMouseLeave={(e) => {
-               e.currentTarget.style.boxShadow = "none";
-               e.currentTarget.style.transform = "translateY(0) scale(1)";
-             }}
-           >
-             {navigating
-               ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement</span>
-               : planReady
-               ? "Commencer la programmation →"
-               : <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                   <span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.2)", borderTop: "2px solid white", animation: "spin 1s linear infinite", display: "inline-block" }} />
-                   Finalisation de votre accès...
-                 </span>
-             }
-           </button>
-           </>}
-
-         </div>
-       </div>
-     </div>
-   </div>
- );
+        <p style={{ marginTop: 20, fontSize: 12, color: "#374151", textAlign: "center" }}>
+          Paiement sécurisé par Stripe
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export default function PaymentSuccessPage() {
- return (
-   <Suspense fallback={
-     <div style={{
-       minHeight: "100vh", background: "#0a0a0a",
-       display: "flex", alignItems: "center", justifyContent: "center",
-     }}>
-       <p style={{ color: "#10b981", fontSize: 16 }}>Chargement...</p>
-     </div>
-   }>
-     <PaymentSuccessContent />
-   </Suspense>
- );
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ color: emerald, fontSize: 14 }}>Chargement</p>
+      </div>
+    }>
+      <PaymentSuccessContent />
+    </Suspense>
+  );
 }
