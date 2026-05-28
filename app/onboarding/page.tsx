@@ -785,7 +785,7 @@ export default function OnboardingPage() {
                           <p className="text-sm font-bold text-white mb-1">Données patients</p>
                           <p className="text-xs text-zinc-500 mb-3">Bilans, comptes-rendus, analyses sanguines</p>
                           <div className="text-xs font-medium text-blue-400 mb-3 leading-relaxed space-y-0.5">
-                            <p>🔒 Documents anonymisés par IA avant indexation</p>
+                            <p>🔒 Anonymisés par IA avant indexation</p>
                             <p>Aucune donnée personnelle conservée</p>
                             <p>Serveurs sécurisés en Europe</p>
                           </div>
@@ -886,8 +886,6 @@ export default function OnboardingPage() {
                       </div>
                     )}
                     <div className="pt-2">
-                      <p className="text-sm font-semibold text-white mb-1">Votre Signature</p>
-                      <p className="text-xs text-zinc-500 mb-3">Métaphores, mots pour dédramatiser un écart, mantras — ce qui rend votre accompagnement unique.</p>
                       <div className="relative">
                         <textarea value={slot2Text} onChange={e => setSlot2Text(e.target.value)}
                           placeholder="Partagez vos métaphores favorites, vos mots pour dédramatiser un écart et vos mantras de motivation. C'est ici que votre Jumeau capture votre intuition et ces nuances qui font votre signature unique."
