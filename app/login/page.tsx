@@ -161,7 +161,7 @@ export default function LoginPage() {
 
 
 {error === "__no_plan__" ? (
-            <button onClick={() => { setResending(true); router.push(`/checkout?plan=${pendingPlan}`); }}
+            <button key="no-plan" onClick={() => { setResending(true); router.push(`/checkout?plan=${pendingPlan}`); }}
               disabled={resending}
               className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer disabled:opacity-60"
               style={{ backgroundColor: "#f59e0b" }}
@@ -170,7 +170,7 @@ export default function LoginPage() {
               {resending ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Chargement...</span> : "Finaliser mon abonnement →"}
             </button>
           ) : error === "__unconfirmed__" ? (
-            <button onClick={async () => {
+            <button key="unconfirmed" onClick={async () => {
               setResending(true);
               const supabase = createSupabaseBrowserClient();
               await supabase.auth.resend({ type: "signup", email: email.trim() });
@@ -183,7 +183,7 @@ export default function LoginPage() {
               {resending ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Envoi...</span> : "Recevoir mon code de vérification →"}
             </button>
           ) : (
-          <button type="submit" disabled={loading}
+          <button key="submit" type="submit" disabled={loading}
             className="mt-6 w-full rounded-xl bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
             onMouseEnter={e => { if (!loading) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
