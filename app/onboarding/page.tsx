@@ -406,23 +406,25 @@ export default function OnboardingPage() {
   };
 
   const getSlot1Label = () => {
-    const items: string[] = [];
-    if (slot1Files.length === 1) items.push(slot1Files[0].file.name.length > 20 ? slot1Files[0].file.name.substring(0, 17) + "..." : slot1Files[0].file.name);
-    else if (slot1Files.length > 1) items.push(`${slot1Files.length} fichiers`);
-    if (slot1Text.trim()) items.push("note");
-    if (audioBlob && slot1ActiveRecording) items.push("mémo");
-    if (items.length === 0) return "Indexer";
-    if (items.length === 1) return `Indexer ${items[0]}`;
-    return `Indexer (${items.join(" + ")})`;
+    const hasFiles = slot1Files.length > 0;
+    const hasText = slot1Text.trim().length > 0;
+    const hasMemo = !!audioBlob && slot1ActiveRecording;
+    const count = (hasFiles ? 1 : 0) + (hasText ? 1 : 0) + (hasMemo ? 1 : 0);
+    if (count === 0) return "Indexer";
+    if (count > 1) return "Tout indexer";
+    if (hasFiles) return slot1Files.length > 1 ? `Indexer les ${slot1Files.length} documents` : "Indexer le document";
+    if (hasText) return "Indexer ma vision";
+    return "Indexer mon mémo";
   };
 
   const getSlot2Label = () => {
-    const items: string[] = [];
-    if (slot2Text.trim()) items.push("note");
-    if (audioBlob && slot2ActiveRecording) items.push("mémo");
-    if (items.length === 0) return "Indexer";
-    if (items.length === 1) return `Indexer ${items[0]}`;
-    return `Indexer (${items.join(" + ")})`;
+    const hasText = slot2Text.trim().length > 0;
+    const hasMemo = !!audioBlob && slot2ActiveRecording;
+    const count = (hasText ? 1 : 0) + (hasMemo ? 1 : 0);
+    if (count === 0) return "Indexer";
+    if (count > 1) return "Tout indexer";
+    if (hasText) return "Indexer ma signature";
+    return "Indexer mon mémo";
   };
 
   const hasSlot1Pending = slot1Files.length > 0 || slot1Text.trim().length > 0 || (!!audioBlob && slot1ActiveRecording);
@@ -791,6 +793,7 @@ export default function OnboardingPage() {
                         </label>
                       </div>
                     </div>
+                    <p className="text-[11px] text-zinc-600 mt-1 leading-relaxed">Documents automatiquement anonymisés par IA avant indexation. Aucune donnée personnelle conservée. Stockage sur serveurs sécurisés en Europe.</p>
                     {duplicateError && <p className="text-xs text-amber-400">{duplicateError}</p>}
                     {slot1Files.length > 0 && (
                       <div className="space-y-2">
@@ -815,12 +818,9 @@ export default function OnboardingPage() {
                         {slot1Errors.map((e, i) => <p key={i} className="text-xs text-red-400 flex items-center gap-1.5"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>{e}</p>)}
                       </div>
                     )}
-                    <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-2.5">
-                      <p className="text-xs text-blue-400/70 leading-relaxed flex items-start gap-1.5">🔒 <span>Vos documents sont automatiquement anonymisés par l'IA avant indexation. Aucune donnée personnelle n'est conservée. Tout est stocké sur des serveurs sécurisés en Europe.</span></p>
-                    </div>
                     <div className="pt-2">
-                      <p className="text-sm font-semibold text-white mb-1">Votre Vision en texte libre</p>
-                      <p className="text-xs text-zinc-500 mb-3">Décrivez votre approche, vos convictions, les principes qui guident vos accompagnements.</p>
+                      <p className="text-sm font-semibold text-white mb-1">Pas de documents encore prêts ou des nuances à apporter ?</p>
+                      <p className="text-xs text-zinc-500 mb-3">Décrivez votre vision ou des détails non écrits dans vos protocoles.</p>
                       <div className="relative">
                         <textarea value={slot1Text} onChange={e => setSlot1Text(e.target.value)}
                           placeholder="Ex : Pas d’aliment interdit dans mon approche. J’intègre toujours le contexte émotionnel avant le côté technique. Je privilégie la régularité sur la perfection." rows={4}
@@ -849,15 +849,15 @@ export default function OnboardingPage() {
                         </div>
                       )}
                     </div>
-                    {hasSlot1Pending && (
-                      <div className="pt-3 flex items-center justify-end gap-3">
-                        {savingAll1 && <p className="text-xs text-amber-400">Patientez...</p>}
-                        <button type="button" onClick={() => void saveSlot1All()} disabled={savingAll1}
-                          style={{ ...btnStyle, width: "auto", padding: "8px 20px", opacity: savingAll1 ? 0.7 : 1, cursor: savingAll1 ? "not-allowed" : "pointer" }} {...btnHover}>
-                          {savingAll1 ? <><Spinner />Indexation...</> : "Indexer"}
-                        </button>
-                      </div>
-                    )}
+                    <div className="pt-3 flex items-center justify-end gap-3">
+                      {savingAll1 && <p className="text-xs text-amber-400">Patientez...</p>}
+                      <button type="button" onClick={() => void saveSlot1All()} disabled={savingAll1 || !hasSlot1Pending}
+                        style={{ background: hasSlot1Pending ? "#10b981" : "rgba(255,255,255,0.05)", color: hasSlot1Pending ? "black" : "#52525b", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: (savingAll1 || !hasSlot1Pending) ? "not-allowed" : "pointer", opacity: savingAll1 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, boxShadow: hasSlot1Pending ? "0 4px 14px rgba(16,185,129,0.3)" : "none", transition: "all 0.2s", border: hasSlot1Pending ? "none" : "1px solid rgba(255,255,255,0.08)" }}
+                        onMouseEnter={e => { if (!savingAll1 && hasSlot1Pending) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px) scale(1.01)"; } }}
+                        onMouseLeave={e => { e.currentTarget.style.boxShadow = hasSlot1Pending ? "0 4px 14px rgba(16,185,129,0.3)" : "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
+                        {savingAll1 ? <><Spinner />Indexation...</> : getSlot1Label()}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -884,7 +884,7 @@ export default function OnboardingPage() {
                       </div>
                     )}
                     <div className="pt-2">
-                      <p className="text-sm font-semibold text-white mb-1">Votre Signature en texte libre</p>
+                      <p className="text-sm font-semibold text-white mb-1">Votre Signature</p>
                       <p className="text-xs text-zinc-500 mb-3">Métaphores, mots pour dédramatiser un écart, mantras — ce qui rend votre accompagnement unique.</p>
                       <div className="relative">
                         <textarea value={slot2Text} onChange={e => setSlot2Text(e.target.value)}
@@ -915,15 +915,15 @@ export default function OnboardingPage() {
                         </div>
                       )}
                     </div>
-                    {hasSlot2Pending && (
-                      <div className="pt-3 flex items-center justify-end gap-3">
-                        {savingAll2 && <p className="text-xs text-amber-400">Patientez...</p>}
-                        <button type="button" onClick={() => void saveSlot2All()} disabled={savingAll2}
-                          style={{ ...btnStyle, width: "auto", padding: "8px 20px", opacity: savingAll2 ? 0.7 : 1, cursor: savingAll2 ? "not-allowed" : "pointer" }} {...btnHover}>
-                          {savingAll2 ? <><Spinner />Indexation...</> : "Indexer"}
-                        </button>
-                      </div>
-                    )}
+                    <div className="pt-3 flex items-center justify-end gap-3">
+                      {savingAll2 && <p className="text-xs text-amber-400">Patientez...</p>}
+                      <button type="button" onClick={() => void saveSlot2All()} disabled={savingAll2 || !hasSlot2Pending}
+                        style={{ background: hasSlot2Pending ? "#10b981" : "rgba(255,255,255,0.05)", color: hasSlot2Pending ? "black" : "#52525b", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: (savingAll2 || !hasSlot2Pending) ? "not-allowed" : "pointer", opacity: savingAll2 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, boxShadow: hasSlot2Pending ? "0 4px 14px rgba(16,185,129,0.3)" : "none", transition: "all 0.2s", border: hasSlot2Pending ? "none" : "1px solid rgba(255,255,255,0.08)" }}
+                        onMouseEnter={e => { if (!savingAll2 && hasSlot2Pending) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px) scale(1.01)"; } }}
+                        onMouseLeave={e => { e.currentTarget.style.boxShadow = hasSlot2Pending ? "0 4px 14px rgba(16,185,129,0.3)" : "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
+                        {savingAll2 ? <><Spinner />Indexation...</> : getSlot2Label()}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
