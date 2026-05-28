@@ -445,7 +445,7 @@ export default function OnboardingPage() {
         <span className="flex-shrink-0 text-zinc-400">{getFileIcon(f.fileType)}</span>
         <div className="min-w-0">
           <p className="text-sm font-medium text-white truncate">{f.name}</p>
-          <p className="text-xs text-zinc-500">Dernière mise à jour : {f.indexedAt}{f.type === "patient" && <span className="ml-2 text-blue-400 inline-flex items-center gap-1"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Anonymisé</span>}</p>
+          <p className="text-xs text-zinc-500">Dernière mise à jour : {f.indexedAt}{f.type === "patient" && <span className="ml-2 text-blue-400">🔒 Anonymisé</span>}</p>
         </div>
       </div>
       <button type="button"
@@ -494,9 +494,9 @@ export default function OnboardingPage() {
               Même si vous avez quitté la page, votre profil a bien été enregistré. Votre Jumeau est prêt à prendre le relais auprès de vos patients.
             </p>
             <button type="button" onClick={() => { setNavigating(true); setTimeout(() => router.push("/dashboard"), 800); }}
-              style={{ background: "#10b981", color: "black", borderRadius: 9999, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 0 20px rgba(16,185,129,0.3)" }}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 40px rgba(16,185,129,0.5)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 0 20px rgba(16,185,129,0.3)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+              style={{ background: "#10b981", color: "black", borderRadius: 12, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 14px rgba(16,185,129,0.3)"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
               {navigating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement</span> : "Accéder à mon cabinet numérique →"}
             </button>
           </div>
@@ -604,9 +604,9 @@ export default function OnboardingPage() {
                     <p className="text-xs font-mono text-[#10b981]/50 mb-10">[NT-006] Certification validée - Jumeau opérationnel</p>
                     {saveError && <p className="mb-4 text-sm text-red-400">{saveError}</p>}
                     <button type="button" onClick={() => { setNavigating(true); setTimeout(() => router.push("/dashboard"), 800); }}
-                      style={{ background: "#10b981", color: "black", borderRadius: 9999, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 0 30px rgba(16,185,129,0.3)" }}
-                      onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 40px rgba(16,185,129,0.5)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 0 30px rgba(16,185,129,0.3)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                      style={{ background: "#10b981", color: "black", borderRadius: 12, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }}
+                      onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 14px rgba(16,185,129,0.3)"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
                       {navigating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement</span> : "Accéder à mon cabinet numérique →"}
                     </button>
                   </div>
@@ -759,6 +759,7 @@ export default function OnboardingPage() {
                           style={{ ...btnStyle, marginTop: 4, opacity: uploadingSlot1 ? 0.7 : 1, cursor: uploadingSlot1 ? "not-allowed" : "pointer" }} {...btnHover}>
                           {uploadingSlot1 ? <><Spinner />Indexation en cours...</> : `Indexer ${slot1Files.length} fichier${slot1Files.length > 1 ? "s" : ""} →`}
                         </button>
+                        {uploadingSlot1 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
                       </div>
                     )}
                     <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
@@ -769,7 +770,7 @@ export default function OnboardingPage() {
                       <p className="text-xs text-zinc-500 mb-3">Décrivez votre vision ou des détails non écrits dans vos protocoles.</p>
                       <div className="relative">
                         <textarea value={slot1Text} onChange={e => setSlot1Text(e.target.value)}
-                          placeholder="Exemple : Je crois profondément que l’accompagnement nutritionnel doit d'abord être un espace de sécurité absolue, où le jugement n’a aucune place, peu importent les difficultés ou les écarts rencontrés. Pour moi, apaiser l’anxiété est le préalable indispensable à toute discussion technique ou calorique. Ma pratique repose sur la douceur, la validation systématique des émotions et la conviction qu'il faut toujours ouvrir sur une note d'espoir pour permettre au patient de se projeter durablement vers son mieux-être." rows={4}
+                          placeholder="Ex : Pas d’aliment interdit dans mon approche. J’intègre toujours le contexte émotionnel avant le côté technique. Je privilégie la régularité sur la perfection." rows={4}
                           className="w-full rounded-2xl border border-white/10 bg-[#1a1a1a] px-4 py-4 pr-14 text-sm text-white outline-none transition-all duration-200 placeholder:text-zinc-600 focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/20 resize-none" />
                         <div className="absolute bottom-6 right-3 group flex items-center justify-end">
                           <span className="mr-2 text-xs text-zinc-500 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0 whitespace-nowrap pointer-events-none">Mémo vocal</span>
@@ -803,12 +804,14 @@ export default function OnboardingPage() {
                         </div>
                       )}
                       {slot1Text.trim() && !audioBlob && (
-                        <button type="button" onClick={() => void saveSlotText("slot1", slot1Text)} disabled={uploadingSlot1}
-                          style={{ ...btnStyle, marginTop: 12, opacity: uploadingSlot1 ? 0.7 : 1, cursor: uploadingSlot1 ? "not-allowed" : "pointer" }} {...btnHover}>
-                          {uploadingSlot1 ? <><Spinner />Indexation en cours...</> : "Indexer ma vision →"}
-                        </button>
+                        <>
+                          <button type="button" onClick={() => void saveSlotText("slot1", slot1Text)} disabled={uploadingSlot1}
+                            style={{ ...btnStyle, marginTop: 12, opacity: uploadingSlot1 ? 0.7 : 1, cursor: uploadingSlot1 ? "not-allowed" : "pointer" }} {...btnHover}>
+                            {uploadingSlot1 ? <><Spinner />Indexation en cours...</> : "Indexer ma vision →"}
+                          </button>
+                          {uploadingSlot1 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
+                        </>
                       )}
-                      {uploadingSlot1 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
                     </div>
                   </div>
                 </div>
@@ -868,12 +871,14 @@ export default function OnboardingPage() {
                         </div>
                       )}
                       {slot2Text.trim() && !audioBlob && (
-                        <button type="button" onClick={() => void saveSlotText("slot2", slot2Text)} disabled={uploadingSlot2}
-                          style={{ ...btnStyle, marginTop: 12, opacity: uploadingSlot2 ? 0.7 : 1, cursor: uploadingSlot2 ? "not-allowed" : "pointer" }} {...btnHover}>
-                          {uploadingSlot2 ? <><Spinner />Indexation en cours...</> : "Indexer ma signature →"}
-                        </button>
+                        <>
+                          <button type="button" onClick={() => void saveSlotText("slot2", slot2Text)} disabled={uploadingSlot2}
+                            style={{ ...btnStyle, marginTop: 12, opacity: uploadingSlot2 ? 0.7 : 1, cursor: uploadingSlot2 ? "not-allowed" : "pointer" }} {...btnHover}>
+                            {uploadingSlot2 ? <><Spinner />Indexation en cours...</> : "Indexer ma signature →"}
+                          </button>
+                          {uploadingSlot2 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
+                        </>
                       )}
-                      {uploadingSlot2 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
                     </div>
                   </div>
                 </div>
@@ -916,10 +921,10 @@ export default function OnboardingPage() {
                         border: filled === 2 ? "none" : "1px solid rgba(255,255,255,0.1)",
                         cursor: filled === 2 ? "pointer" : "not-allowed",
                         boxShadow: filled === 2 ? "0 0 20px rgba(16,185,129,0.4)" : "none",
-                        borderRadius: 9999, padding: "14px 36px", fontSize: 15, fontWeight: 700, transition: "all 0.2s"
+                        borderRadius: 12, padding: "14px 36px", fontSize: 15, fontWeight: 700, transition: "all 0.2s"
                       }}
-                      onMouseEnter={e => { if (filled === 2) { e.currentTarget.style.background = "rgba(16,185,129,0.8)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
-                      onMouseLeave={e => { e.currentTarget.style.background = filled === 2 ? "#10b981" : "transparent"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                      onMouseEnter={e => { if (filled === 2) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
+                      onMouseLeave={e => { e.currentTarget.style.boxShadow = filled === 2 ? "0 4px 14px rgba(16,185,129,0.3)" : "none"; e.currentTarget.style.background = filled === 2 ? "#10b981" : "transparent"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
                       {activating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Activation</span> : `Activer mon Jumeau ${filled === 2 ? "🌿" : ""}`}
                     </button>
                   </div>
