@@ -497,7 +497,7 @@ export default function OnboardingPage() {
               style={{ background: "#10b981", color: "black", borderRadius: 9999, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 0 20px rgba(16,185,129,0.3)" }}
               onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 40px rgba(16,185,129,0.5)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
               onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 0 20px rgba(16,185,129,0.3)"; e.currentTarget.style.transform = "translateY(0)"; }}>
-              {navigating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement...</span> : "Accéder à mon cabinet numérique →"}
+              {navigating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement</span> : "Accéder à mon cabinet numérique →"}
             </button>
           </div>
         </div>
@@ -607,7 +607,7 @@ export default function OnboardingPage() {
                       style={{ background: "#10b981", color: "black", borderRadius: 9999, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 0 30px rgba(16,185,129,0.3)" }}
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 40px rgba(16,185,129,0.5)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 0 30px rgba(16,185,129,0.3)"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                      {navigating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement...</span> : "Accéder à mon cabinet numérique →"}
+                      {navigating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement</span> : "Accéder à mon cabinet numérique →"}
                     </button>
                   </div>
                 ) : (
@@ -920,7 +920,7 @@ export default function OnboardingPage() {
                       }}
                       onMouseEnter={e => { if (filled === 2) { e.currentTarget.style.background = "rgba(16,185,129,0.8)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
                       onMouseLeave={e => { e.currentTarget.style.background = filled === 2 ? "#10b981" : "transparent"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                      {activating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Activation...</span> : `Activer mon Jumeau ${filled === 2 ? "🌿" : ""}`}
+                      {activating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Activation</span> : `Activer mon Jumeau ${filled === 2 ? "🌿" : ""}`}
                     </button>
                   </div>
                 </div>

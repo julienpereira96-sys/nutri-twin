@@ -52,6 +52,9 @@ function VerifyOTPForm() {
     if (e.key === "Backspace" && !code[index] && index > 0) {
       inputs.current[index - 1]?.focus();
     }
+    if (e.key === "Enter" && code.join("").length === 6 && !loading && !success) {
+      handleVerify();
+    }
   };
 
   const handlePaste = (e: React.ClipboardEvent) => {
@@ -187,7 +190,7 @@ function VerifyOTPForm() {
               onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}
             >
               {loading
-                ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Vérification...</span>
+                ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Vérification</span>
                 : "Confirmer mon email"}
             </button>
           )}
@@ -204,7 +207,7 @@ function VerifyOTPForm() {
                 className="font-medium transition hover:opacity-80 cursor-pointer disabled:cursor-not-allowed"
                 style={{ color: emerald }}
               >
-                  {resending ? <span className="flex items-center justify-center gap-2"><span className="h-3 w-3 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Envoi...</span> : "Renvoyer"}
+                  {resending ? <span className="flex items-center justify-center gap-2"><span className="h-3 w-3 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Envoi</span> : "Renvoyer"}
                 </button>
               )}
             </p>

@@ -225,7 +225,7 @@ function PaymentSuccessContent() {
              }}
            >
              {navigating
-               ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement...</span>
+               ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement</span>
                : planReady
                ? "Commencer la programmation →"
                : <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
