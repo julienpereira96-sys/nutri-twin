@@ -784,7 +784,11 @@ export default function OnboardingPage() {
                           <p className="text-2xl mb-2">🗂️</p>
                           <p className="text-sm font-bold text-white mb-1">Données patients</p>
                           <p className="text-xs text-zinc-500 mb-3">Bilans, comptes-rendus, analyses sanguines</p>
-                          <p className="text-xs font-medium text-blue-400 mb-3 leading-relaxed">🔒 Anonymisés par IA · Aucune donnée personnelle conservée · Serveurs sécurisés en Europe</p>
+                          <div className="text-xs font-medium text-blue-400 mb-3 leading-relaxed space-y-0.5">
+                            <p>🔒 Documents anonymisés par IA avant indexation</p>
+                            <p>Aucune donnée personnelle conservée</p>
+                            <p>Serveurs sécurisés en Europe</p>
+                          </div>
                           <div className="mt-auto rounded-xl border border-dashed border-white/15 group-hover:border-blue-500/40 px-3 py-2 text-center transition-all duration-200">
                             <p className="text-xs text-zinc-500 group-hover:text-zinc-400 transition">Cliquez pour sélectionner</p>
                             <p className="text-xs text-zinc-600 mt-0.5">PDF, DOCX, TXT, JPG, PNG, Excel, CSV, MP3</p>
