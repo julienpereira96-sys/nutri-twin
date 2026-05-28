@@ -67,14 +67,14 @@ function PricingCard({ name, price, badge, description, features, plan, featured
         flexDirection: "column",
         borderRadius: 20,
         padding: "28px 24px",
-        background: featured ? "linear-gradient(180deg, rgba(16,185,129,0.07), #080808)" : "#0d0d0d",
+        background: featured ? "linear-gradient(180deg, rgba(16,185,129,0.07), #0a0a0a)" : "#111111",
         border: featured ? "1px solid rgba(16,185,129,0.30)" : "1px solid rgba(255,255,255,0.08)",
-        boxShadow: featured ? "0 20px 40px rgba(16,185,129,0.05)" : "none",
+        boxShadow: featured ? "0 20px 40px rgba(16,185,129,0.06)" : "none",
         transition: "all 0.3s",
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.border = `1px solid ${featured ? "rgba(16,185,129,0.8)" : "rgba(255,255,255,0.35)"}`;
-        e.currentTarget.style.transform = "translateY(-6px) scale(1.01)";
+        e.currentTarget.style.border = `1px solid ${featured ? "rgba(16,185,129,0.7)" : "rgba(255,255,255,0.25)"}`;
+        e.currentTarget.style.transform = "translateY(-5px) scale(1.01)";
       }}
       onMouseLeave={e => {
         e.currentTarget.style.border = featured ? "1px solid rgba(16,185,129,0.30)" : "1px solid rgba(255,255,255,0.08)";
@@ -91,7 +91,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
 
       <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "white" }}>{name}</p>
       <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 10 }}>
-        <span style={{ fontSize: 40, fontWeight: 900, color: "white", letterSpacing: "-1px" }}>{price}</span>
+        <span style={{ fontSize: 38, fontWeight: 900, color: "white", letterSpacing: "-1px" }}>{price}</span>
         <span style={{ fontSize: 12, color: "#52525b" }}>/mois</span>
       </div>
       <p style={{ margin: "0 0 20px", fontSize: 12, color: "#71717a", lineHeight: 1.6 }}>{description}</p>
@@ -99,10 +99,10 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       <ul style={{ margin: "0 0 24px", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
         {features.map((f, i) => (
           <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-            <svg style={{ width: 16, height: 16, flexShrink: 0, marginTop: 1, color: emerald }} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+            <svg style={{ width: 15, height: 15, flexShrink: 0, marginTop: 2, color: emerald }} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
             </svg>
-            <span style={{ fontSize: 12, lineHeight: 1.5, color: i < 3 ? "#e4e4e7" : "#52525b" }}>{f}</span>
+            <span style={{ fontSize: 12, lineHeight: 1.5, color: i === 0 ? "#f4f4f5" : "#a1a1aa" }}>{f}</span>
           </li>
         ))}
       </ul>
@@ -110,7 +110,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       <button
         onClick={() => window.location.assign(`/checkout?plan=${plan}`)}
         style={{
-          height: 50,
+          height: 48,
           width: "100%",
           borderRadius: 12,
           fontSize: 13,
@@ -119,11 +119,17 @@ function PricingCard({ name, price, badge, description, features, plan, featured
           transition: "all 0.2s",
           ...(featured
             ? { background: emerald, color: "black", border: "none", boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }
-            : { background: "rgba(255,255,255,0.03)", color: "#d1d5db", border: "1.5px solid rgba(255,255,255,0.12)" }
+            : { background: "rgba(255,255,255,0.04)", color: "#d1d5db", border: "1px solid rgba(255,255,255,0.12)" }
           ),
         }}
-        onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; }}
-        onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0) scale(1)"; }}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+          if (featured) e.currentTarget.style.boxShadow = "0 6px 20px rgba(16,185,129,0.45)";
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = "translateY(0) scale(1)";
+          if (featured) e.currentTarget.style.boxShadow = "0 4px 14px rgba(16,185,129,0.3)";
+        }}
       >
         Choisir ce plan →
       </button>
@@ -135,7 +141,7 @@ export default function ChoosePlanPage() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#070707",
+      background: "#0a0a0a",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
@@ -144,30 +150,39 @@ export default function ChoosePlanPage() {
       fontFamily: "'Inter', -apple-system, sans-serif",
     }}>
 
-      {/* Logo */}
-      <div style={{ marginBottom: 40, textAlign: "center" }}>
-        <div style={{ width: 56, height: 56, margin: "0 auto 16px", borderRadius: "50%", background: "linear-gradient(135deg, #6ee7b7, #10b981)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }}>🌿</div>
-        <h1 style={{ margin: "0 0 12px", fontSize: 22, fontWeight: 700, color: "white" }}>
-          Nutri<strong style={{ color: emerald }}>Twin</strong>
-        </h1>
-      </div>
+      {/* Header */}
+      <div style={{ marginBottom: 36, textAlign: "center" }}>
+        <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 20px" }}>
+          <div style={{
+            position: "absolute", inset: 0, borderRadius: "50%",
+            background: "rgba(16,185,129,0.2)", filter: "blur(12px)",
+          }} />
+          <div style={{
+            position: "relative", width: 72, height: 72, borderRadius: "50%",
+            background: "transparent",
+            border: "2px solid rgba(16,185,129,0.6)",
+            boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)",
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26,
+          }}>🌿</div>
+        </div>
 
-      {/* Bannière contexte */}
-      <div style={{
-        maxWidth: 560,
-        width: "100%",
-        marginBottom: 40,
-        background: "rgba(16,185,129,0.06)",
-        border: "1px solid rgba(16,185,129,0.2)",
-        borderRadius: 16,
-        padding: "18px 24px",
-        textAlign: "center",
-      }}>
-        <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700, color: "white" }}>
-          ✅ Votre compte est créé
-        </p>
-        <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
-          Il ne vous reste qu&apos;une étape — choisissez votre abonnement pour accéder à votre jumeau numérique.
+        <div style={{
+          display: "inline-flex", alignItems: "center", gap: 8,
+          background: "rgba(16,185,129,0.08)",
+          border: "1px solid rgba(16,185,129,0.2)",
+          borderRadius: 999, padding: "5px 14px", marginBottom: 16,
+        }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6L9 17l-5-5"/>
+          </svg>
+          <span style={{ fontSize: 12, fontWeight: 600, color: emerald }}>Votre compte est créé</span>
+        </div>
+
+        <h1 style={{ margin: "0 0 8px", fontSize: 22, fontWeight: 700, color: "white", lineHeight: 1.3 }}>
+          Choisissez votre abonnement
+        </h1>
+        <p style={{ margin: 0, fontSize: 13, color: "#71717a", lineHeight: 1.6 }}>
+          Une dernière étape pour accéder à votre jumeau numérique.
         </p>
       </div>
 
@@ -184,7 +199,7 @@ export default function ChoosePlanPage() {
         ))}
       </div>
 
-      <p style={{ marginTop: 32, fontSize: 12, color: "#374151", textAlign: "center" }}>
+      <p style={{ marginTop: 28, fontSize: 12, color: "#52525b", textAlign: "center" }}>
         Sans engagement · Résiliable à tout moment · Paiement sécurisé par Stripe
       </p>
     </div>
