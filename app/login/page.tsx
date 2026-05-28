@@ -42,6 +42,13 @@ export default function LoginPage() {
         if (signInError.message.includes("Invalid login credentials") || signInError.message.includes("invalid_credentials") || signInError.code === "invalid_credentials") {
           setError("Email ou mot de passe incorrect. Vérifiez vos informations.");
         } else if (signInError.message.includes("Email not confirmed") || signInError.message.includes("email_not_confirmed")) {
+          const checkRes = await fetch("/api/check-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: email.trim() }),
+          });
+          const checkData = await checkRes.json() as { pendingPlan?: string };
+          if (checkData.pendingPlan) setPendingPlan(checkData.pendingPlan);
           setError("__unconfirmed__");
         } else {
           setError("Une erreur est survenue. Veuillez réessayer.");

@@ -388,7 +388,7 @@ try {
     {resending ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Envoi</span> : "Recevoir mon code de vérification"}
   </button>
 ) : error && error.includes("compte existe déjà") ? (
-  <button onClick={() => router.push("/login")}
+  <button onClick={() => router.push(`/login?pending_plan=${plan}`)}
     className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer"
     style={{ backgroundColor: "#f59e0b" }}
     onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; }}

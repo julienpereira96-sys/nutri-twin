@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   // Chercher directement dans la table practitioners par email — 1 requête ciblée
   const { data: practitioner } = await supabase
     .from("practitioners")
-    .select("user_id, plan")
+    .select("user_id, plan, pending_plan")
     .ilike("email", normalizedEmail)
     .single();
 
@@ -29,5 +29,6 @@ export async function POST(request: Request) {
     exists: true,
     hasPlan: !!practitioner.plan,
     isConfirmed,
+    pendingPlan: practitioner.pending_plan ?? "pro",
   });
 }
