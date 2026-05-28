@@ -750,48 +750,61 @@ export default function DashboardPage() {
   };
 
   const saveProfile = async () => {
-    if (!selectedPatientId) return;
+    if (!selectedPatientId || !practitionerId) return;
     setSavingProfile(true);
-    await supabase.from("patients").update({
-      first_name: editFirstName || null,
-      last_name: editLastName || null,
-      age: editAge ? parseInt(editAge) : null,
-      taille: editTaille ? parseInt(editTaille) : null,
-      poids: editPoids ? parseFloat(editPoids) : null,
-      sexe: editSexe || null,
-      objective: editObjective || null,
-      pathologies: editPathologies || null,
-      allergies: editAllergies || null,
-      traitements: editTraitements || null,
-      objectif_clinique: editObjectifClinique || null,
-      niveau_activite: editNiveauActivite || null,
-      regime_specifique: editRegime || null,
-      notes: editNotes || null,
-    }).eq("user_id", selectedPatientId);
-    const patient = patients.find(p => p.id === selectedPatientId);
-    const alerts = (patient?.admin_alerts ?? []).filter((a: { alert_type?: string }) => a.alert_type !== "identity_correction");
-    await supabase.from("patients").update({ admin_alerts: alerts }).eq("user_id", selectedPatientId);
-    setPatients((prev) => prev.map((p) => {
-      if (p.id !== selectedPatientId) return p;
-      return {
-        ...p,
-        firstName: editFirstName || p.firstName,
-        lastName: editLastName || p.lastName,
-        age: editAge ? parseInt(editAge) : p.age,
-        taille: editTaille ? parseInt(editTaille) : p.taille,
-        poids: editPoids ? parseFloat(editPoids) : p.poids,
-        sexe: editSexe || p.sexe,
-        objective: editObjective || p.objective,
-        pathologies: editPathologies || p.pathologies,
-        allergies: editAllergies || p.allergies,
-        traitements: editTraitements || p.traitements,
-        objectif_clinique: editObjectifClinique || p.objectif_clinique,
-        niveau_activite: editNiveauActivite || p.niveau_activite,
-        regime_specifique: editRegime || p.regime_specifique,
-      };
-    }));
-    setSavingProfile(false);
-    setShowProfileModal(false);
+    try {
+      const res = await fetch("/api/save-patient-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: selectedPatientId,
+          practitionerId,
+          fields: {
+            first_name: editFirstName || null,
+            last_name: editLastName || null,
+            age: editAge ? parseInt(editAge) : null,
+            taille: editTaille ? parseInt(editTaille) : null,
+            poids: editPoids ? parseFloat(editPoids) : null,
+            sexe: editSexe || null,
+            objective: editObjective || null,
+            pathologies: editPathologies || null,
+            allergies: editAllergies || null,
+            traitements: editTraitements || null,
+            objectif_clinique: editObjectifClinique || null,
+            niveau_activite: editNiveauActivite || null,
+            regime_specifique: editRegime || null,
+            notes: editNotes || null,
+          },
+          clearIdentityAlert: true,
+        }),
+      });
+      if (!res.ok) throw new Error("save-patient-profile failed");
+      setPatients((prev) => prev.map((p) => {
+        if (p.id !== selectedPatientId) return p;
+        return {
+          ...p,
+          firstName: editFirstName || p.firstName,
+          lastName: editLastName || p.lastName,
+          age: editAge ? parseInt(editAge) : p.age,
+          taille: editTaille ? parseInt(editTaille) : p.taille,
+          poids: editPoids ? parseFloat(editPoids) : p.poids,
+          sexe: editSexe || p.sexe,
+          objective: editObjective || p.objective,
+          pathologies: editPathologies || p.pathologies,
+          allergies: editAllergies || p.allergies,
+          traitements: editTraitements || p.traitements,
+          objectif_clinique: editObjectifClinique || p.objectif_clinique,
+          niveau_activite: editNiveauActivite || p.niveau_activite,
+          regime_specifique: editRegime || p.regime_specifique,
+          admin_alerts: (p.admin_alerts ?? []).filter((a: { alert_type?: string }) => a.alert_type !== "identity_correction"),
+        };
+      }));
+      setShowProfileModal(false);
+    } catch {
+      alert("Une erreur est survenue lors de la sauvegarde. Veuillez réessayer.");
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const saveSettings = async () => {
