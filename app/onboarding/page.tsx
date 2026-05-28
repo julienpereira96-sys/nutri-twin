@@ -38,8 +38,8 @@ const questions: Question[] = [
   { id: "complements", block: "Philosophie Nutritionnelle", label: "Votre position sur les compléments alimentaires ?", type: "single", options: ["J'en prescris régulièrement", "Seulement en cas de carence avérée", "Je préfère l'alimentation seule", "Cas par cas selon le bilan"] },
   { id: "petit_dejeuner", block: "Philosophie Nutritionnelle", label: "Votre philosophie sur le petit-déjeuner ?", type: "single", options: ["Indispensable, je l'optimise toujours", "Optionnel selon le patient", "Je ne l'impose jamais"] },
   { id: "lifestyle_budget", block: "Philosophie Nutritionnelle", label: "Votre approche lifestyle et budget ?", type: "single", options: ["Je prône le bio et le local", "Je m'adapte au budget du patient", "Je mise sur le moins transformé possible", "Je ne fais pas de distinction"] },
-  { id: "jamais_dire", block: "Philosophie Nutritionnelle", label: "Y a-t-il des pratiques que vous refusez catégoriquement ?", sublabel: "Ex: régimes très hypocaloriques, détox, jeûne prolongé...", type: "free", placeholder: "Décrivez ce que votre jumeau ne doit jamais recommander..." },
-  { id: "conviction", block: "Philosophie Nutritionnelle", label: "Quelle est votre règle d'or ?", sublabel: "Votre conviction la plus forte en tant que praticien", type: "free", placeholder: "Ex: Pas d'aliment interdit, le plaisir avant tout, la régularité prime sur la perfection..." },
+  { id: "jamais_dire", block: "Philosophie Nutritionnelle", label: "Y a-t-il des pratiques que vous refusez catégoriquement ?", sublabel: "Exemple: régimes très hypocaloriques, détox, jeûne prolongé...", type: "free", placeholder: "Décrivez ce que votre jumeau ne doit jamais recommander..." },
+  { id: "conviction", block: "Philosophie Nutritionnelle", label: "Quelle est votre règle d'or ?", sublabel: "Votre conviction la plus forte en tant que praticien", type: "free", placeholder: "Exemple: Pas d'aliment interdit, le plaisir avant tout, la régularité prime sur la perfection..." },
   { id: "gestion_ecarts", block: "Gestion Humaine & Émotions", label: "Un patient craque sur une pizza. Vous répondez comment ?", type: "single", options: ["Sans culpabilité, on repart de zéro", "On analyse pourquoi ça s'est passé", "On recadre doucement sur les objectifs", "L'équilibre se fait sur la durée, un écart ne compte pas"] },
   { id: "emotions", block: "Gestion Humaine & Émotions", label: "Un patient mange ses émotions. Votre approche ?", type: "single", options: ["Je travaille uniquement l'alimentation", "J'oriente vers un psy si besoin", "Je travaille les deux en parallèle", "C'est intégré dans mon suivi global"] },
   { id: "non_suivi", block: "Gestion Humaine & Émotions", label: "Un patient ne suit plus votre protocole. Votre réaction ?", type: "single", options: ["Bienveillance totale, on repart sans jugement", "On cherche ensemble pourquoi ça bloque", "Recadrage ferme mais bienveillant", "On remet en question le protocole ensemble"] },
@@ -49,7 +49,7 @@ const questions: Question[] = [
   { id: "perimetre", block: "Sécurité & Limites", label: "Jusqu'où peut aller votre jumeau ?", type: "single", options: ["Autonomie totale sur nutrition et lifestyle", "Prudent sur les pathologies, il me redirige", "Questions simples uniquement, il m'alerte pour tout le reste"] },
   { id: "questions_medicales", block: "Sécurité & Limites", label: "Face à une question médicale complexe ?", type: "single", options: ["Il répond selon la littérature scientifique", "Il dit qu'il ne sait pas et m'alerte", "Il propose une piste et attend ma validation", "Il redirige systématiquement vers le médecin"] },
   { id: "urgence_detresse", block: "Sécurité & Limites", label: "Un patient exprime une vraie souffrance psychologique ?", type: "single", options: ["Il exprime de l'empathie et m'alerte immédiatement", "Il oriente vers une ligne d'écoute ou un professionnel", "Il gère avec bienveillance dans les limites de son périmètre"] },
-  { id: "ligne_rouge", block: "Sécurité & Limites", label: "Votre ligne rouge absolue ?", sublabel: "Ce que votre jumeau ne doit JAMAIS dire ou faire", type: "free", placeholder: "Ex: Ne jamais culpabiliser, ne jamais donner de calories précises, ne jamais parler de médicaments..." },
+  { id: "ligne_rouge", block: "Sécurité & Limites", label: "Votre ligne rouge absolue ?", sublabel: "Ce que votre jumeau ne doit JAMAIS dire ou faire", type: "free", placeholder: "Exemple: Ne jamais culpabiliser, ne jamais donner de calories précises, ne jamais parler de médicaments..." },
   { id: "approche_libre", block: "Votre approche en vos mots", label: "Décrivez votre approche en quelques phrases", sublabel: "Parlez librement - comme si vous expliquiez votre méthode à un confrère", type: "free", placeholder: "Ma façon d'accompagner mes patients est..." },
   { id: "situation1", block: "Mises en situation", label: "Il est 22h. Un patient vous écrit :", sublabel: '"J\'ai craqué sur tout le frigo ce soir, je me déteste, je suis nul(le). Je vais jamais y arriver."', type: "free", placeholder: "Votre réponse exacte..." },
   { id: "situation2", block: "Mises en situation", label: "Un patient vous demande :", sublabel: '"Est-ce que je peux faire le régime Dukan ? Ma collègue a perdu 8kg en 1 mois."', type: "free", placeholder: "Votre réponse exacte..." },
@@ -170,8 +170,8 @@ export default function OnboardingPage() {
   const slotMsg = filled === 0
     ? "⚠️ Jumeau initialisé - Votre jumeau connaît votre personnalité mais il lui manque encore votre expertise. Partagez votre vision et vos méthodes pour lui donner votre pleine précision."
     : filled === 1
-    ? `🔹 Jumeau Personnalisé - Une première brique de votre expertise a été intégrée. Il ne vous reste plus qu'à transmettre votre ${missing} pour que votre double soit parfaitement opérationnel et certifié.`
-    : "✅ Jumeau certifié - Précision maximale atteinte. Votre jumeau possède désormais votre expertise.";
+    ? `Jumeau Personnalisé - Une première brique de votre expertise a été intégrée. Il ne vous reste plus qu'à transmettre votre ${missing} pour que votre double soit parfaitement opérationnel et certifié.`
+    : "Jumeau certifié - Précision maximale atteinte. Votre jumeau possède désormais votre expertise.";
 
     useEffect(() => {
       localStorage.setItem("onboarding_step", String(step));
@@ -341,12 +341,12 @@ export default function OnboardingPage() {
     if (slot === "slot1") {
       const allNames = [...slot1Files.map(f => f.file.name), ...slot1IndexedFiles.map(f => f.fileName)];
       const duplicates = files.filter(f => allNames.includes(f.name));
-      if (duplicates.length > 0) { setDuplicateError(`⚠️ Fichier déjà ajouté : ${duplicates.map(f => f.name).join(", ")}`); return; }
+      if (duplicates.length > 0) { setDuplicateError(`Fichier déjà ajouté : ${duplicates.map(f => f.name).join(", ")}`); return; }
       setSlot1Files(prev => [...prev, ...files.map(f => ({ file: f, docType }))]);
     } else {
       const allNames = slot2IndexedFiles.map(f => f.fileName);
       const duplicates = files.filter(f => allNames.includes(f.name));
-      if (duplicates.length > 0) { setDuplicateError(`⚠️ Fichier déjà ajouté : ${duplicates.map(f => f.name).join(", ")}`); return; }
+      if (duplicates.length > 0) { setDuplicateError(`Fichier déjà ajouté : ${duplicates.map(f => f.name).join(", ")}`); return; }
       void uploadToSlot(files[0], slot, docType);
     }
     if (e.target) e.target.value = "";
@@ -445,7 +445,7 @@ export default function OnboardingPage() {
         <span className="flex-shrink-0 text-zinc-400">{getFileIcon(f.fileType)}</span>
         <div className="min-w-0">
           <p className="text-sm font-medium text-white truncate">{f.name}</p>
-          <p className="text-xs text-zinc-500">Dernière mise à jour : {f.indexedAt}{f.type === "patient" && <span className="ml-2 text-blue-400">🔒 Anonymisé</span>}</p>
+          <p className="text-xs text-zinc-500">Dernière mise à jour : {f.indexedAt}{f.type === "patient" && <span className="ml-2 text-blue-400 inline-flex items-center gap-1"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Anonymisé</span>}</p>
         </div>
       </div>
       <button type="button"
