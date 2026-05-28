@@ -125,7 +125,10 @@ export default function OnboardingPage() {
   
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+  const [slot1Errors, setSlot1Errors] = useState<string[]>([]);
+  const [slot2Errors, setSlot2Errors] = useState<string[]>([]);
+  const [showSlot1Text, setShowSlot1Text] = useState(false);
+  const [showSlot2Text, setShowSlot2Text] = useState(false);
   const [practitionerId, setPractitionerId] = useState<string | null>(null);
   const [alreadyDone, setAlreadyDone] = useState(false);
   const [showCertTooltip, setShowCertTooltip] = useState(false);
@@ -329,8 +332,18 @@ export default function OnboardingPage() {
         const indexedFile: IndexedFile = { name: displayName, fileName: file.name, type: docType, indexedAt: formatDate(), fileType };
         if (slot === "slot1") { setSlot1IndexedFiles(prev => [...prev, indexedFile]); setSlot1Done(true); }
         else { setSlot2IndexedFiles(prev => [...prev, indexedFile]); setSlot2Done(true); }
-      } else { setUploadErrors(prev => [...prev, `${displayName} : ${data.error ?? "Erreur"}`]); }
-    } catch { setUploadErrors(prev => [...prev, `${displayName} : Erreur réseau`]); }
+      } else {
+        const msg = `${displayName} : ${data.error ?? "Erreur"}`;
+        const setErr = slot === "slot1" ? setSlot1Errors : setSlot2Errors;
+        setErr(prev => [...prev, msg]);
+        setTimeout(() => setErr(prev => prev.filter(e => e !== msg)), 6000);
+      }
+    } catch {
+      const msg = `${displayName} : Erreur réseau`;
+      const setErr = slot === "slot1" ? setSlot1Errors : setSlot2Errors;
+      setErr(prev => [...prev, msg]);
+      setTimeout(() => setErr(prev => prev.filter(e => e !== msg)), 6000);
+    }
     if (slot === "slot1") setUploadingSlot1(false); else setUploadingSlot2(false);
   };
 
@@ -746,7 +759,7 @@ export default function OnboardingPage() {
                             <div className="flex items-center gap-3 min-w-0">
                               <span className="flex-shrink-0 text-zinc-400">{getFileIcon(getFileType(f.file.name))}</span>
                               <span className="text-sm text-zinc-300 truncate">{f.file.name}</span>
-                              <span className="text-xs flex-shrink-0 flex items-center gap-1" style={{ color: f.docType === "patient" ? "#60a5fa" : "#10b981" }}>{f.docType === "patient" ? <><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Anonymisé</> : <>✓ Tel quel</>}</span>
+                              <span className="text-xs flex-shrink-0 flex items-center gap-1" style={{ color: f.docType === "patient" ? "#60a5fa" : "#10b981" }}>{f.docType === "patient" ? "🔒 Anonymisé" : "✓ Tel quel"}</span>
                             </div>
                             <button type="button" onClick={() => setSlot1Files(prev => prev.filter((_, j) => j !== i))}
                               className="ml-3 flex-shrink-0 p-1.5 rounded-lg transition-all duration-200 cursor-pointer" style={{ color: "#64748b" }}
@@ -762,12 +775,20 @@ export default function OnboardingPage() {
                         {uploadingSlot1 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
                       </div>
                     )}
-                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
-                      <p className="text-xs text-emerald-400 leading-relaxed flex items-start gap-1.5"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span><strong>Vos documents sont automatiquement anonymisés par l'IA avant indexation.</strong> Aucune donnée personnelle n'est conservée. Tout est stocké sur des serveurs sécurisés en Europe.</span></p>
+                    {slot1Errors.length > 0 && (
+                      <div className="space-y-1">
+                        {slot1Errors.map((e, i) => <p key={i} className="text-xs text-red-400 flex items-center gap-1.5"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>{e}</p>)}
+                      </div>
+                    )}
+                    <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-2.5">
+                      <p className="text-xs text-blue-400/70 leading-relaxed flex items-start gap-1.5">🔒 <span>Vos documents sont automatiquement anonymisés par l'IA avant indexation. Aucune donnée personnelle n'est conservée. Tout est stocké sur des serveurs sécurisés en Europe.</span></p>
                     </div>
-                    <div className="pt-2">
-                      <p className="text-sm font-semibold text-white mb-1">Pas de documents prêts ou des nuances à apporter ?</p>
-                      <p className="text-xs text-zinc-500 mb-3">Décrivez votre vision ou des détails non écrits dans vos protocoles.</p>
+                    <button type="button" onClick={() => setShowSlot1Text(p => !p)}
+                      className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300 transition cursor-pointer pt-1">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.2s", transform: showSlot1Text ? "rotate(90deg)" : "rotate(0deg)" }}><path d="M9 18l6-6-6-6"/></svg>
+                      {showSlot1Text ? "Masquer la note libre" : "Pas de documents ? Ajouter une note libre"}
+                    </button>
+                    {showSlot1Text && <div className="pt-2">
                       <div className="relative">
                         <textarea value={slot1Text} onChange={e => setSlot1Text(e.target.value)}
                           placeholder="Ex : Pas d’aliment interdit dans mon approche. J’intègre toujours le contexte émotionnel avant le côté technique. Je privilégie la régularité sur la perfection." rows={4}
@@ -803,7 +824,7 @@ export default function OnboardingPage() {
                           )}
                         </div>
                       )}
-                      {slot1Text.trim() && !audioBlob && (
+                      {slot1Text.trim() && (
                         <>
                           <button type="button" onClick={() => void saveSlotText("slot1", slot1Text)} disabled={uploadingSlot1}
                             style={{ ...btnStyle, marginTop: 12, opacity: uploadingSlot1 ? 0.7 : 1, cursor: uploadingSlot1 ? "not-allowed" : "pointer" }} {...btnHover}>
@@ -812,7 +833,7 @@ export default function OnboardingPage() {
                           {uploadingSlot1 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
                         </>
                       )}
-                    </div>
+                    </div>}
                   </div>
                 </div>
 
@@ -833,7 +854,17 @@ export default function OnboardingPage() {
                   <p className="text-sm text-zinc-400 mb-6 leading-relaxed ml-10">L'étape finale pour passer de l'intelligence artificielle à votre intelligence émotionnelle.</p>
                   <div className="ml-0 sm:ml-10 space-y-3">
                     {slot2IndexedFiles.map((f, i) => <IndexedFileRow key={i} f={f} i={i} slot="slot2" />)}
-                    <div className="pt-2">
+                    {slot2Errors.length > 0 && (
+                      <div className="space-y-1">
+                        {slot2Errors.map((e, i) => <p key={i} className="text-xs text-red-400 flex items-center gap-1.5"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>{e}</p>)}
+                      </div>
+                    )}
+                    <button type="button" onClick={() => setShowSlot2Text(p => !p)}
+                      className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300 transition cursor-pointer pt-1">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transition: "transform 0.2s", transform: showSlot2Text ? "rotate(90deg)" : "rotate(0deg)" }}><path d="M9 18l6-6-6-6"/></svg>
+                      {showSlot2Text ? "Masquer la note libre" : "Pas de documents ? Ajouter une note libre"}
+                    </button>
+                    {showSlot2Text && <div className="pt-2">
                       <div className="relative">
                         <textarea value={slot2Text} onChange={e => setSlot2Text(e.target.value)}
                           placeholder="Partagez vos métaphores favorites, vos mots pour dédramatiser un écart et vos mantras de motivation. C'est ici que votre Jumeau capture votre intuition et ces nuances qui font votre signature unique."
@@ -870,7 +901,7 @@ export default function OnboardingPage() {
                           )}
                         </div>
                       )}
-                      {slot2Text.trim() && !audioBlob && (
+                      {slot2Text.trim() && (
                         <>
                           <button type="button" onClick={() => void saveSlotText("slot2", slot2Text)} disabled={uploadingSlot2}
                             style={{ ...btnStyle, marginTop: 12, opacity: uploadingSlot2 ? 0.7 : 1, cursor: uploadingSlot2 ? "not-allowed" : "pointer" }} {...btnHover}>
@@ -879,15 +910,9 @@ export default function OnboardingPage() {
                           {uploadingSlot2 && <p className="text-xs text-amber-400 text-center mt-1">Patientez, l'indexation peut prendre quelques instants.</p>}
                         </>
                       )}
-                    </div>
+                    </div>}
                   </div>
                 </div>
-
-                {uploadErrors.length > 0 && (
-                  <div className="mt-5 space-y-1">
-                    {uploadErrors.map((e, i) => <p key={i} className="text-xs text-red-400 flex items-center gap-1.5"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>{e}</p>)}
-                  </div>
-                )}
 
                   <div className="mt-10 flex items-center justify-between">
                   <button type="button" onClick={() => setStep(prev => prev - 1)}
