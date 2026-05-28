@@ -226,7 +226,7 @@ try {
                       key={s}
                       type="button"
                       onClick={() => toggleSpecialty(s)}
-                      className="rounded-full border px-3 py-1.5 text-xs font-medium transition"
+                      className="rounded-lg border px-3 py-1.5 text-xs font-medium transition"
                       style={{
                         background: isSelected ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
                         borderColor: isSelected ? "#10b981" : "rgba(255,255,255,0.12)",
@@ -240,7 +240,7 @@ try {
                 <button
                   type="button"
                   onClick={() => setShowOther((prev) => !prev)}
-                  className="rounded-full border px-3 py-1.5 text-xs font-medium transition"
+                  className="rounded-lg border px-3 py-1.5 text-xs font-medium transition"
                   style={{
                     background: showOther ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
                     borderColor: showOther ? "#10b981" : "rgba(255,255,255,0.12)",

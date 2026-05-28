@@ -11,6 +11,7 @@ function VerifyOTPForm() {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
   const [error, setError] = useState("");
+  const [resendSuccess, setResendSuccess] = useState(false);
   const [success, setSuccess] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
@@ -81,10 +82,11 @@ function VerifyOTPForm() {
         setLoading(false);
         return;
       }
+      setLoading(false);
       setSuccess(true);
       setTimeout(() => {
         router.push(`/checkout?plan=${plan}`);
-      }, 1000);
+      }, 1500);
     } catch {
       setError("Une erreur est survenue.");
       setLoading(false);
@@ -97,7 +99,8 @@ function VerifyOTPForm() {
     try {
       await supabase.auth.resend({ type: "signup", email });
       setCountdown(60);
-      setError("✅ Nouveau code envoyé !");
+      setResendSuccess(true);
+      setTimeout(() => setResendSuccess(false), 4000);
     } catch {
       setError("Impossible de renvoyer le code.");
     }
@@ -120,7 +123,7 @@ function VerifyOTPForm() {
             <p className="text-[13px] font-semibold mt-1" style={{ color: emerald }}>
               {email}
             </p>
-            <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5">
+            <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5">
   <span className="text-sm">⚠️</span>
   <p className="text-[11px] font-medium text-amber-400">Si vous ne le voyez pas, vérifiez vos spams.</p>
 </div>
@@ -147,28 +150,47 @@ function VerifyOTPForm() {
             ))}
           </div>
 
+          {resendSuccess && (
+            <div className="mb-4 rounded-xl px-4 py-3 text-[13px] border bg-emerald-500/10 border-emerald-500/20 text-emerald-400 flex items-center justify-center gap-2">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+              Nouveau code envoyé !
+            </div>
+          )}
+
           {error && (
-            <div className={`mb-4 rounded-xl px-4 py-3 text-[13px] text-center border ${error.startsWith("✅") ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-400"}`}>
+            <div className="mb-4 rounded-xl px-4 py-3 text-[13px] text-center border bg-red-500/10 border-red-500/20 text-red-400">
               {error}
             </div>
           )}
 
-          {success && (
-            <div className="mb-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-[13px] text-emerald-400 text-center">
-              ✓ Email vérifié ! Redirection en cours...
+          {success ? (
+            <div className="flex flex-col items-center gap-3 py-2">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/15 ring-1 ring-emerald-500/30">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6L9 17l-5-5"/>
+                </svg>
+              </div>
+              <div className="text-center">
+                <p className="text-[14px] font-semibold text-emerald-400">Email vérifié !</p>
+                <p className="text-[12px] text-zinc-500 mt-0.5">Redirection en cours...</p>
+              </div>
             </div>
+          ) : (
+            <button
+              onClick={handleVerify}
+              disabled={loading || code.join("").length !== 6}
+              className="w-full h-[48px] rounded-xl text-[14px] font-semibold text-black transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              style={{ backgroundColor: emerald }}
+              onMouseEnter={e => { if (!loading && code.join("").length === 6) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}
+            >
+              {loading
+                ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Vérification...</span>
+                : "Confirmer mon email"}
+            </button>
           )}
-
-<button
-            onClick={handleVerify}
-            disabled={loading || success || code.join("").length !== 6}
-            className="w-full h-[48px] rounded-xl text-[14px] font-semibold text-black transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-            style={{ backgroundColor: emerald }}
-            onMouseEnter={e => { if (!loading && !success && code.join("").length === 6) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
-            onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}
-          >
-            {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Vérification...</span> : "Confirmer mon email"}
-          </button>
 
           <div className="mt-5 text-center">
             <p className="text-[13px] text-zinc-400">

@@ -8,6 +8,7 @@ function PaymentSuccessContent() {
  const router = useRouter();
  const [planReady, setPlanReady] = useState(false);
  const [webhookTimeout, setWebhookTimeout] = useState(false);
+ const [navigating, setNavigating] = useState(false);
 
  useEffect(() => {
   const supabase = createSupabaseBrowserClient();
@@ -129,11 +130,6 @@ function PaymentSuccessContent() {
              justifyContent: "center",
              gap: 10,
            }}>
-             <span style={{
-               width: 8, height: 8, borderRadius: "50%",
-               background: "#10b981", flexShrink: 0,
-               animation: "pulse 2s infinite",
-             }} />
              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#10b981", lineHeight: 1.7, textAlign: "center" }}>
                Vos réponses permettront à l'IA de reproduire votre manière de penser, conseiller et décider.
              </p>
@@ -199,8 +195,8 @@ function PaymentSuccessContent() {
            </div>
 
            <button
-             onClick={() => planReady && router.push("/onboarding")}
-             disabled={!planReady}
+             onClick={() => { if (planReady && !navigating) { setNavigating(true); router.push("/onboarding"); } }}
+             disabled={!planReady || navigating}
              style={{
                display: "flex",
                alignItems: "center",
@@ -228,7 +224,9 @@ function PaymentSuccessContent() {
                e.currentTarget.style.transform = "translateY(0) scale(1)";
              }}
            >
-             {planReady
+             {navigating
+               ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement...</span>
+               : planReady
                ? "Commencer la programmation →"
                : <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                    <span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.2)", borderTop: "2px solid white", animation: "spin 1s linear infinite", display: "inline-block" }} />
