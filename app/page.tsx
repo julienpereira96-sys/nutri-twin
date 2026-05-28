@@ -852,7 +852,7 @@ function FounderSection() {
     e.currentTarget.style.transform = "translateY(0) scale(1)";
   }}
 >
-  Je veux devenir Fondateur →
+  Je veux devenir Fondateur
 </button>
           <p className="mt-4 text-[11px] text-zinc-600">
             Aucun engagement · Annulable à tout moment
@@ -940,7 +940,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
   }}
 >
 
-  Commencer l'essai gratuit →
+  Commencer l'essai gratuit
 </button>
 
     </div>

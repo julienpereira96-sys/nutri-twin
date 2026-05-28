@@ -100,7 +100,7 @@ function ResetPasswordForm() {
              <p className="text-sm text-zinc-400 mb-6">Ce lien de réinitialisation n'est plus valide.<br />Demandez-en un nouveau depuis la page de connexion.</p>
              <button onClick={() => router.push(isPatient ? "/patient-login" : "/login")}
                className="text-sm font-semibold cursor-pointer" style={{ color: "#10b981" }}>
-               Retour à la connexion →
+               Retour à la connexion
              </button>
            </div>
          ) : !ready ? (
@@ -176,7 +176,7 @@ function ResetPasswordForm() {
                onMouseEnter={e => { if (!loading && password && confirm) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
                onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}
              >
-               {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Mise à jour</span> : "Enregistrer le nouveau mot de passe →"}
+               {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Mise à jour</span> : "Enregistrer le nouveau mot de passe"}
              </button>
            </div>
          )}

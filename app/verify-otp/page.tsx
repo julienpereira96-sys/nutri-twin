@@ -116,8 +116,13 @@ function VerifyOTPForm() {
 
         <div className="rounded-2xl border border-white/[0.08] bg-[#0d0d0d] p-8">
           <div className="text-center mb-8">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 ring-1 ring-emerald-500/20">
-              <span className="text-2xl">✉️</span>
+            <div style={{ position: "relative", width: 56, height: 56, margin: "0 auto 16px" }}>
+              <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(10px)" }} />
+              <div style={{ position: "relative", width: 56, height: 56, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 14px rgba(16,185,129,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                </svg>
+              </div>
             </div>
             <h1 className="text-[22px] font-bold text-white mb-2">Vérifiez votre email</h1>
             <p className="text-[13px] text-zinc-400">
@@ -127,7 +132,7 @@ function VerifyOTPForm() {
               {email}
             </p>
             <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5">
-  <span className="text-sm">⚠️</span>
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
   <p className="text-[11px] font-medium text-amber-400">Si vous ne le voyez pas, vérifiez vos spams.</p>
 </div>
           </div>

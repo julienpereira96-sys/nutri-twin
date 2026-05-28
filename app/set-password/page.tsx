@@ -178,9 +178,12 @@ export default function SetPasswordPage() {
                 className="mt-2 w-full rounded-xl bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
                 onMouseEnter={e => { if (!isDisabled) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
-                {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Création en cours</span> : "Accéder à mon espace →"}
+                {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Création en cours</span> : "Accéder à mon espace"}
               </button>
-              <p className="mt-2 text-center text-xs text-zinc-500">🔒 Chiffrement de bout en bout · Données traitées en Europe (RGPD)</p>
+              <p className="mt-2 text-center text-xs text-zinc-500 flex items-center justify-center gap-1.5">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Chiffrement de bout en bout · Données traitées en Europe (RGPD)
+              </p>
             </div>
           )}
         </div>

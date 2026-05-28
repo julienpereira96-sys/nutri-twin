@@ -102,7 +102,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
             <svg style={{ width: 15, height: 15, flexShrink: 0, marginTop: 2, color: emerald }} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
             </svg>
-            <span style={{ fontSize: 12, lineHeight: 1.5, color: i === 0 ? "#f4f4f5" : "#a1a1aa" }}>{f}</span>
+            <span style={{ fontSize: 12, lineHeight: 1.5, color: i < 3 ? "#e4e4e7" : "#52525b" }}>{f}</span>
           </li>
         ))}
       </ul>
@@ -131,7 +131,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
           if (featured) e.currentTarget.style.boxShadow = "0 4px 14px rgba(16,185,129,0.3)";
         }}
       >
-        Choisir ce plan →
+        Choisir ce plan
       </button>
     </div>
   );

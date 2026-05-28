@@ -109,7 +109,7 @@ export default function LoginPage() {
 
         {sessionExpired && (
   <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 12, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "#f59e0b", textAlign: "center" }}>
-        Votre session a expiré après 30 jours d'inactivité.<br />Reconnectez-vous pour accéder à votre cabinet. 🔒
+        Votre session a expiré après 30 jours d'inactivité.<br />Reconnectez-vous pour accéder à votre cabinet.
   </div>
 )}
         <form onSubmit={onSubmit} className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
@@ -167,7 +167,7 @@ export default function LoginPage() {
               style={{ backgroundColor: "#f59e0b" }}
               onMouseEnter={e => { if (!resending) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
               onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
-              {resending ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Chargement</span> : "Finaliser mon abonnement →"}
+              {resending ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Chargement</span> : "Finaliser mon abonnement"}
             </button>
           ) : error === "__unconfirmed__" ? (
             <button key="unconfirmed" onClick={async () => {
@@ -180,14 +180,14 @@ export default function LoginPage() {
               style={{ backgroundColor: "#f59e0b" }}
               onMouseEnter={e => { if (!resending) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
               onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
-              {resending ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Envoi</span> : "Recevoir mon code de vérification →"}
+              {resending ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Envoi</span> : "Recevoir mon code de vérification"}
             </button>
           ) : (
           <button key="submit" type="submit" disabled={loading}
             className="mt-6 w-full rounded-xl bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
             onMouseEnter={e => { if (!loading) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
-            {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Connexion</span> : "Se connecter →"}
+            {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Connexion</span> : "Se connecter"}
           </button>
           )}
 
@@ -219,7 +219,11 @@ export default function LoginPage() {
 
             {resetSent ? (
               <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 14, padding: "20px", textAlign: "center" }}>
-                <p style={{ fontSize: 28, marginBottom: 10 }}>✅</p>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  </div>
+                </div>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "white" }}>Email envoyé !</p>
                 <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b" }}>Vérifiez votre boîte mail à <strong style={{ color: "#10b981" }}>{forgotEmail}</strong></p>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Pensez à vérifier vos spams.</p>
@@ -241,7 +245,7 @@ export default function LoginPage() {
                   <button onClick={closeModal} style={{ flex: 1, height: 44, borderRadius: 10, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>Annuler</button>
                   <button onClick={() => void handleForgotPassword()} disabled={resetLoading}
                     style={{ flex: 2, height: 44, borderRadius: 10, background: resetLoading ? "rgba(255,255,255,0.05)" : "#10b981", border: "none", color: resetLoading ? "#64748b" : "black", fontSize: 14, fontWeight: 600, cursor: resetLoading ? "not-allowed" : "pointer" }}>
-                    {resetLoading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />Envoi en cours</span> : "Envoyer le lien →"}
+                    {resetLoading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />Envoi en cours</span> : "Envoyer le lien"}
                   </button>
                 </div>
               </>
