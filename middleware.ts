@@ -69,17 +69,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-    // /login — non connecté uniquement
+    // /login — redirige les utilisateurs déjà pleinement connectés
     if (path.startsWith("/login")) {
-      if (!user) return supabaseResponse; 
+      if (!user) return supabaseResponse;
       const practitioner = await getPractitioner();
-      if (!practitioner?.plan) {
-        return NextResponse.redirect(new URL("/choose-plan", request.url));
-      }
+      if (!practitioner?.plan) return supabaseResponse; // connecté sans plan → on laisse passer
       const profile = await getProfile();
       if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
       return NextResponse.redirect(new URL("/dashboard", request.url));
-    }  
+    }
 
   // /choose-plan — praticien connecté sans plan uniquement
   if (path.startsWith("/choose-plan")) {

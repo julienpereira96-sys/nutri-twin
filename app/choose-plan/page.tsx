@@ -1,7 +1,5 @@
 "use client";
 
-const emerald = "#10b981";
-
 const PLANS = [
   {
     name: "Essentiel",

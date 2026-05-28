@@ -410,8 +410,15 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <Link
               href="/login"
-              className="text-[14px] font-medium transition-all rounded-lg px-3 py-1.5"
-              style={{ color: emerald, border: `1px solid rgba(16,185,129,0.3)` }}
+              className="text-[14px] font-medium rounded-lg px-3 py-1.5"
+              style={{
+                color: emerald,
+                borderWidth: "1px",
+                borderStyle: "solid",
+                borderColor: "rgba(16,185,129,0.3)",
+                background: "transparent",
+                transition: "background 0.15s ease, border-color 0.15s ease",
+              }}
               onMouseEnter={e => {
                 (e.currentTarget as HTMLElement).style.background = "rgba(16,185,129,0.1)";
                 (e.currentTarget as HTMLElement).style.borderColor = "rgba(16,185,129,0.6)";
