@@ -59,17 +59,17 @@ function AnimatedChat() {
       <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[#0d0d0d] shadow-2xl shadow-black/60">
         <div className="flex items-center gap-3 border-b border-white/[0.06] bg-[#111111] px-4 py-3">
           <div className="relative shrink-0">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-xs font-bold text-black">CM</div>
-            <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#111111] bg-emerald-400" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-xs font-bold text-black">CM</div>
+            <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#111111] bg-emerald-500" />
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[13px] font-semibold text-white">Compagnon de suivi de Catherine Moreau</p>
             <div className="flex items-center gap-1.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <p className="text-[10px] text-emerald-400">Répond instantanément</p>
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <p className="text-[10px] text-emerald-500">Répond instantanément</p>
             </div>
           </div>
-          <div className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-400 ring-1 ring-emerald-500/20">21h14</div>
+          <div className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-500 ring-1 ring-emerald-500/20">21h14</div>
         </div>
 
         <div className="px-4 pt-4 pb-2" style={{ height: 470, overflowY: "hidden" }}>
@@ -391,7 +391,7 @@ export default function Home() {
       <header className="fixed top-0 z-50 w-full border-b border-white/[0.04] bg-[#070707]/80 backdrop-blur-2xl">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
       <a href="/" className="flex items-center gap-2">
-      <img src="/logo.svg" alt="NutriTwin" className="h-[18px] w-auto relative" style={{ filter: "brightness(0) saturate(100%) invert(52%) sepia(78%) saturate(504%) hue-rotate(115deg) brightness(97%) contrast(95%)" }} />
+      <img src="/logo.svg" alt="NutriTwin" className="h-6 w-auto relative" style={{ filter: "hue-rotate(15deg) saturate(130%) brightness(62%)" }} />
       <span className="text-[18px] tracking-tight">Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></span>
         </a>
 
@@ -458,7 +458,7 @@ export default function Home() {
               href="#tarifs"
               onClick={() => setMobileMenuOpen(false)}
               className="mt-3 mb-2 flex h-11 w-full items-center justify-center rounded-xl text-[14px] font-semibold text-black"
-              style={{ backgroundColor: emerald }}
+              style={{ backgroundColor: emerald, border: "1px solid rgba(255,255,255,0.2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15)" }}
             >
               Commencer ici
             </a>
@@ -474,7 +474,7 @@ export default function Home() {
 
 
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-1.5 ring-1 ring-emerald-500/20">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: emerald }}>
                   Votre jumeau numérique
                 </span>
@@ -501,13 +501,13 @@ export default function Home() {
               <a
   href="#tarifs"
   className="inline-flex h-[48px] items-center justify-center gap-2 rounded-xl px-25 text-[14px] font-semibold text-black transition active:scale-95"
-  style={{ backgroundColor: emerald }}
+  style={{ backgroundColor: emerald, border: "1px solid rgba(255,255,255,0.2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15)" }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
+    e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.15), 0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
     e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
   }}
   onMouseLeave={(e) => {
-    e.currentTarget.style.boxShadow = "none";
+    e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.15)";
     e.currentTarget.style.transform = "translateY(0) scale(1)";
   }}
 >
@@ -533,7 +533,7 @@ export default function Home() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto mb-10 max-w-3xl text-center">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-1.5 ring-1 ring-emerald-500/20">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: emerald }}>
                   La continuité de votre suivi
                 </span>
@@ -575,8 +575,8 @@ export default function Home() {
               <div className="relative rounded-2xl p-6 sm:p-10" style={{ border: "1px solid rgba(16,185,129,0.25)", background: "linear-gradient(135deg, rgba(16,185,129,0.07), #0a0a0a)" }}>
                 <div className="absolute -top-px left-8 right-8 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
                 <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/[0.07] px-3 py-1">
-                  <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-400">La présence</span>
+                  <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-emerald-500">La présence</span>
                 </div>
                 <h3 className="mt-4 text-[20px] font-bold text-white mb-1">Désormais,</h3>
                 <h3 className="text-[20px] font-bold mb-6" style={{ color: emerald }}>votre voix reste.</h3>
@@ -623,7 +623,7 @@ export default function Home() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto mb-12 max-w-2xl text-center">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-1.5 ring-1 ring-emerald-500/20">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: emerald }}>La configuration</span>
               </div>
               <h2 className="font-black tracking-tight" style={{ fontSize: "clamp(28px, 4vw, 44px)" }}>
@@ -668,7 +668,7 @@ export default function Home() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto mb-10 max-w-2xl text-center">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-1.5 ring-1 ring-emerald-500/20">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: emerald }}>Votre cockpit</span>
               </div>
               <h2 className="font-black tracking-tight" style={{ fontSize: "clamp(28px, 4vw, 44px)" }}>
@@ -688,7 +688,7 @@ export default function Home() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto mb-10 max-w-2xl text-center">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-1.5 ring-1 ring-emerald-500/20">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: emerald }}>Sécurité & Éthique</span>
               </div>
               <h2 className="font-black tracking-tight" style={{ fontSize: "clamp(28px, 4vw, 44px)" }}>
@@ -723,7 +723,7 @@ export default function Home() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto mb-5 max-w-2xl text-center">
               <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-1.5 ring-1 ring-emerald-500/20">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: emerald }}>Tarifs</span>
               </div>
               <h2 className="font-black tracking-tight text-white" style={{ fontSize: "clamp(28px, 4vw, 44px)" }}>
@@ -733,8 +733,8 @@ export default function Home() {
 
             <div className="mx-auto mb-10 max-w-lg text-center">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/[0.05] px-4 py-2">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                <span className="text-[10px] sm:text-[12px] font-medium text-emerald-400">
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                <span className="text-[10px] sm:text-[12px] font-medium text-emerald-500">
   14 jours gratuits · Sans engagement · Annulable à tout moment
 </span>
 
@@ -840,13 +840,13 @@ function FounderSection() {
       }
     }}    
   className="inline-flex h-[48px] sm:h-[52px] items-center justify-center rounded-xl px-8 sm:px-10 text-[14px] sm:text-[15px] font-semibold text-black transition active:scale-95 cursor-pointer"
-  style={{ backgroundColor: amber }}
+  style={{ backgroundColor: amber, border: "1px solid rgba(255,255,255,0.2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15)" }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)";
+    e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.15), 0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)";
     e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
   }}
   onMouseLeave={(e) => {
-    e.currentTarget.style.boxShadow = "none";
+    e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.15)";
     e.currentTarget.style.transform = "translateY(0) scale(1)";
   }}
 >
@@ -923,7 +923,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       }}   
     className="inline-flex h-[50px] w-full items-center justify-center rounded-xl text-[13px] font-semibold transition active:scale-95 mt-2 cursor-pointer"
       style={featured
-    ? { backgroundColor: emerald, color: "black", boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }
+    ? { backgroundColor: emerald, color: "black", border: "1px solid rgba(255,255,255,0.2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15), 0 4px 14px rgba(16,185,129,0.3)" }
     : { border: "1.5px solid rgba(255,255,255,0.12)", color: "#d1d5db", background: "rgba(255,255,255,0.03)" }
   }
   onMouseEnter={(e) => {
@@ -934,7 +934,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
   }}
   onMouseLeave={(e) => {
     e.currentTarget.style.transform = "translateY(0) scale(1)";
-    e.currentTarget.style.boxShadow = featured ? "0 4px 14px rgba(16,185,129,0.3)" : "none";
+    e.currentTarget.style.boxShadow = featured ? "inset 0 1px 0 rgba(255,255,255,0.15), 0 4px 14px rgba(16,185,129,0.3)" : "none";
   }}
 >
 
