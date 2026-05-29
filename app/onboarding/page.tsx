@@ -658,7 +658,7 @@ export default function OnboardingPage() {
           <span className="flex-shrink-0 text-zinc-400">{getFileIcon(f.fileType)}</span>
           <div className="min-w-0">
             <p className="text-sm font-medium text-white truncate">{f.name}</p>
-            <p className="text-xs text-zinc-500">Dernière mise à jour : {f.indexedAt}{f.type === "patient" ? <span className="ml-2 text-blue-400">🔒 Anonymisé</span> : <span className="ml-2 text-emerald-400">Tel quel</span>}</p>
+            <p className="text-xs text-zinc-500">Dernière mise à jour : {f.indexedAt}{f.type === "patient" ? <span className="ml-2 text-blue-400">🔒 Anonymisé</span> : (f.fileType !== "note" && f.fileType !== "audio") ? <span className="ml-2 text-emerald-400">Tel quel</span> : null}</p>
           </div>
         </div>
         <div className="flex items-center gap-1 ml-3 flex-shrink-0">
@@ -1063,14 +1063,20 @@ export default function OnboardingPage() {
                     )}
                     {savingAll1 && indexProgress1 && (
                       <div className="pt-2 space-y-1">
-                        {editingSlot1 && <p className="text-xs text-amber-400 mb-1">Patientez, cela peut prendre quelques instants...</p>}
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-zinc-400">{indexProgress1.current} / {indexProgress1.total} fichier{indexProgress1.total > 1 ? "s" : ""} indexé{indexProgress1.total > 1 ? "s" : ""}</span>
-                          <span className="text-xs text-zinc-500">{Math.round((indexProgress1.current / indexProgress1.total) * 100)}%</span>
-                        </div>
-                        <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${(indexProgress1.current / indexProgress1.total) * 100}%`, background: "rgba(16,185,129,0.5)", borderRadius: 2, transition: "width 0.4s ease" }} />
-                        </div>
+                        {editingSlot1 ? (
+                          <p className="text-xs text-amber-400">Patientez, cela peut prendre quelques instants...</p>
+                        ) : (
+                          <>
+                            <p className="text-xs text-amber-400 mb-1">Patientez, cela peut prendre quelques instants...</p>
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-zinc-400">{indexProgress1.current} / {indexProgress1.total} fichier{indexProgress1.total > 1 ? "s" : ""} indexé{indexProgress1.total > 1 ? "s" : ""}</span>
+                              <span className="text-xs text-zinc-500">{Math.round((indexProgress1.current / indexProgress1.total) * 100)}%</span>
+                            </div>
+                            <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                              <div style={{ height: "100%", width: `${(indexProgress1.current / indexProgress1.total) * 100}%`, background: "rgba(16,185,129,0.5)", borderRadius: 2, transition: "width 0.4s ease" }} />
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                     <div className="pt-3 flex items-center justify-end gap-3">
@@ -1160,14 +1166,20 @@ export default function OnboardingPage() {
                     )}
                     {savingAll2 && indexProgress2 && (
                       <div className="pt-2 space-y-1">
-                        {editingSlot2 && <p className="text-xs text-amber-400 mb-1">Patientez, cela peut prendre quelques instants...</p>}
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-zinc-400">{indexProgress2.current} / {indexProgress2.total} fichier{indexProgress2.total > 1 ? "s" : ""} indexé{indexProgress2.total > 1 ? "s" : ""}</span>
-                          <span className="text-xs text-zinc-500">{Math.round((indexProgress2.current / indexProgress2.total) * 100)}%</span>
-                        </div>
-                        <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${(indexProgress2.current / indexProgress2.total) * 100}%`, background: "rgba(16,185,129,0.5)", borderRadius: 2, transition: "width 0.4s ease" }} />
-                        </div>
+                        {editingSlot2 ? (
+                          <p className="text-xs text-amber-400">Patientez, cela peut prendre quelques instants...</p>
+                        ) : (
+                          <>
+                            <p className="text-xs text-amber-400 mb-1">Patientez, cela peut prendre quelques instants...</p>
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs text-zinc-400">{indexProgress2.current} / {indexProgress2.total} fichier{indexProgress2.total > 1 ? "s" : ""} indexé{indexProgress2.total > 1 ? "s" : ""}</span>
+                              <span className="text-xs text-zinc-500">{Math.round((indexProgress2.current / indexProgress2.total) * 100)}%</span>
+                            </div>
+                            <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                              <div style={{ height: "100%", width: `${(indexProgress2.current / indexProgress2.total) * 100}%`, background: "rgba(16,185,129,0.5)", borderRadius: 2, transition: "width 0.4s ease" }} />
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                     <div className="pt-3 flex items-center justify-end gap-3">
