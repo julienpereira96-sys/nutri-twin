@@ -373,7 +373,8 @@ export default function OnboardingPage() {
     const isSignature = file.name.startsWith("slot2_signature_");
     const isNote = isVision || isSignature;
     const isAudio = file.name.startsWith("memo_");
-    const displayName = isVision ? "Note de vision" : isSignature ? "Note de signature" : isAudio ? `Mémo vocal (${formatTime(recordingTime)})` : file.name;
+    const audioDuration = extraMeta?.durationSecs ?? recordingTime;
+    const displayName = isVision ? "Note de vision" : isSignature ? "Note de signature" : isAudio ? `Mémo vocal (${formatTime(audioDuration)})` : file.name;
     try {
       const res = await fetch("/api/upload-document", { method: "POST", body: formData });
       const data = await res.json() as { success?: boolean; error?: string };
