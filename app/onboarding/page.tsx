@@ -24,6 +24,7 @@ type IndexedFile = {
   fileType: "pdf" | "image" | "audio" | "spreadsheet" | "text" | "note";
   textContent?: string;
   durationSecs?: number;
+  audioBlobUrl?: string;
 };
 
 const questions: Question[] = [
@@ -160,6 +161,7 @@ export default function OnboardingPage() {
   const [editingSlot1, setEditingSlot1] = useState<IndexedFile | null>(null);
   const [editingSlot2, setEditingSlot2] = useState<IndexedFile | null>(null);
   const [audioReplaceMode, setAudioReplaceMode] = useState(false);
+  const [continueFromSecs, setContinueFromSecs] = useState(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [activating, setActivating] = useState(false);
@@ -306,6 +308,47 @@ export default function OnboardingPage() {
 
   const formatDate = () => new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
+  const audioBufferToWavBlob = (buffer: AudioBuffer): Blob => {
+    const numChannels = buffer.numberOfChannels;
+    const sampleRate = buffer.sampleRate;
+    const numSamples = buffer.length;
+    const dataSize = numSamples * numChannels * 2;
+    const ab = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(ab);
+    const ws = (off: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
+    ws(0, "RIFF"); view.setUint32(4, 36 + dataSize, true); ws(8, "WAVE");
+    ws(12, "fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true); view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * numChannels * 2, true); view.setUint16(32, numChannels * 2, true);
+    view.setUint16(34, 16, true); ws(36, "data"); view.setUint32(40, dataSize, true);
+    let off = 44;
+    for (let i = 0; i < numSamples; i++) {
+      for (let c = 0; c < numChannels; c++) {
+        const s = Math.max(-1, Math.min(1, buffer.getChannelData(c)[i]));
+        view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true); off += 2;
+      }
+    }
+    return new Blob([ab], { type: "audio/wav" });
+  };
+
+  const concatenateAudioBlobs = async (oldUrl: string, newBlob: Blob): Promise<Blob> => {
+    const audioCtx = new AudioContext();
+    const [buf1, buf2] = await Promise.all([
+      fetch(oldUrl).then(r => r.arrayBuffer()).then(ab => audioCtx.decodeAudioData(ab)),
+      newBlob.arrayBuffer().then(ab => audioCtx.decodeAudioData(ab)),
+    ]);
+    const ch = Math.max(buf1.numberOfChannels, buf2.numberOfChannels);
+    const combined = audioCtx.createBuffer(ch, buf1.length + buf2.length, audioCtx.sampleRate);
+    for (let c = 0; c < ch; c++) {
+      const d1 = buf1.numberOfChannels > c ? buf1.getChannelData(c) : new Float32Array(buf1.length);
+      const d2 = buf2.numberOfChannels > c ? buf2.getChannelData(c) : new Float32Array(buf2.length);
+      combined.copyToChannel(d1, c, 0);
+      combined.copyToChannel(d2, c, buf1.length);
+    }
+    await audioCtx.close();
+    return audioBufferToWavBlob(combined);
+  };
+
   const getPid = async () => {
     const supabase = createSupabaseBrowserClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -321,7 +364,7 @@ export default function OnboardingPage() {
     } catch { /* silencieux */ }
   };
 
-  const uploadToSlot = async (file: File, slot: "slot1" | "slot2", docType: "protocole" | "patient", extraMeta?: { textContent?: string; durationSecs?: number }) => {
+  const uploadToSlot = async (file: File, slot: "slot1" | "slot2", docType: "protocole" | "patient", extraMeta?: { textContent?: string; durationSecs?: number; audioBlobUrl?: string }) => {
     if (slot === "slot1") setUploadingSlot1(true); else setUploadingSlot2(true);
     const pid = await getPid();
     const formData = new FormData();
@@ -336,7 +379,7 @@ export default function OnboardingPage() {
       const data = await res.json() as { success?: boolean; error?: string };
       if (res.ok && data.success) {
         const fileType = isNote ? "note" : isAudio ? "audio" : getFileType(file.name);
-        const indexedFile: IndexedFile = { name: displayName, fileName: file.name, type: docType, indexedAt: formatDate(), fileType, textContent: extraMeta?.textContent, durationSecs: extraMeta?.durationSecs };
+        const indexedFile: IndexedFile = { name: displayName, fileName: file.name, type: docType, indexedAt: formatDate(), fileType, textContent: extraMeta?.textContent, durationSecs: extraMeta?.durationSecs, audioBlobUrl: extraMeta?.audioBlobUrl };
         if (slot === "slot1") { setSlot1IndexedFiles(prev => [...prev, indexedFile]); setSlot1Done(true); }
         else { setSlot2IndexedFiles(prev => [...prev, indexedFile]); setSlot2Done(true); }
       } else {
@@ -387,11 +430,15 @@ export default function OnboardingPage() {
     if (slot === "slot1") setSlot1Text(""); else setSlot2Text("");
   };
 
-  const saveSlotAudio = async (slot: "slot1" | "slot2") => {
-    if (!audioBlob) return;
-    const file = new File([audioBlob], `memo_${slot}_${Date.now()}.mp3`, { type: "audio/mp3" });
-    await uploadToSlot(file, slot, "protocole", { durationSecs: recordingTime });
+  const saveSlotAudio = async (slot: "slot1" | "slot2", blobToSave?: Blob) => {
+    const blob = blobToSave ?? audioBlob;
+    if (!blob) return;
+    const totalSecs = continueFromSecs + recordingTime;
+    const audioBlobUrl = URL.createObjectURL(blob);
+    const file = new File([blob], `memo_${slot}_${Date.now()}.mp3`, { type: "audio/mp3" });
+    await uploadToSlot(file, slot, "protocole", { durationSecs: totalSecs, audioBlobUrl });
     setAudioBlob(null);
+    setContinueFromSecs(0);
     if (slot === "slot1") setSlot1ActiveRecording(false); else setSlot2ActiveRecording(false);
   };
 
@@ -407,11 +454,14 @@ export default function OnboardingPage() {
       await saveSlotText("slot1", slot1Text);
     }
     if (audioBlob && slot1ActiveRecording) {
-      if (editingSlot1?.fileType === "audio" && audioReplaceMode) {
+      if (editingSlot1?.fileType === "audio" && audioReplaceMode && editingSlot1.audioBlobUrl) {
+        const merged = await concatenateAudioBlobs(editingSlot1.audioBlobUrl, audioBlob);
         await deleteFromSupabase(editingSlot1.fileName);
         setSlot1IndexedFiles(prev => prev.filter(f => f.fileName !== editingSlot1.fileName));
+        await saveSlotAudio("slot1", merged);
+      } else {
+        await saveSlotAudio("slot1");
       }
-      await saveSlotAudio("slot1");
       setEditingSlot1(null);
       setAudioReplaceMode(false);
     }
@@ -429,11 +479,14 @@ export default function OnboardingPage() {
       await saveSlotText("slot2", slot2Text);
     }
     if (audioBlob && slot2ActiveRecording) {
-      if (editingSlot2?.fileType === "audio" && audioReplaceMode) {
+      if (editingSlot2?.fileType === "audio" && audioReplaceMode && editingSlot2.audioBlobUrl) {
+        const merged = await concatenateAudioBlobs(editingSlot2.audioBlobUrl, audioBlob);
         await deleteFromSupabase(editingSlot2.fileName);
         setSlot2IndexedFiles(prev => prev.filter(f => f.fileName !== editingSlot2.fileName));
+        await saveSlotAudio("slot2", merged);
+      } else {
+        await saveSlotAudio("slot2");
       }
-      await saveSlotAudio("slot2");
       setEditingSlot2(null);
       setAudioReplaceMode(false);
     }
@@ -557,10 +610,10 @@ export default function OnboardingPage() {
         <div className="flex items-center gap-1 ml-3 flex-shrink-0">
           {isEditable && !isBeingEdited && (
             <button type="button" onClick={handleEdit}
-              className="opacity-0 group-hover:opacity-100 px-2 py-1 rounded-lg text-xs transition-all duration-200 cursor-pointer"
-              style={{ color: "#71717a" }}
+              className="px-2 py-1 rounded-lg text-xs transition-all duration-200 cursor-pointer"
+              style={{ color: "#52525b" }}
               onMouseEnter={e => e.currentTarget.style.color = "#ffffff"}
-              onMouseLeave={e => e.currentTarget.style.color = "#71717a"}>
+              onMouseLeave={e => e.currentTarget.style.color = "#52525b"}>
               Modifier
             </button>
           )}
@@ -702,9 +755,9 @@ export default function OnboardingPage() {
                       className="text-sm text-zinc-500 transition-all duration-200 hover:text-white cursor-pointer">← Retour</button>
                   ) : <div />}
                   <button type="button" onClick={goNext} disabled={!canGoNext()}
-                    className="rounded-xl bg-[#10b981] px-7 py-3 text-sm font-semibold text-black transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
-                    onMouseEnter={e => { if (canGoNext()) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
-                    onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
+                    style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", borderRadius: 10, padding: "10px 28px", fontSize: 13, fontWeight: 600, cursor: canGoNext() ? "pointer" : "not-allowed", opacity: canGoNext() ? 1 : 0.4, transition: "all 0.2s" }}
+                    onMouseEnter={e => { if (canGoNext()) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
                     Suivant →
                   </button>
                 </div>
@@ -839,11 +892,10 @@ export default function OnboardingPage() {
                   </div>
                   <p className="text-sm text-zinc-400 mb-6 leading-relaxed ml-0 sm:ml-10"> Uploadez vos plans alimentaires types, protocoles ou articles. Votre jumeau les intégrera pour répondre avec votre précision.</p>
                   <div className="ml-0 sm:ml-10 space-y-3">
-                    {slot1IndexedFiles.map((f, i) => <IndexedFileRow key={i} f={f} i={i} slot="slot1" />)}
                     <div className="pt-2">
                       <p className="text-sm font-semibold text-white mb-1">Quel type de document uploadez-vous ?</p>
                       <p className="text-xs text-zinc-500 mb-4">Cela détermine si vos documents seront anonymisés ou non.</p>
-                      <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className={`grid grid-cols-2 gap-3 mb-4 transition-all duration-200 ${savingAll1 ? "opacity-40 pointer-events-none" : ""}`}>
                         <label className="relative flex flex-col rounded-2xl border-2 border-dashed p-4 text-left cursor-pointer transition-all duration-200 group"
                           style={{ borderColor: slot1TypeHover === "protocole" ? "#10b981" : "rgba(255,255,255,0.15)", background: slot1TypeHover === "protocole" ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)" }}
                           onMouseEnter={() => setSlot1TypeHover("protocole")} onMouseLeave={() => setSlot1TypeHover(null)}>
@@ -916,22 +968,23 @@ export default function OnboardingPage() {
                             disabled={savingAll1}
                             className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ background: isRecording && slot1ActiveRecording ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.15)", border: isRecording && slot1ActiveRecording ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.3)" }}>
-                            {isRecording && slot1ActiveRecording ? <span className="h-2 w-2 rounded-full bg-red-400 animate-pulse" /> : <span className="text-sm">🎙️</span>}
+                            {isRecording && slot1ActiveRecording ? <span className="h-2 w-2 rounded-full bg-red-400 animate-pulse" /> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>}
                           </button>
                         </div>
                       </div>
                       {isRecording && slot1ActiveRecording && (
-                        <p className="text-xs text-red-400 mt-2 ml-1 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />Enregistrement en cours - {formatTime(recordingTime)}</p>
+                        <p className="text-xs text-red-400 mt-2 ml-1 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />Enregistrement en cours - {formatTime(continueFromSecs + recordingTime)}</p>
                       )}
                       {editingSlot1?.fileType === "audio" && !audioBlob && !isRecording && (
                         <div className="flex flex-wrap items-center gap-2 mt-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
-                          <p className="text-sm text-zinc-300 flex items-center gap-2 flex-1 min-w-0">🎙️ <span className="truncate">{editingSlot1.name}</span></p>
-                          <button type="button" onClick={() => { setAudioReplaceMode(false); void startRecording("slot1"); }}
-                            className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-zinc-400 hover:text-white hover:border-white/25 cursor-pointer transition-all whitespace-nowrap">
-                            Ajouter un complément
-                          </button>
-                          <button type="button" onClick={() => { setAudioReplaceMode(true); void startRecording("slot1"); }}
-                            className="text-xs px-3 py-1.5 rounded-lg border border-emerald-500/30 text-emerald-400 hover:border-emerald-500/60 cursor-pointer transition-all whitespace-nowrap">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                            <span className="text-sm text-zinc-300 truncate">{editingSlot1.name}</span>
+                          </div>
+                          <button type="button" onClick={() => { setAudioReplaceMode(true); setContinueFromSecs(editingSlot1.durationSecs ?? 0); void startRecording("slot1"); }}
+                            style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
                             Reprendre ce mémo
                           </button>
                         </div>
@@ -948,13 +1001,19 @@ export default function OnboardingPage() {
                         </div>
                       )}
                     </div>
+                    {slot1IndexedFiles.length > 0 && (
+                      <div className="pt-2 space-y-2">
+                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Documents indexés</p>
+                        {slot1IndexedFiles.map((f, i) => <IndexedFileRow key={i} f={f} i={i} slot="slot1" />)}
+                      </div>
+                    )}
                     <div className="pt-3 flex items-center justify-end gap-3">
                       {savingAll1 && <p className="text-xs text-amber-400">Patientez, cela peut prendre quelques instants...</p>}
                       <button type="button" onClick={() => void saveSlot1All()} disabled={savingAll1 || !hasSlot1Pending}
-                        style={{ background: hasSlot1Pending ? "#10b981" : "rgba(255,255,255,0.05)", color: hasSlot1Pending ? "black" : "#52525b", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: (savingAll1 || !hasSlot1Pending) ? "not-allowed" : "pointer", opacity: savingAll1 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, boxShadow: hasSlot1Pending ? "0 4px 14px rgba(16,185,129,0.3)" : "none", transition: "all 0.2s", border: hasSlot1Pending ? "none" : "1px solid rgba(255,255,255,0.08)" }}
-                        onMouseEnter={e => { if (!savingAll1 && hasSlot1Pending) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px) scale(1.01)"; } }}
-                        onMouseLeave={e => { e.currentTarget.style.boxShadow = hasSlot1Pending ? "0 4px 14px rgba(16,185,129,0.3)" : "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
-                        {savingAll1 ? <><Spinner />Indexation...</> : getSlot1Label()}
+                        style={{ background: hasSlot1Pending ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", border: hasSlot1Pending ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)", color: hasSlot1Pending ? "#10b981" : "#3f3f46", borderRadius: 10, padding: "10px 22px", fontSize: 13, fontWeight: 600, cursor: (savingAll1 || !hasSlot1Pending) ? "not-allowed" : "pointer", opacity: savingAll1 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
+                        onMouseEnter={e => { if (!savingAll1 && hasSlot1Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                        onMouseLeave={e => { if (hasSlot1Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
+                        {savingAll1 ? <><Spinner />Indexation en cours...</> : getSlot1Label()}
                       </button>
                     </div>
                   </div>
@@ -976,7 +1035,6 @@ export default function OnboardingPage() {
                   </div>
                   <p className="text-sm text-zinc-400 mb-6 leading-relaxed ml-10">L'étape finale pour passer de l'intelligence artificielle à votre intelligence émotionnelle.</p>
                   <div className="ml-0 sm:ml-10 space-y-3">
-                    {slot2IndexedFiles.map((f, i) => <IndexedFileRow key={i} f={f} i={i} slot="slot2" />)}
                     {slot2Errors.length > 0 && (
                       <div className="space-y-1">
                         {slot2Errors.map((e, i) => <p key={i} className="text-xs text-red-400 flex items-center gap-1.5"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>{e}</p>)}
@@ -996,22 +1054,23 @@ export default function OnboardingPage() {
                             disabled={savingAll2}
                             className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ background: isRecording && slot2ActiveRecording ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.15)", border: isRecording && slot2ActiveRecording ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.3)" }}>
-                            {isRecording && slot2ActiveRecording ? <span className="h-2 w-2 rounded-full bg-red-400 animate-pulse" /> : <span className="text-sm">🎙️</span>}
+                            {isRecording && slot2ActiveRecording ? <span className="h-2 w-2 rounded-full bg-red-400 animate-pulse" /> : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>}
                           </button>
                         </div>
                       </div>
                       {isRecording && slot2ActiveRecording && (
-                        <p className="text-xs text-red-400 mt-2 ml-1 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />Enregistrement en cours - {formatTime(recordingTime)}</p>
+                        <p className="text-xs text-red-400 mt-2 ml-1 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />Enregistrement en cours - {formatTime(continueFromSecs + recordingTime)}</p>
                       )}
                       {editingSlot2?.fileType === "audio" && !audioBlob && !isRecording && (
                         <div className="flex flex-wrap items-center gap-2 mt-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
-                          <p className="text-sm text-zinc-300 flex items-center gap-2 flex-1 min-w-0">🎙️ <span className="truncate">{editingSlot2.name}</span></p>
-                          <button type="button" onClick={() => { setAudioReplaceMode(false); void startRecording("slot2"); }}
-                            className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-zinc-400 hover:text-white hover:border-white/25 cursor-pointer transition-all whitespace-nowrap">
-                            Ajouter un complément
-                          </button>
-                          <button type="button" onClick={() => { setAudioReplaceMode(true); void startRecording("slot2"); }}
-                            className="text-xs px-3 py-1.5 rounded-lg border border-emerald-500/30 text-emerald-400 hover:border-emerald-500/60 cursor-pointer transition-all whitespace-nowrap">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                            <span className="text-sm text-zinc-300 truncate">{editingSlot2.name}</span>
+                          </div>
+                          <button type="button" onClick={() => { setAudioReplaceMode(true); setContinueFromSecs(editingSlot2.durationSecs ?? 0); void startRecording("slot2"); }}
+                            style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
                             Reprendre ce mémo
                           </button>
                         </div>
@@ -1028,13 +1087,19 @@ export default function OnboardingPage() {
                         </div>
                       )}
                     </div>
+                    {slot2IndexedFiles.length > 0 && (
+                      <div className="pt-2 space-y-2">
+                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Documents indexés</p>
+                        {slot2IndexedFiles.map((f, i) => <IndexedFileRow key={i} f={f} i={i} slot="slot2" />)}
+                      </div>
+                    )}
                     <div className="pt-3 flex items-center justify-end gap-3">
                       {savingAll2 && <p className="text-xs text-amber-400">Patientez, cela peut prendre quelques instants...</p>}
                       <button type="button" onClick={() => void saveSlot2All()} disabled={savingAll2 || !hasSlot2Pending}
-                        style={{ background: hasSlot2Pending ? "#10b981" : "rgba(255,255,255,0.05)", color: hasSlot2Pending ? "black" : "#52525b", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 700, cursor: (savingAll2 || !hasSlot2Pending) ? "not-allowed" : "pointer", opacity: savingAll2 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, boxShadow: hasSlot2Pending ? "0 4px 14px rgba(16,185,129,0.3)" : "none", transition: "all 0.2s", border: hasSlot2Pending ? "none" : "1px solid rgba(255,255,255,0.08)" }}
-                        onMouseEnter={e => { if (!savingAll2 && hasSlot2Pending) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px) scale(1.01)"; } }}
-                        onMouseLeave={e => { e.currentTarget.style.boxShadow = hasSlot2Pending ? "0 4px 14px rgba(16,185,129,0.3)" : "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
-                        {savingAll2 ? <><Spinner />Indexation...</> : getSlot2Label()}
+                        style={{ background: hasSlot2Pending ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", border: hasSlot2Pending ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)", color: hasSlot2Pending ? "#10b981" : "#3f3f46", borderRadius: 10, padding: "10px 22px", fontSize: 13, fontWeight: 600, cursor: (savingAll2 || !hasSlot2Pending) ? "not-allowed" : "pointer", opacity: savingAll2 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
+                        onMouseEnter={e => { if (!savingAll2 && hasSlot2Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                        onMouseLeave={e => { if (hasSlot2Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
+                        {savingAll2 ? <><Spinner />Indexation en cours...</> : getSlot2Label()}
                       </button>
                     </div>
                   </div>
