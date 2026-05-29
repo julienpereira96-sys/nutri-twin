@@ -781,7 +781,7 @@ export default function OnboardingPage() {
               {!isUploadStep && !isGenerating && (
                 <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
                   {BLOCKS.map((block, i) => (
-                    <span key={block} className="whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium transition"
+                    <span key={block} className="whitespace-nowrap rounded-lg px-3 py-1 text-xs font-medium transition"
                       style={{ background: i === blockIndex ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)", color: i === blockIndex ? "#10b981" : "#52525b", border: i === blockIndex ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)" }}>
                       {block}
                     </span>
