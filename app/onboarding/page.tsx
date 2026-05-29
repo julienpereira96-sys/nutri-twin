@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-type QuestionType = "single" | "multiple" | "free";
+type QuestionType = "single" | "multiple" | "free" | "single_with_free";
 
 type Question = {
   id: string;
@@ -28,41 +28,54 @@ type IndexedFile = {
 };
 
 const questions: Question[] = [
-  { id: "tone_of_voice", block: "Identité & Caractère", label: "Comment doit sonner votre jumeau ?", type: "single", options: ["Le Médical - factuel, précis, sobre, sans émojis", "Le Coach - énergique, motivant, direct", "Le Complice - chaleureux, empathique, humain", "Le Pédagogue - explique, vulgarise, rassure"] },
+  // BLOC 1 — IDENTITÉ & CARACTÈRE
+  { id: "tone_of_voice", block: "Identité & Caractère", label: "Comment doit sonner votre jumeau ?", type: "single_with_free", options: ["Le Médical - factuel, précis, sobre, sans émojis", "Le Coach - énergique, motivant, direct", "Le Complice - chaleureux, empathique, humain", "Le Pédagogue - explique, vulgarise, rassure", "Autre (Précisez...)"] },
   { id: "tutoiement", block: "Identité & Caractère", label: "Comment vous adressez-vous à vos patients ?", type: "single", options: ["Vouvoiement strict", "Vouvoiement bienveillant", "Tutoiement naturel", "Je m'adapte selon le patient"] },
   { id: "technicite", block: "Identité & Caractère", label: "Quel niveau de langage utilisez-vous ?", type: "single", options: ["Très vulgarisé - zéro jargon", "Quelques termes techniques expliqués", "Scientifique et précis", "Je m'adapte selon le patient"] },
-  { id: "longueur_reponses", block: "Identité & Caractère", label: "Votre style de communication ?", type: "single", options: ["Court et direct - l'essentiel en 2-3 phrases", "Détaillé et complet - j'explique tout", "Adapté à la complexité de la question"] },
+  { id: "longueur_reponses", block: "Identité & Caractère", label: "Votre style de communication ?", type: "single", options: ["Court et direct - l'essentiel en 2-3 phrases", "Détaillé et complet - j'explique tout", "Empathique d'abord - je valide l'émotion avant le conseil technique", "Adapté à la complexité de la question"] },
   { id: "emojis", block: "Identité & Caractère", label: "Votre jumeau doit-il utiliser des émojis ?", type: "single", options: ["Jamais - je reste professionnel", "Avec modération - un ou deux maximum", "Souvent - ça humanise les échanges"] },
-  { id: "approche_generale", block: "Philosophie Nutritionnelle", label: "Quelle est votre philosophie principale ?", type: "single", options: ["Rééquilibrage alimentaire progressif", "Alimentation intuitive", "Micronutrition fonctionnelle", "Protocoles structurés et mesurés"] },
+
+  // BLOC 2 — PHILOSOPHIE NUTRITIONNELLE
+  { id: "approche_generale", block: "Philosophie Nutritionnelle", label: "Quelle est votre philosophie principale ?", type: "single_with_free", options: ["Rééquilibrage alimentaire progressif", "Alimentation intuitive et anti-régime strict", "Micronutrition fonctionnelle", "Contrôle des macros (déficit calorique mesuré)", "Autre (Précisez...)"] },
   { id: "pathologies", block: "Philosophie Nutritionnelle", label: "Quel est votre cœur de métier ?", sublabel: "Vous pouvez en sélectionner plusieurs", type: "multiple", options: ["Perte de poids / obésité", "TCA (troubles du comportement alimentaire)", "Diabète / glycémie / métabolisme", "Performance sportive", "Inconfort digestif / FODMAP", "Fatigue / micronutrition", "Femme enceinte / post-partum", "Enfants / adolescents"] },
   { id: "position_regimes", block: "Philosophie Nutritionnelle", label: "Votre avis sur les régimes restrictifs ?", type: "single", options: ["Je les déconseille systématiquement", "Je les étudie cas par cas", "Certains sont utiles dans mon protocole", "Je reste neutre et m'adapte"] },
   { id: "position_glucides", block: "Philosophie Nutritionnelle", label: "Votre position sur les féculents et glucides ?", type: "single", options: ["Indispensables à chaque repas", "À moduler selon l'objectif", "Je les limite en général", "Dépend du patient et du moment"] },
-  { id: "jejune", block: "Philosophie Nutritionnelle", label: "Votre approche du jeûne intermittent ?", type: "single", options: ["Je le recommande régulièrement", "Uniquement sur indication précise", "Je préfère éviter", "Je ne me prononce pas"] },
-  { id: "complements", block: "Philosophie Nutritionnelle", label: "Votre position sur les compléments alimentaires ?", type: "single", options: ["J'en prescris régulièrement", "Seulement en cas de carence avérée", "Je préfère l'alimentation seule", "Cas par cas selon le bilan"] },
-  { id: "petit_dejeuner", block: "Philosophie Nutritionnelle", label: "Votre philosophie sur le petit-déjeuner ?", type: "single", options: ["Indispensable, je l'optimise toujours", "Optionnel selon le patient", "Je ne l'impose jamais"] },
-  { id: "lifestyle_budget", block: "Philosophie Nutritionnelle", label: "Votre approche lifestyle et budget ?", type: "single", options: ["Je prône le bio et le local", "Je m'adapte au budget du patient", "Je mise sur le moins transformé possible", "Je ne fais pas de distinction"] },
-  { id: "jamais_dire", block: "Philosophie Nutritionnelle", label: "Y a-t-il des pratiques que vous refusez catégoriquement ?", sublabel: "Exemple: régimes très hypocaloriques, détox, jeûne prolongé...", type: "free", placeholder: "Décrivez ce que votre jumeau ne doit jamais recommander..." },
-  { id: "conviction", block: "Philosophie Nutritionnelle", label: "Quelle est votre règle d'or ?", sublabel: "Votre conviction la plus forte en tant que praticien", type: "free", placeholder: "Exemple: Pas d'aliment interdit, le plaisir avant tout, la régularité prime sur la perfection..." },
-  { id: "gestion_ecarts", block: "Gestion Humaine & Émotions", label: "Un patient craque sur une pizza. Vous répondez comment ?", type: "single", options: ["Sans culpabilité, on repart de zéro", "On analyse pourquoi ça s'est passé", "On recadre doucement sur les objectifs", "L'équilibre se fait sur la durée, un écart ne compte pas"] },
+  { id: "sujets_clivants", block: "Philosophie Nutritionnelle", label: "Votre position sur le jeûne intermittent, les compléments alimentaires et le petit-déjeuner ?", sublabel: "Trois sujets fréquents — donnez votre position sur chacun en quelques mots", type: "free", placeholder: "Jeûne : uniquement sur indication précise. Compléments : cas par cas selon bilan biologique. Petit-déjeuner : optionnel, je ne l'impose pas..." },
+  { id: "lifestyle_budget", block: "Philosophie Nutritionnelle", label: "Votre approche lifestyle, budget et marqueurs alimentaires ?", type: "single_with_free", options: ["Je prône le moins transformé possible, le bio et le local", "Je m'adapte avant tout au budget du patient", "Végétal / Flexitarien - je limite la viande rouge et les produits laitiers", "Pas de restriction d'ingrédients, tout est question de portions", "Autre (Précisez...)"] },
+  { id: "jamais_dire", block: "Philosophie Nutritionnelle", label: "Y a-t-il des pratiques que vous refusez catégoriquement ?", sublabel: "Exemple : régimes très hypocaloriques, détox, jeûne prolongé...", type: "free", placeholder: "Décrivez ce que votre jumeau ne doit jamais recommander..." },
+  { id: "conviction", block: "Philosophie Nutritionnelle", label: "Quelle est votre règle d'or ?", sublabel: "Votre conviction la plus forte en tant que praticien", type: "free", placeholder: "Exemple : Pas d'aliment interdit, le plaisir avant tout, la régularité prime sur la perfection..." },
+
+  // BLOC 3 — GESTION HUMAINE & ÉMOTIONS
+  { id: "gestion_ecarts", block: "Gestion Humaine & Émotions", label: "Un patient craque sur une pizza. Vous répondez comment ?", type: "single_with_free", options: ["Sans culpabilité, on repart de zéro", "On analyse pourquoi ça s'est passé", "On recadre doucement sur les objectifs", "L'équilibre se fait sur la durée, un écart ne compte pas", "Autre (Précisez...)"] },
   { id: "emotions", block: "Gestion Humaine & Émotions", label: "Un patient mange ses émotions. Votre approche ?", type: "single", options: ["Je travaille uniquement l'alimentation", "J'oriente vers un psy si besoin", "Je travaille les deux en parallèle", "C'est intégré dans mon suivi global"] },
   { id: "non_suivi", block: "Gestion Humaine & Émotions", label: "Un patient ne suit plus votre protocole. Votre réaction ?", type: "single", options: ["Bienveillance totale, on repart sans jugement", "On cherche ensemble pourquoi ça bloque", "Recadrage ferme mais bienveillant", "On remet en question le protocole ensemble"] },
   { id: "fetes_vacances", block: "Gestion Humaine & Émotions", label: "Votre position sur les fêtes et vacances ?", type: "single", options: ["On planifie à l'avance ensemble", "Liberté totale, on reprend après", "L'équilibre se fait sur le mois", "Je donne des guidelines souples"] },
   { id: "motivation_berne", block: "Gestion Humaine & Émotions", label: "Comment remotivez-vous un patient qui décroche ?", type: "single", options: ["Je rappelle ses objectifs initiaux", "Je valorise chaque petit progrès", "Je propose d'ajuster le protocole", "Je lui laisse de l'espace et j'attends son retour"] },
-  { id: "posture", block: "Gestion Humaine & Émotions", label: "Comment définiriez-vous votre posture ?", type: "single", options: ["Expert qui guide et prescrit", "Coach qui encourage et challenge", "Partenaire qui co-construit", "Confident bienveillant"] },
+  { id: "patient_fantome", block: "Gestion Humaine & Émotions", label: "Un patient n'a plus donné de nouvelles depuis 10 jours. Le jumeau fait quoi ?", type: "single", options: ["Il le relance avec un message chaleureux et bienveillant", "Il attend que le patient reprenne contact de lui-même", "Il reste purement réactif, sans jamais relancer"] },
+
+  // BLOC 4 — SÉCURITÉ & LIMITES
   { id: "perimetre", block: "Sécurité & Limites", label: "Jusqu'où peut aller votre jumeau ?", type: "single", options: ["Autonomie totale sur nutrition et lifestyle", "Prudent sur les pathologies, il me redirige", "Questions simples uniquement, il m'alerte pour tout le reste"] },
-  { id: "questions_medicales", block: "Sécurité & Limites", label: "Face à une question médicale complexe ?", type: "single", options: ["Il répond selon la littérature scientifique", "Il dit qu'il ne sait pas et m'alerte", "Il propose une piste et attend ma validation", "Il redirige systématiquement vers le médecin"] },
+  { id: "questions_medicales", block: "Sécurité & Limites", label: "Face à une question médicale complexe, un traitement ou un bilan sanguin ?", type: "single", options: ["Il répond selon la littérature scientifique", "Il dit qu'il ne sait pas et m'alerte", "Il propose une piste et attend ma validation", "Il redirige systématiquement et immédiatement vers le médecin"] },
   { id: "urgence_detresse", block: "Sécurité & Limites", label: "Un patient exprime une vraie souffrance psychologique ?", type: "single", options: ["Il exprime de l'empathie et m'alerte immédiatement", "Il oriente vers une ligne d'écoute ou un professionnel", "Il gère avec bienveillance dans les limites de son périmètre"] },
-  { id: "ligne_rouge", block: "Sécurité & Limites", label: "Votre ligne rouge absolue ?", sublabel: "Ce que votre jumeau ne doit JAMAIS dire ou faire", type: "free", placeholder: "Exemple: Ne jamais culpabiliser, ne jamais donner de calories précises, ne jamais parler de médicaments..." },
-  { id: "approche_libre", block: "Votre approche en vos mots", label: "Décrivez votre approche en quelques phrases", sublabel: "Parlez librement - comme si vous expliquiez votre méthode à un confrère", type: "free", placeholder: "Ma façon d'accompagner mes patients est..." },
+  { id: "ligne_rouge", block: "Sécurité & Limites", label: "Votre ligne rouge absolue ?", sublabel: "Ce que votre jumeau ne doit JAMAIS dire ou faire", type: "free", placeholder: "Exemple : Ne jamais culpabiliser, ne jamais donner de calories précises, ne jamais parler de médicaments..." },
+
+  // BLOC 5 — VOTRE APPROCHE EN VOS MOTS
+  { id: "approche_libre", block: "Votre approche en vos mots", label: "Comment vous présenteriez-vous à un nouveau patient en 2-3 phrases ?", sublabel: "Ce texte servira de présentation de base à votre jumeau — soyez concis et authentique", type: "free", placeholder: "Exemple : Je suis nutritionniste spécialisée dans le rééquilibrage progressif. Mon approche est bienveillante, sans interdit, centrée sur le plaisir de manger. J'accompagne chaque patient selon son rythme de vie réel..." },
+
+  // BLOC 6 — MISES EN SITUATION
   { id: "situation1", block: "Mises en situation", label: "Il est 22h. Un patient vous écrit :", sublabel: '"J\'ai craqué sur tout le frigo ce soir, je me déteste, je suis nul(le). Je vais jamais y arriver."', type: "free", placeholder: "Votre réponse exacte..." },
-  { id: "situation2", block: "Mises en situation", label: "Un patient vous demande :", sublabel: '"Est-ce que je peux faire le régime Dukan ? Ma collègue a perdu 8kg en 1 mois."', type: "free", placeholder: "Votre réponse exacte..." },
-  { id: "situation3", block: "Mises en situation", label: "Ça fait 3 semaines qu'un patient ne suit plus votre protocole.", sublabel: "Il ne répond plus à vos messages. Vous lui écrivez quoi ?", type: "free", placeholder: "Votre message de relance..." },
+  { id: "situation2", block: "Mises en situation", label: "Un patient vous demande :", sublabel: '"J\'ai vu une astuce sur TikTok qui dit de boire du jus de citron dans du café noir le matin pour fondre le gras du ventre, c\'est vrai ?"', type: "free", placeholder: "Votre réponse exacte..." },
+  { id: "situation3", block: "Mises en situation", label: "La stagnation frustrante :", sublabel: '"Ça fait 2 semaines que je ne perds plus un gramme alors que je suis le protocole à la lettre. Ça me saoule."', type: "free", placeholder: "Votre message pour débloquer la situation..." },
   { id: "situation4", block: "Mises en situation", label: "Un patient vous écrit :", sublabel: '"Mon médecin m\'a dit que j\'ai un prédiabète. Est-ce que je dois arrêter les féculents complètement ?"', type: "free", placeholder: "Votre réponse exacte..." },
-  { id: "situation5", block: "Mises en situation", label: "Un patient vous annonce :", sublabel: '"J\'ai perdu 3kg ce mois-ci et je suis tellement fier(e) de moi !"', type: "free", placeholder: "Votre réponse exacte..." },
-  { id: "situation6", block: "Mises en situation", label: "Un patient vous confie :", sublabel: '"Je mange mes émotions depuis l\'enfance. C\'est lié à un traumatisme familial."', type: "free", placeholder: "Comment vous gérez ça..." },
+  { id: "situation5", block: "Mises en situation", label: "La question de l'alcool :", sublabel: '"Est-ce que j\'ai le droit de boire mes 3 verres de vin ou mes bières le week-end avec mes amis, ou ça ruine tout ?"', type: "free", placeholder: "Votre arbitrage exact..." },
+  { id: "situation6", block: "Mises en situation", label: "La demande de raccourci :", sublabel: '"Vous pensez quoi d\'Ozempic ou des injections pour m\'aider à perdre du poids plus vite ?"', type: "free", placeholder: "Votre posture exacte..." },
+  { id: "situation7", block: "Mises en situation", label: "L'objectif irréaliste :", sublabel: '"Je veux perdre 8 kilos en 3 semaines pour mon mariage. On fait comment ?"', type: "free", placeholder: "Votre recadrage bienveillant..." },
+  { id: "situation8", block: "Mises en situation", label: "L'annonce d'une grossesse :", sublabel: '"Je viens de faire un test, je suis enceinte ! Je dois changer quoi tout de suite dans mon assiette ?"', type: "free", placeholder: "Vos félicitations et premières consignes..." },
+  { id: "situation9", block: "Mises en situation", label: "Coup dur inattendu :", sublabel: '"J\'ai appris une très mauvaise nouvelle aujourd\'hui. Je n\'ai plus la force de cuisiner ni de suivre le programme."', type: "free", placeholder: "Votre message de soutien..." },
 ];
 
 const BLOCKS = ["Identité & Caractère", "Philosophie Nutritionnelle", "Gestion Humaine & Émotions", "Sécurité & Limites", "Votre approche en vos mots", "Mises en situation", "Vos documents"];
+const AUTRE_OPTION = "Autre (Précisez...)";
 
 const getFileType = (fileName: string): IndexedFile["fileType"] => {
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
@@ -170,6 +183,7 @@ export default function OnboardingPage() {
   const [savingAll2, setSavingAll2] = useState(false);
   const [indexProgress1, setIndexProgress1] = useState<{ current: number; total: number } | null>(null);
   const [indexProgress2, setIndexProgress2] = useState<{ current: number; total: number } | null>(null);
+  const [autreText, setAutreText] = useState("");
 
   const total = questions.length;
   const isUploadStep = step === total;
@@ -259,13 +273,22 @@ export default function OnboardingPage() {
   const canGoNext = () => {
     if (currentQuestion?.type === "multiple") return Array.isArray(selected) && selected.length > 0;
     if (currentQuestion?.type === "free") return typeof selected === "string" && selected.trim().length > 0;
+    if (currentQuestion?.type === "single_with_free") {
+      if (typeof selected !== "string" || selected.length === 0) return false;
+      if (selected === AUTRE_OPTION) return autreText.trim().length > 0;
+      return true;
+    }
     return typeof selected === "string" && selected.length > 0;
   };
 
   const goNext = () => {
     if (!canGoNext() || isUploadStep) return;
-    setAnswers(prev => ({ ...prev, [currentQuestion.id]: selected }));
+    const valueToSave = currentQuestion.type === "single_with_free" && selected === AUTRE_OPTION
+      ? autreText.trim()
+      : selected;
+    setAnswers(prev => ({ ...prev, [currentQuestion.id]: valueToSave }));
     setSelected(currentQuestion.type === "multiple" ? [] : "");
+    setAutreText("");
     setStep(prev => prev + 1);
   };
 
@@ -658,7 +681,7 @@ export default function OnboardingPage() {
           <span className="flex-shrink-0 text-zinc-400">{getFileIcon(f.fileType)}</span>
           <div className="min-w-0">
             <p className="text-sm font-medium text-white truncate">{f.name}</p>
-            <p className="text-xs text-zinc-500">Dernière mise à jour : {f.indexedAt}{f.type === "patient" ? <span className="ml-2 text-blue-400">🔒 Anonymisé</span> : (f.fileType !== "note" && f.fileType !== "audio") ? <span className="ml-2 text-emerald-400">Tel quel</span> : null}</p>
+            <p className="text-xs text-zinc-500">Dernière mise à jour : {f.indexedAt}{f.type === "patient" ? <span className="ml-2 text-blue-400">🔒 Anonymisé</span> : (f.fileType !== "note" && f.fileType !== "audio") ? <span className="ml-2 text-emerald-500">Tel quel</span> : null}</p>
           </div>
         </div>
         <div className="flex items-center gap-1 ml-3 flex-shrink-0">
@@ -783,6 +806,26 @@ export default function OnboardingPage() {
                       ))}
                     </div>
                   )}
+                  {currentQuestion.type === "single_with_free" && (
+                    <div className="grid gap-3">
+                      {currentQuestion.options?.map(option => (
+                        <button key={option} type="button" onClick={() => { setSelected(option); if (option !== AUTRE_OPTION) setAutreText(""); }}
+                          className={`w-full rounded-2xl border px-4 py-4 text-left text-[15px] transition-all duration-200 cursor-pointer ${selected === option ? "border-[#10b981] bg-[#10b981]/15 text-white" : "border-white/10 bg-[#1a1a1a] text-zinc-300 hover:border-[#10b981]/50"}`}>
+                          {option}
+                        </button>
+                      ))}
+                      {selected === AUTRE_OPTION && (
+                        <input
+                          type="text"
+                          value={autreText}
+                          onChange={e => setAutreText(e.target.value)}
+                          placeholder="Précisez votre approche..."
+                          autoFocus
+                          className="w-full rounded-2xl border border-[#10b981]/50 bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition placeholder:text-zinc-600 focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
+                        />
+                      )}
+                    </div>
+                  )}
                   {currentQuestion.type === "multiple" && (
                     <div className="grid gap-3 sm:grid-cols-2">
                       {currentQuestion.options?.map(option => {
@@ -805,7 +848,7 @@ export default function OnboardingPage() {
                 </div>
                 <div className="mt-8 flex items-center justify-between">
                   {step > 0 ? (
-                    <button type="button" onClick={() => { setStep(prev => prev - 1); setSelected(""); }}
+                    <button type="button" onClick={() => { setStep(prev => prev - 1); setSelected(""); setAutreText(""); }}
                       className="text-sm text-zinc-500 transition-all duration-200 hover:text-white cursor-pointer">← Retour</button>
                   ) : <div />}
                   <button type="button" onClick={goNext} disabled={!canGoNext()}
@@ -942,7 +985,7 @@ export default function OnboardingPage() {
                     <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold flex-shrink-0 border"
                       style={{ background: slot1Done ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)", color: slot1Done ? "#10b981" : "#64748b", borderColor: slot1Done ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)" }}>1</div>
                     <p className="text-base font-bold" style={{ color: slot1Done ? "#10b981" : "white" }}>Votre Vision</p>
-                    {slot1Done && <span className="text-xs font-semibold text-emerald-400 ml-1">✓ Rempli</span>}
+                    {slot1Done && <span className="text-xs font-semibold text-emerald-500 ml-1">✓ Rempli</span>}
                   </div>
                   <p className="text-sm text-zinc-400 mb-6 leading-relaxed ml-0 sm:ml-10"> Uploadez vos plans alimentaires types, protocoles ou articles. Votre jumeau les intégrera pour répondre avec votre précision.</p>
                   <div className="ml-0 sm:ml-10 space-y-3">
@@ -957,7 +1000,7 @@ export default function OnboardingPage() {
                           <p className="text-2xl mb-2">📋</p>
                           <p className="text-sm font-bold text-white mb-1">Mes protocoles & méthodes</p>
                           <p className="text-xs text-zinc-500 mb-3">Articles, plans alimentaires types, guides nutritionnels</p>
-                          <p className="text-xs font-medium text-emerald-400 mb-3">✓ Indexé tel quel</p>
+                          <p className="text-xs font-medium text-emerald-500 mb-3">✓ Indexé tel quel</p>
                           <div className="mt-auto rounded-xl border border-dashed border-white/15 group-hover:border-emerald-500/40 px-3 py-2 text-center transition-all duration-200">
                             <p className="text-xs text-zinc-500 group-hover:text-zinc-400 transition">Cliquez pour sélectionner</p>
                             <p className="text-xs text-zinc-600 mt-0.5">PDF, DOCX, TXT, JPG, PNG, Excel, CSV, MP3</p>
@@ -1045,7 +1088,7 @@ export default function OnboardingPage() {
                       )}
                       {audioBlob && slot1ActiveRecording && (
                         <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-white/10 bg-[#1a1a1a]">
-                          <p className="text-sm text-emerald-400 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(continueFromSecs + recordingTime)})</p>
+                          <p className="text-sm text-emerald-500 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(continueFromSecs + recordingTime)})</p>
                           <button type="button" onClick={() => { setAudioBlob(null); setSlot1ActiveRecording(false); setAudioReplaceMode(false); }}
                             disabled={savingAll1}
                             className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ color: "#64748b" }}
@@ -1102,7 +1145,7 @@ export default function OnboardingPage() {
                     <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold flex-shrink-0 border"
                       style={{ background: slot2Done ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)", color: slot2Done ? "#10b981" : "#64748b", borderColor: slot2Done ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)" }}>2</div>
                     <p className="text-base font-bold" style={{ color: slot2Done ? "#10b981" : "white" }}>Votre Signature</p>
-                    {slot2Done && <span className="text-xs font-semibold text-emerald-400 ml-1">✓ Rempli</span>}
+                    {slot2Done && <span className="text-xs font-semibold text-emerald-500 ml-1">✓ Rempli</span>}
                   </div>
                   <p className="text-sm text-zinc-400 mb-6 leading-relaxed ml-10">L'étape finale pour passer de l'intelligence artificielle à votre intelligence émotionnelle.</p>
                   <div className="ml-0 sm:ml-10 space-y-3">
@@ -1148,7 +1191,7 @@ export default function OnboardingPage() {
                       )}
                       {audioBlob && slot2ActiveRecording && (
                         <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-white/10 bg-[#1a1a1a]">
-                          <p className="text-sm text-emerald-400 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(continueFromSecs + recordingTime)})</p>
+                          <p className="text-sm text-emerald-500 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(continueFromSecs + recordingTime)})</p>
                           <button type="button" onClick={() => { setAudioBlob(null); setSlot2ActiveRecording(false); setAudioReplaceMode(false); }}
                             disabled={savingAll2}
                             className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ color: "#64748b" }}

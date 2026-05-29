@@ -416,7 +416,7 @@ export default function Home() {
                 transition: "color 0.15s ease",
               }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.color = "#34d399";
+                (e.currentTarget as HTMLElement).style.color = "rgba(16,185,129,0.7)";
               }}
               onMouseLeave={e => {
                 (e.currentTarget as HTMLElement).style.color = emerald;
