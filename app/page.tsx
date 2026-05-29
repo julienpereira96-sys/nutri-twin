@@ -391,7 +391,7 @@ export default function Home() {
       <header className="fixed top-0 z-50 w-full border-b border-white/[0.04] bg-[#070707]/80 backdrop-blur-2xl">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
       <a href="/" className="flex items-center gap-2">
-      <img src="/logo.svg" alt="NutriTwin" className="h-7 sm:h-10 w-auto relative" />
+      <img src="/logo.svg" alt="NutriTwin" className="h-[18px] w-auto relative" style={{ filter: "brightness(0) saturate(100%) invert(52%) sepia(78%) saturate(504%) hue-rotate(115deg) brightness(97%) contrast(95%)" }} />
       <span className="text-[18px] tracking-tight">Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></span>
         </a>
 
@@ -410,22 +410,16 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <Link
               href="/login"
-              className="text-[14px] font-medium rounded-lg px-3 py-1.5"
+              className="text-[14px] font-medium"
               style={{
                 color: emerald,
-                borderWidth: "1px",
-                borderStyle: "solid",
-                borderColor: "rgba(16,185,129,0.3)",
-                background: "transparent",
-                transition: "background 0.15s ease, border-color 0.15s ease",
+                transition: "color 0.15s ease",
               }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.background = "rgba(16,185,129,0.1)";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(16,185,129,0.6)";
+                (e.currentTarget as HTMLElement).style.color = "#34d399";
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.background = "transparent";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(16,185,129,0.3)";
+                (e.currentTarget as HTMLElement).style.color = emerald;
               }}
             >
               Se connecter

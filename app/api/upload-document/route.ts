@@ -36,7 +36,7 @@ async function getGeminiEmbedding(text: string): Promise<number[]> {
 
 async function anonymizeText(text: string): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3-flash" });
     const result = await model.generateContent(
       `Anonymise ce document médical/nutritionnel en remplaçant toutes les données personnelles identifiables par [ANONYMISÉ] :
       - Noms et prénoms de patients
@@ -58,7 +58,7 @@ async function anonymizeText(text: string): Promise<string> {
 }
 
 async function extractTextFromImage(buffer: Buffer, mimeType: string): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+  const model = genAI.getGenerativeModel({ model: "gemini-3-flash" });
   const result = await model.generateContent([
     {
       inlineData: {
@@ -72,7 +72,7 @@ async function extractTextFromImage(buffer: Buffer, mimeType: string): Promise<s
 }
 
 async function extractTextFromAudio(buffer: Buffer, mimeType: string): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
+  const model = genAI.getGenerativeModel({ model: "gemini-3-flash" });
   const result = await model.generateContent([
     {
       inlineData: {
@@ -193,9 +193,8 @@ export async function POST(request: Request) {
 
     const chunks = chunkText(anonymizedText, 500);
 
-    for (const chunk of chunks) {
+    await Promise.all(chunks.map(async (chunk) => {
       const embedding = await getGeminiEmbedding(chunk);
-
       const { error: insertError } = await supabase.from("documents").insert({
         practitioner_id: practitionerId,
         file_name: file.name,
@@ -204,11 +203,10 @@ export async function POST(request: Request) {
         embedding,
         storage_path: storagePath,
       });
-
       if (insertError) {
         console.error("Erreur insert document:", insertError.message);
       }
-    }
+    }));
 
     // Invalider le cache has_docs
     try {

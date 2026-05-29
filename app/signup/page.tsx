@@ -226,12 +226,14 @@ try {
                       key={s}
                       type="button"
                       onClick={() => toggleSpecialty(s)}
-                      className="rounded-lg border px-3 py-1.5 text-xs font-medium transition"
+                      className="rounded-lg border px-3 py-1.5 text-xs font-medium transition cursor-pointer"
                       style={{
                         background: isSelected ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
                         borderColor: isSelected ? "#10b981" : "rgba(255,255,255,0.12)",
                         color: isSelected ? "#10b981" : "#a1a1aa",
                       }}
+                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; }}
+                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
                     >
                       {isSelected ? "✓ " : ""}{s}
                     </button>
@@ -240,12 +242,14 @@ try {
                 <button
                   type="button"
                   onClick={() => setShowOther((prev) => !prev)}
-                  className="rounded-lg border px-3 py-1.5 text-xs font-medium transition"
+                  className="rounded-lg border px-3 py-1.5 text-xs font-medium transition cursor-pointer"
                   style={{
                     background: showOther ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
                     borderColor: showOther ? "#10b981" : "rgba(255,255,255,0.12)",
                     color: showOther ? "#10b981" : "#a1a1aa",
                   }}
+                  onMouseEnter={e => { if (!showOther) e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; }}
+                  onMouseLeave={e => { if (!showOther) e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
                 >
                   {showOther ? "✓ " : ""}Autre
                 </button>
