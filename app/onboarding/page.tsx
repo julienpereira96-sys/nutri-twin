@@ -22,6 +22,8 @@ type IndexedFile = {
   type: "protocole" | "patient";
   indexedAt: string;
   fileType: "pdf" | "image" | "audio" | "spreadsheet" | "text" | "note";
+  textContent?: string;
+  durationSecs?: number;
 };
 
 const questions: Question[] = [
@@ -155,6 +157,9 @@ export default function OnboardingPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [editingSlot1, setEditingSlot1] = useState<IndexedFile | null>(null);
+  const [editingSlot2, setEditingSlot2] = useState<IndexedFile | null>(null);
+  const [audioReplaceMode, setAudioReplaceMode] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [activating, setActivating] = useState(false);
@@ -316,7 +321,7 @@ export default function OnboardingPage() {
     } catch { /* silencieux */ }
   };
 
-  const uploadToSlot = async (file: File, slot: "slot1" | "slot2", docType: "protocole" | "patient") => {
+  const uploadToSlot = async (file: File, slot: "slot1" | "slot2", docType: "protocole" | "patient", extraMeta?: { textContent?: string; durationSecs?: number }) => {
     if (slot === "slot1") setUploadingSlot1(true); else setUploadingSlot2(true);
     const pid = await getPid();
     const formData = new FormData();
@@ -331,7 +336,7 @@ export default function OnboardingPage() {
       const data = await res.json() as { success?: boolean; error?: string };
       if (res.ok && data.success) {
         const fileType = isNote ? "note" : isAudio ? "audio" : getFileType(file.name);
-        const indexedFile: IndexedFile = { name: displayName, fileName: file.name, type: docType, indexedAt: formatDate(), fileType };
+        const indexedFile: IndexedFile = { name: displayName, fileName: file.name, type: docType, indexedAt: formatDate(), fileType, textContent: extraMeta?.textContent, durationSecs: extraMeta?.durationSecs };
         if (slot === "slot1") { setSlot1IndexedFiles(prev => [...prev, indexedFile]); setSlot1Done(true); }
         else { setSlot2IndexedFiles(prev => [...prev, indexedFile]); setSlot2Done(true); }
       } else {
@@ -378,14 +383,14 @@ export default function OnboardingPage() {
     const blob = new Blob([text], { type: "text/plain" });
     const label = slot === "slot1" ? "vision" : "signature";
     const file = new File([blob], `${slot}_${label}_${Date.now()}.txt`, { type: "text/plain" });
-    await uploadToSlot(file, slot, "protocole");
+    await uploadToSlot(file, slot, "protocole", { textContent: text });
     if (slot === "slot1") setSlot1Text(""); else setSlot2Text("");
   };
 
   const saveSlotAudio = async (slot: "slot1" | "slot2") => {
     if (!audioBlob) return;
     const file = new File([audioBlob], `memo_${slot}_${Date.now()}.mp3`, { type: "audio/mp3" });
-    await uploadToSlot(file, slot, "protocole");
+    await uploadToSlot(file, slot, "protocole", { durationSecs: recordingTime });
     setAudioBlob(null);
     if (slot === "slot1") setSlot1ActiveRecording(false); else setSlot2ActiveRecording(false);
   };
@@ -393,15 +398,45 @@ export default function OnboardingPage() {
   const saveSlot1All = async () => {
     setSavingAll1(true);
     if (slot1Files.length > 0) await indexSlot1Files();
-    if (slot1Text.trim()) await saveSlotText("slot1", slot1Text);
-    if (audioBlob && slot1ActiveRecording) await saveSlotAudio("slot1");
+    if (slot1Text.trim()) {
+      if (editingSlot1?.fileType === "note") {
+        await deleteFromSupabase(editingSlot1.fileName);
+        setSlot1IndexedFiles(prev => prev.filter(f => f.fileName !== editingSlot1.fileName));
+        setEditingSlot1(null);
+      }
+      await saveSlotText("slot1", slot1Text);
+    }
+    if (audioBlob && slot1ActiveRecording) {
+      if (editingSlot1?.fileType === "audio" && audioReplaceMode) {
+        await deleteFromSupabase(editingSlot1.fileName);
+        setSlot1IndexedFiles(prev => prev.filter(f => f.fileName !== editingSlot1.fileName));
+      }
+      await saveSlotAudio("slot1");
+      setEditingSlot1(null);
+      setAudioReplaceMode(false);
+    }
     setSavingAll1(false);
   };
 
   const saveSlot2All = async () => {
     setSavingAll2(true);
-    if (slot2Text.trim()) await saveSlotText("slot2", slot2Text);
-    if (audioBlob && slot2ActiveRecording) await saveSlotAudio("slot2");
+    if (slot2Text.trim()) {
+      if (editingSlot2?.fileType === "note") {
+        await deleteFromSupabase(editingSlot2.fileName);
+        setSlot2IndexedFiles(prev => prev.filter(f => f.fileName !== editingSlot2.fileName));
+        setEditingSlot2(null);
+      }
+      await saveSlotText("slot2", slot2Text);
+    }
+    if (audioBlob && slot2ActiveRecording) {
+      if (editingSlot2?.fileType === "audio" && audioReplaceMode) {
+        await deleteFromSupabase(editingSlot2.fileName);
+        setSlot2IndexedFiles(prev => prev.filter(f => f.fileName !== editingSlot2.fileName));
+      }
+      await saveSlotAudio("slot2");
+      setEditingSlot2(null);
+      setAudioReplaceMode(false);
+    }
     setSavingAll2(false);
   };
 
@@ -409,6 +444,8 @@ export default function OnboardingPage() {
     const hasFiles = slot1Files.length > 0;
     const hasText = slot1Text.trim().length > 0;
     const hasMemo = !!audioBlob && slot1ActiveRecording;
+    if (editingSlot1?.fileType === "note" && hasText) return "Mettre à jour ma vision";
+    if (editingSlot1?.fileType === "audio" && hasMemo) return audioReplaceMode ? "Mettre à jour mon mémo" : "Ajouter à mon mémo";
     const count = (hasFiles ? 1 : 0) + (hasText ? 1 : 0) + (hasMemo ? 1 : 0);
     if (count === 0) return "Indexer";
     if (count > 1) return "Tout indexer";
@@ -420,6 +457,8 @@ export default function OnboardingPage() {
   const getSlot2Label = () => {
     const hasText = slot2Text.trim().length > 0;
     const hasMemo = !!audioBlob && slot2ActiveRecording;
+    if (editingSlot2?.fileType === "note" && hasText) return "Mettre à jour ma signature";
+    if (editingSlot2?.fileType === "audio" && hasMemo) return audioReplaceMode ? "Mettre à jour mon mémo" : "Ajouter à mon mémo";
     const count = (hasText ? 1 : 0) + (hasMemo ? 1 : 0);
     if (count === 0) return "Indexer";
     if (count > 1) return "Tout indexer";
@@ -494,28 +533,69 @@ export default function OnboardingPage() {
     </svg>
   );
 
-  const IndexedFileRow = ({ f, i, slot }: { f: IndexedFile; i: number; slot: "slot1" | "slot2" }) => (
-    <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[#1a1a1a] px-4 py-3">
-      <div className="flex items-center gap-3 min-w-0">
-        <span className="flex-shrink-0 text-zinc-400">{getFileIcon(f.fileType)}</span>
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-white truncate">{f.name}</p>
-          <p className="text-xs text-zinc-500">Dernière mise à jour : {f.indexedAt}{f.type === "patient" && <span className="ml-2 text-blue-400">🔒 Anonymisé</span>}</p>
+  const IndexedFileRow = ({ f, i, slot }: { f: IndexedFile; i: number; slot: "slot1" | "slot2" }) => {
+    const isEditable = f.fileType === "note" || f.fileType === "audio";
+    const isBeingEdited = slot === "slot1" ? editingSlot1?.fileName === f.fileName : editingSlot2?.fileName === f.fileName;
+    const handleEdit = () => {
+      if (f.fileType === "note") {
+        if (slot === "slot1") { setSlot1Text(f.textContent ?? ""); setEditingSlot1(f); }
+        else { setSlot2Text(f.textContent ?? ""); setEditingSlot2(f); }
+      } else if (f.fileType === "audio") {
+        if (slot === "slot1") setEditingSlot1(f);
+        else setEditingSlot2(f);
+      }
+    };
+    return (
+      <div className={`flex items-center justify-between rounded-xl border px-4 py-3 group transition-all duration-200 ${isBeingEdited ? "border-emerald-500/30 bg-emerald-500/5" : "border-white/10 bg-[#1a1a1a]"}`}>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="flex-shrink-0 text-zinc-400">{getFileIcon(f.fileType)}</span>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white truncate">{f.name}</p>
+            <p className="text-xs text-zinc-500">Dernière mise à jour : {f.indexedAt}{f.type === "patient" && <span className="ml-2 text-blue-400">🔒 Anonymisé</span>}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1 ml-3 flex-shrink-0">
+          {isEditable && !isBeingEdited && (
+            <button type="button" onClick={handleEdit}
+              className="opacity-0 group-hover:opacity-100 px-2 py-1 rounded-lg text-xs transition-all duration-200 cursor-pointer"
+              style={{ color: "#71717a" }}
+              onMouseEnter={e => e.currentTarget.style.color = "#ffffff"}
+              onMouseLeave={e => e.currentTarget.style.color = "#71717a"}>
+              Modifier
+            </button>
+          )}
+          {isBeingEdited && (
+            <button type="button" onClick={() => {
+              if (slot === "slot1") { setEditingSlot1(null); setSlot1Text(""); }
+              else { setEditingSlot2(null); setSlot2Text(""); }
+              setAudioReplaceMode(false);
+            }}
+              className="px-2 py-1 rounded-lg text-xs transition-all duration-200 cursor-pointer"
+              style={{ color: "#10b981" }}>
+              Annuler
+            </button>
+          )}
+          <button type="button"
+            onClick={() => {
+              if (slot === "slot1") {
+                setSlot1IndexedFiles(prev => { const next = prev.filter((_, j) => j !== i); if (next.length === 0) setSlot1Done(false); return next; });
+                if (editingSlot1?.fileName === f.fileName) { setEditingSlot1(null); setSlot1Text(""); }
+              } else {
+                setSlot2IndexedFiles(prev => { const next = prev.filter((_, j) => j !== i); if (next.length === 0) setSlot2Done(false); return next; });
+                if (editingSlot2?.fileName === f.fileName) { setEditingSlot2(null); setSlot2Text(""); }
+              }
+              setAudioReplaceMode(false);
+              void deleteFromSupabase(f.fileName);
+            }}
+            className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer" style={{ color: "#64748b" }}
+            onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+            onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+            <TrashIcon />
+          </button>
         </div>
       </div>
-      <button type="button"
-        onClick={() => {
-          if (slot === "slot1") { setSlot1IndexedFiles(prev => { const next = prev.filter((_, j) => j !== i); if (next.length === 0) setSlot1Done(false); return next; }); }
-          else { setSlot2IndexedFiles(prev => { const next = prev.filter((_, j) => j !== i); if (next.length === 0) setSlot2Done(false); return next; }); }
-          void deleteFromSupabase(f.fileName);
-        }}
-        className="ml-3 flex-shrink-0 p-1.5 rounded-lg transition-all duration-200 cursor-pointer" style={{ color: "#64748b" }}
-        onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-        onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-        <TrashIcon />
-      </button>
-    </div>
-  );
+    );
+  };
 
   const btnStyle = {
     width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -767,7 +847,7 @@ export default function OnboardingPage() {
                         <label className="relative flex flex-col rounded-2xl border-2 border-dashed p-4 text-left cursor-pointer transition-all duration-200 group"
                           style={{ borderColor: slot1TypeHover === "protocole" ? "#10b981" : "rgba(255,255,255,0.15)", background: slot1TypeHover === "protocole" ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)" }}
                           onMouseEnter={() => setSlot1TypeHover("protocole")} onMouseLeave={() => setSlot1TypeHover(null)}>
-                          <input type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a" onChange={e => handleSlotFile(e, "slot1", "protocole")} className="hidden" />
+                          <input type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a" onChange={e => handleSlotFile(e, "slot1", "protocole")} className="hidden" disabled={savingAll1} />
                           <p className="text-2xl mb-2">📋</p>
                           <p className="text-sm font-bold text-white mb-1">Mes protocoles & méthodes</p>
                           <p className="text-xs text-zinc-500 mb-3">Articles, plans alimentaires types, guides nutritionnels</p>
@@ -780,7 +860,7 @@ export default function OnboardingPage() {
                         <label className="relative flex flex-col rounded-2xl border-2 border-dashed p-4 text-left cursor-pointer transition-all duration-200 group"
                           style={{ borderColor: slot1TypeHover === "patient" ? "#60a5fa" : "rgba(255,255,255,0.15)", background: slot1TypeHover === "patient" ? "rgba(96,165,250,0.08)" : "rgba(255,255,255,0.02)" }}
                           onMouseEnter={() => setSlot1TypeHover("patient")} onMouseLeave={() => setSlot1TypeHover(null)}>
-                          <input type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a" onChange={e => handleSlotFile(e, "slot1", "patient")} className="hidden" />
+                          <input type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a" onChange={e => handleSlotFile(e, "slot1", "patient")} className="hidden" disabled={savingAll1} />
                           <p className="text-2xl mb-2">🗂️</p>
                           <p className="text-sm font-bold text-white mb-1">Données patients</p>
                           <p className="text-xs text-zinc-500 mb-3">Bilans, comptes-rendus, analyses sanguines</p>
@@ -807,7 +887,8 @@ export default function OnboardingPage() {
                               <span className="text-xs flex-shrink-0 flex items-center gap-1" style={{ color: f.docType === "patient" ? "#60a5fa" : "#10b981" }}>{f.docType === "patient" ? "🔒 Anonymisé" : "✓ Tel quel"}</span>
                             </div>
                             <button type="button" onClick={() => setSlot1Files(prev => prev.filter((_, j) => j !== i))}
-                              className="ml-3 flex-shrink-0 p-1.5 rounded-lg transition-all duration-200 cursor-pointer" style={{ color: "#64748b" }}
+                              disabled={savingAll1}
+                              className="ml-3 flex-shrink-0 p-1.5 rounded-lg transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ color: "#64748b" }}
                               onMouseEnter={e => e.currentTarget.style.color = "#f87171"} onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
                               <TrashIcon />
                             </button>
@@ -825,13 +906,15 @@ export default function OnboardingPage() {
                       <p className="text-xs text-zinc-500 mb-3">Décrivez votre vision ou des détails non écrits dans vos protocoles.</p>
                       <div className="relative">
                         <textarea value={slot1Text} onChange={e => setSlot1Text(e.target.value)}
-                          placeholder="Ex : Pas d’aliment interdit dans mon approche. J’intègre toujours le contexte émotionnel avant le côté technique. Je privilégie la régularité sur la perfection." rows={4}
-                          className="w-full rounded-2xl border border-white/10 bg-[#1a1a1a] px-4 py-4 pr-14 text-sm text-white outline-none transition-all duration-200 placeholder:text-zinc-600 focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/20 resize-none" />
+                          disabled={savingAll1}
+                          placeholder="Exemple : Pas d’aliment interdit dans mon approche. J’intègre toujours le contexte émotionnel avant le côté technique. Je privilégie la régularité sur la perfection." rows={4}
+                          className="w-full rounded-2xl border border-white/10 bg-[#1a1a1a] px-4 py-4 pr-14 text-sm text-white outline-none transition-all duration-200 placeholder:text-zinc-600 focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/20 resize-none disabled:opacity-50 disabled:cursor-not-allowed" />
                         <div className="absolute bottom-6 right-3 group flex items-center justify-end">
                           <span className="mr-2 text-xs text-zinc-500 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0 whitespace-nowrap pointer-events-none">Mémo vocal</span>
                           <button type="button"
                             onClick={() => isRecording && slot1ActiveRecording ? stopRecording() : void startRecording("slot1")}
-                            className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110 cursor-pointer"
+                            disabled={savingAll1}
+                            className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ background: isRecording && slot1ActiveRecording ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.15)", border: isRecording && slot1ActiveRecording ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.3)" }}>
                             {isRecording && slot1ActiveRecording ? <span className="h-2 w-2 rounded-full bg-red-400 animate-pulse" /> : <span className="text-sm">🎙️</span>}
                           </button>
@@ -840,11 +923,25 @@ export default function OnboardingPage() {
                       {isRecording && slot1ActiveRecording && (
                         <p className="text-xs text-red-400 mt-2 ml-1 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />Enregistrement en cours - {formatTime(recordingTime)}</p>
                       )}
+                      {editingSlot1?.fileType === "audio" && !audioBlob && !isRecording && (
+                        <div className="flex flex-wrap items-center gap-2 mt-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                          <p className="text-sm text-zinc-300 flex items-center gap-2 flex-1 min-w-0">🎙️ <span className="truncate">{editingSlot1.name}</span></p>
+                          <button type="button" onClick={() => { setAudioReplaceMode(false); void startRecording("slot1"); }}
+                            className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-zinc-400 hover:text-white hover:border-white/25 cursor-pointer transition-all whitespace-nowrap">
+                            Ajouter un complément
+                          </button>
+                          <button type="button" onClick={() => { setAudioReplaceMode(true); void startRecording("slot1"); }}
+                            className="text-xs px-3 py-1.5 rounded-lg border border-emerald-500/30 text-emerald-400 hover:border-emerald-500/60 cursor-pointer transition-all whitespace-nowrap">
+                            Reprendre ce mémo
+                          </button>
+                        </div>
+                      )}
                       {audioBlob && slot1ActiveRecording && (
                         <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-white/10 bg-[#1a1a1a]">
                           <p className="text-sm text-emerald-400 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(recordingTime)})</p>
-                          <button type="button" onClick={() => { setAudioBlob(null); setSlot1ActiveRecording(false); }}
-                            className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer" style={{ color: "#64748b" }}
+                          <button type="button" onClick={() => { setAudioBlob(null); setSlot1ActiveRecording(false); setAudioReplaceMode(false); }}
+                            disabled={savingAll1}
+                            className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ color: "#64748b" }}
                             onMouseEnter={e => e.currentTarget.style.color = "#f87171"} onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
                             <TrashIcon />
                           </button>
@@ -888,14 +985,16 @@ export default function OnboardingPage() {
                     <div className="pt-2">
                       <div className="relative">
                         <textarea value={slot2Text} onChange={e => setSlot2Text(e.target.value)}
+                          disabled={savingAll2}
                           placeholder="Partagez vos métaphores favorites, vos mots pour dédramatiser un écart et vos mantras de motivation. C'est ici que votre Jumeau capture votre intuition et ces nuances qui font votre signature unique."
                           rows={5}
-                          className="w-full rounded-2xl border border-white/10 bg-[#1a1a1a] px-4 py-4 pr-14 text-sm text-white outline-none transition-all duration-200 placeholder:text-zinc-600 focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/20 resize-none" />
+                          className="w-full rounded-2xl border border-white/10 bg-[#1a1a1a] px-4 py-4 pr-14 text-sm text-white outline-none transition-all duration-200 placeholder:text-zinc-600 focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/20 resize-none disabled:opacity-50 disabled:cursor-not-allowed" />
                         <div className="absolute bottom-6 right-3 group flex items-center justify-end">
                           <span className="mr-2 text-xs text-zinc-500 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0 whitespace-nowrap pointer-events-none">Mémo vocal</span>
                           <button type="button"
                             onClick={() => isRecording && slot2ActiveRecording ? stopRecording() : void startRecording("slot2")}
-                            className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110 cursor-pointer"
+                            disabled={savingAll2}
+                            className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{ background: isRecording && slot2ActiveRecording ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.15)", border: isRecording && slot2ActiveRecording ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.3)" }}>
                             {isRecording && slot2ActiveRecording ? <span className="h-2 w-2 rounded-full bg-red-400 animate-pulse" /> : <span className="text-sm">🎙️</span>}
                           </button>
@@ -904,11 +1003,25 @@ export default function OnboardingPage() {
                       {isRecording && slot2ActiveRecording && (
                         <p className="text-xs text-red-400 mt-2 ml-1 flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />Enregistrement en cours - {formatTime(recordingTime)}</p>
                       )}
+                      {editingSlot2?.fileType === "audio" && !audioBlob && !isRecording && (
+                        <div className="flex flex-wrap items-center gap-2 mt-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
+                          <p className="text-sm text-zinc-300 flex items-center gap-2 flex-1 min-w-0">🎙️ <span className="truncate">{editingSlot2.name}</span></p>
+                          <button type="button" onClick={() => { setAudioReplaceMode(false); void startRecording("slot2"); }}
+                            className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-zinc-400 hover:text-white hover:border-white/25 cursor-pointer transition-all whitespace-nowrap">
+                            Ajouter un complément
+                          </button>
+                          <button type="button" onClick={() => { setAudioReplaceMode(true); void startRecording("slot2"); }}
+                            className="text-xs px-3 py-1.5 rounded-lg border border-emerald-500/30 text-emerald-400 hover:border-emerald-500/60 cursor-pointer transition-all whitespace-nowrap">
+                            Reprendre ce mémo
+                          </button>
+                        </div>
+                      )}
                       {audioBlob && slot2ActiveRecording && (
                         <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-white/10 bg-[#1a1a1a]">
                           <p className="text-sm text-emerald-400 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(recordingTime)})</p>
-                          <button type="button" onClick={() => { setAudioBlob(null); setSlot2ActiveRecording(false); }}
-                            className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer" style={{ color: "#64748b" }}
+                          <button type="button" onClick={() => { setAudioBlob(null); setSlot2ActiveRecording(false); setAudioReplaceMode(false); }}
+                            disabled={savingAll2}
+                            className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ color: "#64748b" }}
                             onMouseEnter={e => e.currentTarget.style.color = "#f87171"} onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
                             <TrashIcon />
                           </button>
