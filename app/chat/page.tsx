@@ -1032,7 +1032,7 @@ export default function ChatPage() {
           {patientPhoto ? (
             <img src={patientPhoto} alt="avatar" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(52,211,153,0.4)" }} onError={() => setPatientPhoto(null)} />
           ) : (
-            <div style={{ width: 80, height: 80, borderRadius: "50%", background: `radial-gradient(circle at 30% 30%, #34d399, #059669)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 700, color: "black", border: "2px solid rgba(52,211,153,0.4)" }}>{patientInitials}</div>
+            <div style={{ width: 80, height: 80, borderRadius: "50%", background: `radial-gradient(circle at 30% 30%, #10b981, #059669)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 700, color: "black", border: "2px solid rgba(16,185,129,0.4)" }}>{patientInitials}</div>
           )}
           <button onClick={() => patientAvatarRef.current?.click()} disabled={uploadingPhoto}
             style={{ position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: ACCENT, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1243,7 +1243,7 @@ export default function ChatPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <img src="/logo.svg" alt="NutriTwin" style={{ height: 42, width: "auto" }}
                 onError={e => { const t = e.target as HTMLImageElement; t.style.display = "none"; const n = t.nextElementSibling as HTMLElement; if (n) n.style.display = "flex"; }} />
-              <div style={{ width: 32, height: 32, borderRadius: 10, background: "linear-gradient(135deg, #34d399, #059669)", display: "none", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🌿</div>
+              <div style={{ width: 32, height: 32, borderRadius: 10, background: "linear-gradient(135deg, #10b981, #059669)", display: "none", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🌿</div>
               <div>
                 <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.3px" }}>Nutri<span style={{ color: ACCENT }}>Twin</span></p>
                 <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED }}>Votre espace santé</p>
@@ -1383,7 +1383,7 @@ export default function ChatPage() {
               )}
             </div>
             <button onClick={() => setShowProfileModal(true)}
-              style={{ width: 36, height: 36, borderRadius: "50%", background: `radial-gradient(circle at 30% 30%, #34d399, #059669)`, border: "2px solid rgba(52,211,153,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "black", flexShrink: 0, boxShadow: "0 0 10px rgba(16,185,129,0.15)", transition: "box-shadow 0.2s" }}
+              style={{ width: 36, height: 36, borderRadius: "50%", background: `radial-gradient(circle at 30% 30%, #10b981, #059669)`, border: "2px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "black", flexShrink: 0, boxShadow: "0 0 10px rgba(16,185,129,0.15)", transition: "box-shadow 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.boxShadow = "0 0 16px rgba(16,185,129,0.35)"}
               onMouseLeave={e => e.currentTarget.style.boxShadow = "0 0 10px rgba(16,185,129,0.15)"}>
               {patientInitials}

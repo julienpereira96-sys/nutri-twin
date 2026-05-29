@@ -159,7 +159,7 @@ function VerifyOTPForm() {
           </div>
 
           {resendSuccess && (
-            <div className="mb-4 rounded-xl px-4 py-3 text-[13px] border bg-emerald-500/10 border-emerald-500/20 text-emerald-400 flex items-center justify-center gap-2">
+            <div className="mb-4 rounded-xl px-4 py-3 text-[13px] border bg-emerald-500/10 border-emerald-500/20 text-emerald-500 flex items-center justify-center gap-2">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 6L9 17l-5-5"/>
               </svg>
@@ -181,7 +181,7 @@ function VerifyOTPForm() {
                 </svg>
               </div>
               <div className="text-center">
-                <p className="text-[14px] font-semibold text-emerald-400">Email vérifié !</p>
+                <p className="text-[14px] font-semibold text-emerald-500">Email vérifié !</p>
                 <p className="text-[12px] text-zinc-500 mt-0.5">Redirection en cours...</p>
               </div>
             </div>

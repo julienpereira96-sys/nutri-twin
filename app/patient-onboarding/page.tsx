@@ -253,7 +253,7 @@ export default function PatientOnboardingPage() {
   };
 
   const inputStyle: React.CSSProperties = {
-    width: "100%", height: 44, borderRadius: 10,
+    width: "100%", height: 44, borderRadius: 12,
     border: "1.5px solid rgba(255,255,255,0.1)",
     background: "#1a1a1a", color: "white",
     padding: "0 14px", fontSize: 14, outline: "none",
@@ -261,7 +261,7 @@ export default function PatientOnboardingPage() {
   };
 
   const selectStyle: React.CSSProperties = {
-    width: "100%", height: 44, borderRadius: 10,
+    width: "100%", height: 44, borderRadius: 12,
     border: "1.5px solid rgba(255,255,255,0.1)",
     background: "#1a1a1a", color: "white",
     padding: "0 14px", fontSize: 14, outline: "none",
@@ -338,7 +338,7 @@ export default function PatientOnboardingPage() {
                 )}
 
                 <button onClick={() => setEditMode(true)}
-                  style={{ width: "100%", height: 40, borderRadius: 10, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 13, marginBottom: 12 }}>
+                  style={{ width: "100%", height: 40, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 13, marginBottom: 12 }}>
                   ✏️ Modifier mes données
                 </button>
               </>
@@ -414,7 +414,7 @@ export default function PatientOnboardingPage() {
                 ))}
 
                 <button onClick={() => setEditMode(false)}
-                  style={{ width: "100%", height: 40, borderRadius: 10, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", cursor: "pointer", fontSize: 13, marginBottom: 12 }}>
+                  style={{ width: "100%", height: 40, borderRadius: 12, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", cursor: "pointer", fontSize: 13, marginBottom: 12 }}>
                   ✓ Valider mes modifications
                 </button>
               </>
@@ -629,19 +629,19 @@ export default function PatientOnboardingPage() {
                 style={{ ...inputStyle, flex: 1 }}
                 onFocus={e => e.target.style.borderColor = "#10b981"}
                 onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-              <button onClick={addAlimentCustom} style={{ height: 44, padding: "0 16px", borderRadius: 10, background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Ajouter</button>
+              <button onClick={addAlimentCustom} style={{ height: 44, padding: "0 16px", borderRadius: 12, background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>+ Ajouter</button>
             </div>
 
             {/* Récap */}
             <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
               {alimentsAimes.length > 0 && (
-                <div style={{ flex: 1, background: "rgba(16,185,129,0.06)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.15)", padding: "10px 12px" }}>
+                <div style={{ flex: 1, background: "rgba(16,185,129,0.06)", borderRadius: 12, border: "1px solid rgba(16,185,129,0.15)", padding: "10px 12px" }}>
                   <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981" }}>J'aime ❤️</p>
                   <p style={{ margin: 0, fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>{alimentsAimes.join(", ")}</p>
                 </div>
               )}
               {alimentsDetestes.length > 0 && (
-                <div style={{ flex: 1, background: "rgba(239,68,68,0.06)", borderRadius: 10, border: "1px solid rgba(239,68,68,0.15)", padding: "10px 12px" }}>
+                <div style={{ flex: 1, background: "rgba(239,68,68,0.06)", borderRadius: 12, border: "1px solid rgba(239,68,68,0.15)", padding: "10px 12px" }}>
                   <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#f87171" }}>Je n'aime pas ❌</p>
                   <p style={{ margin: 0, fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>{alimentsDetestes.join(", ")}</p>
                 </div>
@@ -649,7 +649,7 @@ export default function PatientOnboardingPage() {
             </div>
 
             {saveError && (
-              <div style={{ marginBottom: 12, padding: "12px 16px", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              <div style={{ marginBottom: 12, padding: "12px 16px", borderRadius: 12, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
                 <p style={{ margin: 0, fontSize: 13, color: "#f87171" }}>{saveError}</p>
               </div>
             )}

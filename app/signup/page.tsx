@@ -335,11 +335,11 @@ try {
                 />
                 <span className="text-xs leading-relaxed text-zinc-400">
                   J'accepte les{" "}
-                  <a href="/cgu" target="_blank" className="text-[#34d399] hover:underline">
+                  <a href="/cgu" target="_blank" className="text-[#10b981] hover:underline">
                     Conditions Générales d'Utilisation
                   </a>
                   {" "}et la{" "}
-                  <a href="/confidentialite" target="_blank" className="text-[#34d399] hover:underline">
+                  <a href="/confidentialite" target="_blank" className="text-[#10b981] hover:underline">
                     Politique de Confidentialité
                   </a>
                   {" "}*
@@ -427,7 +427,7 @@ try {
 
           <p className="mt-4 text-center text-sm text-zinc-400">
             Déjà un compte ?{" "}
-            <Link href="/login" className="font-medium text-[#34d399] hover:underline">
+            <Link href="/login" className="font-medium text-[#10b981] hover:underline">
               Se connecter
             </Link>
           </p>

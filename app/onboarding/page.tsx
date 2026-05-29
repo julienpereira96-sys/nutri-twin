@@ -852,7 +852,7 @@ export default function OnboardingPage() {
                       className="text-sm text-zinc-500 transition-all duration-200 hover:text-white cursor-pointer">← Retour</button>
                   ) : <div />}
                   <button type="button" onClick={goNext} disabled={!canGoNext()}
-                    style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", borderRadius: 10, padding: "10px 28px", fontSize: 13, fontWeight: 600, cursor: canGoNext() ? "pointer" : "not-allowed", opacity: canGoNext() ? 1 : 0.4, transition: "all 0.2s" }}
+                    style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", borderRadius: 12, padding: "10px 28px", fontSize: 13, fontWeight: 600, cursor: canGoNext() ? "pointer" : "not-allowed", opacity: canGoNext() ? 1 : 0.4, transition: "all 0.2s" }}
                     onMouseEnter={e => { if (canGoNext()) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
                     onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
                     Suivant →
@@ -1124,7 +1124,7 @@ export default function OnboardingPage() {
                     )}
                     <div className="pt-3 flex items-center justify-end gap-3">
                       <button type="button" onClick={() => void saveSlot1All()} disabled={savingAll1 || !hasSlot1Pending}
-                        style={{ background: hasSlot1Pending ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", border: hasSlot1Pending ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)", color: hasSlot1Pending ? "#10b981" : "#3f3f46", borderRadius: 10, padding: "10px 22px", fontSize: 13, fontWeight: 600, cursor: (savingAll1 || !hasSlot1Pending) ? "not-allowed" : "pointer", opacity: savingAll1 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
+                        style={{ background: hasSlot1Pending ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", border: hasSlot1Pending ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)", color: hasSlot1Pending ? "#10b981" : "#3f3f46", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 600, cursor: (savingAll1 || !hasSlot1Pending) ? "not-allowed" : "pointer", opacity: savingAll1 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
                         onMouseEnter={e => { if (!savingAll1 && hasSlot1Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
                         onMouseLeave={e => { if (hasSlot1Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
                         {savingAll1 ? <><Spinner />Indexation en cours</> : getSlot1Label()}
@@ -1227,7 +1227,7 @@ export default function OnboardingPage() {
                     )}
                     <div className="pt-3 flex items-center justify-end gap-3">
                       <button type="button" onClick={() => void saveSlot2All()} disabled={savingAll2 || !hasSlot2Pending}
-                        style={{ background: hasSlot2Pending ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", border: hasSlot2Pending ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)", color: hasSlot2Pending ? "#10b981" : "#3f3f46", borderRadius: 10, padding: "10px 22px", fontSize: 13, fontWeight: 600, cursor: (savingAll2 || !hasSlot2Pending) ? "not-allowed" : "pointer", opacity: savingAll2 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
+                        style={{ background: hasSlot2Pending ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", border: hasSlot2Pending ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)", color: hasSlot2Pending ? "#10b981" : "#3f3f46", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 600, cursor: (savingAll2 || !hasSlot2Pending) ? "not-allowed" : "pointer", opacity: savingAll2 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
                         onMouseEnter={e => { if (!savingAll2 && hasSlot2Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
                         onMouseLeave={e => { if (hasSlot2Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
                         {savingAll2 ? <><Spinner />Indexation en cours</> : getSlot2Label()}
