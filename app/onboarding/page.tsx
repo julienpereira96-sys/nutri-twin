@@ -430,10 +430,10 @@ export default function OnboardingPage() {
     if (slot === "slot1") setSlot1Text(""); else setSlot2Text("");
   };
 
-  const saveSlotAudio = async (slot: "slot1" | "slot2", blobToSave?: Blob) => {
+  const saveSlotAudio = async (slot: "slot1" | "slot2", blobToSave?: Blob, offsetSecs?: number) => {
     const blob = blobToSave ?? audioBlob;
     if (!blob) return;
-    const totalSecs = continueFromSecs + recordingTime;
+    const totalSecs = (offsetSecs ?? continueFromSecs) + recordingTime;
     const audioBlobUrl = URL.createObjectURL(blob);
     const file = new File([blob], `memo_${slot}_${Date.now()}.mp3`, { type: "audio/mp3" });
     await uploadToSlot(file, slot, "protocole", { durationSecs: totalSecs, audioBlobUrl });
@@ -454,11 +454,18 @@ export default function OnboardingPage() {
       await saveSlotText("slot1", slot1Text);
     }
     if (audioBlob && slot1ActiveRecording) {
-      if (editingSlot1?.fileType === "audio" && audioReplaceMode && editingSlot1.audioBlobUrl) {
-        const merged = await concatenateAudioBlobs(editingSlot1.audioBlobUrl, audioBlob);
-        await deleteFromSupabase(editingSlot1.fileName);
-        setSlot1IndexedFiles(prev => prev.filter(f => f.fileName !== editingSlot1.fileName));
-        await saveSlotAudio("slot1", merged);
+      const capturedOffset = continueFromSecs;
+      const editing = editingSlot1;
+      if (editing?.fileType === "audio" && audioReplaceMode && editing.audioBlobUrl) {
+        try {
+          const merged = await concatenateAudioBlobs(editing.audioBlobUrl, audioBlob);
+          await saveSlotAudio("slot1", merged, capturedOffset); // upload d'abord
+          await deleteFromSupabase(editing.fileName);           // delete après succès
+          setSlot1IndexedFiles(prev => prev.filter(f => f.fileName !== editing.fileName));
+        } catch {
+          // Concaténation échoue → on sauvegarde juste le nouvel enregistrement
+          await saveSlotAudio("slot1");
+        }
       } else {
         await saveSlotAudio("slot1");
       }
@@ -479,11 +486,17 @@ export default function OnboardingPage() {
       await saveSlotText("slot2", slot2Text);
     }
     if (audioBlob && slot2ActiveRecording) {
-      if (editingSlot2?.fileType === "audio" && audioReplaceMode && editingSlot2.audioBlobUrl) {
-        const merged = await concatenateAudioBlobs(editingSlot2.audioBlobUrl, audioBlob);
-        await deleteFromSupabase(editingSlot2.fileName);
-        setSlot2IndexedFiles(prev => prev.filter(f => f.fileName !== editingSlot2.fileName));
-        await saveSlotAudio("slot2", merged);
+      const capturedOffset = continueFromSecs;
+      const editing = editingSlot2;
+      if (editing?.fileType === "audio" && audioReplaceMode && editing.audioBlobUrl) {
+        try {
+          const merged = await concatenateAudioBlobs(editing.audioBlobUrl, audioBlob);
+          await saveSlotAudio("slot2", merged, capturedOffset); // upload d'abord
+          await deleteFromSupabase(editing.fileName);           // delete après succès
+          setSlot2IndexedFiles(prev => prev.filter(f => f.fileName !== editing.fileName));
+        } catch {
+          await saveSlotAudio("slot2");
+        }
       } else {
         await saveSlotAudio("slot2");
       }
@@ -991,7 +1004,7 @@ export default function OnboardingPage() {
                       )}
                       {audioBlob && slot1ActiveRecording && (
                         <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-white/10 bg-[#1a1a1a]">
-                          <p className="text-sm text-emerald-400 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(recordingTime)})</p>
+                          <p className="text-sm text-emerald-400 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(continueFromSecs + recordingTime)})</p>
                           <button type="button" onClick={() => { setAudioBlob(null); setSlot1ActiveRecording(false); setAudioReplaceMode(false); }}
                             disabled={savingAll1}
                             className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ color: "#64748b" }}
@@ -1013,7 +1026,7 @@ export default function OnboardingPage() {
                         style={{ background: hasSlot1Pending ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", border: hasSlot1Pending ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)", color: hasSlot1Pending ? "#10b981" : "#3f3f46", borderRadius: 10, padding: "10px 22px", fontSize: 13, fontWeight: 600, cursor: (savingAll1 || !hasSlot1Pending) ? "not-allowed" : "pointer", opacity: savingAll1 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
                         onMouseEnter={e => { if (!savingAll1 && hasSlot1Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
                         onMouseLeave={e => { if (hasSlot1Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
-                        {savingAll1 ? <><Spinner />Indexation en cours...</> : getSlot1Label()}
+                        {savingAll1 ? <><Spinner />Indexation en cours</> : getSlot1Label()}
                       </button>
                     </div>
                   </div>
@@ -1077,7 +1090,7 @@ export default function OnboardingPage() {
                       )}
                       {audioBlob && slot2ActiveRecording && (
                         <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-white/10 bg-[#1a1a1a]">
-                          <p className="text-sm text-emerald-400 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(recordingTime)})</p>
+                          <p className="text-sm text-emerald-400 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(continueFromSecs + recordingTime)})</p>
                           <button type="button" onClick={() => { setAudioBlob(null); setSlot2ActiveRecording(false); setAudioReplaceMode(false); }}
                             disabled={savingAll2}
                             className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ color: "#64748b" }}
@@ -1099,7 +1112,7 @@ export default function OnboardingPage() {
                         style={{ background: hasSlot2Pending ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", border: hasSlot2Pending ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)", color: hasSlot2Pending ? "#10b981" : "#3f3f46", borderRadius: 10, padding: "10px 22px", fontSize: 13, fontWeight: 600, cursor: (savingAll2 || !hasSlot2Pending) ? "not-allowed" : "pointer", opacity: savingAll2 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
                         onMouseEnter={e => { if (!savingAll2 && hasSlot2Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
                         onMouseLeave={e => { if (hasSlot2Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
-                        {savingAll2 ? <><Spinner />Indexation en cours...</> : getSlot2Label()}
+                        {savingAll2 ? <><Spinner />Indexation en cours</> : getSlot2Label()}
                       </button>
                     </div>
                   </div>
@@ -1132,15 +1145,15 @@ export default function OnboardingPage() {
                         }, 1500);
                       } : undefined}
                       style={{
-                        background: filled === 2 ? "#10b981" : "transparent",
-                        color: filled === 2 ? "black" : "#64748b",
-                        border: filled === 2 ? "none" : "1px solid rgba(255,255,255,0.1)",
+                        background: filled === 2 ? "linear-gradient(135deg, rgba(16,185,129,0.28), rgba(16,185,129,0.10))" : "transparent",
+                        color: filled === 2 ? "#10b981" : "#64748b",
+                        border: filled === 2 ? "1px solid rgba(16,185,129,0.5)" : "1px solid rgba(255,255,255,0.1)",
                         cursor: filled === 2 ? "pointer" : "not-allowed",
-                        boxShadow: filled === 2 ? "0 0 20px rgba(16,185,129,0.4)" : "none",
+                        boxShadow: filled === 2 ? "0 0 24px rgba(16,185,129,0.2), inset 0 1px 0 rgba(16,185,129,0.15)" : "none",
                         borderRadius: 12, padding: "14px 36px", fontSize: 15, fontWeight: 700, transition: "all 0.2s"
                       }}
-                      onMouseEnter={e => { if (filled === 2) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
-                      onMouseLeave={e => { e.currentTarget.style.boxShadow = filled === 2 ? "0 4px 14px rgba(16,185,129,0.3)" : "none"; e.currentTarget.style.background = filled === 2 ? "#10b981" : "transparent"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
+                      onMouseEnter={e => { if (filled === 2) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.40), rgba(16,185,129,0.16))"; e.currentTarget.style.boxShadow = "0 0 32px rgba(16,185,129,0.35), inset 0 1px 0 rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.7)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
+                      onMouseLeave={e => { e.currentTarget.style.background = filled === 2 ? "linear-gradient(135deg, rgba(16,185,129,0.28), rgba(16,185,129,0.10))" : "transparent"; e.currentTarget.style.boxShadow = filled === 2 ? "0 0 24px rgba(16,185,129,0.2), inset 0 1px 0 rgba(16,185,129,0.15)" : "none"; e.currentTarget.style.borderColor = filled === 2 ? "rgba(16,185,129,0.5)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
                       {activating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Activation</span> : `Activer mon Jumeau ${filled === 2 ? "🌿" : ""}`}
                     </button>
                   </div>
