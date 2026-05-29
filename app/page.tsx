@@ -391,7 +391,7 @@ export default function Home() {
       <header className="fixed top-0 z-50 w-full border-b border-white/[0.04] bg-[#070707]/80 backdrop-blur-2xl">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
       <a href="/" className="flex items-center gap-2">
-      <img src="/logo.svg" alt="NutriTwin" className="h-6 w-auto relative" style={{ filter: "hue-rotate(15deg) saturate(130%) brightness(62%)" }} />
+      <img src="/logo.svg" alt="NutriTwin" className="h-6 w-auto relative" style={{ filter: "hue-rotate(17deg) saturate(165%) brightness(87%)" }} />
       <span className="text-[18px] tracking-tight">Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></span>
         </a>
 
@@ -458,7 +458,7 @@ export default function Home() {
               href="#tarifs"
               onClick={() => setMobileMenuOpen(false)}
               className="mt-3 mb-2 flex h-11 w-full items-center justify-center rounded-xl text-[14px] font-semibold text-black"
-              style={{ backgroundColor: emerald, border: "1px solid rgba(255,255,255,0.2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15)" }}
+              style={{ backgroundColor: emerald, border: "1px solid rgba(255,255,255,0.35)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.12)" }}
             >
               Commencer ici
             </a>
@@ -501,9 +501,9 @@ export default function Home() {
               <a
   href="#tarifs"
   className="inline-flex h-[48px] items-center justify-center gap-2 rounded-xl px-25 text-[14px] font-semibold text-black transition active:scale-95"
-  style={{ backgroundColor: emerald, border: "1px solid rgba(255,255,255,0.2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15)" }}
+  style={{ backgroundColor: emerald, border: "1px solid rgba(255,255,255,0.35)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.12)" }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.15), 0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
+    e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.12), 0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
     e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
   }}
   onMouseLeave={(e) => {
@@ -840,9 +840,9 @@ function FounderSection() {
       }
     }}    
   className="inline-flex h-[48px] sm:h-[52px] items-center justify-center rounded-xl px-8 sm:px-10 text-[14px] sm:text-[15px] font-semibold text-black transition active:scale-95 cursor-pointer"
-  style={{ backgroundColor: amber, border: "1px solid rgba(255,255,255,0.2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15)" }}
+  style={{ backgroundColor: amber, border: "1px solid rgba(255,255,255,0.35)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.12)" }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.15), 0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)";
+    e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.12), 0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)";
     e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
   }}
   onMouseLeave={(e) => {
@@ -923,7 +923,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       }}   
     className="inline-flex h-[50px] w-full items-center justify-center rounded-xl text-[13px] font-semibold transition active:scale-95 mt-2 cursor-pointer"
       style={featured
-    ? { backgroundColor: emerald, color: "black", border: "1px solid rgba(255,255,255,0.2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.15), 0 4px 14px rgba(16,185,129,0.3)" }
+    ? { backgroundColor: emerald, color: "black", border: "1px solid rgba(255,255,255,0.2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.12), 0 4px 14px rgba(16,185,129,0.3)" }
     : { border: "1.5px solid rgba(255,255,255,0.12)", color: "#d1d5db", background: "rgba(255,255,255,0.03)" }
   }
   onMouseEnter={(e) => {
@@ -934,7 +934,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
   }}
   onMouseLeave={(e) => {
     e.currentTarget.style.transform = "translateY(0) scale(1)";
-    e.currentTarget.style.boxShadow = featured ? "inset 0 1px 0 rgba(255,255,255,0.15), 0 4px 14px rgba(16,185,129,0.3)" : "none";
+    e.currentTarget.style.boxShadow = featured ? "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.12), 0 4px 14px rgba(16,185,129,0.3)" : "none";
   }}
 >
 
