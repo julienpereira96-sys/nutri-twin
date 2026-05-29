@@ -418,22 +418,19 @@ export default function OnboardingPage() {
     if (e.target) e.target.value = "";
   };
 
-  const indexSlot1Files = async () => {
+  const indexSlot1Files = async (onProgress?: (current: number) => void, startFrom = 0) => {
     if (slot1Files.length === 0) return;
     const files = [...slot1Files];
-    const total = files.length;
-    let completed = 0;
-    if (total > 1) setIndexProgress1({ current: 0, total });
+    let completed = startFrom;
     const CONCURRENCY = 3;
     for (let i = 0; i < files.length; i += CONCURRENCY) {
       const batch = files.slice(i, i + CONCURRENCY);
       await Promise.all(batch.map(async ({ file, docType }) => {
         await uploadToSlot(file, "slot1", docType);
         completed++;
-        if (total > 1) setIndexProgress1({ current: completed, total });
+        onProgress?.(completed);
       }));
     }
-    setIndexProgress1(null);
     setSlot1Files([]);
   };
 
@@ -460,26 +457,40 @@ export default function OnboardingPage() {
 
   const saveSlot1All = async () => {
     setSavingAll1(true);
-    if (slot1Files.length > 0) await indexSlot1Files();
-    if (slot1Text.trim()) {
+    const hasFiles = slot1Files.length > 0;
+    const hasText = slot1Text.trim().length > 0;
+    const hasAudio = !!(audioBlob && slot1ActiveRecording);
+    const total = slot1Files.length + (hasText ? 1 : 0) + (hasAudio ? 1 : 0);
+    let completed = 0;
+    setIndexProgress1({ current: 0, total });
+
+    if (hasFiles) {
+      await indexSlot1Files((c) => {
+        completed = c;
+        setIndexProgress1({ current: c, total });
+      });
+      completed = slot1Files.length;
+    }
+    if (hasText) {
       if (editingSlot1?.fileType === "note") {
         await deleteFromSupabase(editingSlot1.fileName);
         setSlot1IndexedFiles(prev => prev.filter(f => f.fileName !== editingSlot1.fileName));
         setEditingSlot1(null);
       }
       await saveSlotText("slot1", slot1Text);
+      completed++;
+      setIndexProgress1({ current: completed, total });
     }
-    if (audioBlob && slot1ActiveRecording) {
+    if (hasAudio) {
       const capturedOffset = continueFromSecs;
       const editing = editingSlot1;
       if (editing?.fileType === "audio" && audioReplaceMode && editing.audioBlobUrl) {
         try {
-          const merged = await concatenateAudioBlobs(editing.audioBlobUrl, audioBlob);
-          await saveSlotAudio("slot1", merged, capturedOffset); // upload d'abord
-          await deleteFromSupabase(editing.fileName);           // delete après succès
+          const merged = await concatenateAudioBlobs(editing.audioBlobUrl, audioBlob!);
+          await saveSlotAudio("slot1", merged, capturedOffset);
+          await deleteFromSupabase(editing.fileName);
           setSlot1IndexedFiles(prev => prev.filter(f => f.fileName !== editing.fileName));
         } catch {
-          // Concaténation échoue → on sauvegarde juste le nouvel enregistrement
           await saveSlotAudio("slot1");
         }
       } else {
@@ -487,28 +498,39 @@ export default function OnboardingPage() {
       }
       setEditingSlot1(null);
       setAudioReplaceMode(false);
+      completed++;
+      setIndexProgress1({ current: completed, total });
     }
+    setIndexProgress1(null);
     setSavingAll1(false);
   };
 
   const saveSlot2All = async () => {
     setSavingAll2(true);
-    if (slot2Text.trim()) {
+    const hasText = slot2Text.trim().length > 0;
+    const hasAudio = !!(audioBlob && slot2ActiveRecording);
+    const total = (hasText ? 1 : 0) + (hasAudio ? 1 : 0);
+    let completed = 0;
+    setIndexProgress2({ current: 0, total });
+
+    if (hasText) {
       if (editingSlot2?.fileType === "note") {
         await deleteFromSupabase(editingSlot2.fileName);
         setSlot2IndexedFiles(prev => prev.filter(f => f.fileName !== editingSlot2.fileName));
         setEditingSlot2(null);
       }
       await saveSlotText("slot2", slot2Text);
+      completed++;
+      setIndexProgress2({ current: completed, total });
     }
-    if (audioBlob && slot2ActiveRecording) {
+    if (hasAudio) {
       const capturedOffset = continueFromSecs;
       const editing = editingSlot2;
       if (editing?.fileType === "audio" && audioReplaceMode && editing.audioBlobUrl) {
         try {
-          const merged = await concatenateAudioBlobs(editing.audioBlobUrl, audioBlob);
-          await saveSlotAudio("slot2", merged, capturedOffset); // upload d'abord
-          await deleteFromSupabase(editing.fileName);           // delete après succès
+          const merged = await concatenateAudioBlobs(editing.audioBlobUrl, audioBlob!);
+          await saveSlotAudio("slot2", merged, capturedOffset);
+          await deleteFromSupabase(editing.fileName);
           setSlot2IndexedFiles(prev => prev.filter(f => f.fileName !== editing.fileName));
         } catch {
           await saveSlotAudio("slot2");
@@ -518,7 +540,10 @@ export default function OnboardingPage() {
       }
       setEditingSlot2(null);
       setAudioReplaceMode(false);
+      completed++;
+      setIndexProgress2({ current: completed, total });
     }
+    setIndexProgress2(null);
     setSavingAll2(false);
   };
 
@@ -633,7 +658,7 @@ export default function OnboardingPage() {
           <span className="flex-shrink-0 text-zinc-400">{getFileIcon(f.fileType)}</span>
           <div className="min-w-0">
             <p className="text-sm font-medium text-white truncate">{f.name}</p>
-            <p className="text-xs text-zinc-500">Dernière mise à jour : {f.indexedAt}{f.type === "patient" && <span className="ml-2 text-blue-400">🔒 Anonymisé</span>}</p>
+            <p className="text-xs text-zinc-500">Dernière mise à jour : {f.indexedAt}{f.type === "patient" ? <span className="ml-2 text-blue-400">🔒 Anonymisé</span> : <span className="ml-2 text-emerald-400">Tel quel</span>}</p>
           </div>
         </div>
         <div className="flex items-center gap-1 ml-3 flex-shrink-0">
@@ -1036,10 +1061,11 @@ export default function OnboardingPage() {
                         {slot1IndexedFiles.map((f, i) => <IndexedFileRow key={i} f={f} i={i} slot="slot1" />)}
                       </div>
                     )}
-                    {savingAll1 && indexProgress1 && indexProgress1.total > 1 && (
+                    {savingAll1 && indexProgress1 && (
                       <div className="pt-2 space-y-1">
+                        {editingSlot1 && <p className="text-xs text-amber-400 mb-1">Patientez, cela peut prendre quelques instants...</p>}
                         <div className="flex justify-between items-center">
-                          <span className="text-xs text-zinc-400">{indexProgress1.current} / {indexProgress1.total} documents indexés</span>
+                          <span className="text-xs text-zinc-400">{indexProgress1.current} / {indexProgress1.total} fichier{indexProgress1.total > 1 ? "s" : ""} indexé{indexProgress1.total > 1 ? "s" : ""}</span>
                           <span className="text-xs text-zinc-500">{Math.round((indexProgress1.current / indexProgress1.total) * 100)}%</span>
                         </div>
                         <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
@@ -1048,7 +1074,6 @@ export default function OnboardingPage() {
                       </div>
                     )}
                     <div className="pt-3 flex items-center justify-end gap-3">
-                      {savingAll1 && !indexProgress1 && <p className="text-xs text-amber-400">Patientez, cela peut prendre quelques instants...</p>}
                       <button type="button" onClick={() => void saveSlot1All()} disabled={savingAll1 || !hasSlot1Pending}
                         style={{ background: hasSlot1Pending ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", border: hasSlot1Pending ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)", color: hasSlot1Pending ? "#10b981" : "#3f3f46", borderRadius: 10, padding: "10px 22px", fontSize: 13, fontWeight: 600, cursor: (savingAll1 || !hasSlot1Pending) ? "not-allowed" : "pointer", opacity: savingAll1 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
                         onMouseEnter={e => { if (!savingAll1 && hasSlot1Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
@@ -1133,8 +1158,19 @@ export default function OnboardingPage() {
                         {slot2IndexedFiles.map((f, i) => <IndexedFileRow key={i} f={f} i={i} slot="slot2" />)}
                       </div>
                     )}
+                    {savingAll2 && indexProgress2 && (
+                      <div className="pt-2 space-y-1">
+                        {editingSlot2 && <p className="text-xs text-amber-400 mb-1">Patientez, cela peut prendre quelques instants...</p>}
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-zinc-400">{indexProgress2.current} / {indexProgress2.total} fichier{indexProgress2.total > 1 ? "s" : ""} indexé{indexProgress2.total > 1 ? "s" : ""}</span>
+                          <span className="text-xs text-zinc-500">{Math.round((indexProgress2.current / indexProgress2.total) * 100)}%</span>
+                        </div>
+                        <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${(indexProgress2.current / indexProgress2.total) * 100}%`, background: "rgba(16,185,129,0.5)", borderRadius: 2, transition: "width 0.4s ease" }} />
+                        </div>
+                      </div>
+                    )}
                     <div className="pt-3 flex items-center justify-end gap-3">
-                      {savingAll2 && <p className="text-xs text-amber-400">Patientez, cela peut prendre quelques instants...</p>}
                       <button type="button" onClick={() => void saveSlot2All()} disabled={savingAll2 || !hasSlot2Pending}
                         style={{ background: hasSlot2Pending ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", border: hasSlot2Pending ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)", color: hasSlot2Pending ? "#10b981" : "#3f3f46", borderRadius: 10, padding: "10px 22px", fontSize: 13, fontWeight: 600, cursor: (savingAll2 || !hasSlot2Pending) ? "not-allowed" : "pointer", opacity: savingAll2 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
                         onMouseEnter={e => { if (!savingAll2 && hasSlot2Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
