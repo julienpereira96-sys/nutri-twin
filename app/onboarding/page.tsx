@@ -168,6 +168,8 @@ export default function OnboardingPage() {
   const [navigating, setNavigating] = useState(false);
   const [savingAll1, setSavingAll1] = useState(false);
   const [savingAll2, setSavingAll2] = useState(false);
+  const [indexProgress1, setIndexProgress1] = useState<{ current: number; total: number } | null>(null);
+  const [indexProgress2, setIndexProgress2] = useState<{ current: number; total: number } | null>(null);
 
   const total = questions.length;
   const isUploadStep = step === total;
@@ -418,7 +420,20 @@ export default function OnboardingPage() {
 
   const indexSlot1Files = async () => {
     if (slot1Files.length === 0) return;
-    for (const { file, docType } of slot1Files) await uploadToSlot(file, "slot1", docType);
+    const files = [...slot1Files];
+    const total = files.length;
+    let completed = 0;
+    if (total > 1) setIndexProgress1({ current: 0, total });
+    const CONCURRENCY = 3;
+    for (let i = 0; i < files.length; i += CONCURRENCY) {
+      const batch = files.slice(i, i + CONCURRENCY);
+      await Promise.all(batch.map(async ({ file, docType }) => {
+        await uploadToSlot(file, "slot1", docType);
+        completed++;
+        if (total > 1) setIndexProgress1({ current: completed, total });
+      }));
+    }
+    setIndexProgress1(null);
     setSlot1Files([]);
   };
 
@@ -1021,8 +1036,19 @@ export default function OnboardingPage() {
                         {slot1IndexedFiles.map((f, i) => <IndexedFileRow key={i} f={f} i={i} slot="slot1" />)}
                       </div>
                     )}
+                    {savingAll1 && indexProgress1 && indexProgress1.total > 1 && (
+                      <div className="pt-2 space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-zinc-400">{indexProgress1.current} / {indexProgress1.total} documents indexés</span>
+                          <span className="text-xs text-zinc-500">{Math.round((indexProgress1.current / indexProgress1.total) * 100)}%</span>
+                        </div>
+                        <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${(indexProgress1.current / indexProgress1.total) * 100}%`, background: "rgba(16,185,129,0.5)", borderRadius: 2, transition: "width 0.4s ease" }} />
+                        </div>
+                      </div>
+                    )}
                     <div className="pt-3 flex items-center justify-end gap-3">
-                      {savingAll1 && <p className="text-xs text-amber-400">Patientez, cela peut prendre quelques instants...</p>}
+                      {savingAll1 && !indexProgress1 && <p className="text-xs text-amber-400">Patientez, cela peut prendre quelques instants...</p>}
                       <button type="button" onClick={() => void saveSlot1All()} disabled={savingAll1 || !hasSlot1Pending}
                         style={{ background: hasSlot1Pending ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", border: hasSlot1Pending ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)", color: hasSlot1Pending ? "#10b981" : "#3f3f46", borderRadius: 10, padding: "10px 22px", fontSize: 13, fontWeight: 600, cursor: (savingAll1 || !hasSlot1Pending) ? "not-allowed" : "pointer", opacity: savingAll1 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
                         onMouseEnter={e => { if (!savingAll1 && hasSlot1Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
