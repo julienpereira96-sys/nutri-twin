@@ -51,7 +51,7 @@ const questions: Question[] = [
   { id: "non_suivi", block: "Gestion Humaine & Émotions", label: "Un patient ne suit plus votre protocole. Votre réaction ?", type: "single", options: ["Bienveillance totale, on repart sans jugement", "On cherche ensemble pourquoi ça bloque", "Recadrage ferme mais bienveillant", "On remet en question le protocole ensemble"] },
   { id: "fetes_vacances", block: "Gestion Humaine & Émotions", label: "Votre position sur les fêtes et vacances ?", type: "single", options: ["On planifie à l'avance ensemble", "Liberté totale, on reprend après", "L'équilibre se fait sur le mois", "Je donne des guidelines souples"] },
   { id: "motivation_berne", block: "Gestion Humaine & Émotions", label: "Comment remotivez-vous un patient qui décroche ?", type: "single", options: ["Je rappelle ses objectifs initiaux", "Je valorise chaque petit progrès", "Je propose d'ajuster le protocole", "Je lui laisse de l'espace et j'attends son retour"] },
-  { id: "profil_perfectionniste", block: "Gestion Humaine & Émotions", label: "Face à un patient ultra-perfectionniste qui stresse dès qu'il s'éloigne de 5% de vos objectifs, le jumeau doit :", type: "single", options: ["Pousser au lâcher-prise total et lui rappeler que la rigidité nuit à la perte de poids", "Valoriser sa rigueur mais l'aider à accepter que l'équilibre se fait sur la durée", "Valider son niveau d'exigence et l'aider à recalibrer ses efforts pour qu'il tienne son idéal"] },
+  { id: "profil_perfectionniste", block: "Gestion Humaine & Émotions", label: "Face à un patient ultra-perfectionniste qui stresse dès qu'il s'éloigne de vos objectifs, quelle est votre approche ?", type: "single", options: ["Pousser au lâcher-prise total et lui rappeler que la rigidité nuit aux résultats", "Valoriser sa rigueur mais l'aider à accepter que l'équilibre se fait sur la durée", "Valider son niveau d'exigence et l'aider à recalibrer ses efforts pour qu'il tienne son idéal"] },
 
   // BLOC 4 — SÉCURITÉ & LIMITES
   { id: "perimetre", block: "Sécurité & Limites", label: "Jusqu'où peut aller votre jumeau ?", type: "single", options: ["Autonomie totale sur nutrition et lifestyle", "Prudent sur les pathologies, il me redirige", "Questions simples uniquement, il m'alerte pour tout le reste"] },
@@ -219,6 +219,28 @@ export default function OnboardingPage() {
     useEffect(() => {
       localStorage.setItem("onboarding_autre", autreText);
     }, [autreText]);
+
+    useEffect(() => {
+      if (isUploadStep) return;
+      const q = questions[step];
+      if (!q) return;
+      const saved = answers[q.id];
+      if (saved === undefined || saved === null) {
+        setSelected(q.type === "multiple" ? [] : "");
+        setAutreText("");
+      } else if (q.type === "multiple") {
+        setSelected(Array.isArray(saved) ? saved : []);
+        setAutreText("");
+      } else if (q.type === "single_with_free") {
+        const isOption = q.options?.includes(saved as string);
+        if (isOption) { setSelected(saved as string); setAutreText(""); }
+        else { setSelected(AUTRE_OPTION); setAutreText(saved as string); }
+      } else {
+        setSelected(typeof saved === "string" ? saved : "");
+        setAutreText("");
+      }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [step]);
 
     useEffect(() => {
       const init = async () => {
@@ -857,22 +879,7 @@ export default function OnboardingPage() {
                 </div>
                 <div className="mt-8 flex items-center justify-between">
                   {step > 0 ? (
-                    <button type="button" onClick={() => {
-                      const prevStep = step - 1;
-                      const prevQuestion = questions[prevStep];
-                      const prevAnswer = answers[prevQuestion?.id ?? ""];
-                      if (prevQuestion?.type === "multiple") {
-                        setSelected(Array.isArray(prevAnswer) ? prevAnswer : []);
-                      } else if (prevQuestion?.type === "single_with_free" && prevAnswer) {
-                        const isKnownOption = prevQuestion.options?.includes(prevAnswer as string);
-                        if (isKnownOption) { setSelected(prevAnswer as string); setAutreText(""); }
-                        else { setSelected(AUTRE_OPTION); setAutreText(prevAnswer as string); }
-                      } else {
-                        setSelected(typeof prevAnswer === "string" ? prevAnswer : "");
-                        setAutreText("");
-                      }
-                      setStep(prevStep);
-                    }}
+                    <button type="button" onClick={() => setStep(prev => prev - 1)}
                       className="text-sm text-zinc-500 transition-all duration-200 hover:text-white cursor-pointer">← Retour</button>
                   ) : <div />}
                   <button type="button" onClick={goNext} disabled={!canGoNext()}
