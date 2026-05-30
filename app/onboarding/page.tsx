@@ -29,11 +29,11 @@ type IndexedFile = {
 
 const questions: Question[] = [
   // BLOC 1 — IDENTITÉ & CARACTÈRE
-  { id: "tone_of_voice", block: "Identité & Caractère", label: "Comment doit sonner votre jumeau ?", type: "single_with_free", options: ["Le Médical - factuel, précis, sobre, sans émojis", "Le Coach - énergique, motivant, direct", "Le Complice - chaleureux, empathique, humain", "Le Pédagogue - explique, vulgarise, rassure", "Autre (Précisez...)"] },
+  { id: "tone_of_voice", block: "Identité & Caractère", label: "Comment doit sonner votre jumeau ?", type: "single_with_free", options: ["Le Médical, factuel, précis, sobre, sans émojis", "Le Coach, énergique, motivant, direct", "Le Complice, chaleureux, empathique, humain", "Le Pédagogue, explique, vulgarise, rassure", "Autre (Précisez...)"] },
   { id: "tutoiement", block: "Identité & Caractère", label: "Comment vous adressez-vous à vos patients ?", type: "single", options: ["Vouvoiement strict", "Vouvoiement bienveillant", "Tutoiement naturel", "Je m'adapte selon le patient"] },
-  { id: "technicite", block: "Identité & Caractère", label: "Quel niveau de langage utilisez-vous ?", type: "single", options: ["Très vulgarisé - zéro jargon", "Quelques termes techniques expliqués", "Scientifique et précis", "Je m'adapte selon le patient"] },
-  { id: "longueur_reponses", block: "Identité & Caractère", label: "Votre style de communication ?", type: "single", options: ["Court et direct - l'essentiel en 2-3 phrases", "Détaillé et complet - j'explique tout", "Empathique d'abord - je valide l'émotion avant le conseil technique", "Adapté à la complexité de la question"] },
-  { id: "emojis", block: "Identité & Caractère", label: "Votre jumeau doit-il utiliser des émojis ?", type: "single", options: ["Jamais - je reste professionnel", "Avec modération - un ou deux maximum", "Souvent - ça humanise les échanges"] },
+  { id: "technicite", block: "Identité & Caractère", label: "Quel niveau de langage utilisez-vous ?", type: "single", options: ["Très vulgarisé, zéro jargon", "Quelques termes techniques expliqués", "Scientifique et précis", "Je m'adapte selon le patient"] },
+  { id: "longueur_reponses", block: "Identité & Caractère", label: "Votre style de communication ?", type: "single", options: ["Court et direct, l'essentiel en 2-3 phrases", "Détaillé et complet, j'explique tout", "Empathique d'abord, je valide l'émotion avant le conseil technique", "Adapté à la complexité de la question"] },
+  { id: "emojis", block: "Identité & Caractère", label: "Votre jumeau doit-il utiliser des émojis ?", type: "single", options: ["Jamais, je reste professionnel", "Avec modération, un ou deux maximum", "Souvent, ça humanise les échanges"] },
 
   // BLOC 2 — PHILOSOPHIE NUTRITIONNELLE
   { id: "approche_generale", block: "Philosophie Nutritionnelle", label: "Quelle est votre philosophie principale ?", type: "single_with_free", options: ["Rééquilibrage alimentaire progressif", "Alimentation intuitive et anti-régime strict", "Micronutrition fonctionnelle", "Contrôle des macros (déficit calorique mesuré)", "Autre (Précisez...)"] },
@@ -41,7 +41,7 @@ const questions: Question[] = [
   { id: "position_regimes", block: "Philosophie Nutritionnelle", label: "Votre avis sur les régimes restrictifs ?", type: "single", options: ["Je les déconseille systématiquement", "Je les étudie cas par cas", "Certains sont utiles dans mon protocole", "Je reste neutre et m'adapte"] },
   { id: "position_glucides", block: "Philosophie Nutritionnelle", label: "Votre position sur les féculents et glucides ?", type: "single", options: ["Indispensables à chaque repas", "À moduler selon l'objectif", "Je les limite en général", "Dépend du patient et du moment"] },
   { id: "sujets_clivants", block: "Philosophie Nutritionnelle", label: "Votre position sur le jeûne intermittent, les compléments alimentaires et le petit-déjeuner ?", sublabel: "Trois sujets fréquents, donnez votre position sur chacun en quelques mots", type: "free", placeholder: "Jeûne : uniquement sur indication précise. Compléments : cas par cas selon bilan biologique. Petit-déjeuner : optionnel, je ne l'impose pas..." },
-  { id: "lifestyle_budget", block: "Philosophie Nutritionnelle", label: "Votre approche lifestyle, budget et marqueurs alimentaires ?", type: "single_with_free", options: ["Je prône le moins transformé possible, le bio et le local", "Je m'adapte avant tout au budget du patient", "Végétal / Flexitarien - je limite la viande rouge et les produits laitiers", "Pas de restriction d'ingrédients, tout est question de portions", "Autre (Précisez...)"] },
+  { id: "lifestyle_budget", block: "Philosophie Nutritionnelle", label: "Votre approche lifestyle, budget et marqueurs alimentaires ?", type: "single_with_free", options: ["Je prône le moins transformé possible, le bio et le local", "Je m'adapte avant tout au budget du patient", "Végétal / Flexitarien, je limite la viande rouge et les produits laitiers", "Pas de restriction d'ingrédients, tout est question de portions", "Autre (Précisez...)"] },
   { id: "jamais_dire", block: "Philosophie Nutritionnelle", label: "Y a-t-il des pratiques que vous refusez catégoriquement ?", sublabel: "Exemple : régimes très hypocaloriques, détox, jeûne prolongé...", type: "free", placeholder: "Décrivez ce que votre jumeau ne doit jamais recommander..." },
   { id: "conviction", block: "Philosophie Nutritionnelle", label: "Quelle est votre règle d'or ?", sublabel: "Votre conviction la plus forte en tant que praticien", type: "free", placeholder: "Exemple : Pas d'aliment interdit, le plaisir avant tout, la régularité prime sur la perfection..." },
 
@@ -60,7 +60,7 @@ const questions: Question[] = [
   { id: "ligne_rouge", block: "Sécurité & Limites", label: "Votre ligne rouge absolue ?", sublabel: "Ce que votre jumeau ne doit JAMAIS dire ou faire", type: "free", placeholder: "Exemple : Ne jamais culpabiliser, ne jamais donner de calories précises, ne jamais parler de médicaments..." },
 
   // BLOC 5 — VOTRE APPROCHE EN VOS MOTS
-  { id: "approche_libre", block: "Votre approche en vos mots", label: "Comment vous présenteriez-vous à un nouveau patient en 2-3 phrases ?", sublabel: "Ce texte servira de présentation de base à votre jumeau — soyez concis et authentique", type: "free", placeholder: "Exemple : Je suis nutritionniste spécialisée dans le rééquilibrage progressif. Mon approche est bienveillante, sans interdit, centrée sur le plaisir de manger. J'accompagne chaque patient selon son rythme de vie réel..." },
+  { id: "approche_libre", block: "Votre approche en vos mots", label: "Comment vous présenteriez-vous à un nouveau patient en 2-3 phrases ?", sublabel: "Ce texte servira de présentation de base à votre jumeau, soyez concis et authentique", type: "free", placeholder: "Exemple : Je suis nutritionniste spécialisée dans le rééquilibrage progressif. Mon approche est bienveillante, sans interdit, centrée sur le plaisir de manger. J'accompagne chaque patient selon son rythme de vie réel..." },
 
   // BLOC 6 — MISES EN SITUATION
   { id: "situation1", block: "Mises en situation", label: "Il est 22h. Un patient vous écrit :", sublabel: '"J\'ai craqué sur tout le frigo ce soir, je me déteste, je suis nul(le). Je vais jamais y arriver."', type: "free", placeholder: "Votre réponse exacte..." },
@@ -70,7 +70,7 @@ const questions: Question[] = [
   { id: "situation5", block: "Mises en situation", label: "La question de l'alcool :", sublabel: '"Est-ce que j\'ai le droit de boire mes 3 verres de vin ou mes bières le week-end avec mes amis, ou ça ruine tout ?"', type: "free", placeholder: "Votre arbitrage exact..." },
   { id: "situation6", block: "Mises en situation", label: "La demande de raccourci :", sublabel: '"Vous pensez quoi d\'Ozempic ou des injections pour m\'aider à perdre du poids plus vite ?"', type: "free", placeholder: "Votre posture exacte..." },
   { id: "situation7", block: "Mises en situation", label: "L'objectif irréaliste :", sublabel: '"Je veux perdre 8 kilos en 3 semaines pour mon mariage. On fait comment ?"', type: "free", placeholder: "Votre recadrage bienveillant..." },
-  { id: "situation8", block: "Mises en situation", label: "L'annonce d'une grossesse :", sublabel: '"Je viens de faire un test, je suis enceinte ! Je dois changer quoi tout de suite dans mon assiette ?"', type: "free", placeholder: "Vos félicitations et premières consignes..." },
+  { id: "situation8", block: "Mises en situation", label: "Le manque de temps ou la flemme du soir :", sublabel: '"Je rentre du boulot, je suis crevé(e), j\'ai zéro temps pour cuisiner et aucune motivation. Qu\'est-ce que je peux faire de rapide sans ruiner mon protocole ?"', type: "free", placeholder: "La réponse ou l'astuce rapide du jumeau..." },
   { id: "situation9", block: "Mises en situation", label: "Coup dur inattendu :", sublabel: '"J\'ai appris une très mauvaise nouvelle aujourd\'hui. Je n\'ai plus la force de cuisiner ni de suivre le programme."', type: "free", placeholder: "Votre message de soutien..." },
 ];
 
@@ -825,7 +825,11 @@ export default function OnboardingPage() {
               <section className="rounded-3xl border border-white/10 bg-[#121212] p-6 sm:p-8">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#10b981]">{currentQuestion.block}</p>
                 <h1 className="text-xl font-bold leading-tight sm:text-2xl">{currentQuestion.label}</h1>
-                {currentQuestion.sublabel && <p className="mt-2 text-sm italic text-zinc-400">{currentQuestion.sublabel}</p>}
+                {currentQuestion.sublabel && (
+                  <p className={`mt-2 text-sm text-zinc-400${currentQuestion.sublabel.startsWith('"') ? " italic" : ""}`}>
+                    {currentQuestion.sublabel}
+                  </p>
+                )}
                 <div className="mt-8">
                   {currentQuestion.type === "single" && (
                     <div className="grid gap-3">
