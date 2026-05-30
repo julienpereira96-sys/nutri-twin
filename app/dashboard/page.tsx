@@ -392,6 +392,13 @@ export default function DashboardPage() {
   const [editNotes, setEditNotes] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
+  const [visionText, setVisionText] = useState("");
+  const [signatureText, setSignatureText] = useState("");
+  const [savingVision, setSavingVision] = useState(false);
+  const [savingSignature, setSavingSignature] = useState(false);
+  const [visionSaved, setVisionSaved] = useState(false);
+  const [signatureSaved, setSignatureSaved] = useState(false);
+
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>("month");
   const [reportDateFrom, setReportDateFrom] = useState("");
   const [reportDateTo, setReportDateTo] = useState("");
@@ -735,7 +742,33 @@ export default function DashboardPage() {
   const openJumeauModal = async () => {
     setShowJumeauModal(true); setUploadedFiles([]); setUploadSuccess([]); setUploadErrors([]); setDocumentType(null); setEditingNote(null); setJumeauText("");
     setAudioBlob(null); setEditingAudioDoc(null); setContinueFromSecs(0); setAudioUploading(false); setUploadProgress(null);
-    if (practitionerId) void loadDocuments(practitionerId);
+    setVisionSaved(false); setSignatureSaved(false);
+    if (practitionerId) {
+      void loadDocuments(practitionerId);
+      // Charger vision et signature depuis practitioner_profiles
+      const { data } = await supabase.from("practitioner_profiles").select("vision, signature").eq("user_id", practitionerId).single();
+      if (data) {
+        setVisionText(data.vision ?? "");
+        setSignatureText(data.signature ?? "");
+      }
+    }
+  };
+
+  const saveVisionOrSignature = async (field: "vision" | "signature", value: string) => {
+    if (!practitionerId) return;
+    const setSaving = field === "vision" ? setSavingVision : setSavingSignature;
+    const setSaved = field === "vision" ? setVisionSaved : setSignatureSaved;
+    setSaving(true);
+    try {
+      await fetch("/api/save-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: { [field]: value }, userId: practitionerId }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch { /* silencieux */ }
+    setSaving(false);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1994,14 +2027,19 @@ export default function DashboardPage() {
             </div>
 
             {(() => {
-              const count = documents.length;
-              const score = count === 0 ? 70 : count === 1 ? 85 : 100;
-              const color = count === 0 ? "#f59e0b" : count === 1 ? "#06b6d4" : "#10b981";
-              const msg = count === 0
-                ? "⚠️ Jumeau initialisé - Votre jumeau connaît votre personnalité mais il lui manque encore votre expertise. Partagez votre vision et votre signature pour lui donner votre pleine précision."
-                : count === 1
-                ? "🔹 Jumeau Personnalisé - Une première brique de votre expertise a été intégrée. Ajoutez un second document pour que votre double soit parfaitement opérationnel et certifié."
-                : "✅ Jumeau certifié - Précision maximale atteinte. Votre jumeau possède désormais votre expertise.";
+              const hasVision = visionText.trim().length > 0;
+              const hasSignature = signatureText.trim().length > 0;
+              const hasDocs = documents.length > 0;
+              const filled = (hasVision ? 1 : 0) + (hasSignature ? 1 : 0) + (hasDocs ? 1 : 0);
+              const score = filled === 0 ? 70 : filled === 1 ? 82 : filled === 2 ? 92 : 100;
+              const color = filled === 0 ? "#f59e0b" : filled === 1 ? "#f59e0b" : filled === 2 ? "#06b6d4" : "#10b981";
+              const msg = filled === 3
+                ? "✅ Jumeau certifié — Précision maximale atteinte. Votre jumeau possède votre philosophie, votre voix et votre expertise."
+                : !hasVision
+                ? "⚠️ Ajoutez votre Vision pour ancrer la philosophie de votre jumeau."
+                : !hasSignature
+                ? "🔹 Ajoutez votre Signature pour que votre jumeau capture votre voix unique."
+                : "🔹 Indexez des documents pour enrichir l'expertise métier de votre jumeau.";
               return (
                 <div style={{ background: `${color}10`, borderRadius: 16, border: `2px solid ${color}40`, padding: "16px", marginBottom: 20, transition: "all 0.5s" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -2155,20 +2193,67 @@ export default function DashboardPage() {
               )}
             </div>
 
+            {/* MA VISION */}
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Ma Vision</p>
+              <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>L'ancrage de votre philosophie. Ce texte définit ce en quoi vous croyez profondément et dicte la ligne directrice de votre Jumeau.</p>
+              <textarea
+                value={visionText}
+                onChange={e => setVisionText(e.target.value)}
+                placeholder="Exemple : Je crois que la santé commence dans l'intestin et que l'alimentation doit être un levier de vitalité, jamais une source d'anxiété. Pour moi, aucun aliment n'est à diaboliser..."
+                rows={4}
+                style={{ width: "100%", borderRadius: 14, border: "1px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "12px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", transition: "border-color 0.2s, box-shadow 0.2s" }}
+                onFocus={e => { e.target.style.borderColor = emerald; e.target.style.boxShadow = "0 0 0 3px rgba(16,185,129,0.15)"; }}
+                onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }}
+              />
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+                <button
+                  onClick={() => void saveVisionOrSignature("vision", visionText)}
+                  disabled={savingVision || !visionText.trim()}
+                  style={{ height: 36, borderRadius: 10, padding: "0 18px", fontSize: 13, fontWeight: 600, cursor: savingVision || !visionText.trim() ? "not-allowed" : "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.1)", color: visionSaved ? "#10b981" : emerald, opacity: !visionText.trim() ? 0.4 : 1, transition: "all 0.2s" }}
+                  onMouseEnter={e => { if (!savingVision && visionText.trim()) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
+                  {savingVision ? <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block" }} />Sauvegarde</span> : visionSaved ? "✓ Sauvegardé" : "Mettre à jour ma vision"}
+                </button>
+              </div>
+            </div>
+
+            {/* MA SIGNATURE */}
+            <div style={{ marginBottom: 20 }}>
+              <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Ma Signature</p>
+              <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>Vos métaphores favorites, expressions fétiches pour dédramatiser un écart et mantras de motivation. Là où votre Jumeau capture votre voix unique.</p>
+              <textarea
+                value={signatureText}
+                onChange={e => setSignatureText(e.target.value)}
+                placeholder={'Exemple : Je compare souvent le métabolisme à un feu de camp. Mon expression fétiche : "Un repas ne fait pas le moine, on tourne la page". Mon mantra : "La régularité bat la perfection"...'}
+                rows={4}
+                style={{ width: "100%", borderRadius: 14, border: "1px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "12px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", transition: "border-color 0.2s, box-shadow 0.2s" }}
+                onFocus={e => { e.target.style.borderColor = emerald; e.target.style.boxShadow = "0 0 0 3px rgba(16,185,129,0.15)"; }}
+                onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }}
+              />
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+                <button
+                  onClick={() => void saveVisionOrSignature("signature", signatureText)}
+                  disabled={savingSignature || !signatureText.trim()}
+                  style={{ height: 36, borderRadius: 10, padding: "0 18px", fontSize: 13, fontWeight: 600, cursor: savingSignature || !signatureText.trim() ? "not-allowed" : "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.1)", color: signatureSaved ? "#10b981" : emerald, opacity: !signatureText.trim() ? 0.4 : 1, transition: "all 0.2s" }}
+                  onMouseEnter={e => { if (!savingSignature && signatureText.trim()) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
+                  {savingSignature ? <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block" }} />Sauvegarde</span> : signatureSaved ? "✓ Sauvegardé" : "Mettre à jour ma signature"}
+                </button>
+              </div>
+            </div>
+
             <div style={{ marginBottom: 20 }}>
               {(() => {
-                const isVisionEdit = editingNote?.file_name.startsWith("slot1_vision_");
-                const isSignatureEdit = editingNote?.file_name.startsWith("slot2_signature_");
-                const isEditing = isVisionEdit || isSignatureEdit;
-                const sectionLabel = isVisionEdit ? "MA VISION" : isSignatureEdit ? "MA SIGNATURE" : "AJOUTER UNE INSTRUCTION";
-                const saveLabel = isVisionEdit ? "Mettre à jour ma vision" : isSignatureEdit ? "Mettre à jour ma signature" : "Indexer cette note";
-                const newFileName = isVisionEdit ? `slot1_vision_${Date.now()}.txt` : isSignatureEdit ? `slot2_signature_${Date.now()}.txt` : `note_praticien_${Date.now()}.txt`;
+                const sectionLabel = "AJOUTER UNE INSTRUCTION";
+                const saveLabel = "Indexer cette note";
+                const newFileName = `note_praticien_${Date.now()}.txt`;
 
                 return (
                   <>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                       <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>{sectionLabel}</p>
-                      {isEditing && (
+                      {editingNote && (
                         <button onClick={() => { setEditingNote(null); setJumeauText(""); }}
                           style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#64748b", padding: 0, transition: "color 0.2s" }}
                           onMouseEnter={e => e.currentTarget.style.color = "white"}
@@ -2178,7 +2263,7 @@ export default function DashboardPage() {
                       )}
                     </div>
 
-                    {!isEditing && editingAudioDoc && !audioBlob && (
+                    {!editingNote && editingAudioDoc && !audioBlob && (
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)" }}>
                         <span style={{ fontSize: 13 }}>🎙️</span>
                         <span style={{ fontSize: 12, color: "#94a3b8", flex: 1 }}>Modification d'un mémo — enregistrez pour le remplacer.</span>
@@ -2196,12 +2281,12 @@ export default function DashboardPage() {
                         id="jumeau-textarea"
                         value={jumeauText}
                         onChange={e => setJumeauText(e.target.value)}
-                        placeholder={isVisionEdit ? "Exemple : Pas d'aliment interdit dans mon approche. J'intègre toujours le contexte émotionnel avant le côté technique..." : isSignatureEdit ? "Partagez vos métaphores favorites, vos mots pour dédramatiser un écart et vos mantras de motivation..." : "Ajoutez une nuance, une nouvelle méthode ou une instruction à votre jumeau..."}
+                        placeholder="Ajoutez une nuance, une nouvelle méthode ou une instruction à votre jumeau..."
                         rows={4}
-                        style={{ width: "100%", borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: isEditing ? "14px 14px" : "14px 48px 14px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", transition: "border-color 0.2s, box-shadow 0.2s" }}
+                        style={{ width: "100%", borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "14px 48px 14px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", transition: "border-color 0.2s, box-shadow 0.2s" }}
                         onFocus={e => { e.target.style.borderColor = emerald; e.target.style.boxShadow = "0 0 0 3px rgba(16,185,129,0.15)"; }}
                         onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }} />
-                      {!isEditing && (
+                      {!editingNote && (
                         <div style={{ position: "absolute", bottom: 12, right: 12, display: "flex", alignItems: "center", gap: 6 }}>
                           {isRecording && <span style={{ fontSize: 11, color: "#f87171" }}>{formatTime(recordingTime)}</span>}
                           {!audioBlob && (
@@ -2214,7 +2299,7 @@ export default function DashboardPage() {
                       )}
                     </div>
 
-                    {!isEditing && audioBlob && (
+                    {!editingNote && audioBlob && (
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)" }}>
                         <span style={{ fontSize: 13, color: emerald, flex: 1 }}>
                           ✅ {editingAudioDoc ? "Nouveau mémo prêt" : "Mémo enregistré"} ({formatTime(recordingTime)})
@@ -2237,7 +2322,7 @@ export default function DashboardPage() {
                         </button>
                       </div>
                     )}
-                    {!isEditing && uploadErrors.length > 0 && !audioBlob && (
+                    {!editingNote && uploadErrors.length > 0 && !audioBlob && (
                       <div style={{ marginTop: 8 }}>
                         {uploadErrors.map((e, i) => (
                           <p key={i} style={{ margin: "0 0 4px", fontSize: 12, color: "#f87171", display: "flex", alignItems: "center", gap: 6 }}>
@@ -2252,7 +2337,7 @@ export default function DashboardPage() {
                         setJumeauTextUploading(true);
                         try {
                           // En mode édition : supprimer l'ancien document d'abord
-                          if (isEditing && editingNote) {
+                          if (editingNote) {
                             await supabase.from("documents").delete().eq("practitioner_id", practitionerId ?? "").eq("file_name", editingNote.file_name);
                           }
                           const blob = new Blob([jumeauText], { type: "text/plain" });

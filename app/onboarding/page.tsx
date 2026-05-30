@@ -692,8 +692,8 @@ export default function OnboardingPage() {
           )}
           {isBeingEdited && (
             <button type="button" onClick={() => {
-              if (slot === "slot1") { setEditingSlot1(null); setSlot1Text(""); }
-              else { setEditingSlot2(null); setSlot2Text(""); }
+              if (slot === "slot1") setEditingSlot1(null);
+              else setEditingSlot2(null);
               setAudioReplaceMode(false);
             }}
               className="px-2 py-1 rounded-lg text-xs transition-all duration-200 cursor-pointer"
@@ -705,10 +705,10 @@ export default function OnboardingPage() {
             onClick={() => {
               if (slot === "slot1") {
                 setSlot1IndexedFiles(prev => { const next = prev.filter((_, j) => j !== i); if (next.length === 0) setSlot1Done(false); return next; });
-                if (editingSlot1?.fileName === f.fileName) { setEditingSlot1(null); setSlot1Text(""); }
+                if (editingSlot1?.fileName === f.fileName) setEditingSlot1(null);
               } else {
                 setSlot2IndexedFiles(prev => { const next = prev.filter((_, j) => j !== i); if (next.length === 0) setSlot2Done(false); return next; });
-                if (editingSlot2?.fileName === f.fileName) { setEditingSlot2(null); setSlot2Text(""); }
+                if (editingSlot2?.fileName === f.fileName) setEditingSlot2(null);
               }
               setAudioReplaceMode(false);
               void deleteFromSupabase(f.fileName);
