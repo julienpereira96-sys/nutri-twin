@@ -42,13 +42,39 @@ export async function POST(request: Request) {
   if (user.id !== userId) return forbidden();
   
   // Validation server-side des answers
-  const ALLOWED_KEYS = ["tone_of_voice","tutoiement","technicite","longueur_reponses","emojis","approche_generale","pathologies","position_regimes","position_glucides","sujets_clivants","lifestyle_budget","jamais_dire","conviction","gestion_ecarts","emotions","non_suivi","fetes_vacances","motivation_berne","profil_perfectionniste","perimetre","questions_medicales","urgence_detresse","ligne_rouge","approche_libre","situation1","situation2","situation3","situation4","situation5","situation6","situation7","situation8","situation9"];
-  
+  const ALLOWED_KEYS = [
+    // Bloc 1 — Identité & Caractère
+    "tone_of_voice","tutoiement","technicite","longueur_reponses","emojis",
+    // Bloc 2 — Philosophie Nutritionnelle
+    "approche_generale","pathologies","position_regimes","position_glucides",
+    "position_jeune","position_complements","position_petit_dejeuner",
+    "lifestyle_budget","jamais_dire","conviction",
+    // Bloc 3 — Gestion Humaine & Émotions
+    "boussole_ecarts","alimentation_emotionnelle","non_suivi","fetes_vacances",
+    "levier_motivation","profil_perfectionniste","adaptation_profil",
+    // Bloc 4 — Sécurité & Limites
+    "perimetre","questions_medicales","urgence_detresse","ligne_rouge",
+    // Ma Vision & Ma Signature (injection directe, pas RAG)
+    "vision","signature",
+    // Mises en situation
+    "situation_craquage","situation_stagnation","situation_tiktok","situation_abandon",
+    "situation_prediabete","situation_alcool","situation_marketing","situation_drastique",
+    "situation_flemme","situation_coup_dur",
+    // Anciens champs (rétrocompat pour praticiens existants)
+    "sujets_clivants","gestion_ecarts","emotions","motivation_berne","approche_libre",
+    "situation1","situation2","situation3","situation4","situation5",
+    "situation6","situation7","situation8","situation9",
+  ];
+
+  // Vision et Signature peuvent être des textes longs
+  const LONG_TEXT_KEYS = new Set(["vision","signature","ligne_rouge","jamais_dire","conviction"]);
+
   const sanitizedAnswers: Record<string, string> = {};
   for (const [key, value] of Object.entries(answers)) {
     if (!ALLOWED_KEYS.includes(key)) continue;
     if (typeof value !== "string") continue;
-    if (value.length > 2000) continue;
+    const maxLen = LONG_TEXT_KEYS.has(key) ? 5000 : 2000;
+    if (value.length > maxLen) continue;
     sanitizedAnswers[key] = value.trim();
   }
   

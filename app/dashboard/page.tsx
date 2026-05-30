@@ -203,7 +203,7 @@ function LeverAlerteSimple({ alert, patientId, murmureSuggere, onResolved }: { a
   if (!open) return (
     <button onClick={() => setOpen(true)}
       style={{ height: 28, borderRadius: 8, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.08)", color: amber, transition: "all 0.2s" }}>
-      Lever l'alerte →
+      Lever l'alerte
     </button>
   );
 
@@ -216,7 +216,7 @@ function LeverAlerteSimple({ alert, patientId, murmureSuggere, onResolved }: { a
         <button onClick={() => setOpen(false)} style={{ flex: 1, height: 28, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 11, cursor: "pointer" }}>Annuler</button>
         <button onClick={resolve} disabled={loading}
           style={{ flex: 2, height: 28, borderRadius: 8, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", color: emerald, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-          {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Chargement</span> : "Lever et activer le murmure →"}
+          {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Chargement</span> : "Lever et activer le murmure"}
         </button>
       </div>
     </div>
@@ -1073,7 +1073,7 @@ export default function DashboardPage() {
                     onMouseEnter={e => { if (!discretMode) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = discretMode ? "rgba(245,158,11,0.08)" : "transparent"; }}>
                     <div style={{ width: 30, height: 30, borderRadius: 8, background: discretMode ? "rgba(245,158,11,0.15)" : "rgba(255,255,255,0.06)", border: `1px solid ${discretMode ? "rgba(245,158,11,0.3)" : "rgba(255,255,255,0.08)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke={discretMode ? amber : "#94a3b8"} strokeWidth="1.8"/><path d="M8 11V7a4 4 0 0 1 8 0v4" stroke={discretMode ? amber : "#94a3b8"} strokeWidth="1.8" strokeLinecap="round"/></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><ellipse cx="12" cy="12" rx="10" ry="6" stroke={discretMode ? amber : "#94a3b8"} strokeWidth="1.8"/><circle cx="12" cy="12" r="2.5" stroke={discretMode ? amber : "#94a3b8"} strokeWidth="1.8"/>{discretMode && <line x1="3" y1="3" x2="21" y2="21" stroke={amber} strokeWidth="1.8" strokeLinecap="round"/>}</svg>
                     </div>
                     <div style={{ textAlign: "left", flex: 1 }}>
                       <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: discretMode ? amber : "white" }}>Mode discret</p>
@@ -1896,7 +1896,7 @@ export default function DashboardPage() {
                   style={{ width: "100%", height: 40, borderRadius: 10, background: savingSettings || !newPin || newPin.length < 4 ? "rgba(255,255,255,0.04)" : "rgba(245,158,11,0.08)", border: `1px solid ${savingSettings || !newPin || newPin.length < 4 ? "rgba(255,255,255,0.06)" : "rgba(245,158,11,0.2)"}`, color: savingSettings || !newPin || newPin.length < 4 ? "#64748b" : amber, fontSize: 13, fontWeight: 500, cursor: savingSettings || !newPin || newPin.length < 4 ? "not-allowed" : "pointer", transition: "all 0.2s", marginBottom: savedPin ? 8 : 0 }}
                   onMouseEnter={e => { if (!savingSettings && newPin && newPin.length >= 4) e.currentTarget.style.background = "rgba(245,158,11,0.15)"; }}
                   onMouseLeave={e => { if (!savingSettings && newPin && newPin.length >= 4) e.currentTarget.style.background = "rgba(245,158,11,0.08)"; }}>
-                  {settingsSaved ? "✅ PIN sauvegardé" : savingSettings ? "Sauvegarde..." : "Sauvegarder le PIN →"}
+                  {settingsSaved ? "✅ PIN sauvegardé" : savingSettings ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500/20 border-t-amber-400" />Sauvegarde</span> : "Sauvegarder le PIN"}
                 </button>
                 {savedPin && <button onClick={() => setShowDeletePinModal(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#f87171", textDecoration: "underline", padding: 0 }}>Supprimer le PIN</button>}
               </div>
@@ -2024,7 +2024,7 @@ export default function DashboardPage() {
                     style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#64748b", padding: "2px 6px", borderRadius: 6, transition: "color 0.2s" }}
                     onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
                     onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                    {docsExpanded ? "Masquer ▴" : "Afficher ▾"}
+                    {docsExpanded ? "▴" : "▾"}
                   </button>
                 )}
               </div>
@@ -2085,7 +2085,7 @@ export default function DashboardPage() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>Ajouter des documents</p>
+              <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>Ajouter des documents</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
                 {[
                   { type: "protocole" as const, icon: "📋", label: "Protocoles & méthodes", desc: "Articles, plans alimentaires", note: "✓ Indexé tel quel", noteColor: emerald },
@@ -2148,26 +2148,26 @@ export default function DashboardPage() {
                     style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 12px", borderRadius: 12, background: uploading || !documentType ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${uploading || !documentType ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: uploading || !documentType ? "#64748b" : emerald, fontSize: 14, fontWeight: 600, cursor: uploading || !documentType ? "not-allowed" : "pointer", transition: "all 0.2s" }}
                     onMouseEnter={e => { if (!uploading && documentType) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
                     onMouseLeave={e => { e.currentTarget.style.background = uploading || !documentType ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = uploading || !documentType ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"; }}>
-                    {uploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>{uploadProgress ? `Indexation ${uploadProgress.current}/${uploadProgress.total}...` : "Indexation en cours..."}</> : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""} →`}
+                    {uploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>{uploadProgress ? `Indexation ${uploadProgress.current}/${uploadProgress.total}` : "Indexation en cours"}</> : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""}`}
                   </button>
                   {uploading && <p style={{ fontSize: 12, color: "#f59e0b", textAlign: "center", marginTop: 6 }}>Patientez, l'indexation peut prendre quelques instants.</p>}
                 </div>
               )}
             </div>
 
-            <div style={{ marginBottom: 12 }}>
+            <div style={{ marginBottom: 20 }}>
               {(() => {
                 const isVisionEdit = editingNote?.file_name.startsWith("slot1_vision_");
                 const isSignatureEdit = editingNote?.file_name.startsWith("slot2_signature_");
                 const isEditing = isVisionEdit || isSignatureEdit;
                 const sectionLabel = isVisionEdit ? "MA VISION" : isSignatureEdit ? "MA SIGNATURE" : "AJOUTER UNE INSTRUCTION";
-                const saveLabel = isVisionEdit ? "Mettre à jour ma vision →" : isSignatureEdit ? "Mettre à jour ma signature →" : "Indexer cette note →";
+                const saveLabel = isVisionEdit ? "Mettre à jour ma vision" : isSignatureEdit ? "Mettre à jour ma signature" : "Indexer cette note";
                 const newFileName = isVisionEdit ? `slot1_vision_${Date.now()}.txt` : isSignatureEdit ? `slot2_signature_${Date.now()}.txt` : `note_praticien_${Date.now()}.txt`;
 
                 return (
                   <>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: isEditing ? emerald : "#64748b" }}>{sectionLabel}</p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>{sectionLabel}</p>
                       {isEditing && (
                         <button onClick={() => { setEditingNote(null); setJumeauText(""); }}
                           style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#64748b", padding: 0, transition: "color 0.2s" }}
@@ -2225,7 +2225,7 @@ export default function DashboardPage() {
                           style={{ borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, background: audioUploading ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${audioUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: audioUploading ? "#64748b" : emerald, cursor: audioUploading ? "not-allowed" : "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}
                           onMouseEnter={e => { if (!audioUploading) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
                           onMouseLeave={e => { e.currentTarget.style.background = audioUploading ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = audioUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"; }}>
-                          {audioUploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation...</> : "Indexer ce mémo →"}
+                          {audioUploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation...</> : "Indexer ce mémo"}
                         </button>
                         <button onClick={() => setAudioBlob(null)}
                           style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4 }}
@@ -2271,10 +2271,10 @@ export default function DashboardPage() {
                         } catch { /* silencieux */ }
                         setJumeauTextUploading(false);
                       }} disabled={jumeauTextUploading}
-                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 12px", borderRadius: 12, background: jumeauTextUploading ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${jumeauTextUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: jumeauTextUploading ? "#64748b" : emerald, fontSize: 13, fontWeight: 600, cursor: jumeauTextUploading ? "not-allowed" : "pointer", transition: "all 0.2s", marginTop: 8 }}
+                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 12px", borderRadius: 12, background: jumeauTextUploading ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${jumeauTextUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: jumeauTextUploading ? "#64748b" : emerald, fontSize: 13, fontWeight: 600, cursor: jumeauTextUploading ? "not-allowed" : "pointer", transition: "all 0.2s", marginTop: 14 }}
                         onMouseEnter={e => { if (!jumeauTextUploading) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
                         onMouseLeave={e => { e.currentTarget.style.background = jumeauTextUploading ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = jumeauTextUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"; }}>
-                        {jumeauTextUploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation en cours...</> : saveLabel}
+                        {jumeauTextUploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation en cours</> : saveLabel}
                       </button>
                     )}
                     {jumeauTextUploading && <p style={{ fontSize: 12, color: "#f59e0b", textAlign: "center", marginTop: 6 }}>Patientez, l'indexation peut prendre quelques instants.</p>}
@@ -2462,13 +2462,13 @@ export default function DashboardPage() {
             {reportError && (
               <div style={{ background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", borderRadius: 12, padding: "12px 16px", marginBottom: 12, fontSize: 13, color: "#f87171", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span>{reportError}</span>
-                <button onClick={() => void generateReport()} style={{ background: "rgba(244,63,94,0.12)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 8, padding: "6px 14px", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Réessayer →</button>
+                <button onClick={() => void generateReport()} style={{ background: "rgba(244,63,94,0.12)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 8, padding: "6px 14px", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Réessayer</button>
               </div>
             )}
             {!reportContent && (
               <button onClick={() => void generateReport()} disabled={reportLoading || (reportPeriod === "custom" && (!reportDateFrom || !reportDateTo))}
                 style={{ width: "100%", height: 48, borderRadius: 12, background: reportLoading ? "#1a1a1a" : emerald, border: "none", color: reportLoading ? "#4a4a4a" : "black", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}>
-                {reportLoading ? "Génération en cours... 🤖" : "Générer le rapport IA"}
+                {reportLoading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Génération en cours</span> : "Générer le rapport IA"}
               </button>
             )}
             {reportContent && (
@@ -2549,7 +2549,7 @@ export default function DashboardPage() {
                         {inviteError && <p style={{ margin: "0 0 12px", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
                         <button onClick={() => void resendFromModal()} disabled={inviteResentLoading}
                           style={{ width: "100%", height: 48, borderRadius: 12, background: inviteResentLoading ? "rgba(255,255,255,0.05)" : "rgba(16,185,129,0.12)", border: `1px solid ${inviteResentLoading ? "rgba(255,255,255,0.08)" : "rgba(16,185,129,0.3)"}`, color: inviteResentLoading ? "#64748b" : emerald, cursor: inviteResentLoading ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, marginBottom: 10, transition: "all 0.2s" }}>
-                          {inviteResentLoading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Envoi en cours</span> : "Renvoyer le lien d'invitation →"}
+                          {inviteResentLoading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Envoi en cours</span> : "Renvoyer le lien d'invitation"}
                         </button>
                       </>
                     )}
@@ -2807,7 +2807,7 @@ export default function DashboardPage() {
                 style={{ width: "100%", height: 44, borderRadius: 12, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 16, transition: "all 0.2s" }}
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>
-                Générer les questions →
+                Générer les questions
               </button>
             )}
             {bilanLoading ? (
