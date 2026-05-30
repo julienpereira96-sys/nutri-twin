@@ -160,8 +160,14 @@ export default function OnboardingPage() {
   const [slot1IndexedFiles, setSlot1IndexedFiles] = useState<IndexedFile[]>([]);
   const [slot2IndexedFiles, setSlot2IndexedFiles] = useState<IndexedFile[]>([]);
   const [slot1TypeHover, setSlot1TypeHover] = useState<"protocole" | "patient" | null>(null);
-  const [slot1Text, setSlot1Text] = useState("");
-  const [slot2Text, setSlot2Text] = useState("");
+  const [slot1Text, setSlot1Text] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("onboarding_slot1text") ?? "";
+  });
+  const [slot2Text, setSlot2Text] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("onboarding_slot2text") ?? "";
+  });
   const [uploadingSlot1, setUploadingSlot1] = useState(false);
   const [uploadingSlot2, setUploadingSlot2] = useState(false);
   const [slot1Files, setSlot1Files] = useState<{ file: File; docType: "protocole" | "patient" }[]>([]);
@@ -219,6 +225,14 @@ export default function OnboardingPage() {
     useEffect(() => {
       localStorage.setItem("onboarding_autre", autreText);
     }, [autreText]);
+
+    useEffect(() => {
+      localStorage.setItem("onboarding_slot1text", slot1Text);
+    }, [slot1Text]);
+
+    useEffect(() => {
+      localStorage.setItem("onboarding_slot2text", slot2Text);
+    }, [slot2Text]);
 
     useEffect(() => {
       if (isUploadStep) return;
@@ -436,8 +450,8 @@ export default function OnboardingPage() {
       if (res.ok && data.success) {
         const fileType = isNote ? "note" : isAudio ? "audio" : getFileType(file.name);
         const indexedFile: IndexedFile = { name: displayName, fileName: file.name, type: docType, indexedAt: formatDate(), fileType, textContent: extraMeta?.textContent, durationSecs: extraMeta?.durationSecs, audioBlobUrl: extraMeta?.audioBlobUrl };
-        if (slot === "slot1") { setSlot1IndexedFiles(prev => [...prev, indexedFile]); setSlot1Done(true); }
-        else { setSlot2IndexedFiles(prev => [...prev, indexedFile]); setSlot2Done(true); }
+        if (slot === "slot1") { setSlot1IndexedFiles(prev => [...prev, indexedFile]); setSlot1Done(true); localStorage.removeItem("onboarding_slot1text"); }
+        else { setSlot2IndexedFiles(prev => [...prev, indexedFile]); setSlot2Done(true); localStorage.removeItem("onboarding_slot2text"); }
       } else {
         const msg = `${displayName} : ${data.error ?? "Erreur"}`;
         const setErr = slot === "slot1" ? setSlot1Errors : setSlot2Errors;

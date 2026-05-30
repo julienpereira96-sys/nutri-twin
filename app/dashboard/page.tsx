@@ -360,6 +360,11 @@ export default function DashboardPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [continueFromSecs, setContinueFromSecs] = useState(0);
+  const [editingAudioDoc, setEditingAudioDoc] = useState<Document | null>(null);
+  const [docsExpanded, setDocsExpanded] = useState(true);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
+  const [audioUploading, setAudioUploading] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const fidelityScore = documents.length === 0 ? 70 : documents.length === 1 ? 85 : documents.length === 2 ? 95 : 100;
@@ -677,6 +682,7 @@ export default function DashboardPage() {
 
   const openJumeauModal = async () => {
     setShowJumeauModal(true); setUploadedFiles([]); setUploadSuccess([]); setUploadErrors([]); setDocumentType(null); setEditingNote(null); setJumeauText("");
+    setAudioBlob(null); setEditingAudioDoc(null); setContinueFromSecs(0); setAudioUploading(false); setUploadProgress(null);
     if (practitionerId) void loadDocuments(practitionerId);
   };
 
@@ -700,15 +706,45 @@ export default function DashboardPage() {
   };
 
   const stopRecording = () => { mediaRecorderRef.current?.stop(); setIsRecording(false); if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current); };
-  const uploadAudioMemo = () => { if (!audioBlob) return; const file = new File([audioBlob], `memo_vocal_${Date.now()}.mp3`, { type: "audio/mp3" }); setUploadedFiles((prev) => [...prev, file]); setAudioBlob(null); };
+
+  const uploadAudioDirect = async (blob: Blob, existingDoc?: Document | null) => {
+    let pid = practitionerId;
+    if (!pid) { const { data: { user } } = await supabase.auth.getUser(); pid = user?.id ?? null; }
+    if (!pid) return;
+    setAudioUploading(true); setUploadErrors([]);
+    try {
+      // Supprimer l'ancien document si on est en mode remplacement
+      if (existingDoc) {
+        await supabase.from("documents").delete().eq("practitioner_id", pid).eq("file_name", existingDoc.file_name);
+      }
+      const fileName = existingDoc ? existingDoc.file_name : `memo_vocal_${Date.now()}.mp3`;
+      const file = new File([blob], fileName, { type: "audio/mp3" });
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("practitionerId", pid);
+      formData.append("documentType", "protocole");
+      const res = await fetch("/api/upload-document", { method: "POST", body: formData });
+      const data = await res.json() as { success?: boolean; error?: string };
+      if (res.ok && data.success) {
+        setAudioBlob(null); setEditingAudioDoc(null); setContinueFromSecs(0);
+        setHasDocuments(true);
+        await loadDocuments(pid);
+      } else {
+        setUploadErrors([data.error ?? "Erreur lors de l'indexation du mémo"]);
+      }
+    } catch { setUploadErrors(["Erreur réseau lors de l'upload audio"]); }
+    setAudioUploading(false);
+  };
 
   const uploadFiles = async () => {
     if (uploadedFiles.length === 0 || !documentType) return;
     let pid = practitionerId;
     if (!pid) { const { data: { user } } = await supabase.auth.getUser(); pid = user?.id ?? null; }
     if (!pid) return;
-    setUploading(true); setUploadErrors([]); setUploadSuccess([]);
-    for (const file of uploadedFiles) {
+    setUploading(true); setUploadErrors([]); setUploadSuccess([]); setUploadProgress({ current: 0, total: uploadedFiles.length });
+    for (let idx = 0; idx < uploadedFiles.length; idx++) {
+      const file = uploadedFiles[idx];
+      setUploadProgress({ current: idx + 1, total: uploadedFiles.length });
       const formData = new FormData(); formData.append("file", file); formData.append("practitionerId", pid); formData.append("documentType", documentType);
       try {
         const res = await fetch("/api/upload-document", { method: "POST", body: formData });
@@ -717,7 +753,10 @@ export default function DashboardPage() {
         else setUploadErrors((prev) => [...prev, `${file.name} : ${data.error ?? "Erreur"}`]);
       } catch { setUploadErrors((prev) => [...prev, `${file.name} : Erreur réseau`]); }
     }
-    setUploading(false); setUploadedFiles([]); setDocumentType(null); setHasDocuments(true);
+    setUploading(false); setUploadProgress(null);
+    if (uploadErrors.length === 0) { setUploadedFiles([]); setDocumentType(null); }
+    else { setUploadedFiles(prev => prev.filter(f => !uploadSuccess.includes(f.name))); }
+    setHasDocuments(true);
     await loadDocuments(pid);
   };
 
@@ -1836,47 +1875,69 @@ export default function DashboardPage() {
             })()}
 
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>Documents indexés ({documents.length})</p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>Documents indexés ({documents.length})</p>
+                {documents.length > 0 && (
+                  <button onClick={() => setDocsExpanded(prev => !prev)}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#64748b", padding: "2px 6px", borderRadius: 6, transition: "color 0.2s" }}
+                    onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+                    onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                    {docsExpanded ? "Masquer ▴" : "Afficher ▾"}
+                  </button>
+                )}
+              </div>
               {loadingDocs ? (
                 <p style={{ fontSize: 13, color: "#64748b" }}>Chargement...</p>
               ) : documents.length === 0 ? (
                 <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", padding: "20px", textAlign: "center" }}>
                   <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Aucun document indexé</p>
                 </div>
-              ) : (
+              ) : docsExpanded && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {documents.map((doc) => (
-                    <div key={doc.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                        <span style={{ fontSize: 18, flexShrink: 0 }}>{fileTypeIcon(doc.file_type)}</span>
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ margin: 0, fontSize: 13, color: "white", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {doc.file_name.startsWith("dashboard_note_") ? "Note personnalisée" : doc.file_name.startsWith("memo_vocal_") ? "Mémo vocal" : doc.file_name.startsWith("slot1_vision_") ? "Note de vision" : doc.file_name.startsWith("slot2_signature_") ? "Note de signature" : doc.file_name.startsWith("memo_") ? "Mémo vocal" : doc.file_name}
-                          </p>
-                          <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{new Date(doc.created_at).toLocaleDateString("fr-FR")}</p>
+                  {documents.map((doc) => {
+                    const isAudio = ["mp3", "wav", "m4a"].includes(doc.file_type);
+                    return (
+                      <div key={doc.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.02)", borderRadius: 10, border: `1px solid ${editingAudioDoc?.id === doc.id ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.06)"}`, padding: "10px 14px", transition: "border-color 0.2s" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                          <span style={{ fontSize: 18, flexShrink: 0 }}>{fileTypeIcon(doc.file_type)}</span>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ margin: 0, fontSize: 13, color: "white", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {doc.file_name.startsWith("dashboard_note_") ? "Note personnalisée" : doc.file_name.startsWith("memo_vocal_") ? "Mémo vocal" : doc.file_name.startsWith("slot1_vision_") ? "Note de vision" : doc.file_name.startsWith("slot2_signature_") ? "Note de signature" : doc.file_name.startsWith("memo_") ? "Mémo vocal" : doc.file_name}
+                            </p>
+                            <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{new Date(doc.created_at).toLocaleDateString("fr-FR")}</p>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: 8 }}>
+                          {(doc.file_name.startsWith("slot1_vision_") || doc.file_name.startsWith("slot2_signature_")) && (
+                            <button
+                              onClick={() => { setEditingNote(doc); setJumeauText(doc.content ?? ""); setTimeout(() => document.getElementById("jumeau-textarea")?.focus(), 50); }}
+                              style={{ background: "none", border: "none", cursor: "pointer", color: editingNote?.id === doc.id ? "#10b981" : "#64748b", padding: "4px 8px", borderRadius: 6, fontSize: 12, transition: "color 0.2s" }}
+                              onMouseEnter={e => e.currentTarget.style.color = "#10b981"}
+                              onMouseLeave={e => e.currentTarget.style.color = editingNote?.id === doc.id ? "#10b981" : "#64748b"}>
+                              Modifier
+                            </button>
+                          )}
+                          {isAudio && (
+                            <button
+                              onClick={() => { setEditingAudioDoc(doc); setContinueFromSecs(0); setAudioBlob(null); setIsRecording(false); if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current); mediaRecorderRef.current?.stop(); }}
+                              style={{ background: "none", border: "none", cursor: "pointer", color: editingAudioDoc?.id === doc.id ? "#10b981" : "#64748b", padding: "4px 8px", borderRadius: 6, fontSize: 12, transition: "color 0.2s" }}
+                              onMouseEnter={e => e.currentTarget.style.color = "#10b981"}
+                              onMouseLeave={e => e.currentTarget.style.color = editingAudioDoc?.id === doc.id ? "#10b981" : "#64748b"}>
+                              Modifier
+                            </button>
+                          )}
+                          <button onClick={() => { void deleteDocument(doc.id, doc.file_name); if (editingNote?.id === doc.id) { setEditingNote(null); setJumeauText(""); } if (editingAudioDoc?.id === doc.id) { setEditingAudioDoc(null); setAudioBlob(null); } }}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: "4px 8px", borderRadius: 6, transition: "color 0.2s" }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                            onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                            </svg>
+                          </button>
                         </div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: 8 }}>
-                        {(doc.file_name.startsWith("slot1_vision_") || doc.file_name.startsWith("slot2_signature_")) && (
-                          <button
-                            onClick={() => { setEditingNote(doc); setJumeauText(doc.content ?? ""); setTimeout(() => document.getElementById("jumeau-textarea")?.focus(), 50); }}
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: "4px 8px", borderRadius: 6, fontSize: 12, transition: "color 0.2s" }}
-                            onMouseEnter={e => e.currentTarget.style.color = "#10b981"}
-                            onMouseLeave={e => e.currentTarget.style.color = editingNote?.id === doc.id ? "#10b981" : "#64748b"}>
-                            Modifier
-                          </button>
-                        )}
-                        <button onClick={() => { void deleteDocument(doc.id, doc.file_name); if (editingNote?.id === doc.id) { setEditingNote(null); setJumeauText(""); } }}
-                          style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: "4px 8px", borderRadius: 6, transition: "color 0.2s" }}
-                          onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-                          onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -1923,11 +1984,29 @@ export default function DashboardPage() {
                       </button>
                     </div>
                   ))}
-                  <button onClick={async () => { await uploadFiles(); if (practitionerId) await loadDocuments(practitionerId); }} disabled={uploading || !documentType}
-                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 12px", borderRadius: 12, background: uploading || !documentType ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: `1px solid ${uploading || !documentType ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.18)"}`, color: uploading || !documentType ? "#64748b" : emerald, fontSize: 14, fontWeight: 600, cursor: uploading || !documentType ? "not-allowed" : "pointer", transition: "all 0.2s" }}
-                    onMouseEnter={e => { if (!uploading && documentType) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
-                    onMouseLeave={e => { e.currentTarget.style.background = uploading || !documentType ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                    {uploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation en cours...</> : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""} →`}
+                  {uploadErrors.length > 0 && (
+                    <div style={{ marginBottom: 8 }}>
+                      {uploadErrors.map((e, i) => (
+                        <p key={i} style={{ margin: "0 0 4px", fontSize: 12, color: "#f87171", display: "flex", alignItems: "center", gap: 6 }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>{e}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  {uploadSuccess.length > 0 && (
+                    <div style={{ marginBottom: 8 }}>
+                      {uploadSuccess.map((name, i) => (
+                        <p key={i} style={{ margin: "0 0 4px", fontSize: 12, color: emerald, display: "flex", alignItems: "center", gap: 6 }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>{name} indexé
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                  <button onClick={async () => { await uploadFiles(); }} disabled={uploading || !documentType}
+                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 12px", borderRadius: 12, background: uploading || !documentType ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${uploading || !documentType ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: uploading || !documentType ? "#64748b" : emerald, fontSize: 14, fontWeight: 600, cursor: uploading || !documentType ? "not-allowed" : "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => { if (!uploading && documentType) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                    onMouseLeave={e => { e.currentTarget.style.background = uploading || !documentType ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = uploading || !documentType ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"; }}>
+                    {uploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>{uploadProgress ? `Indexation ${uploadProgress.current}/${uploadProgress.total}...` : "Indexation en cours..."}</> : `Indexer ${uploadedFiles.length} fichier${uploadedFiles.length > 1 ? "s" : ""} →`}
                   </button>
                   {uploading && <p style={{ fontSize: 12, color: "#f59e0b", textAlign: "center", marginTop: 6 }}>Patientez, l'indexation peut prendre quelques instants.</p>}
                 </div>
@@ -1939,14 +2018,14 @@ export default function DashboardPage() {
                 const isVisionEdit = editingNote?.file_name.startsWith("slot1_vision_");
                 const isSignatureEdit = editingNote?.file_name.startsWith("slot2_signature_");
                 const isEditing = isVisionEdit || isSignatureEdit;
-                const sectionLabel = isVisionEdit ? "Modifier ma vision" : isSignatureEdit ? "Modifier ma signature" : "Ajouter une instruction";
+                const sectionLabel = isVisionEdit ? "MA VISION" : isSignatureEdit ? "MA SIGNATURE" : "AJOUTER UNE INSTRUCTION";
                 const saveLabel = isVisionEdit ? "Mettre à jour ma vision →" : isSignatureEdit ? "Mettre à jour ma signature →" : "Indexer cette note →";
                 const newFileName = isVisionEdit ? `slot1_vision_${Date.now()}.txt` : isSignatureEdit ? `slot2_signature_${Date.now()}.txt` : `note_praticien_${Date.now()}.txt`;
 
                 return (
                   <>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: isEditing ? emerald : "white" }}>{sectionLabel}</p>
+                      <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: isEditing ? emerald : "#64748b" }}>{sectionLabel}</p>
                       {isEditing && (
                         <button onClick={() => { setEditingNote(null); setJumeauText(""); }}
                           style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#64748b", padding: 0, transition: "color 0.2s" }}
@@ -1957,16 +2036,29 @@ export default function DashboardPage() {
                       )}
                     </div>
 
+                    {!isEditing && editingAudioDoc && !audioBlob && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)" }}>
+                        <span style={{ fontSize: 13 }}>🎙️</span>
+                        <span style={{ fontSize: 12, color: "#94a3b8", flex: 1 }}>Modification d'un mémo — enregistrez pour le remplacer.</span>
+                        <button onClick={() => { setEditingAudioDoc(null); setAudioBlob(null); }}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#64748b", padding: 0, transition: "color 0.2s" }}
+                          onMouseEnter={e => e.currentTarget.style.color = "white"}
+                          onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                          Annuler
+                        </button>
+                      </div>
+                    )}
+
                     <div style={{ position: "relative" }}>
                       <textarea
                         id="jumeau-textarea"
                         value={jumeauText}
                         onChange={e => setJumeauText(e.target.value)}
-                        placeholder={isEditing ? "Réécrivez le contenu..." : "Ajoutez une nuance, une nouvelle méthode ou une instruction à votre jumeau..."}
+                        placeholder={isVisionEdit ? "Exemple : Pas d'aliment interdit dans mon approche. J'intègre toujours le contexte émotionnel avant le côté technique..." : isSignatureEdit ? "Partagez vos métaphores favorites, vos mots pour dédramatiser un écart et vos mantras de motivation..." : "Ajoutez une nuance, une nouvelle méthode ou une instruction à votre jumeau..."}
                         rows={4}
-                        style={{ width: "100%", borderRadius: 12, border: `1px solid ${isEditing ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: isEditing ? "14px 14px" : "14px 48px 14px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", transition: "border-color 0.2s" }}
-                        onFocus={e => e.target.style.borderColor = emerald}
-                        onBlur={e => e.target.style.borderColor = isEditing ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"} />
+                        style={{ width: "100%", borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: isEditing ? "14px 14px" : "14px 48px 14px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", transition: "border-color 0.2s, box-shadow 0.2s" }}
+                        onFocus={e => { e.target.style.borderColor = emerald; e.target.style.boxShadow = "0 0 0 3px rgba(16,185,129,0.15)"; }}
+                        onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }} />
                       {!isEditing && (
                         <div style={{ position: "absolute", bottom: 12, right: 12, display: "flex", alignItems: "center", gap: 6 }}>
                           {isRecording && <span style={{ fontSize: 11, color: "#f87171" }}>{formatTime(recordingTime)}</span>}
@@ -1982,12 +2074,16 @@ export default function DashboardPage() {
 
                     {!isEditing && audioBlob && (
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                        <span style={{ fontSize: 13, color: emerald, flex: 1 }}>✅ Mémo enregistré ({formatTime(recordingTime)})</span>
-                        <button onClick={async () => { uploadAudioMemo(); if (practitionerId) { await new Promise(r => setTimeout(r, 2000)); await loadDocuments(practitionerId); } }}
-                          style={{ borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)", color: emerald, cursor: "pointer", transition: "all 0.2s" }}
-                          onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                          Indexer ce mémo →
+                        <span style={{ fontSize: 13, color: emerald, flex: 1 }}>
+                          ✅ {editingAudioDoc ? "Nouveau mémo prêt" : "Mémo enregistré"} ({formatTime(recordingTime)})
+                          {editingAudioDoc && <span style={{ fontSize: 11, color: "#64748b", display: "block" }}>Remplacera l'ancien mémo</span>}
+                        </span>
+                        <button onClick={async () => { if (audioBlob) await uploadAudioDirect(audioBlob, editingAudioDoc); }}
+                          disabled={audioUploading}
+                          style={{ borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, background: audioUploading ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${audioUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: audioUploading ? "#64748b" : emerald, cursor: audioUploading ? "not-allowed" : "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}
+                          onMouseEnter={e => { if (!audioUploading) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                          onMouseLeave={e => { e.currentTarget.style.background = audioUploading ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = audioUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"; }}>
+                          {audioUploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation...</> : "Indexer ce mémo →"}
                         </button>
                         <button onClick={() => setAudioBlob(null)}
                           style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4 }}
@@ -1997,6 +2093,15 @@ export default function DashboardPage() {
                             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
                           </svg>
                         </button>
+                      </div>
+                    )}
+                    {!isEditing && uploadErrors.length > 0 && !audioBlob && (
+                      <div style={{ marginTop: 8 }}>
+                        {uploadErrors.map((e, i) => (
+                          <p key={i} style={{ margin: "0 0 4px", fontSize: 12, color: "#f87171", display: "flex", alignItems: "center", gap: 6 }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>{e}
+                          </p>
+                        ))}
                       </div>
                     )}
 
@@ -2024,9 +2129,9 @@ export default function DashboardPage() {
                         } catch { /* silencieux */ }
                         setJumeauTextUploading(false);
                       }} disabled={jumeauTextUploading}
-                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 12px", borderRadius: 12, background: jumeauTextUploading ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: `1px solid ${jumeauTextUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.18)"}`, color: jumeauTextUploading ? "#64748b" : emerald, fontSize: 13, fontWeight: 600, cursor: jumeauTextUploading ? "not-allowed" : "pointer", transition: "all 0.2s", marginTop: 8 }}
-                        onMouseEnter={e => { if (!jumeauTextUploading) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
-                        onMouseLeave={e => { e.currentTarget.style.background = jumeauTextUploading ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 12px", borderRadius: 12, background: jumeauTextUploading ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${jumeauTextUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: jumeauTextUploading ? "#64748b" : emerald, fontSize: 13, fontWeight: 600, cursor: jumeauTextUploading ? "not-allowed" : "pointer", transition: "all 0.2s", marginTop: 8 }}
+                        onMouseEnter={e => { if (!jumeauTextUploading) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                        onMouseLeave={e => { e.currentTarget.style.background = jumeauTextUploading ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = jumeauTextUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"; }}>
                         {jumeauTextUploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation en cours...</> : saveLabel}
                       </button>
                     )}
