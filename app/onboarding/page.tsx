@@ -191,7 +191,7 @@ export default function OnboardingPage() {
   const total = questions.length;
   const isUploadStep = step === total;
   const currentQuestion = questions[step];
-  const progress = genDone ? 100 : isUploadStep || isGenerating ? 95 : Math.round((step / total) * 100);
+  const progress = genDone ? 100 : isGenerating ? 99 : isUploadStep ? 98 : Math.round((step / total) * 95);
   const currentBlock = isUploadStep ? "" : currentQuestion?.block ?? "";
   const blockIndex = BLOCKS.indexOf(currentBlock);
   const filled = (slot1Done ? 1 : 0) + (slot2Done ? 1 : 0);
@@ -897,9 +897,6 @@ export default function OnboardingPage() {
 
             ) : isGenerating ? (
               <section className="rounded-3xl border border-[#10b981]/20 bg-[#0d0d0d] p-8 min-h-[520px] flex flex-col overflow-hidden">
-                <div className="h-0.5 w-full bg-white/5 rounded-full mb-8 overflow-hidden">
-                  <div className="h-full bg-[#10b981] rounded-full transition-all duration-300" style={{ width: `${genProgress}%` }} />
-                </div>
                 {genDone ? (
                   <div className="flex-1 flex flex-col items-center justify-center text-center" style={{ animation: "fadeInUp 0.6s ease forwards" }}>
                     <div className="relative w-28 h-28 mb-8">
@@ -916,7 +913,7 @@ export default function OnboardingPage() {
                         </svg>
                       </div>
                     </div>
-                    <p className="text-xs font-mono font-bold tracking-widest text-[#10b981] uppercase mb-3 flex items-center justify-center gap-1.5"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg> Configuration terminée</p>
+                    <p className="text-xs font-mono font-bold tracking-widest text-[#10b981] uppercase mb-3">Configuration terminée</p>
                     <h2 className="text-2xl font-bold text-white mb-3 leading-tight">Votre Jumeau est prêt.</h2>
                     <p className="text-sm text-zinc-400 max-w-sm leading-relaxed mb-2">
                       Votre double numérique est désormais capable de prendre le relais auprès de vos patients, avec votre philosophie, votre expertise et votre signature.
@@ -953,7 +950,7 @@ export default function OnboardingPage() {
                         <div className="absolute inset-0 flex items-center justify-center">
                           <div className="w-16 h-16 rounded-full flex items-center justify-center"
                             style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 0 1 10 10c0 5.52-4.48 10-10 10S2 17.52 2 12"/><path d="M12 6v6l4 2"/></svg>
+                            <span style={{ fontSize: 22 }}>🌿</span>
                           </div>
                         </div>
                       </div>
