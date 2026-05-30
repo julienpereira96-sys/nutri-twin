@@ -337,6 +337,10 @@ export default function DashboardPage() {
   const [resentInvite, setResentInvite] = useState(false);
   const [resentInviteLoading, setResentInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState("");
+  const [editingMurmureId, setEditingMurmureId] = useState<string | null>(null);
+  const [editingMurmureText, setEditingMurmureText] = useState("");
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState("");
   const [inviteAge, setInviteAge] = useState("");
   const [inviteSexe, setInviteSexe] = useState("");
   const [inviteTaille, setInviteTaille] = useState("");
@@ -633,6 +637,30 @@ export default function DashboardPage() {
       body: JSON.stringify({ patientId: selectedPatientId, practitionerId, notes: updatedNotes }),
     });
     setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, private_notes: updatedNotes } : p));
+  };
+
+  const updateNote = async (noteId: string, newText: string) => {
+    if (!selectedPatientId || !newText.trim()) return;
+    const patient = patients.find(p => p.id === selectedPatientId);
+    const currentNotes = (patient?.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
+    const updatedNotes = currentNotes.map(n => n.id === noteId ? { ...n, text: newText.trim() } : n);
+    await fetch("/api/save-private-notes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: selectedPatientId, practitionerId, notes: updatedNotes }) });
+    setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, private_notes: updatedNotes } : p));
+    setEditingNoteId(null); setEditingNoteText("");
+  };
+
+  const updateMurmure = async (murmureId: string, newText: string) => {
+    if (!selectedPatientId || !newText.trim()) return;
+    const patient = patients.find(p => p.id === selectedPatientId);
+    const currentMurmures = (patient?.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? [];
+    const updatedMurmures = currentMurmures.map(m => m.id === murmureId ? { ...m, text: newText.trim() } : m);
+    try {
+      const res = await fetch("/api/save-murmure", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: selectedPatientId, practitionerId, murmures: updatedMurmures }) });
+      if (!res.ok) throw new Error();
+      await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId: selectedPatientId }) });
+      setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, practitioner_instruction: updatedMurmures } : p));
+      setEditingMurmureId(null); setEditingMurmureText("");
+    } catch { alert("Erreur lors de la mise à jour du murmure."); }
   };
 
   const deleteMurmure = async (murmureId: string) => {
@@ -1350,24 +1378,48 @@ export default function DashboardPage() {
                         if (murmures.length === 0) return <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Aucune consigne active</p>; 
                       return murmures.map(m => {
                         const isExpired = m.expires_at && new Date(m.expires_at) < new Date();
+                        const isEditingThis = editingMurmureId === m.id;
                         return (
                           <div key={m.id} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                            <p style={{ margin: "0 0 3px", fontSize: 11, color: isExpired ? "#64748b" : "#94a3b8", lineHeight: 1.5, textDecoration: isExpired ? "line-through" : "none" }}>{m.text}</p>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                              <p style={{ margin: 0, fontSize: 10, color: isExpired ? "#f59e0b" : "#4b5563" }}>
-                                {isExpired ? "⚠️ Expiré" : m.expires_at ? `Expire le ${new Date(m.expires_at).toLocaleDateString("fr-FR")}` : "Permanent"}
-                              </p>
-                              {!onboardingDemoMode && (
-                                <button onClick={() => void deleteMurmure(m.id)}
-                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2, fontSize: 11 }}
-                                  onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-                                  onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                                  </svg>
-                                </button>
-                              )}
-                            </div>
+                            {isEditingThis ? (
+                              <>
+                                <textarea value={editingMurmureText} onChange={e => setEditingMurmureText(e.target.value)} rows={2} autoFocus
+                                  style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "rgba(255,255,255,0.03)", color: "white", padding: "6px 8px", fontSize: 11, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", lineHeight: 1.5 }} />
+                                <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                                  <button onClick={() => void updateMurmure(m.id, editingMurmureText)}
+                                    style={{ flex: 1, height: 22, borderRadius: 6, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 10, fontWeight: 600, cursor: "pointer" }}>Sauvegarder</button>
+                                  <button onClick={() => { setEditingMurmureId(null); setEditingMurmureText(""); }}
+                                    style={{ height: 22, borderRadius: 6, padding: "0 8px", background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 10, cursor: "pointer" }}>Annuler</button>
+                                </div>
+                              </>
+                            ) : (
+                              <p style={{ margin: "0 0 3px", fontSize: 11, color: isExpired ? "#64748b" : "#94a3b8", lineHeight: 1.5, textDecoration: isExpired ? "line-through" : "none" }}>{m.text}</p>
+                            )}
+                            {!isEditingThis && (
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <p style={{ margin: 0, fontSize: 10, color: isExpired ? "#f59e0b" : "#4b5563" }}>
+                                  {isExpired ? "⚠️ Expiré" : m.expires_at ? `Expire le ${new Date(m.expires_at).toLocaleDateString("fr-FR")}` : "Permanent"}
+                                </p>
+                                {!onboardingDemoMode && (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                    <button onClick={() => { setEditingMurmureId(m.id); setEditingMurmureText(m.text); }}
+                                      style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2, transition: "color 0.2s" }}
+                                      onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+                                      onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
+                                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    </button>
+                                    <button onClick={() => void deleteMurmure(m.id)}
+                                      style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2, transition: "color 0.2s" }}
+                                      onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                                      onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                                      </svg>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       });
@@ -1392,22 +1444,48 @@ export default function DashboardPage() {
                           const p = selectedPatient as RealPatient;
                           const notes = (p.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
                           if (notes.length === 0) return <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Aucune note</p>;
-                          return notes.map(n => (
-                            <div key={n.id} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                              <p style={{ margin: "0 0 3px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>{n.text}</p>
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                                <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{new Date(n.created_at).toLocaleDateString("fr-FR")}</p>
-                                <button onClick={() => void deleteNote(n.id)}
-                                  style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2 }}
-                                  onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-                                  onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                                  </svg>
-                                </button>
+                          return notes.map(n => {
+                            const isEditingThis = editingNoteId === n.id;
+                            return (
+                              <div key={n.id} style={{ marginBottom: 8, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                                {isEditingThis ? (
+                                  <>
+                                    <textarea value={editingNoteText} onChange={e => setEditingNoteText(e.target.value)} rows={2} autoFocus
+                                      style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.03)", color: "white", padding: "6px 8px", fontSize: 11, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", lineHeight: 1.5 }} />
+                                    <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                                      <button onClick={() => void updateNote(n.id, editingNoteText)}
+                                        style={{ flex: 1, height: 22, borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>Sauvegarder</button>
+                                      <button onClick={() => { setEditingNoteId(null); setEditingNoteText(""); }}
+                                        style={{ height: 22, borderRadius: 6, padding: "0 8px", background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 10, cursor: "pointer" }}>Annuler</button>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <p style={{ margin: "0 0 3px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>{n.text}</p>
+                                )}
+                                {!isEditingThis && (
+                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                    <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>{new Date(n.created_at).toLocaleDateString("fr-FR")}</p>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+                                      <button onClick={() => { setEditingNoteId(n.id); setEditingNoteText(n.text); }}
+                                        style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2, transition: "color 0.2s" }}
+                                        onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+                                        onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                      </button>
+                                      <button onClick={() => void deleteNote(n.id)}
+                                        style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2, transition: "color 0.2s" }}
+                                        onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                                        onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                          ));
+                            );
+                          });
                         })()}
                         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
                           <button onClick={() => { setNewNoteText(""); setShowNoteModal(true); }}
@@ -1470,7 +1548,7 @@ export default function DashboardPage() {
                         }}
                           style={{ background: "none", border: "none", cursor: resentInviteLoading ? "not-allowed" : "pointer", fontSize: 11, color: "#4b5563", textDecoration: "underline", padding: "4px 0", display: "flex", alignItems: "center", gap: 6, margin: "8px auto 0", transition: "color 0.2s", opacity: resentInviteLoading ? 0.7 : 1 }}
                           onMouseEnter={e => { if (!resentInviteLoading) e.currentTarget.style.color = "#94a3b8"; }}
-                          onMouseLeave={e => { if (!resentInviteLoading) e.currentTarget.style.color = "#94a3b8"; }}>
+                          onMouseLeave={e => { if (!resentInviteLoading) e.currentTarget.style.color = "#4b5563"; }}>
                           {resentInviteLoading && <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white" style={{ flexShrink: 0 }} />}
                           {resentInviteLoading ? "Envoi en cours..." : "Renvoyer le lien d'invitation"}
                         </button>
@@ -2254,7 +2332,7 @@ export default function DashboardPage() {
                 style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: savingProfile ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: savingProfile ? 0.7 : 1, transition: "all 0.2s" }}
                 onMouseEnter={e => { if (!savingProfile) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                {savingProfile ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Sauvegarde</span> : "Mettre à jour les informations →"}
+                {savingProfile ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Sauvegarde</span> : "Mettre à jour les informations"}
               </button>
             </div>
           </div>
@@ -2369,18 +2447,17 @@ export default function DashboardPage() {
             )}
 
             {inviteSuccess ? (
-              <div style={{ textAlign: "center", padding: "20px 0" }}>
-                <p style={{ margin: "0 0 20px", fontSize: 22, fontWeight: 800, color: "white", textAlign: "center" }}>Terminé</p>
-                <div style={{ width: 64, height: 64, borderRadius: "50%", background: "linear-gradient(135deg, #6ee7b7, #10b981)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px", boxShadow: "0 8px 30px rgba(16,185,129,0.4)" }}>
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 13l4 4L19 7" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <div style={{ textAlign: "center", padding: "16px 0 20px" }}>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                    <path d="M5 13l4 4L19 7" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
-                <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 500, color: "#6ee7b7", letterSpacing: "0.05em" }}>Invitation envoyée</p>
-                <p style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 800, color: "white" }}>C'est parti !</p>
-                <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b" }}>{inviteFirstName ? `${inviteFirstName} va recevoir son invitation.` : `${inviteEmail} va recevoir son invitation.`}</p>
+                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: emerald }}>Invitation envoyée</p>
+                <p style={{ margin: "0 0 10px", fontSize: 20, fontWeight: 800, color: "white" }}>C'est parti !</p>
+                <p style={{ margin: "0 0 28px", fontSize: 13, color: "#64748b" }}>{inviteFirstName ? `${inviteFirstName} va recevoir son invitation.` : `${inviteEmail} va recevoir son invitation.`}</p>
                 <button onClick={() => { setShowInviteModal(false); resetInviteForm(); }}
-                  style={{ height: 44, borderRadius: 10, padding: "0 20px", background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                  style={{ height: 44, borderRadius: 10, padding: "0 24px", background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
                   Fermer
@@ -2549,13 +2626,14 @@ export default function DashboardPage() {
             ) : (
               <>
                 <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 14, border: "1px solid rgba(16,185,129,0.15)", padding: "14px 16px", marginBottom: 20 }}>
-                  <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.6 }}>🌿 C'est ici que vous glissez vos consignes spécifiques pour ce patient. Points de vigilance, blessures à éviter, passions pour le motiver... Le Jumeau s'adaptera instantanément à ces nuances.</p>
+                  <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.6 }}>🌿 C'est ici que vous glissez vos consignes spécifiques pour ce patient. Points de vigilance, blessures à éviter, passions pour le motiver...<br/>Le Jumeau s'adaptera instantanément à ces nuances.</p>
                 </div>
                 <textarea value={inviteBriefJumeau} onChange={e => setInviteBriefJumeau(e.target.value)}
                   placeholder="Ex: Sophie est anxieuse autour de la balance - évite ce sujet. Elle se culpabilise facilement, reste bienveillant avant d'être technique. Elle adore cuisiner, utilise ça pour l'engager."
                   rows={5}
                   style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 12 }}
                   onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.2)"} />
+                  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Définir la durée</p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 16 }}>
                 {[
                     { label: "Permanent", value: "permanent" },
@@ -2589,12 +2667,12 @@ export default function DashboardPage() {
                     </div>
                   ) : null}
                 </div>
-                <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: "#64748b" }}>Notes internes <span style={{ fontWeight: 400, color: "#4b5563" }}>- visibles uniquement par vous</span></p>
+                <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Notes internes <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#4b5563" }}>— visibles uniquement par vous</span></p>
                 <textarea value={inviteNotes} onChange={e => setInviteNotes(e.target.value)}
                   placeholder="Contexte de la prise en charge, objectifs du moment, points de vigilance, blocages..."
-                  rows={2}
-                  style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "10px 12px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif" }}
-                  onFocus={e => e.target.style.borderColor = "rgba(255,255,255,0.2)"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.08)"} />
+                  rows={3}
+                  style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "12px 14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.6 }}
+                  onFocus={e => { e.target.style.borderColor = "rgba(255,255,255,0.2)"; e.target.style.boxShadow = "0 0 0 3px rgba(255,255,255,0.04)"; }} onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.08)"; e.target.style.boxShadow = "none"; }} />
                 {inviteError && <p style={{ margin: "0 0 12px", fontSize: 13, color: "#f87171" }}>{inviteError}</p>}
                 <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
                 <button onClick={() => setInviteStep(2)}
@@ -2607,7 +2685,7 @@ export default function DashboardPage() {
                     style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: inviting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: inviting ? 0.7 : 1, transition: "all 0.2s" }}
                     onMouseEnter={e => { if (!inviting) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
                     onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                    {inviting ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Envoi</span> : "Envoyer l'invitation →"}
+                    {inviting ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Envoi</span> : "Envoyer l'invitation"}
                   </button>
                 </div>
               </>
