@@ -183,7 +183,10 @@ export default function OnboardingPage() {
   const [savingAll2, setSavingAll2] = useState(false);
   const [indexProgress1, setIndexProgress1] = useState<{ current: number; total: number } | null>(null);
   const [indexProgress2, setIndexProgress2] = useState<{ current: number; total: number } | null>(null);
-  const [autreText, setAutreText] = useState("");
+  const [autreText, setAutreText] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("onboarding_autre") ?? "";
+  });
 
   const total = questions.length;
   const isUploadStep = step === total;
@@ -211,7 +214,11 @@ export default function OnboardingPage() {
     
     useEffect(() => {
       localStorage.setItem("onboarding_selected", JSON.stringify(selected));
-    }, [selected]);    
+    }, [selected]);
+
+    useEffect(() => {
+      localStorage.setItem("onboarding_autre", autreText);
+    }, [autreText]);
 
     useEffect(() => {
       const init = async () => {
@@ -230,6 +237,7 @@ export default function OnboardingPage() {
           localStorage.removeItem("onboarding_step");
           localStorage.removeItem("onboarding_answers");
           localStorage.removeItem("onboarding_selected");
+          localStorage.removeItem("onboarding_autre");
         }
         // Mémoriser l'ID courant pour la prochaine détection
         localStorage.setItem("onboarding_user_id", user.id);
@@ -612,6 +620,7 @@ export default function OnboardingPage() {
       localStorage.removeItem("onboarding_step");
       localStorage.removeItem("onboarding_answers");
       localStorage.removeItem("onboarding_selected");
+      localStorage.removeItem("onboarding_autre");
       if (redirect) router.push("/dashboard");
     } catch (error: unknown) {
       setSaveError(error instanceof Error ? error.message : "Impossible de sauvegarder votre profil.");

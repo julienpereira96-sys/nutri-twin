@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   if (user.id !== userId) return forbidden();
   
   // Validation server-side des answers
-  const ALLOWED_KEYS = ["tone_of_voice","tutoiement","technicite","longueur_reponses","emojis","approche_generale","pathologies","position_regimes","position_glucides","jejune","complements","petit_dejeuner","lifestyle_budget","jamais_dire","conviction","gestion_ecarts","emotions","non_suivi","fetes_vacances","motivation_berne","posture","perimetre","questions_medicales","urgence_detresse","ligne_rouge","approche_libre","situation1","situation2","situation3","situation4","situation5","situation6"];
+  const ALLOWED_KEYS = ["tone_of_voice","tutoiement","technicite","longueur_reponses","emojis","approche_generale","pathologies","position_regimes","position_glucides","sujets_clivants","lifestyle_budget","jamais_dire","conviction","gestion_ecarts","emotions","non_suivi","fetes_vacances","motivation_berne","patient_fantome","perimetre","questions_medicales","urgence_detresse","ligne_rouge","approche_libre","situation1","situation2","situation3","situation4","situation5","situation6","situation7","situation8","situation9"];
   
   const sanitizedAnswers: Record<string, string> = {};
   for (const [key, value] of Object.entries(answers)) {

@@ -147,7 +147,7 @@ type RealPatient = {
 type Conversation = { id: string; role: "user" | "assistant"; content: string; created_at: string; };
 type ReportPeriod = "week" | "month" | "custom";
 type ActiveTab = "patients" | "vue_ensemble";
-type Document = { id: string; file_name: string; file_type: string; created_at: string; };
+type Document = { id: string; file_name: string; file_type: string; created_at: string; content?: string; };
 type MonthlyStats = { messages_geres: number; crises_nocturnes: number; temps_economise_heures: number; temps_accompagnement_heures: number; taux_retention: number; questions_repetitives_pct: number; sos_resolutions?: number; chat_resolutions?: number; delta_stress_avant?: number | null; delta_stress_apres?: number | null; };
 
 const AVATAR_COLORS = ["#f43f5e", "#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ec4899", "#06b6d4", "#f97316"];
@@ -291,6 +291,7 @@ export default function DashboardPage() {
   const [showJumeauModal, setShowJumeauModal] = useState(false);
   const [jumeauText, setJumeauText] = useState("");
   const [jumeauTextUploading, setJumeauTextUploading] = useState(false);
+  const [editingNote, setEditingNote] = useState<Document | null>(null);
   const [showMurmureModal, setShowMurmureModal] = useState(false);
   const [practitionerId, setPractitionerId] = useState<string | null>(null);
 
@@ -389,7 +390,7 @@ export default function DashboardPage() {
 
   const loadDocuments = async (pid: string) => {
     setLoadingDocs(true);
-    const { data } = await supabase.from("documents").select("id, file_name, file_type, created_at").eq("practitioner_id", pid).order("created_at", { ascending: false });
+    const { data } = await supabase.from("documents").select("id, file_name, file_type, created_at, content").eq("practitioner_id", pid).order("created_at", { ascending: false });
     const seen = new Set<string>();
     const unique = (data as Document[] ?? []).filter((d) => { if (seen.has(d.file_name)) return false; seen.add(d.file_name); return true; });
     setDocuments(unique);
@@ -675,7 +676,7 @@ export default function DashboardPage() {
   };
 
   const openJumeauModal = async () => {
-    setShowJumeauModal(true); setUploadedFiles([]); setUploadSuccess([]); setUploadErrors([]); setDocumentType(null);
+    setShowJumeauModal(true); setUploadedFiles([]); setUploadSuccess([]); setUploadErrors([]); setDocumentType(null); setEditingNote(null); setJumeauText("");
     if (practitionerId) void loadDocuments(practitionerId);
   };
 
@@ -1855,14 +1856,25 @@ export default function DashboardPage() {
                           <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{new Date(doc.created_at).toLocaleDateString("fr-FR")}</p>
                         </div>
                       </div>
-                      <button onClick={() => void deleteDocument(doc.id, doc.file_name)}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", flexShrink: 0, marginLeft: 8, padding: "4px 8px", borderRadius: 6, transition: "color 0.2s" }}
-                        onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-                        onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                        </svg>
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: 8 }}>
+                        {(doc.file_name.startsWith("slot1_vision_") || doc.file_name.startsWith("slot2_signature_")) && (
+                          <button
+                            onClick={() => { setEditingNote(doc); setJumeauText(doc.content ?? ""); setTimeout(() => document.getElementById("jumeau-textarea")?.focus(), 50); }}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: "4px 8px", borderRadius: 6, fontSize: 12, transition: "color 0.2s" }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#10b981"}
+                            onMouseLeave={e => e.currentTarget.style.color = editingNote?.id === doc.id ? "#10b981" : "#64748b"}>
+                            Modifier
+                          </button>
+                        )}
+                        <button onClick={() => { void deleteDocument(doc.id, doc.file_name); if (editingNote?.id === doc.id) { setEditingNote(null); setJumeauText(""); } }}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: "4px 8px", borderRadius: 6, transition: "color 0.2s" }}
+                          onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                          onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1923,68 +1935,105 @@ export default function DashboardPage() {
             </div>
 
             <div style={{ marginBottom: 12 }}>
-              <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 700, color: "white" }}>Ajouter une instruction</p>
-              <div style={{ position: "relative" }}>
-                <textarea value={jumeauText} onChange={e => setJumeauText(e.target.value)}
-                  placeholder="Ajoutez une nuance, une nouvelle méthode ou une instruction à votre jumeau..."
-                  rows={4}
-                  style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px 48px 14px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", transition: "border-color 0.2s" }}
-                  onFocus={e => e.target.style.borderColor = emerald}
-                  onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-                <div style={{ position: "absolute", bottom: 12, right: 12, display: "flex", alignItems: "center", gap: 6 }}>
-                  {isRecording && <span style={{ fontSize: 11, color: "#f87171" }}>{formatTime(recordingTime)}</span>}
-                  {!audioBlob && (
-                    <button onClick={isRecording ? stopRecording : startRecording} title="Mémo vocal"
-                      style={{ width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: isRecording ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.3)", background: isRecording ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.15)", transition: "all 0.2s" }}>
-                      {isRecording ? <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", animation: "breathe 1s ease-in-out infinite" }} /> : <span style={{ fontSize: 13 }}>🎙️</span>}
-                    </button>
-                  )}
-                </div>
-              </div>
+              {(() => {
+                const isVisionEdit = editingNote?.file_name.startsWith("slot1_vision_");
+                const isSignatureEdit = editingNote?.file_name.startsWith("slot2_signature_");
+                const isEditing = isVisionEdit || isSignatureEdit;
+                const sectionLabel = isVisionEdit ? "Modifier ma vision" : isSignatureEdit ? "Modifier ma signature" : "Ajouter une instruction";
+                const saveLabel = isVisionEdit ? "Mettre à jour ma vision →" : isSignatureEdit ? "Mettre à jour ma signature →" : "Indexer cette note →";
+                const newFileName = isVisionEdit ? `slot1_vision_${Date.now()}.txt` : isSignatureEdit ? `slot2_signature_${Date.now()}.txt` : `note_praticien_${Date.now()}.txt`;
 
-              {audioBlob && (
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                  <span style={{ fontSize: 13, color: emerald, flex: 1 }}>✅ Mémo enregistré ({formatTime(recordingTime)})</span>
-                  <button onClick={async () => { uploadAudioMemo(); if (practitionerId) { await new Promise(r => setTimeout(r, 2000)); await loadDocuments(practitionerId); } }}
-                    style={{ borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)", color: emerald, cursor: "pointer", transition: "all 0.2s" }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                    Indexer ce mémo →
-                  </button>
-                  <button onClick={() => setAudioBlob(null)}
-                    style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4 }}
-                    onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-                    onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                    </svg>
-                  </button>
-                </div>
-              )}
+                return (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: isEditing ? emerald : "white" }}>{sectionLabel}</p>
+                      {isEditing && (
+                        <button onClick={() => { setEditingNote(null); setJumeauText(""); }}
+                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#64748b", padding: 0, transition: "color 0.2s" }}
+                          onMouseEnter={e => e.currentTarget.style.color = "white"}
+                          onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                          Annuler
+                        </button>
+                      )}
+                    </div>
 
-              {jumeauText.trim() && !audioBlob && (
-                <button onClick={async () => {
-                  setJumeauTextUploading(true);
-                  const blob = new Blob([jumeauText], { type: "text/plain" });
-                  const file = new File([blob], `note_praticien_${Date.now()}.txt`, { type: "text/plain" });
-                  const formData = new FormData();
-                  formData.append("file", file);
-                  formData.append("practitionerId", practitionerId ?? "");
-                  formData.append("documentType", "protocole");
-                  try {
-                    const res = await fetch("/api/upload-document", { method: "POST", body: formData });
-                    const data = await res.json() as { success?: boolean };
-                    if (res.ok && data.success) { setJumeauText(""); if (practitionerId) await loadDocuments(practitionerId); }
-                  } catch { /* silencieux */ }
-                  setJumeauTextUploading(false);
-                }} disabled={jumeauTextUploading}
-                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 12px", borderRadius: 12, background: jumeauTextUploading ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: `1px solid ${jumeauTextUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.18)"}`, color: jumeauTextUploading ? "#64748b" : emerald, fontSize: 13, fontWeight: 600, cursor: jumeauTextUploading ? "not-allowed" : "pointer", transition: "all 0.2s", marginTop: 8 }}
-                  onMouseEnter={e => { if (!jumeauTextUploading) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
-                  onMouseLeave={e => { e.currentTarget.style.background = jumeauTextUploading ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                  {jumeauTextUploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation en cours...</> : "Indexer cette note →"}
-                </button>
-              )}
-              {jumeauTextUploading && <p style={{ fontSize: 12, color: "#f59e0b", textAlign: "center", marginTop: 6 }}>Patientez, l'indexation peut prendre quelques instants.</p>}
+                    <div style={{ position: "relative" }}>
+                      <textarea
+                        id="jumeau-textarea"
+                        value={jumeauText}
+                        onChange={e => setJumeauText(e.target.value)}
+                        placeholder={isEditing ? "Réécrivez le contenu..." : "Ajoutez une nuance, une nouvelle méthode ou une instruction à votre jumeau..."}
+                        rows={4}
+                        style={{ width: "100%", borderRadius: 12, border: `1px solid ${isEditing ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: isEditing ? "14px 14px" : "14px 48px 14px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", transition: "border-color 0.2s" }}
+                        onFocus={e => e.target.style.borderColor = emerald}
+                        onBlur={e => e.target.style.borderColor = isEditing ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"} />
+                      {!isEditing && (
+                        <div style={{ position: "absolute", bottom: 12, right: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                          {isRecording && <span style={{ fontSize: 11, color: "#f87171" }}>{formatTime(recordingTime)}</span>}
+                          {!audioBlob && (
+                            <button onClick={isRecording ? stopRecording : startRecording} title="Mémo vocal"
+                              style={{ width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: isRecording ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.3)", background: isRecording ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.15)", transition: "all 0.2s" }}>
+                              {isRecording ? <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", animation: "breathe 1s ease-in-out infinite" }} /> : <span style={{ fontSize: 13 }}>🎙️</span>}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {!isEditing && audioBlob && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)" }}>
+                        <span style={{ fontSize: 13, color: emerald, flex: 1 }}>✅ Mémo enregistré ({formatTime(recordingTime)})</span>
+                        <button onClick={async () => { uploadAudioMemo(); if (practitionerId) { await new Promise(r => setTimeout(r, 2000)); await loadDocuments(practitionerId); } }}
+                          style={{ borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)", color: emerald, cursor: "pointer", transition: "all 0.2s" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                          Indexer ce mémo →
+                        </button>
+                        <button onClick={() => setAudioBlob(null)}
+                          style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4 }}
+                          onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                          onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+
+                    {jumeauText.trim() && !audioBlob && (
+                      <button onClick={async () => {
+                        setJumeauTextUploading(true);
+                        try {
+                          // En mode édition : supprimer l'ancien document d'abord
+                          if (isEditing && editingNote) {
+                            await supabase.from("documents").delete().eq("practitioner_id", practitionerId ?? "").eq("file_name", editingNote.file_name);
+                          }
+                          const blob = new Blob([jumeauText], { type: "text/plain" });
+                          const file = new File([blob], newFileName, { type: "text/plain" });
+                          const formData = new FormData();
+                          formData.append("file", file);
+                          formData.append("practitionerId", practitionerId ?? "");
+                          formData.append("documentType", "protocole");
+                          const res = await fetch("/api/upload-document", { method: "POST", body: formData });
+                          const data = await res.json() as { success?: boolean };
+                          if (res.ok && data.success) {
+                            setJumeauText("");
+                            setEditingNote(null);
+                            if (practitionerId) await loadDocuments(practitionerId);
+                          }
+                        } catch { /* silencieux */ }
+                        setJumeauTextUploading(false);
+                      }} disabled={jumeauTextUploading}
+                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 12px", borderRadius: 12, background: jumeauTextUploading ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: `1px solid ${jumeauTextUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.18)"}`, color: jumeauTextUploading ? "#64748b" : emerald, fontSize: 13, fontWeight: 600, cursor: jumeauTextUploading ? "not-allowed" : "pointer", transition: "all 0.2s", marginTop: 8 }}
+                        onMouseEnter={e => { if (!jumeauTextUploading) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+                        onMouseLeave={e => { e.currentTarget.style.background = jumeauTextUploading ? "rgba(255,255,255,0.04)" : "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                        {jumeauTextUploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation en cours...</> : saveLabel}
+                      </button>
+                    )}
+                    {jumeauTextUploading && <p style={{ fontSize: 12, color: "#f59e0b", textAlign: "center", marginTop: 6 }}>Patientez, l'indexation peut prendre quelques instants.</p>}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
