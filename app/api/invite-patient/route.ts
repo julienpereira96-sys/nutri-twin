@@ -84,26 +84,28 @@ export async function POST(request: Request) {
       return Response.json({ error: "Ce patient est déjà associé à votre cabinet." }, { status: 400 });
     }
 
-    // Compte existe mais pas encore activé - renvoyer un lien et mettre à jour les données
-    const { data: linkData } = await supabase.auth.admin.generateLink({
-      type: "magiclink",
-      email,
-      options: { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/set-password` },
+    // Compte existe mais pas encore activé - renvoyer via inviteUserByEmail (même pipeline que la première invitation, géré par Supabase — pas de dépendance Resend/domaine)
+    const { error: reinviteError } = await supabase.auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/set-password`,
     });
 
-    if (linkData?.properties?.action_link) {
-      const resend = new Resend(process.env.RESEND_API_KEY!);
-      await resend.emails.send({
-        from: "NutriTwin <noreply@nutritwin.fr>",
-        to: email,
-        subject: "Votre invitation NutriTwin",
-        html: `
-          <p>Bonjour,</p>
-          <p>Votre praticien vous a envoyé une nouvelle invitation pour accéder à votre espace NutriTwin.</p>
-          <p><a href="${linkData.properties.action_link}">Accéder à mon espace →</a></p>
-          <p>L'équipe NutriTwin</p>
-        `,
+    if (reinviteError) {
+      console.error("Reinvite error:", reinviteError.message);
+      // Fallback : generateLink + Resend si inviteUserByEmail échoue
+      const { data: linkData } = await supabase.auth.admin.generateLink({
+        type: "magiclink",
+        email,
+        options: { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/set-password` },
       });
+      if (linkData?.properties?.action_link) {
+        const resend = new Resend(process.env.RESEND_API_KEY!);
+        await resend.emails.send({
+          from: "NutriTwin <noreply@nutritwin.fr>",
+          to: email,
+          subject: "Votre invitation NutriTwin",
+          html: `<p>Bonjour,</p><p>Votre praticien vous a envoyé une nouvelle invitation pour accéder à votre espace NutriTwin.</p><p><a href="${linkData.properties.action_link}">Accéder à mon espace →</a></p><p>L'équipe NutriTwin</p>`,
+        });
+      }
     }
 
     if (!existingRelation) {

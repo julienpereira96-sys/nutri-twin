@@ -336,6 +336,8 @@ export default function DashboardPage() {
   const [inviteResentSuccess, setInviteResentSuccess] = useState(false);
   const [resentInvite, setResentInvite] = useState(false);
   const [resentInviteLoading, setResentInviteLoading] = useState(false);
+  const [showDeletePatientModal, setShowDeletePatientModal] = useState(false);
+  const [deletingPatient, setDeletingPatient] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [editingMurmureId, setEditingMurmureId] = useState<string | null>(null);
   const [editingMurmureText, setEditingMurmureText] = useState("");
@@ -661,6 +663,28 @@ export default function DashboardPage() {
       setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, practitioner_instruction: updatedMurmures } : p));
       setEditingMurmureId(null); setEditingMurmureText("");
     } catch { alert("Erreur lors de la mise à jour du murmure."); }
+  };
+
+  const removePatient = async (patientId: string) => {
+    if (!practitionerId) return;
+    setDeletingPatient(true);
+    try {
+      const res = await fetch("/api/remove-patient", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId, practitionerId }),
+      });
+      if (res.ok) {
+        setPatients(prev => prev.filter(p => p.id !== patientId));
+        setSelectedPatientId(null);
+        setShowDeletePatientModal(false);
+      } else {
+        alert("Une erreur est survenue lors de la suppression du patient.");
+      }
+    } catch {
+      alert("Erreur réseau lors de la suppression du patient.");
+    }
+    setDeletingPatient(false);
   };
 
   const deleteMurmure = async (murmureId: string) => {
@@ -1555,6 +1579,21 @@ export default function DashboardPage() {
                       );
                     })()
                   )}
+
+                  {/* Supprimer le patient */}
+                  {!onboardingDemoMode && selectedPatient && !(selectedPatient as RealPatient).email?.includes("demo") && (
+                    <div style={{ marginTop: 24, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                      <button
+                        onClick={() => setShowDeletePatientModal(true)}
+                        style={{ width: "100%", background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#4b5563", padding: "4px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "color 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = "#4b5563"; }}
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><polyline points="3,6 5,6 21,6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        Supprimer le patient
+                      </button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
@@ -1727,6 +1766,24 @@ export default function DashboardPage() {
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setShowLogoutModal(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
               <button onClick={async (e) => { e.currentTarget.innerHTML = '<span class="flex items-center justify-center gap-2"><span class="h-4 w-4 animate-spin rounded-full border-2 border-red-500/20 border-t-red-400"></span>Déconnexion...</span>'; const s = createSupabaseBrowserClient(); await s.auth.signOut(); window.location.href = "/login"; }} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.35)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; }}>Se déconnecter</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeletePatientModal && selectedPatientId && (
+        <div onClick={e => { if (e.target === e.currentTarget && !deletingPatient) setShowDeletePatientModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 360, border: "1px solid rgba(244,63,94,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", textAlign: "center" }}>
+            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><polyline points="3,6 5,6 21,6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M10 11v6M14 11v6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Supprimer ce patient ?</h2>
+            <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Toutes les données et l'accès du patient seront supprimés définitivement. Cette action est irréversible.</p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setShowDeletePatientModal(false)} disabled={deletingPatient} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: deletingPatient ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 500, opacity: deletingPatient ? 0.5 : 1 }} onMouseEnter={e => { if (!deletingPatient) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; } }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
+              <button onClick={() => void removePatient(selectedPatientId)} disabled={deletingPatient} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: deletingPatient ? "not-allowed" : "pointer", opacity: deletingPatient ? 0.7 : 1 }} onMouseEnter={e => { if (!deletingPatient) { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.35)"; } }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; }}>
+                {deletingPatient ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-red-500/20 border-t-red-400" />Suppression...</span> : "Supprimer"}
+              </button>
             </div>
           </div>
         </div>
