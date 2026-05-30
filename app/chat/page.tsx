@@ -1241,7 +1241,7 @@ export default function ChatPage() {
           {/* Header sidebar */}
           <div style={{ padding: "20px 16px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "transparent", borderBottom: "1px solid rgba(16,185,129,0.12)", margin: "0 -12px", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <img src="/logo.svg" alt="NutriTwin" style={{ height: 42, width: "auto" }}
+              <img src="/logo.svg" alt="NutriTwin" style={{ height: 42, width: "auto", filter: "hue-rotate(17deg) saturate(165%) brightness(87%)" }}
                 onError={e => { const t = e.target as HTMLImageElement; t.style.display = "none"; const n = t.nextElementSibling as HTMLElement; if (n) n.style.display = "flex"; }} />
               <div style={{ width: 32, height: 32, borderRadius: 10, background: "linear-gradient(135deg, #10b981, #059669)", display: "none", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🌿</div>
               <div>

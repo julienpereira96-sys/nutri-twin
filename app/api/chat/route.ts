@@ -476,7 +476,7 @@ GESTION HUMAINE :
 - Si non-suivi : ${profile.non_suivi || "bienveillance totale"}
 - Fêtes et vacances : ${profile.fetes_vacances || "équilibre sur la durée"}
 - Pour remotiver : ${profile.motivation_berne || "valoriser les petits progrès"}
-- Patient sans nouvelles depuis 10 jours : ${profile.patient_fantome || "relance chaleureuse et bienveillante"}
+- Face à un patient perfectionniste : ${profile.profil_perfectionniste || "valoriser la rigueur tout en aidant à accepter l'équilibre sur la durée"}
 
 SÉCURITÉ & LIMITES :
 - Périmètre d'action : ${profile.perimetre || "prudence sur les pathologies"}

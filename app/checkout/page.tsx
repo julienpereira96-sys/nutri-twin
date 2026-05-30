@@ -283,7 +283,7 @@ function CheckoutForm() {
           <Link href="/" className="flex items-center gap-2">
             <div className="relative">
               <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-md" />
-              <img src="/logo.svg" alt="NutriTwin" className="h-7 w-auto relative" />
+              <img src="/logo.svg" alt="NutriTwin" className="h-7 w-auto relative" style={{ filter: "hue-rotate(17deg) saturate(165%) brightness(87%)" }} />
             </div>
             <span className="text-[15px] tracking-tight">Nutri<strong className="font-black" style={{ color: emerald }}>Twin</strong></span>
           </Link>
