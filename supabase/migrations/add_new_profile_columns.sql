@@ -8,7 +8,6 @@ ALTER TABLE practitioner_profiles
   ADD COLUMN IF NOT EXISTS position_petit_dejeuner TEXT,
 
   -- Bloc 3 — nouveaux champs gestion humaine
-  ADD COLUMN IF NOT EXISTS boussole_ecarts TEXT,
   ADD COLUMN IF NOT EXISTS alimentation_emotionnelle TEXT,
   ADD COLUMN IF NOT EXISTS levier_motivation TEXT,
   ADD COLUMN IF NOT EXISTS adaptation_profil TEXT,
@@ -17,10 +16,9 @@ ALTER TABLE practitioner_profiles
   ADD COLUMN IF NOT EXISTS vision TEXT,
   ADD COLUMN IF NOT EXISTS signature TEXT,
 
-  -- Nouvelles mises en situation
+  -- Mises en situation
   ADD COLUMN IF NOT EXISTS situation_craquage TEXT,
   ADD COLUMN IF NOT EXISTS situation_stagnation TEXT,
-  ADD COLUMN IF NOT EXISTS situation_tiktok TEXT,
   ADD COLUMN IF NOT EXISTS situation_abandon TEXT,
   ADD COLUMN IF NOT EXISTS situation_prediabete TEXT,
   ADD COLUMN IF NOT EXISTS situation_alcool TEXT,
@@ -28,3 +26,8 @@ ALTER TABLE practitioner_profiles
   ADD COLUMN IF NOT EXISTS situation_drastique TEXT,
   ADD COLUMN IF NOT EXISTS situation_flemme TEXT,
   ADD COLUMN IF NOT EXISTS situation_coup_dur TEXT;
+
+-- Suppression des colonnes retirées de l'onboarding
+ALTER TABLE practitioner_profiles
+  DROP COLUMN IF EXISTS boussole_ecarts,
+  DROP COLUMN IF EXISTS situation_tiktok;

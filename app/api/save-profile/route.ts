@@ -50,14 +50,14 @@ export async function POST(request: Request) {
     "position_jeune","position_complements","position_petit_dejeuner",
     "lifestyle_budget","jamais_dire","conviction",
     // Bloc 3 — Gestion Humaine & Émotions
-    "boussole_ecarts","alimentation_emotionnelle","non_suivi","fetes_vacances",
+    "alimentation_emotionnelle","non_suivi","fetes_vacances",
     "levier_motivation","profil_perfectionniste","adaptation_profil",
     // Bloc 4 — Sécurité & Limites
     "perimetre","questions_medicales","urgence_detresse","ligne_rouge",
     // Ma Vision & Ma Signature (injection directe, pas RAG)
     "vision","signature",
     // Mises en situation
-    "situation_craquage","situation_stagnation","situation_tiktok","situation_abandon",
+    "situation_craquage","situation_stagnation","situation_abandon",
     "situation_prediabete","situation_alcool","situation_marketing","situation_drastique",
     "situation_flemme","situation_coup_dur",
     // Anciens champs (rétrocompat pour praticiens existants)
