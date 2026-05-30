@@ -1411,9 +1411,13 @@ export default function DashboardPage() {
                                   style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "rgba(255,255,255,0.03)", color: "white", padding: "6px 8px", fontSize: 11, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", lineHeight: 1.5 }} />
                                 <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
                                   <button onClick={() => void updateMurmure(m.id, editingMurmureText)}
-                                    style={{ flex: 1, height: 22, borderRadius: 6, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 10, fontWeight: 600, cursor: "pointer" }}>Sauvegarder</button>
+                                    style={{ flex: 1, height: 24, borderRadius: 6, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 10, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.22)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>Sauvegarder</button>
                                   <button onClick={() => { setEditingMurmureId(null); setEditingMurmureText(""); }}
-                                    style={{ height: 22, borderRadius: 6, padding: "0 8px", background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 10, cursor: "pointer" }}>Annuler</button>
+                                    style={{ height: 24, borderRadius: 6, padding: "0 10px", background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 10, cursor: "pointer", transition: "all 0.15s" }}
+                                    onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#94a3b8"; }}
+                                    onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#64748b"; }}>Annuler</button>
                                 </div>
                               </>
                             ) : (
@@ -1478,9 +1482,13 @@ export default function DashboardPage() {
                                       style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(255,255,255,0.03)", color: "white", padding: "6px 8px", fontSize: 11, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", lineHeight: 1.5 }} />
                                     <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
                                       <button onClick={() => void updateNote(n.id, editingNoteText)}
-                                        style={{ flex: 1, height: 22, borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>Sauvegarder</button>
+                                        style={{ flex: 1, height: 24, borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", fontSize: 10, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+                                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; e.currentTarget.style.color = "white"; }}
+                                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "#94a3b8"; }}>Sauvegarder</button>
                                       <button onClick={() => { setEditingNoteId(null); setEditingNoteText(""); }}
-                                        style={{ height: 22, borderRadius: 6, padding: "0 8px", background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 10, cursor: "pointer" }}>Annuler</button>
+                                        style={{ height: 24, borderRadius: 6, padding: "0 10px", background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 10, cursor: "pointer", transition: "all 0.15s" }}
+                                        onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#94a3b8"; }}
+                                        onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#64748b"; }}>Annuler</button>
                                     </div>
                                   </>
                                 ) : (
@@ -1550,8 +1558,8 @@ export default function DashboardPage() {
                   {!onboardingDemoMode && selectedPatient && !(selectedPatient as RealPatient).email?.includes("demo") && (
                     (() => {
                       const p = selectedPatient as RealPatient;
-                      // Bouton visible uniquement si le patient n'a jamais cliqué sur le lien (pas de mot de passe créé)
-                      const notActivated = !p.onboardingCompleted && !p.onboardingStatus;
+                      // Bouton visible uniquement si le patient n'a pas encore créé son mot de passe
+                      const notActivated = !p.onboardingCompleted && p.onboardingStatus !== "password_set";
                       if (!notActivated) return null;
                       if (resentInvite) return (
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, margin: "8px auto 0" }}>
@@ -1585,11 +1593,10 @@ export default function DashboardPage() {
                     <div style={{ marginTop: 24, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
                       <button
                         onClick={() => setShowDeletePatientModal(true)}
-                        style={{ width: "100%", background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#4b5563", padding: "4px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "color 0.2s" }}
-                        onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; }}
-                        onMouseLeave={e => { e.currentTarget.style.color = "#4b5563"; }}
+                        style={{ width: "100%", background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", padding: "4px 0", display: "flex", alignItems: "center", justifyContent: "center", transition: "color 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.color = "#fca5a5"; }}
+                        onMouseLeave={e => { e.currentTarget.style.color = "#f87171"; }}
                       >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><polyline points="3,6 5,6 21,6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M10 11v6M14 11v6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                         Supprimer le patient
                       </button>
                     </div>
@@ -1778,10 +1785,10 @@ export default function DashboardPage() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><polyline points="3,6 5,6 21,6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M10 11v6M14 11v6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Supprimer ce patient ?</h2>
-            <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Toutes les données et l'accès du patient seront supprimés définitivement. Cette action est irréversible.</p>
+            <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Toutes les données et l'accès du patient seront supprimés définitivement.<br/>Cette action est irréversible.</p>
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setShowDeletePatientModal(false)} disabled={deletingPatient} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: deletingPatient ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 500, opacity: deletingPatient ? 0.5 : 1 }} onMouseEnter={e => { if (!deletingPatient) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; } }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
-              <button onClick={() => void removePatient(selectedPatientId)} disabled={deletingPatient} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: deletingPatient ? "not-allowed" : "pointer", opacity: deletingPatient ? 0.7 : 1 }} onMouseEnter={e => { if (!deletingPatient) { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.35)"; } }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; }}>
+              <button onClick={() => setShowDeletePatientModal(false)} disabled={deletingPatient} style={{ flex: 1, height: 52, borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: deletingPatient ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 500, opacity: deletingPatient ? 0.5 : 1, transition: "all 0.2s" }} onMouseEnter={e => { if (!deletingPatient) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "white"; } }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
+              <button onClick={() => void removePatient(selectedPatientId)} disabled={deletingPatient} style={{ flex: 1, height: 52, borderRadius: 12, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: deletingPatient ? "not-allowed" : "pointer", opacity: deletingPatient ? 0.7 : 1, transition: "all 0.2s" }} onMouseEnter={e => { if (!deletingPatient) { e.currentTarget.style.background = "rgba(244,63,94,0.16)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.4)"; e.currentTarget.style.color = "#fca5a5"; } }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; e.currentTarget.style.color = "#f87171"; }}>
                 {deletingPatient ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-red-500/20 border-t-red-400" />Suppression...</span> : "Supprimer"}
               </button>
             </div>
@@ -1917,9 +1924,9 @@ export default function DashboardPage() {
               <button onClick={() => setShowMurmureModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>×</button>
             </div>
             <div style={{ background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
-              <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.6 }}>⚡ Cette consigne sera injectée en priorité absolue dans chaque réponse du jumeau pour ce patient.</p>
+              <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.6 }}>Cette consigne sera injectée en priorité absolue dans chaque réponse du jumeau pour ce patient.</p>
             </div>
-            <textarea value={murmureText} onChange={(e) => setMurmureText(e.target.value)} placeholder="Ex: Sois plus doux cette semaine, elle traverse une période difficile au travail." rows={5}
+            <textarea value={murmureText} onChange={(e) => setMurmureText(e.target.value)} placeholder="Exemple: Sois plus doux cette semaine, elle traverse une période difficile au travail." rows={5}
               style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.6 }} />
             <div style={{ marginBottom: 16 }}>
             <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Durée du murmure</p>
@@ -1968,7 +1975,7 @@ export default function DashboardPage() {
                 style={{ flex: 2, height: 44, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: savingMurmure || !murmureText.trim() ? "not-allowed" : "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.12)", color: emerald, opacity: savingMurmure || !murmureText.trim() ? 0.6 : 1, transition: "all 0.2s" }}
                 onMouseEnter={e => { if (!savingMurmure && murmureText.trim()) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                {savingMurmure ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Sauvegarde</span> : "Ajouter ce murmure →"}
+                {savingMurmure ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Sauvegarde</span> : "Ajouter ce murmure"}
               </button>
             </div>
           </div>
@@ -2757,11 +2764,11 @@ export default function DashboardPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "94a3b8" }}>Nouvelle note</h2>
-                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>Visible uniquement par vous</p>
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>Notes visibles uniquement par vous</p>
               </div>
               <button onClick={() => setShowNoteModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>×</button>
             </div>
-            <textarea value={newNoteText} onChange={e => setNewNoteText(e.target.value)} placeholder="Ex: Patiente recommandée par Dr Martin. Attention au sujet du poids en consultation." rows={5}
+            <textarea value={newNoteText} onChange={e => setNewNoteText(e.target.value)} placeholder="Exemple: Patiente recommandée par Dr Martin. Attention au sujet du poids en consultation." rows={5}
               style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 16 }}
               onFocus={e => e.target.style.borderColor = "rgba(255,255,255,0.3)"} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
             <div style={{ display: "flex", gap: 10 }}>
@@ -2775,7 +2782,7 @@ export default function DashboardPage() {
                 style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "white", cursor: savingNote || !newNoteText.trim() ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: savingNote || !newNoteText.trim() ? 0.5 : 1, transition: "all 0.2s" }}
                 onMouseEnter={e => { if (!savingNote && newNoteText.trim()) { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)"; } }}
                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}>
-                {savingNote ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />Sauvegarde</span> : "Sauvegarder →"}
+                {savingNote ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />Sauvegarde</span> : "Sauvegarder"}
               </button>
             </div>
           </div>
