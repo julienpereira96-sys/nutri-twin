@@ -122,7 +122,7 @@ export default function OnboardingPage() {
   const identityColor = identityFilled === 0 ? "#f59e0b" : identityFilled === 1 ? "#06b6d4" : "#10b981";
 
   useEffect(() => {
-    localStorage.setItem("onboarding_step", String(step));
+  localStorage.setItem("onboarding_step", "34")
   }, [step]);
 
   useEffect(() => {
