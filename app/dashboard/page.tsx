@@ -9,11 +9,52 @@ const amber = "#f59e0b";
 const coral = "#f43f5e";
 
 // ═══ DONNÉES DE DÉMO ONBOARDING ═══
-const DEMO_PATIENTS = [
-  { id: "demo-1", firstName: "Sophie", lastName: "M.", initials: "SM", avatarColor: "#f43f5e", emotional_status: "red", emotional_insight: "Rechute alimentaire ce soir", totalMessages: 34 },
-  { id: "demo-2", firstName: "Julie", lastName: "P.", initials: "JP", avatarColor: "#8b5cf6", emotional_status: "orange", emotional_insight: "Fatigue professionnelle", totalMessages: 18 },
-  { id: "demo-3", firstName: "Thomas", lastName: "R.", initials: "TR", avatarColor: "#3b82f6", emotional_status: "green", emotional_insight: "Progression constante", totalMessages: 52 },
-  { id: "demo-4", firstName: "Marc", lastName: "D.", initials: "MD", avatarColor: "#f59e0b", emotional_status: "green", emotional_insight: "Objectifs atteints", totalMessages: 27 },
+const DEMO_PATIENTS_INITIAL = [
+  {
+    id: "demo-1", firstName: "Sophie", lastName: "M.", initials: "SM",
+    avatarColor: "#f43f5e", emotional_status: "red", emotional_insight: "Rechute alimentaire ce soir",
+    totalMessages: 34, latest_victory: "A résisté à la cantine",
+    age: 32, sexe: "F", taille: 165, poids: 68,
+    objective: "Retrouver une relation apaisée avec la nourriture et perdre 5 kg durablement.",
+    pathologies: "Hyperphagie émotionnelle",
+    objectif_clinique: "Réduire les compulsions nocturnes à moins d'une par semaine.",
+    niveau_activite: "modéré", regime_specifique: "Aucun",
+    allergies: "Intolérance lactose (légère)", traitements: "Aucun",
+    email: "sophie.m@demo.fr",
+    practitioner_instruction: [{ id: "d-m1", text: "Sois plus doux cette semaine, elle traverse une période difficile au travail.", expires_at: null, created_at: new Date().toISOString() }],
+    private_notes: [{ id: "n1", text: "Tendances émotionnelles fortes le soir. Suggérer un journal alimentaire.", created_at: new Date().toISOString() }],
+    lastActive: "Il y a 2h", streak: 5, sosResolved: 2, onboardingCompleted: true,
+  },
+  {
+    id: "demo-2", firstName: "Julie", lastName: "P.", initials: "JP",
+    avatarColor: "#8b5cf6", emotional_status: "orange", emotional_insight: "Fatigue professionnelle",
+    totalMessages: 18, latest_victory: "3 repas complets cette semaine",
+    age: 28, sexe: "F", taille: 162, poids: 58,
+    objective: "Maintenir son poids et améliorer son énergie au quotidien.",
+    pathologies: "Aucune",
+    objectif_clinique: "Stabiliser 3 repas par jour malgré la charge professionnelle.",
+    niveau_activite: "faible", regime_specifique: "Végétarienne",
+    allergies: "Aucune", traitements: "Contraception orale",
+    email: "julie.p@demo.fr",
+    practitioner_instruction: [{ id: "d-m2", text: "Rappelle-lui de prendre soin d'elle malgré la charge de travail.", expires_at: null, created_at: new Date().toISOString() }],
+    private_notes: [],
+    lastActive: "Il y a 1j", streak: 3, sosResolved: 0, onboardingCompleted: true,
+  },
+  {
+    id: "demo-3", firstName: "Thomas", lastName: "R.", initials: "TR",
+    avatarColor: "#3b82f6", emotional_status: "green", emotional_insight: "Progression constante",
+    totalMessages: 52, latest_victory: "Poids stable depuis 3 semaines",
+    age: 41, sexe: "M", taille: 178, poids: 82,
+    objective: "Maintenir le poids atteint et développer une alimentation intuitive.",
+    pathologies: "Hypertension légère (traitée)",
+    objectif_clinique: "Consolider les habitudes et prévenir les rechutes.",
+    niveau_activite: "élevé", regime_specifique: "Aucun",
+    allergies: "Arachides", traitements: "Ramipril 5mg",
+    email: "thomas.r@demo.fr",
+    practitioner_instruction: [],
+    private_notes: [{ id: "n3", text: "Très assidu. Envisager de passer à une consultation mensuelle.", created_at: new Date().toISOString() }],
+    lastActive: "Il y a 3h", streak: 12, sosResolved: 1, onboardingCompleted: true,
+  },
 ];
 
 const DEMO_CONVERSATIONS: { id: string; role: "user" | "assistant"; content: string; created_at: string }[] = [
@@ -23,6 +64,69 @@ const DEMO_CONVERSATIONS: { id: string; role: "user" | "assistant"; content: str
   { id: "d4", role: "assistant", content: "Voilà tout s'explique. Ce n'est pas de la faiblesse, c'est de la biologie. Demain on vise un vrai déjeuner avec des protéines. D'accord ?", created_at: "2026-05-16T21:04:45" },
   { id: "d5", role: "user", content: "Oui. Merci, ça me soulage d'avoir quelqu'un à qui écrire 💚", created_at: "2026-05-16T21:05:20" },
 ];
+
+const DEMO_CONVERSATIONS_JULIE: { id: string; role: "user" | "assistant"; content: string; created_at: string }[] = [
+  { id: "j1", role: "user", content: "Je suis épuisée. Cette semaine c'était trop, pas le temps de manger correctement.", created_at: "2026-05-17T12:30:00" },
+  { id: "j2", role: "assistant", content: "Je vous entends Julie. Quand la charge est forte, l'alimentation est souvent la première sacrifiée. Qu'est-ce que vous avez pu manger aujourd'hui ?", created_at: "2026-05-17T12:30:30" },
+  { id: "j3", role: "user", content: "Un café le matin et un croissant... et une salade à 15h.", created_at: "2026-05-17T12:31:00" },
+  { id: "j4", role: "assistant", content: "C'est insuffisant pour une journée intense. Ce soir, visez quelque chose de nourrissant mais simple — des œufs, du pain complet, des légumes. Pas besoin de faire de grands efforts.", created_at: "2026-05-17T12:31:40" },
+  { id: "j5", role: "user", content: "D'accord, je vais essayer. Merci d'être là.", created_at: "2026-05-17T12:32:10" },
+];
+
+const DEMO_CONVERSATIONS_THOMAS: { id: string; role: "user" | "assistant"; content: string; created_at: string }[] = [
+  { id: "t1", role: "user", content: "Bonne nouvelle : je me suis pesé ce matin, stable depuis 3 semaines !", created_at: "2026-05-18T08:15:00" },
+  { id: "t2", role: "assistant", content: "Excellent Thomas ! La stabilité est souvent plus difficile à maintenir que la perte initiale. C'est une vraie victoire.", created_at: "2026-05-18T08:15:30" },
+  { id: "t3", role: "user", content: "Oui, je mange mieux sans me priver. J'ai arrêté de compter les calories.", created_at: "2026-05-18T08:16:10" },
+  { id: "t4", role: "assistant", content: "C'est exactement l'objectif : une relation apaisée avec la nourriture. Comment vous sentez-vous globalement ?", created_at: "2026-05-18T08:16:50" },
+  { id: "t5", role: "user", content: "Bien, vraiment bien. Plus d'énergie, meilleur sommeil. Je recommande à mes collègues.", created_at: "2026-05-18T08:17:20" },
+];
+
+const DEMO_CONVERSATIONS_BY_PATIENT: Record<string, { id: string; role: "user" | "assistant"; content: string; created_at: string }[]> = {
+  "demo-1": DEMO_CONVERSATIONS,
+  "demo-2": DEMO_CONVERSATIONS_JULIE,
+  "demo-3": DEMO_CONVERSATIONS_THOMAS,
+};
+
+// Mock bilan questions par patient démo
+const DEMO_BILAN_BY_PATIENT: Record<string, { question: string; justification: string; objectif: string }[]> = {
+  "demo-1": [
+    { question: "Comment avez-vous géré les moments de stress professionnel cette semaine sur le plan alimentaire ?", justification: "Sophie a mentionné ne pas avoir eu le temps de déjeuner correctement entre deux réunions, ce qui a précédé une fringale en soirée.", objectif: "Identifier les déclencheurs situationnels et co-construire une stratégie d'anticipation." },
+    { question: "Avez-vous pu mettre en place une routine de petit-déjeuner plus structurée depuis notre dernière séance ?", justification: "L'objectif fixé ensemble était de stabiliser le premier repas de la journée pour réduire les compensations du soir.", objectif: "Évaluer l'adhésion au plan et ajuster si la routine reste difficile à tenir." },
+    { question: "Qu'est-ce qui vous a aidée à résister à la cantine la semaine dernière ?", justification: "Sophie a réussi à faire un choix alimentaire cohérent dans un contexte social contraignant — comprendre ce levier est précieux.", objectif: "Renforcer les mécanismes d'auto-efficacité et capitaliser sur les succès." },
+  ],
+  "demo-2": [
+    { question: "Comment se passe l'équilibre entre votre charge de travail et vos repas au quotidien ?", justification: "Julie a indiqué ne manger qu'un croissant le matin et une salade à 15h lors d'une semaine chargée.", objectif: "Identifier des solutions concrètes adaptées à ses contraintes professionnelles." },
+    { question: "Avez-vous ressenti une différence d'énergie ou d'humeur les jours où vous avez mieux mangé ?", justification: "Julie est en phase d'apprentissage des connexions alimentation-énergie. Ce lien peut être un fort levier de motivation.", objectif: "Renforcer la conscience intéroceptive et la motivation intrinsèque." },
+    { question: "Qu'est-ce qui vous rend le plus difficile de prendre soin de vous quand vous êtes surchargée ?", justification: "La fatigue professionnelle semble être un obstacle majeur à l'alimentation équilibrée chez Julie.", objectif: "Explorer les croyances sous-jacentes et trouver des solutions minimales applicables même en période intense." },
+  ],
+  "demo-3": [
+    { question: "Comment vivez-vous la stabilité actuelle de votre poids — est-ce que cela vous rassure ou est-ce anxiogène ?", justification: "Thomas est stable depuis 3 semaines, ce qui est une réussite, mais la phase de maintien peut générer une vigilance nouvelle.", objectif: "Valider psychologiquement la phase de maintien et prévenir les rechutes liées à la pression de résultats." },
+    { question: "Avez-vous envie d'évoluer vos objectifs maintenant que vous avez trouvé votre équilibre ?", justification: "Thomas se dit bien, avec plus d'énergie et un meilleur sommeil. Il est peut-être prêt pour un objectif de nouvelle phase.", objectif: "Explorer l'évolution des motivations et préparer la suite du parcours." },
+    { question: "Comment se passent vos repas en contexte social depuis que vous ne comptez plus les calories ?", justification: "Thomas a évoqué l'arrêt du comptage calorique comme une libération — tester cette liberté en situation sociale est l'étape suivante.", objectif: "Consolider la flexibilité alimentaire et préparer à gérer les situations sociales sereinement." },
+  ],
+};
+
+// Mock rapport par patient démo
+const DEMO_RAPPORT_BY_PATIENT: Record<string, { synthese: string; patterns: string; victoires: string; murmures_bilan: string }> = {
+  "demo-1": {
+    synthese: "Sophie traverse une période de stress professionnel intense qui impacte directement ses comportements alimentaires. Les échanges de la période révèlent un schéma de déjeuners sautés suivi de compensations en soirée, avec une bonne conscience du problème.",
+    patterns: "Schéma récurrent : repas insuffisant en journée les jours de forte charge → fringale émotionnelle en soirée. Le stress professionnel est le principal déclencheur identifié. Sophie montre une bonne capacité réflexive post-écart.",
+    victoires: "Sophie a résisté à un choix non désiré en contexte social (cantine), ce qui représente un progrès notable. Elle fait preuve d'une bonne communication avec le jumeau en cas de difficulté, signe d'engagement dans son suivi.",
+    murmures_bilan: "Explorer des solutions de repas rapides mais nourrissants pour les journées chargées (batch cooking, snacks protéinés). La récurrence des fringales nocturnes mérite d'être abordée en consultation pour identifier si un travail sur l'alimentation émotionnelle est nécessaire.",
+  },
+  "demo-2": {
+    synthese: "Julie est en phase de prise de conscience des liens entre fatigue professionnelle et qualité de son alimentation. Ses échanges montrent une bonne volonté mais des contraintes de temps importantes qui rendent l'organisation difficile.",
+    patterns: "Alimentation quasi absente en matinée les jours de forte charge de travail, avec un seul repas tardif dans la journée. La fatigue semble être à la fois cause et conséquence d'une alimentation insuffisante.",
+    victoires: "Julie a effectué 3 repas complets sur la semaine où elle a eu un peu moins de pression au travail. C'est un signal positif : quand les conditions le permettent, elle mobilise les bonnes habitudes.",
+    murmures_bilan: "Travailler sur des solutions ultra-simples pour les matins chargés (préparation la veille, aliments pratiques). Évoquer avec Julie la possibilité de poser des alertes ou rendez-vous repas dans son agenda professionnel.",
+  },
+  "demo-3": {
+    synthese: "Thomas est en phase de consolidation avec d'excellents résultats : stabilité pondérale depuis 3 semaines, relation apaisée à la nourriture, amélioration de l'énergie et du sommeil. Il est dans la phase la plus fragile du parcours — le maintien.",
+    patterns: "Thomas ne compte plus les calories et mange intuitivement, avec succès. Pas de schéma problématique observé sur la période. Bonne régularité des échanges avec le jumeau.",
+    victoires: "Stabilité pondérale maintenue 3 semaines consécutives. Meilleure énergie et qualité de sommeil rapportées spontanément. Recommande le programme à son entourage — signe d'adhésion profonde.",
+    murmures_bilan: "Préparer Thomas à la gestion des situations de tentation futures (vacances, fêtes). Évoquer la possibilité d'espacer les consultations, tout en maintenant le suivi du jumeau. Proposer des objectifs de maintenance ou de nouvelle phase (activité physique, optimisation).",
+  },
+};
 
 const ONBOARDING_STEPS = [
   { id: "welcome", title: "Bienvenue sur votre dashboard", text: "Votre jumeau numérique est désormais prêt à prendre le relais entre vos séances. Découvrez les différentes fonctionnalités disponibles au sein de votre cabinet numérique.", highlight: null, tooltipSide: null as null },
@@ -71,172 +175,55 @@ const TOUR_ICONS: Record<string, React.ReactNode> = {
 };
 
 type OnboardingProps = {
-  step: number;
   practitionerName: string;
-  onNext: () => void;
   onSkip: () => void;
-  onBack: () => void;
 };
 
-const OnboardingTour = ({ step, practitionerName, onNext, onSkip, onBack }: OnboardingProps) => {
-  const [visible, setVisible] = useState(true);
-  const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
-  const current = ONBOARDING_STEPS[step];
-  const isLast = step === ONBOARDING_STEPS.length - 1;
+const OnboardingTour = ({ practitionerName, onSkip }: Omit<OnboardingProps, "step" | "onNext" | "onBack">) => {
+  const [visible, setVisible] = useState(false);
   const firstName = (practitionerName.split(" ")[0] || practitionerName).trim();
-  const accentColor = current.highlight ? (TOUR_ACCENT[current.highlight] ?? "#10b981") : "#10b981";
-  const accentRgb = current.highlight ? (TOUR_ACCENT_RGB[current.highlight] ?? "16,185,129") : "16,185,129";
 
   useEffect(() => {
-    setVisible(false);
-    const t = setTimeout(() => setVisible(true), 60);
+    const t = setTimeout(() => setVisible(true), 80);
     return () => clearTimeout(t);
-  }, [step]);
-
-  useEffect(() => {
-    if (!current.highlight) { setHighlightRect(null); return; }
-    const update = () => {
-      const el = document.querySelector(`[data-tour="${current.highlight}"]`) as HTMLElement | null;
-      if (el) setHighlightRect(el.getBoundingClientRect());
-      else setHighlightRect(null);
-    };
-    const timer = setTimeout(update, 200);
-    window.addEventListener("resize", update);
-    return () => { clearTimeout(timer); window.removeEventListener("resize", update); };
-  }, [step, current.highlight]);
-
-  const getTooltipStyle = (): React.CSSProperties => {
-    const base: React.CSSProperties = {
-      position: "fixed", width: 300,
-      background: "#0d0d0d", borderRadius: 16, padding: "20px",
-      border: "1px solid rgba(255,255,255,0.1)",
-      boxShadow: "0 24px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.04)",
-      zIndex: 320, fontFamily: "Inter, sans-serif",
-      transition: "opacity 0.25s ease, transform 0.25s ease",
-      opacity: visible ? 1 : 0,
-      transform: visible ? "translateY(0)" : "translateY(8px)",
-    };
-    if (!highlightRect) return { ...base, top: "50%", left: "50%", transform: visible ? "translate(-50%,-50%)" : "translate(-50%,-48%)" };
-    const pad = 18, W = window.innerWidth, H = window.innerHeight, tw = 300, th = 230;
-    const elCy = highlightRect.top + highlightRect.height / 2;
-    const elCx = highlightRect.left + highlightRect.width / 2;
-    switch (current.tooltipSide) {
-      case "right": return { ...base, top: Math.max(12, Math.min(elCy - th / 2, H - th - 12)), left: Math.min(highlightRect.right + pad, W - tw - 12) };
-      case "left":  return { ...base, top: Math.max(12, Math.min(elCy - th / 2, H - th - 12)), right: W - Math.max(highlightRect.left - pad, 12) };
-      case "bottom": return { ...base, top: Math.min(highlightRect.bottom + pad, H - th - 12), left: Math.max(12, Math.min(elCx - tw / 2, W - tw - 12)) };
-      default: return { ...base, top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
-    }
-  };
-
-  // ── Step 0 : Hero modal ──────────────────────────────────────────────────
-  if (step === 0) {
-    return (
-      <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(4px)" }} />
-        <div style={{
-          position: "relative", zIndex: 1, width: "100%", maxWidth: 500, margin: "0 24px",
-          background: "#0d0d0d", borderRadius: 24, padding: "48px 40px",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 40px 120px rgba(0,0,0,0.9), 0 0 80px rgba(16,185,129,0.05)",
-          opacity: visible ? 1 : 0, transform: visible ? "scale(1)" : "scale(0.97)",
-          transition: "opacity 0.35s ease, transform 0.35s ease",
-          fontFamily: "Inter, sans-serif",
-        }}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
-            <div style={{ position: "relative" }}>
-              <div style={{ position: "absolute", inset: -10, borderRadius: "50%", background: "rgba(16,185,129,0.12)", filter: "blur(14px)" }} />
-              <div style={{ position: "relative", width: 64, height: 64, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.45)", background: "rgba(16,185,129,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-                </svg>
-              </div>
-            </div>
-          </div>
-          <p style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 600, color: "#10b981", textAlign: "center", letterSpacing: "0.01em" }}>
-            Bonjour {firstName}
-          </p>
-          <h1 style={{ margin: "0 0 16px", fontSize: 30, fontWeight: 800, color: "white", textAlign: "center", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
-            Bienvenue sur votre<br />dashboard
-          </h1>
-          <p style={{ margin: "0 0 40px", fontSize: 15, color: "#6b7280", textAlign: "center", lineHeight: 1.7 }}>
-            Votre jumeau numérique est désormais prêt à prendre le relais entre vos séances. Découvrez les différentes fonctionnalités disponibles au sein de votre cabinet numérique.
-          </p>
-          <div style={{ display: "flex", gap: 12 }}>
-            <button onClick={onSkip}
-              style={{ flex: 1, height: 46, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 14, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#94a3b8"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#6b7280"; }}>
-              Quitter
-            </button>
-            <button onClick={onNext}
-              style={{ flex: 2, height: 46, borderRadius: 12, background: "#10b981", border: "none", color: "black", fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.45)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; }}>
-              Démarrer la démo
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Steps 1–5 : Spotlight + tooltip ─────────────────────────────────────
-  const featureStep = step - 1;
-  const totalFeature = ONBOARDING_STEPS.length - 1;
+  }, []);
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 300, pointerEvents: "none" }}>
-      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", pointerEvents: "auto" }} />
-      {highlightRect && (
-        <div style={{
-          position: "fixed",
-          top: highlightRect.top - 8, left: highlightRect.left - 8,
-          width: highlightRect.width + 16, height: highlightRect.height + 16,
-          borderRadius: 14, background: "transparent",
-          boxShadow: `0 0 0 9999px rgba(0,0,0,0.72), 0 0 0 1.5px ${accentColor}99, 0 0 20px 4px ${accentColor}33`,
-          pointerEvents: "none", zIndex: 305,
-          transition: "top 0.3s ease, left 0.3s ease, width 0.3s ease, height 0.3s ease",
-          animation: "tourSpotlight 2.2s ease-in-out infinite",
-        }} />
-      )}
-      <div style={{ ...getTooltipStyle(), pointerEvents: "auto" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: `rgba(${accentRgb},0.1)`, border: `1px solid rgba(${accentRgb},0.2)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {current.highlight ? TOUR_ICONS[current.highlight] : null}
-          </div>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "white", lineHeight: 1.3 }}>{current.title}</p>
-        </div>
-        <p style={{ margin: "0 0 20px", fontSize: 13, color: "#94a3b8", lineHeight: 1.75 }}>{current.text}</p>
-        <div style={{ display: "flex", gap: 4, marginBottom: 18 }}>
-          {Array.from({ length: totalFeature }).map((_, i) => (
-            <div key={i} style={{ flex: 1, height: 2, borderRadius: 1, background: i <= featureStep ? accentColor : "rgba(255,255,255,0.07)", transition: "background 0.3s" }} />
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {step > 1 && (
-            <button onClick={onBack}
-              style={{ height: 36, padding: "0 12px", borderRadius: 9, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif", flexShrink: 0 }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#94a3b8"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#6b7280"; }}>
-              ← Retour
-            </button>
-          )}
+    <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(4px)" }} />
+      <div style={{
+        position: "relative", zIndex: 1, width: "100%", maxWidth: 480, margin: "0 24px",
+        background: "#0d0d0d", borderRadius: 24, padding: "44px 40px",
+        border: "1px solid rgba(255,255,255,0.08)",
+        boxShadow: "0 40px 120px rgba(0,0,0,0.9), 0 0 80px rgba(16,185,129,0.04)",
+        opacity: visible ? 1 : 0, transform: visible ? "scale(1) translateY(0)" : "scale(0.97) translateY(8px)",
+        transition: "opacity 0.35s ease, transform 0.35s ease",
+        fontFamily: "Inter, sans-serif",
+      }}>
+        <h1 style={{ margin: "0 0 14px", fontSize: 28, fontWeight: 800, color: "white", textAlign: "center", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
+          Bienvenue sur votre<br />Dashboard, {firstName}
+        </h1>
+        <p style={{ margin: "0 0 12px", fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 1.7 }}>
+          Votre cabinet numérique est prêt. Pour l'instant, votre dashboard est en <strong style={{ color: "#94a3b8" }}>mode démo</strong> avec 3 patients fictifs — explorez toutes les fonctionnalités librement.
+        </p>
+        <p style={{ margin: "0 0 36px", fontSize: 13, color: "#4b5563", textAlign: "center", lineHeight: 1.6 }}>
+          Le mode démo disparaîtra automatiquement dès que vous aurez invité votre premier patient.
+        </p>
+        <div style={{ display: "flex", gap: 12 }}>
           <button onClick={onSkip}
-            style={{ flex: 1, height: 36, borderRadius: 9, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#94a3b8"; }}
+            style={{ flex: 1, height: 46, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 14, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#94a3b8"; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#6b7280"; }}>
-            Passer
+            Fermer
           </button>
-          <button onClick={onNext}
-            style={{ flex: 2, height: 36, borderRadius: 9, background: `rgba(${accentRgb},0.12)`, border: `1px solid rgba(${accentRgb},0.3)`, color: accentColor, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
-            onMouseEnter={e => { e.currentTarget.style.background = `rgba(${accentRgb},0.22)`; }}
-            onMouseLeave={e => { e.currentTarget.style.background = `rgba(${accentRgb},0.12)`; }}>
-            {isLast ? "Terminer" : "Suivant →"}
+          <button onClick={onSkip}
+            style={{ flex: 2, height: 46, borderRadius: 12, background: "#10b981", border: "none", color: "black", fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.45)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; }}>
+            Explorer le dashboard
           </button>
         </div>
-        <p style={{ margin: "12px 0 0", fontSize: 11, color: "#374151", textAlign: "center" }}>{step} / {totalFeature}</p>
       </div>
-      <style>{`@keyframes tourSpotlight { 0%,100% { opacity:1; } 50% { opacity:0.75; } }`}</style>
     </div>
   );
 };
@@ -390,6 +377,11 @@ export default function DashboardPage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [onboardingDemoMode, setOnboardingDemoMode] = useState(false);
+  type DemoPatient = Omit<typeof DEMO_PATIENTS_INITIAL[0], "practitioner_instruction"> & {
+    practitioner_instruction: { id: string; text: string; expires_at?: string | null; created_at: string }[];
+    private_notes: { id: string; text: string; created_at: string }[];
+  };
+  const [demoPatients, setDemoPatients] = useState<DemoPatient[]>(DEMO_PATIENTS_INITIAL as unknown as DemoPatient[]);
 
   // ═══ ÉTATS PRINCIPAUX ═══
   const [activeTab, setActiveTab] = useState<ActiveTab>("patients");
@@ -458,39 +450,13 @@ export default function DashboardPage() {
   const completeOnboarding = useCallback(async (pid: string) => {
     await supabase.from("practitioners").update({ dashboard_tour_done: true }).eq("user_id", pid);
     setShowOnboarding(false);
-    setOnboardingDemoMode(false);
+    // onboardingDemoMode reste actif tant qu'il n'y a pas de vrais patients
   }, [supabase]);
-
-  const handleOnboardingNext = useCallback(() => {
-    if (onboardingStep < ONBOARDING_STEPS.length - 1) {
-      setOnboardingStep(s => s + 1);
-    } else {
-      if (practitionerId) void completeOnboarding(practitionerId);
-      else { setShowOnboarding(false); setOnboardingDemoMode(false); }
-    }
-  }, [onboardingStep, practitionerId, completeOnboarding]);
 
   const handleOnboardingSkip = useCallback(() => {
     if (practitionerId) void completeOnboarding(practitionerId);
-    else { setShowOnboarding(false); setOnboardingDemoMode(false); }
+    else setShowOnboarding(false);
   }, [practitionerId, completeOnboarding]);
-
-  const handleOnboardingBack = useCallback(() => {
-    setOnboardingStep(s => Math.max(0, s - 1));
-  }, []);
-
-  // Switch tabs & select demo patient based on tour step
-  useEffect(() => {
-    if (!showOnboarding || !onboardingDemoMode) return;
-    if (onboardingStep === 2) {
-      setActiveTab("vue_ensemble");
-    } else {
-      setActiveTab("patients");
-    }
-    if (onboardingStep === 3 || onboardingStep === 4) {
-      setSelectedPatientId("demo-1");
-    }
-  }, [onboardingStep, showOnboarding, onboardingDemoMode]);
 
   const [loading, setLoading] = useState(true);
   const [practitionerName, setPractitionerName] = useState("");
@@ -539,6 +505,11 @@ export default function DashboardPage() {
   const [uploadSuccess, setUploadSuccess] = useState<string[]>([]);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   const [documentType, setDocumentType] = useState<"protocole" | "patient" | null>(null);
+  const [showPatientDocModal, setShowPatientDocModal] = useState(false);
+  const [patientDocFiles, setPatientDocFiles] = useState<File[]>([]);
+  const [patientDocUploading, setPatientDocUploading] = useState(false);
+  const [patientDocErrors, setPatientDocErrors] = useState<string[]>([]);
+  const [patientDocSuccess, setPatientDocSuccess] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
@@ -630,7 +601,7 @@ export default function DashboardPage() {
 
   const loadPatients = async (pid: string) => {
     const { data: relations } = await supabase.from("patient_practitioner").select("patient_id").eq("practitioner_id", pid);
-    if (!relations || relations.length === 0) { setLoading(false); return; }
+    if (!relations || relations.length === 0) { setLoading(false); setOnboardingDemoMode(true); return; }
     const patientIds = relations.map((r) => r.patient_id as string);
 
     const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status").in("user_id", patientIds);
@@ -709,7 +680,9 @@ export default function DashboardPage() {
       };
     });
     setPatients(patientsWithStats);
+    setOnboardingDemoMode(patientsWithStats.length === 0);
     if (patientsWithStats.length > 0) setSelectedPatientId(patientsWithStats[0].id);
+    else setSelectedPatientId("demo-1");
     setLoading(false);
   };
   useEffect(() => {
@@ -760,10 +733,10 @@ export default function DashboardPage() {
     void patient;
   }, [selectedPatientId, practitionerId, onboardingDemoMode]);
 
-  const displayedConversations = onboardingDemoMode ? DEMO_CONVERSATIONS : conversations;
-  const displayedPatients = onboardingDemoMode ? DEMO_PATIENTS as unknown as RealPatient[] : patients;
+  const displayedConversations = onboardingDemoMode ? (DEMO_CONVERSATIONS_BY_PATIENT[selectedPatientId ?? "demo-1"] ?? DEMO_CONVERSATIONS) : conversations;
+  const displayedPatients = onboardingDemoMode ? demoPatients as unknown as RealPatient[] : patients;
   const displayedSelectedPatient = onboardingDemoMode
-    ? DEMO_PATIENTS.find(p => p.id === (selectedPatientId ?? "demo-1")) as unknown as RealPatient ?? DEMO_PATIENTS[0] as unknown as RealPatient
+    ? demoPatients.find(p => p.id === (selectedPatientId ?? "demo-1")) as unknown as RealPatient ?? demoPatients[0] as unknown as RealPatient
     : patients.find((p) => p.id === selectedPatientId);
 
   const filteredPatients = displayedPatients.filter((p) => `${p.firstName} ${p.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -780,6 +753,16 @@ export default function DashboardPage() {
   const saveMurmure = async () => {
     if (!selectedPatientId || !murmureText.trim()) return;
     setSavingMurmure(true);
+    // Mode démo : ajouter localement
+    if (onboardingDemoMode) {
+      await new Promise(r => setTimeout(r, 600));
+      const newMurmure = { id: crypto.randomUUID(), text: murmureText.trim(), expires_at: null, created_at: new Date().toISOString() };
+      setDemoPatients(prev => prev.map(p => p.id === selectedPatientId
+        ? { ...p, practitioner_instruction: [...((p.practitioner_instruction as typeof newMurmure[]) ?? []), newMurmure] }
+        : p));
+      setSavingMurmure(false); setShowMurmureModal(false); setMurmureText("");
+      return;
+    }
     try {
       const expiresAt = buildMurmureExpiry(murmureDuration);
       const patient = patients.find(p => p.id === selectedPatientId);
@@ -807,6 +790,16 @@ export default function DashboardPage() {
   const addNote = async () => {
     if (!selectedPatientId || !newNoteText.trim()) return;
     setSavingNote(true);
+    // Mode démo : ajouter localement
+    if (onboardingDemoMode) {
+      await new Promise(r => setTimeout(r, 400));
+      const newNote = { id: crypto.randomUUID(), text: newNoteText.trim(), created_at: new Date().toISOString() };
+      setDemoPatients(prev => prev.map(p => p.id === selectedPatientId
+        ? { ...p, private_notes: [...((p.private_notes as typeof newNote[]) ?? []), newNote] }
+        : p));
+      setNewNoteText(""); setSavingNote(false); setShowNoteModal(false);
+      return;
+    }
     const patient = patients.find(p => p.id === selectedPatientId);
     const currentNotes = (patient?.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
     const newNote = { id: crypto.randomUUID(), text: newNoteText.trim(), created_at: new Date().toISOString() };
@@ -824,6 +817,12 @@ export default function DashboardPage() {
 
   const deleteNote = async (noteId: string) => {
     if (!selectedPatientId) return;
+    if (onboardingDemoMode) {
+      setDemoPatients(prev => prev.map(p => p.id === selectedPatientId
+        ? { ...p, private_notes: ((p.private_notes as { id: string; text: string; created_at: string }[]) ?? []).filter(n => n.id !== noteId) }
+        : p));
+      return;
+    }
     const patient = patients.find(p => p.id === selectedPatientId);
     const currentNotes = (patient?.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
     const updatedNotes = currentNotes.filter(n => n.id !== noteId);
@@ -837,6 +836,13 @@ export default function DashboardPage() {
 
   const updateNote = async (noteId: string, newText: string) => {
     if (!selectedPatientId || !newText.trim()) return;
+    if (onboardingDemoMode) {
+      setDemoPatients(prev => prev.map(p => p.id === selectedPatientId
+        ? { ...p, private_notes: ((p.private_notes as { id: string; text: string; created_at: string }[]) ?? []).map(n => n.id === noteId ? { ...n, text: newText.trim() } : n) }
+        : p));
+      setEditingNoteId(null); setEditingNoteText("");
+      return;
+    }
     const patient = patients.find(p => p.id === selectedPatientId);
     const currentNotes = (patient?.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
     const updatedNotes = currentNotes.map(n => n.id === noteId ? { ...n, text: newText.trim() } : n);
@@ -847,6 +853,13 @@ export default function DashboardPage() {
 
   const updateMurmure = async (murmureId: string, newText: string) => {
     if (!selectedPatientId || !newText.trim()) return;
+    if (onboardingDemoMode) {
+      setDemoPatients(prev => prev.map(p => p.id === selectedPatientId
+        ? { ...p, practitioner_instruction: ((p.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? []).map(m => m.id === murmureId ? { ...m, text: newText.trim() } : m) }
+        : p));
+      setEditingMurmureId(null); setEditingMurmureText("");
+      return;
+    }
     const patient = patients.find(p => p.id === selectedPatientId);
     const currentMurmures = (patient?.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? [];
     const updatedMurmures = currentMurmures.map(m => m.id === murmureId ? { ...m, text: newText.trim() } : m);
@@ -883,6 +896,12 @@ export default function DashboardPage() {
 
   const deleteMurmure = async (murmureId: string) => {
     if (!selectedPatientId) return;
+    if (onboardingDemoMode) {
+      setDemoPatients(prev => prev.map(p => p.id === selectedPatientId
+        ? { ...p, practitioner_instruction: ((p.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? []).filter(m => m.id !== murmureId) }
+        : p));
+      return;
+    }
     try {
       const patient = patients.find(p => p.id === selectedPatientId);
       const currentMurmures = (patient?.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? [];
@@ -901,8 +920,16 @@ export default function DashboardPage() {
   };
 
   const sendVictory = async (patientId: string, victoryText: string) => {
-    if (!practitionerId) return;
     setSendingVictory(patientId);
+    if (onboardingDemoMode) {
+      await new Promise(r => setTimeout(r, 800));
+      setDemoPatients(prev => prev.map(p => p.id === patientId ? { ...p, latest_victory: "" } : p));
+      setVictorySent(patientId);
+      setTimeout(() => setVictorySent(null), 3000);
+      setSendingVictory(null);
+      return;
+    }
+    if (!practitionerId) { setSendingVictory(null); return; }
     try {
       await fetch("/api/send-victory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId, practitionerId, victoryText }) });
       setPatients((prev) => prev.map((p) => p.id === patientId ? { ...p, latest_victory: "" } : p));
@@ -1041,7 +1068,9 @@ export default function DashboardPage() {
   };
 
   const openProfileModal = () => {
-    const patient = patients.find((p) => p.id === selectedPatientId);
+    const patient = onboardingDemoMode
+      ? demoPatients.find(p => p.id === (selectedPatientId ?? "demo-1")) as unknown as RealPatient
+      : patients.find((p) => p.id === selectedPatientId);
     if (!patient) return;
     setEditFirstName(patient.firstName ?? "");
     setEditLastName(patient.lastName ?? "");
@@ -1062,8 +1091,26 @@ export default function DashboardPage() {
   };
 
   const saveProfile = async () => {
-    if (!selectedPatientId || !practitionerId) return;
+    if (!selectedPatientId) return;
     setSavingProfile(true);
+    // Mode démo : mise à jour locale uniquement
+    if (onboardingDemoMode) {
+      await new Promise(r => setTimeout(r, 600));
+      setDemoPatients(prev => prev.map(p => p.id === selectedPatientId ? {
+        ...p,
+        firstName: editFirstName || p.firstName, lastName: editLastName || p.lastName,
+        age: editAge ? parseInt(editAge) : p.age, taille: editTaille ? parseInt(editTaille) : p.taille,
+        poids: editPoids ? parseFloat(editPoids) : p.poids, sexe: editSexe || p.sexe,
+        objective: editObjective || p.objective, pathologies: editPathologies || p.pathologies,
+        allergies: editAllergies || p.allergies, traitements: editTraitements || p.traitements,
+        objectif_clinique: editObjectifClinique || p.objectif_clinique,
+        niveau_activite: editNiveauActivite || p.niveau_activite, regime_specifique: editRegime || p.regime_specifique,
+      } : p));
+      setSavingProfile(false);
+      setShowProfileModal(false);
+      return;
+    }
+    if (!practitionerId) { setSavingProfile(false); return; }
     try {
       const res = await fetch("/api/save-patient-profile", {
         method: "POST",
@@ -1158,6 +1205,14 @@ export default function DashboardPage() {
   const generateReport = async () => {
     if (!selectedPatientId || !practitionerId) return;
     setReportLoading(true); setReportContent(""); setReportError("");
+    // Mode démo : mock instantané
+    if (onboardingDemoMode) {
+      await new Promise(r => setTimeout(r, 2000));
+      const mockRapport = DEMO_RAPPORT_BY_PATIENT[selectedPatientId] ?? DEMO_RAPPORT_BY_PATIENT["demo-1"];
+      setReportContent(JSON.stringify(mockRapport));
+      setReportLoading(false);
+      return;
+    }
     try {
       const now = new Date(); let dateFrom = ""; let dateTo = now.toISOString().split("T")[0];
       if (reportPeriod === "week") { const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7); dateFrom = weekAgo.toISOString().split("T")[0]; }
@@ -1234,6 +1289,14 @@ export default function DashboardPage() {
   const generateBilan = async () => {
     if (!selectedPatientId || !practitionerId) return;
     setBilanLoading(true); setBilanContent("");
+    // Mode démo : mock instantané
+    if (onboardingDemoMode) {
+      await new Promise(r => setTimeout(r, 1800));
+      const mockQuestions = DEMO_BILAN_BY_PATIENT[selectedPatientId] ?? DEMO_BILAN_BY_PATIENT["demo-1"];
+      setBilanContent(JSON.stringify(mockQuestions));
+      setBilanLoading(false);
+      return;
+    }
     try {
       const res = await fetch("/api/generate-bilan", {
         method: "POST",
@@ -1256,7 +1319,7 @@ export default function DashboardPage() {
     <div style={{ minHeight: "100vh", background: "#070B09", color: "white", fontFamily: "Inter, sans-serif" }}>
 
       {showOnboarding && (
-        <OnboardingTour step={onboardingStep} practitionerName={practitionerName} onNext={handleOnboardingNext} onSkip={handleOnboardingSkip} onBack={handleOnboardingBack} />
+        <OnboardingTour practitionerName={practitionerName} onSkip={handleOnboardingSkip} />
       )}
 
       {/* ═══ HEADER ═══ */}
@@ -1358,6 +1421,28 @@ export default function DashboardPage() {
         </div>
       </header>
 
+      {/* Bandeau Mode Démo */}
+      {onboardingDemoMode && !loading && (
+        <div style={{ background: "rgba(99,102,241,0.08)", borderBottom: "1px solid rgba(99,102,241,0.2)", padding: "8px 24px", position: "sticky", top: 64, zIndex: 44 }}>
+          <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#818cf8", animation: "breathe 2s ease-in-out infinite" }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#818cf8" }}>Mode Démo</span>
+              <span style={{ fontSize: 12, color: "#64748b" }}>· Vous explorez avec 3 patients fictifs. Toutes les fonctionnalités sont actives.</span>
+            </div>
+            <button
+              data-tour="invite"
+              onClick={() => setShowInviteModal(true)}
+              style={{ height: 28, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(99,102,241,0.35)", background: "rgba(99,102,241,0.12)", color: "#818cf8", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(99,102,241,0.22)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.5)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(99,102,241,0.12)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.35)"; }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+              Inviter mon premier patient
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Bandeau critique global */}
       {patients.some(p => p.emotional_status === "red_critical") && (
         <div style={{ background: "rgba(244,63,94,0.12)", borderBottom: "1px solid rgba(244,63,94,0.4)", padding: "10px 24px", animation: "criticalPulse 2s ease-in-out infinite", position: "sticky", top: 64, zIndex: 45 }}>
@@ -1385,14 +1470,14 @@ export default function DashboardPage() {
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 20, padding: "4px 12px" }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: emerald, filter: discretMode ? "blur(4px)" : "none" }}>{p.firstName}</span>
                 <span style={{ fontSize: 11, color: "#94a3b8", filter: discretMode ? "blur(4px)" : "none" }}>- {p.latest_victory}</span>
-                {!onboardingDemoMode && (victorySent === p.id ? (
+                {victorySent === p.id ? (
                   <CheckCircleSent />
                 ) : (
                   <button onClick={() => void sendVictory(p.id, p.latest_victory ?? "")} disabled={sendingVictory === p.id}
                     style={{ height: 22, borderRadius: 11, padding: "0 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "none", background: emerald, color: "black" }}>
                     {sendingVictory === p.id ? <span className="flex items-center justify-center gap-2"><span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white" />Envoi</span> : "Envoyer un bravo"}
                   </button>
-                ))}
+                )}
               </div>
             ))}
           </div>
@@ -1533,12 +1618,9 @@ export default function DashboardPage() {
                 <>
                   {/* Identité */}
                   <div style={{ textAlign: "center", marginBottom: 16 }}>
-                    <div style={{ width: 56, height: 56, borderRadius: "50%", background: selectedPatient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: "white", margin: "0 auto 10px" }}>
-                      {selectedPatient.initials}
-                    </div>
                     <p style={{ margin: 0, fontSize: 15, fontWeight: 700, filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{selectedPatient.firstName} {selectedPatient.lastName}</p>
                     <p style={{ margin: "2px 0 4px", fontSize: 12, color: "#64748b", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{onboardingDemoMode ? "patient@email.fr" : (selectedPatient as RealPatient).email}</p>
-                    <button onClick={() => !onboardingDemoMode && openProfileModal()}
+                    <button onClick={() => openProfileModal()}
                       style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#4b5563", padding: "0 0 8px", display: "flex", alignItems: "center", gap: 4, margin: "0 auto", transition: "color 0.2s" }}
                       onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
                       onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
@@ -1557,17 +1639,19 @@ export default function DashboardPage() {
                   <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 12px", marginBottom: 10 }}>
                     {(() => {
                       const p = selectedPatient as RealPatient;
-                      const lastActiveStr = onboardingDemoMode ? "Il y a 2h" : p.lastActive ? (() => {
-                        const diff = Date.now() - new Date(p.lastActive).getTime();
-                        const mins = Math.floor(diff / 60000);
-                        const hours = Math.floor(diff / 3600000);
-                        const days = Math.floor(diff / 86400000);
-                        if (mins < 60) return `Il y a ${mins}min`;
-                        if (hours < 24) return `Il y a ${hours}h`;
-                        return `Il y a ${days}j`;
-                      })() : "Jamais";
-                      const streak = onboardingDemoMode ? 5 : (p.streak ?? 0);
-                      const sos = onboardingDemoMode ? 2 : (p.sosResolved ?? 0);
+                      const lastActiveStr = onboardingDemoMode
+                        ? ((p as unknown as { lastActive?: string }).lastActive ?? "Jamais")
+                        : p.lastActive ? (() => {
+                          const diff = Date.now() - new Date(p.lastActive).getTime();
+                          const mins = Math.floor(diff / 60000);
+                          const hours = Math.floor(diff / 3600000);
+                          const days = Math.floor(diff / 86400000);
+                          if (mins < 60) return `Il y a ${mins}min`;
+                          if (hours < 24) return `Il y a ${hours}h`;
+                          return `Il y a ${days}j`;
+                        })() : "Jamais";
+                      const streak = p.streak ?? 0;
+                      const sos = p.sosResolved ?? 0;
                       return [
                         { label: "Dernière connexion", value: lastActiveStr },
                         { label: "Assiduité", value: streak > 0 ? `🔥 ${streak} jours actifs` : "Aucune activité" },
@@ -1617,9 +1701,7 @@ export default function DashboardPage() {
                     <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px", marginTop: 6 }}>
                     {(() => {
                       const p = selectedPatient as RealPatient;
-                      const murmures = onboardingDemoMode
-                        ? [{ id: "demo", text: "Sois plus doux cette semaine, elle traverse une période difficile.", expires_at: null, created_at: new Date().toISOString() }]
-                        : (p.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[] ?? []);
+                      const murmures = (p.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? [];
                         if (murmures.length === 0) return <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Aucune consigne active</p>; 
                       return murmures.map(m => {
                         const isExpired = m.expires_at && new Date(m.expires_at) < new Date();
@@ -1674,7 +1756,7 @@ export default function DashboardPage() {
                       });
                     })()}
                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
-                      <button onClick={() => !onboardingDemoMode && openMurmureModal()}
+                      <button onClick={() => openMurmureModal()}
                         style={{ width: 22, height: 22, borderRadius: 6, fontSize: 14, fontWeight: 400, cursor: "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.08)", color: emerald, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
                         onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
                         onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
@@ -1685,8 +1767,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Notes privées */}
-                  {!onboardingDemoMode && (
-                    <div style={{ marginBottom: 10 }}>
+                  <div style={{ marginBottom: 10 }}>
                     <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "94a3b8" }}>Notes privées</span>
                     <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", padding: "10px 12px", marginTop: 6 }}>
                         {(() => {
@@ -1750,22 +1831,37 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </div>
-                  )}
 
-
+                  {/* Documents patient */}
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#60a5fa" }}>Documents</span>
+                      <button
+                        onClick={() => { setPatientDocFiles([]); setPatientDocErrors([]); setPatientDocSuccess([]); setShowPatientDocModal(true); }}
+                        style={{ display: "flex", alignItems: "center", gap: 4, height: 22, padding: "0 8px", borderRadius: 6, background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.25)", color: "#60a5fa", fontSize: 10, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(96,165,250,0.15)"; e.currentTarget.style.borderColor = "rgba(96,165,250,0.45)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(96,165,250,0.08)"; e.currentTarget.style.borderColor = "rgba(96,165,250,0.25)"; }}>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Ajouter un document
+                      </button>
+                    </div>
+                    <div style={{ background: "rgba(96,165,250,0.03)", borderRadius: 10, border: "1px solid rgba(96,165,250,0.12)", padding: "10px 12px" }}>
+                      <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Aucun document ajouté</p>
+                    </div>
+                  </div>
 
                   {/* Analyses IA */}
                   <div data-tour="rapport">
                   <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#818cf8" }}>Analyses IA</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <button onClick={() => { if (!onboardingDemoMode) { setBilanContent(""); setShowBilanModal(true); } }}
+                    <button onClick={() => { setBilanContent(""); setShowBilanModal(true); }}
                         style={{ height: 36, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
                         onMouseEnter={e => { e.currentTarget.style.background = "rgba(99,102,241,0.15)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                         onMouseLeave={e => { e.currentTarget.style.background = "rgba(99,102,241,0.08)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                         Préparer ma séance
                       </button>
-                      <button onClick={() => { if (!onboardingDemoMode) { setShowReportModal(true); setReportContent(""); } }}
+                      <button onClick={() => { setShowReportModal(true); setReportContent(""); }}
                         style={{ height: 36, borderRadius: 8, background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.15)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
                         onMouseEnter={e => { e.currentTarget.style.background = "rgba(99,102,241,0.12)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.3)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                         onMouseLeave={e => { e.currentTarget.style.background = "rgba(99,102,241,0.04)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}>
@@ -2307,24 +2403,22 @@ export default function DashboardPage() {
             {/* AJOUTER DES DOCUMENTS */}
             <div style={{ marginBottom: 20 }}>
               <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>Ajouter des documents</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
-                {[
-                  { type: "protocole" as const, icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>, label: "Protocoles & méthodes", desc: "Articles, plans alimentaires", note: "✓ Indexé tel quel", noteColor: emerald },
-                  { type: "patient" as const, icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>, label: "Données patients", desc: "Bilans, comptes-rendus", note: "✓ Anonymisé avant indexation", noteColor: "#60a5fa" }
-                ].map(({ type, icon, label, desc, note, noteColor }) => (
-                  <label key={type} style={{ borderRadius: 12, border: `2px dashed ${documentType === type ? (type === "patient" ? "#60a5fa" : emerald) : "rgba(255,255,255,0.15)"}`, background: documentType === type ? (type === "patient" ? "rgba(96,165,250,0.08)" : "rgba(16,185,129,0.08)") : "rgba(255,255,255,0.02)", padding: "14px", textAlign: "left", cursor: "pointer", transition: "all 0.2s", display: "block" }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = type === "patient" ? "rgba(96,165,250,0.6)" : "rgba(16,185,129,0.6)"; e.currentTarget.style.background = type === "patient" ? "rgba(96,165,250,0.05)" : "rgba(16,185,129,0.05)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = documentType === type ? (type === "patient" ? "#60a5fa" : emerald) : "rgba(255,255,255,0.15)"; e.currentTarget.style.background = documentType === type ? (type === "patient" ? "rgba(96,165,250,0.08)" : "rgba(16,185,129,0.08)") : "rgba(255,255,255,0.02)"; }}>
-                    <input type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a" onChange={e => { setDocumentType(type); handleFileChange(e); }} style={{ display: "none" }} />
-                    <div style={{ margin: "0 0 8px" }}>{icon}</div>
-                    <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: "white" }}>{label}</p>
-                    <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b" }}>{desc}</p>
-                    <p style={{ margin: "0 0 8px", fontSize: 12, color: noteColor, fontWeight: 600 }}>{note}</p>
-                    <div style={{ borderRadius: 8, border: "1px dashed rgba(255,255,255,0.12)", padding: "6px 10px", textAlign: "center" }}>
-                      <span style={{ fontSize: 11, color: "#64748b" }}>Cliquez pour sélectionner · PDF, DOCX, TXT, MP3...</span>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ borderRadius: 12, border: `2px dashed ${documentType === "protocole" ? emerald : "rgba(255,255,255,0.15)"}`, background: documentType === "protocole" ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)", padding: "16px", textAlign: "left", cursor: "pointer", transition: "all 0.2s", display: "block" }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.6)"; e.currentTarget.style.background = "rgba(16,185,129,0.05)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = documentType === "protocole" ? emerald : "rgba(255,255,255,0.15)"; e.currentTarget.style.background = documentType === "protocole" ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)"; }}>
+                  <input type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a" onChange={e => { setDocumentType("protocole"); handleFileChange(e); }} style={{ display: "none" }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+                    <div>
+                      <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "white" }}>Protocoles & méthodes</p>
+                      <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>Articles, plans alimentaires, guides nutritionnels</p>
                     </div>
-                  </label>
-                ))}
+                  </div>
+                  <div style={{ borderRadius: 8, border: "1px dashed rgba(255,255,255,0.12)", padding: "8px 12px", textAlign: "center" }}>
+                    <span style={{ fontSize: 11, color: "#64748b" }}>Cliquez pour sélectionner · PDF, DOCX, TXT, MP3...</span>
+                  </div>
+                </label>
               </div>
 
               {uploadedFiles.length > 0 && (
@@ -2429,7 +2523,99 @@ export default function DashboardPage() {
         </div>
       )}
 
-{showProfileModal && (
+{/* Modale upload document patient */}
+      {showPatientDocModal && (
+        <div onClick={e => { if (e.target === e.currentTarget) setShowPatientDocModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 24, width: "100%", maxWidth: 460, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <div>
+                <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.1em" }}>Fiche patient</p>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Ajouter un document</h2>
+              </div>
+              <button onClick={() => setShowPatientDocModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
+            </div>
+
+            {/* Encadré anonymisation */}
+            <div style={{ background: "rgba(96,165,250,0.07)", border: "1px solid rgba(96,165,250,0.2)", borderRadius: 12, padding: "12px 14px", marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <p style={{ margin: 0, fontSize: 12, color: "#93c5fd", lineHeight: 1.6 }}>Tous les documents ajoutés ici sont <strong style={{ color: "#60a5fa" }}>automatiquement anonymisés par l'IA</strong> avant indexation, pour garantir la confidentialité du patient.</p>
+            </div>
+
+            {/* Zone de sélection */}
+            <label style={{ display: "block", borderRadius: 12, border: `2px dashed ${patientDocFiles.length > 0 ? "rgba(96,165,250,0.5)" : "rgba(255,255,255,0.15)"}`, background: patientDocFiles.length > 0 ? "rgba(96,165,250,0.06)" : "rgba(255,255,255,0.02)", padding: "16px", cursor: "pointer", transition: "all 0.2s", marginBottom: 12, textAlign: "center" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(96,165,250,0.5)"; e.currentTarget.style.background = "rgba(96,165,250,0.05)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = patientDocFiles.length > 0 ? "rgba(96,165,250,0.5)" : "rgba(255,255,255,0.15)"; e.currentTarget.style.background = patientDocFiles.length > 0 ? "rgba(96,165,250,0.06)" : "rgba(255,255,255,0.02)"; }}>
+              <input type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv" onChange={e => {
+                const files = Array.from(e.target.files ?? []).filter(f => {
+                  const ext = f.name.split(".").pop()?.toLowerCase();
+                  return ["pdf","docx","txt","jpg","jpeg","png","xlsx","csv"].includes(ext ?? "");
+                });
+                setPatientDocFiles(prev => [...prev, ...files]);
+                e.target.value = "";
+              }} style={{ display: "none" }} />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ margin: "0 auto 8px" }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 600, color: "white" }}>Cliquez pour sélectionner</p>
+              <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>PDF, DOCX, TXT, images, Excel · max 10MB</p>
+            </label>
+
+            {patientDocFiles.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                {patientDocFiles.map((f, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderRadius: 8, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", marginBottom: 5 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      <span style={{ fontSize: 12, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                    </div>
+                    <button onClick={() => setPatientDocFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 2 }} onMouseEnter={e => e.currentTarget.style.color = "#f87171"} onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {patientDocErrors.length > 0 && patientDocErrors.map((e, i) => (
+              <p key={i} style={{ margin: "0 0 4px", fontSize: 12, color: "#f87171" }}>{e}</p>
+            ))}
+            {patientDocSuccess.length > 0 && patientDocSuccess.map((name, i) => (
+              <p key={i} style={{ margin: "0 0 4px", fontSize: 12, color: "#60a5fa", display: "flex", alignItems: "center", gap: 5 }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>{name} indexé
+              </p>
+            ))}
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setShowPatientDocModal(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 13, cursor: "pointer" }}>Annuler</button>
+              <button
+                onClick={async () => {
+                  if (patientDocFiles.length === 0 || !practitionerId) return;
+                  setPatientDocUploading(true); setPatientDocErrors([]); setPatientDocSuccess([]);
+                  for (const file of patientDocFiles) {
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    formData.append("practitionerId", practitionerId);
+                    formData.append("documentType", "patient");
+                    try {
+                      const res = await fetch("/api/upload-document", { method: "POST", body: formData });
+                      const data = await res.json() as { success?: boolean; error?: string };
+                      if (res.ok && data.success) setPatientDocSuccess(prev => [...prev, file.name]);
+                      else setPatientDocErrors(prev => [...prev, `${file.name} : ${data.error ?? "Erreur"}`]);
+                    } catch { setPatientDocErrors(prev => [...prev, `${file.name} : Erreur réseau`]); }
+                  }
+                  setPatientDocUploading(false);
+                  setPatientDocFiles([]);
+                  setHasDocuments(true);
+                  if (practitionerId) await loadDocuments(practitionerId);
+                }}
+                disabled={patientDocUploading || patientDocFiles.length === 0}
+                style={{ flex: 2, height: 44, borderRadius: 10, background: patientDocUploading || patientDocFiles.length === 0 ? "rgba(96,165,250,0.05)" : "rgba(96,165,250,0.15)", border: `1px solid ${patientDocUploading || patientDocFiles.length === 0 ? "rgba(96,165,250,0.1)" : "rgba(96,165,250,0.35)"}`, color: patientDocUploading || patientDocFiles.length === 0 ? "#4b5563" : "#60a5fa", fontSize: 13, fontWeight: 600, cursor: patientDocUploading || patientDocFiles.length === 0 ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
+                {patientDocUploading ? "Anonymisation & indexation..." : `Indexer ${patientDocFiles.length > 0 ? patientDocFiles.length + " fichier" + (patientDocFiles.length > 1 ? "s" : "") : ""}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showProfileModal && (
         <div onClick={(e) => { if (e.target === e.currentTarget) setShowProfileModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 760, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>

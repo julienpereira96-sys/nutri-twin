@@ -80,14 +80,28 @@ export async function POST(request: Request) {
       .eq("practitioner_id", practitionerId)
       .single();
 
+    // Patient déjà associé et ayant terminé son onboarding → erreur claire
     if (existingRelation && existingPatient.onboarding_completed) {
       return Response.json({ error: "Ce patient est déjà associé à votre cabinet." }, { status: 400 });
     }
 
-    // Compte existe mais pas encore activé — inviteUserByEmail échoue toujours pour un user existant.
-    // generateLink "recovery" déclenche PASSWORD_RECOVERY dans set-password, pas de conflit.
+    // Patient déjà activé (onboarding terminé) mais pas encore lié à CE praticien
+    // → ajouter la relation sans renvoyer un lien (il peut se connecter normalement)
+    if (existingPatient.onboarding_completed) {
+      if (!existingRelation) {
+        await supabase.from("patient_practitioner").insert({
+          patient_id: existingPatient.user_id,
+          practitioner_id: practitionerId,
+        });
+      }
+      return Response.json({ success: true, alreadyActivated: true });
+    }
+
+    // Compte existe mais pas encore activé — inviteUserByEmail échoue pour un user existant.
+    // On génère un lien magique (type "magiclink") qui déclenche SIGNED_IN côté client,
+    // identique au flux d'invitation initial — plus robuste que "recovery" pour ce cas.
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-      type: "recovery",
+      type: "magiclink",
       email,
       options: { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/set-password` },
     });

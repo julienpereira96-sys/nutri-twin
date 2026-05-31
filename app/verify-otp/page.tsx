@@ -100,10 +100,19 @@ function VerifyOTPForm() {
     setResending(true);
     setError("");
     try {
-      await supabase.auth.resend({ type: "signup", email });
-      setCountdown(60);
-      setResendSuccess(true);
-      setTimeout(() => setResendSuccess(false), 4000);
+      const { error: resendError } = await supabase.auth.resend({ type: "signup", email });
+      if (resendError) {
+        // Rate limit Supabase : "over_email_send_rate_limit" ou message similaire
+        if (resendError.message.toLowerCase().includes("rate") || resendError.status === 429) {
+          setError("Un code a déjà été envoyé récemment. Attendez 60 secondes avant de réessayer.");
+        } else {
+          setError("Impossible de renvoyer le code. Veuillez réessayer.");
+        }
+      } else {
+        setCountdown(60);
+        setResendSuccess(true);
+        setTimeout(() => setResendSuccess(false), 4000);
+      }
     } catch {
       setError("Impossible de renvoyer le code.");
     }

@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const EyeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5">
@@ -31,8 +32,9 @@ export default function SetPasswordPage() {
   const [acceptData, setAcceptData] = useState(false);
 
   useEffect(() => {
-    // Instance unique partagée entre le listener et handleSubmit
-    const supabase = createClient(
+    // Client SSR (createBrowserClient) : stocke la session dans les cookies
+    // afin que le middleware Next.js puisse lire la session après navigation.
+    const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
@@ -123,7 +125,14 @@ export default function SetPasswordPage() {
         <div className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
           {error === "__expired__" ? (
             <div className="py-8 text-center">
-              <p style={{ fontSize: 32, marginBottom: 12 }}>⏱️</p>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="13" r="8"/>
+                  <path d="M12 9v4l2.5 2.5"/>
+                  <path d="M9.5 2.5h5"/>
+                  <path d="M12 2.5v2"/>
+                </svg>
+              </div>
               <p className="text-sm font-semibold text-white mb-2">Lien expiré</p>
               <p className="text-sm text-zinc-400 mb-6">Ce lien d'invitation n'est plus valide. Contactez votre praticien pour en recevoir un nouveau.</p>
             </div>

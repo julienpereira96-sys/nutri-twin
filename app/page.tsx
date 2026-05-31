@@ -143,36 +143,31 @@ function AnimatedChat() {
 }
 
 function StaticDashboard() {
-  const [showReport, setShowReport] = useState(true);
-  const reportBtnRef = useRef<HTMLButtonElement>(null);
-  const dashRef = useRef<HTMLDivElement>(null);
-
   const julieConversation = [
-    { role: "patient", text: "Bonjour, j'ai fait mes 3 repas aujourd'hui comme convenu 🎉" },
-    { role: "ai", text: "Bravo Julie ! C'est exactement ce que Catherine préconise. Comment vous sentez-vous ?" },
-    { role: "patient", text: "Beaucoup mieux, moins de fringales en fin de journée." },
-    { role: "ai", text: "C'est le signe que votre glycémie se stabilise. Continuez comme ça cette semaine." },
-    { role: "patient", text: "J'ai un repas d'affaires jeudi, je fais comment ?" },
-    { role: "ai", text: "Priorisez les protéines et légumes, évitez le pain en entrée. Un verre de vin max si vous le souhaitez, pas de culpabilité 😊" },
-    { role: "patient", text: "Super, merci ! Je me sens vraiment accompagnée 💚" },
-    { role: "ai", text: "C'est tout l'objectif. Catherine verra votre progression à votre prochain rendez-vous !" },
+    { role: "patient", text: "Bonsoir, j'ai encore eu une fringale ce soir. Je me sens vraiment nulle 😔" },
+    { role: "ai", text: "Bonsoir Julie. Un écart ça arrive — ça ne définit pas votre parcours. Vous aviez mangé quoi ce midi ?" },
+    { role: "patient", text: "Pas grand chose... un sandwich en vitesse entre deux réunions." },
+    { role: "ai", text: "Voilà tout s'explique. Ce n'est pas de la faiblesse, c'est de la biologie. Demain on vise un vrai déjeuner avec des protéines." },
+    { role: "patient", text: "Merci, ça me soulage d'avoir quelqu'un à qui écrire 💚" },
   ];
 
-  const reportSections = [
-    { icon: "📊", title: "Vue d'ensemble", color: emerald, bg: "rgba(16,185,129,0.08)", border: "rgba(16,185,129,0.2)", content: "Humeur moyenne : 7.2/10, alimentation : 6.8/10, 18 entrées ce mois. Progression notable sur les repas du soir, Julie résiste davantage aux impulsions de commander." },
-    { icon: "💚", title: "Points positifs", color: emerald, bg: "rgba(16,185,129,0.06)", border: "rgba(16,185,129,0.15)", content: "3 situations de stress gérées sans écart. Repas du midi réguliers. Engagement fort dans les échanges, elle répond systématiquement aux suggestions." },
-    { icon: "⚠️", title: "Obstacles identifiés", color: "#f59e0b", bg: "rgba(245,158,11,0.06)", border: "rgba(245,158,11,0.15)", content: "Fatigue professionnelle récurrente le soir, 5 mentions ce mois. Tendance au grignotage après 21h en semaine." },
-    { icon: "🎯", title: "Focus séance suivante", color: "#6366f1", bg: "rgba(99,102,241,0.06)", border: "rgba(99,102,241,0.15)", content: "Gestion de la fatigue professionnelle le soir, repas express adaptés, lien entre stress et comportement alimentaire." },
-    { icon: "❓", title: "Questions pour vous", color: "#06b6d4", bg: "rgba(6,182,212,0.06)", border: "rgba(6,182,212,0.15)", content: "Est-ce que mon hypothyroïdie influence mes fringales ? Puis-je faire un jeûne intermittent avec mon traitement ?" },
-    { icon: "🔔", title: "Alerte", color: "#ef4444", bg: "rgba(239,68,68,0.06)", border: "rgba(239,68,68,0.15)", content: "2 entrées avec humeur à 3/10 en milieu de mois. Sentiment de découragement exprimé. À explorer en consultation." },
+  const patients = [
+    { initials: "SM", name: "Sophie M.", insight: "Rechute alimentaire", time: "21:14", color: "#f43f5e", status: "red", active: false },
+    { initials: "JP", name: "Julie P.", insight: "Fatigue pro", time: "19:47", color: "#8b5cf6", status: "orange", active: true },
+    { initials: "TR", name: "Thomas R.", insight: "Progression constante", time: "Hier", color: "#3b82f6", status: "green", active: false },
+    { initials: "MD", name: "Marc D.", insight: "Bon suivi", time: "Lun", color: "#f59e0b", status: "green", active: false },
+    { initials: "CL", name: "Claire L.", insight: "Stabilisation", time: "Dim", color: "#ec4899", status: "green", active: false },
   ];
+
+  const statusColor: Record<string, string> = { red: "#f43f5e", orange: "#f59e0b", green: "#10b981" };
 
   return (
     <div>
       {/* Desktop */}
-      <div ref={dashRef} className="relative mx-auto hidden lg:block" style={{ maxWidth: 1100 }}>
+      <div className="relative mx-auto hidden lg:block" style={{ maxWidth: 1100 }}>
         <div className="absolute -inset-x-10 -top-8 -bottom-8 bg-gradient-to-b from-transparent via-emerald-500/[0.04] to-transparent blur-3xl" />
         <div className="relative rounded-3xl border border-white/[0.08] bg-[#0d0d0d] p-2 shadow-2xl shadow-black/50">
+          {/* Titlebar */}
           <div className="flex items-center gap-2 rounded-t-2xl bg-[#161616] px-4 py-3 border-b border-white/[0.06]">
             <div className="flex gap-1.5">
               <div className="h-3 w-3 rounded-full bg-[#FF5F57]" />
@@ -185,118 +180,137 @@ function StaticDashboard() {
             </div>
           </div>
 
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: showReport ? "180px 1fr 320px" : "220px 1fr 200px",
-            transition: "grid-template-columns 0.5s cubic-bezier(0.16,1,0.3,1)",
-            minHeight: 540,
-            borderRadius: "0 0 20px 20px",
-            overflow: "hidden",
-          }}>
-            {/* Sidebar patients */}
-            <div style={{ background: "#111111", borderRight: "1px solid rgba(255,255,255,0.06)", padding: 12, display: "flex", flexDirection: "column", height: "100%" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, paddingBottom: 12, marginBottom: 4 }}>
-                <div style={{ width: 24, height: 24, borderRadius: 8, background: "rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12 }}>🍃</div>
-                <span style={{ fontSize: 11, fontWeight: 600, color: "#d1d5db" }}>Mes patients</span>
+          {/* Header */}
+          <div style={{ background: "#0d0d0d", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/><path d="M12 8v4l3 3"/></svg>
               </div>
-              <div style={{ flex: 1, overflowY: "auto" }}>
-                {[
-                  { initials: "SM", name: "Sophie M.", msg: "Merci, ça m'aide 💚", time: "21:14", color: "#f43f5e", active: false },
-                  { initials: "JP", name: "Julie P.", msg: "Je vais essayer 😊", time: "19:47", color: "#8b5cf6", active: true },
-                  { initials: "TR", name: "Thomas R.", msg: "Super conseil !", time: "Hier", color: "#3b82f6", active: false },
-                  { initials: "MD", name: "Marc D.", msg: "Je me sens mieux", time: "Lun", color: "#f59e0b", active: false },
-                  { initials: "CL", name: "Claire L.", msg: "Bonne journée !", time: "Dim", color: "#ec4899", active: false },
-                  { initials: "AB", name: "Alice B.", msg: "Merci du suivi", time: "Sam", color: "#14b8a6", active: false },
-                  { initials: "RK", name: "Romain V.", msg: "À bientôt 👋", time: "Ven", color: "#f97316", active: false },
-                ].map((p, i) => (
-                  <div key={i} style={{ marginBottom: 6, borderRadius: 10, padding: "8px 10px", background: p.active ? "rgba(16,185,129,0.1)" : "transparent", border: p.active ? "1px solid rgba(16,185,129,0.2)" : "1px solid transparent" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                      <div style={{ width: 22, height: 22, borderRadius: "50%", background: p.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "white", flexShrink: 0 }}>{p.initials}</div>
-                      <span style={{ fontSize: 11, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: p.active ? emerald : "#d1d5db" }}>{p.name}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "white", letterSpacing: "-0.02em" }}>NutriTwin</span>
+            </div>
+            <div style={{ display: "flex", gap: 4 }}>
+              {["Mes patients", "Vue d'ensemble"].map((tab, i) => (
+                <div key={i} style={{ padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, background: i === 0 ? "rgba(16,185,129,0.12)" : "transparent", color: i === 0 ? "#10b981" : "#4b5563", border: i === 0 ? "1px solid rgba(16,185,129,0.25)" : "1px solid transparent" }}>{tab}</div>
+              ))}
+            </div>
+            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+          </div>
+
+          {/* 3-column layout */}
+          <div style={{ display: "grid", gridTemplateColumns: "240px 1fr 280px", minHeight: 520, borderRadius: "0 0 20px 20px", overflow: "hidden" }}>
+
+            {/* Sidebar patients */}
+            <div style={{ background: "#111111", borderRight: "1px solid rgba(255,255,255,0.06)", padding: 10, display: "flex", flexDirection: "column" }}>
+              <div style={{ background: "#161616", borderRadius: 8, padding: "6px 10px", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <span style={{ fontSize: 10, color: "#4b5563" }}>Rechercher...</span>
+              </div>
+              <div style={{ flex: 1 }}>
+                {patients.map((p, i) => (
+                  <div key={i} style={{ marginBottom: 4, borderRadius: 10, padding: "8px 10px", background: p.active ? "rgba(16,185,129,0.08)" : "transparent", border: p.active ? "1px solid rgba(16,185,129,0.2)" : "1px solid transparent" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
+                      <div style={{ position: "relative", flexShrink: 0 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: "50%", background: p.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "white" }}>{p.initials}</div>
+                        <div style={{ position: "absolute", bottom: 0, right: 0, width: 7, height: 7, borderRadius: "50%", background: statusColor[p.status], border: "1.5px solid #111111" }} />
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 600, flex: 1, color: p.active ? "#10b981" : "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
                       <span style={{ fontSize: 9, color: "#4b5563", flexShrink: 0 }}>{p.time}</span>
                     </div>
-                    <p style={{ margin: 0, fontSize: 10, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 30 }}>{p.msg}</p>
+                    <p style={{ margin: 0, fontSize: 10, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 31 }}>{p.insight}</p>
                   </div>
                 ))}
               </div>
-              <div style={{ borderRadius: 8, background: emerald, padding: "6px 0", textAlign: "center", fontSize: 10, fontWeight: 600, color: "black", marginTop: 8 }}>+ Inviter un patient</div>
+              <div style={{ borderRadius: 8, background: "#10b981", padding: "6px 0", textAlign: "center", fontSize: 10, fontWeight: 700, color: "black", marginTop: 6 }}>+ Inviter un patient</div>
             </div>
 
             {/* Zone conversation */}
             <div style={{ background: "#0d0d0d", display: "flex", flexDirection: "column" }}>
-              <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "white" }}>JP</div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>Julie P.</p>
-                    <p style={{ margin: 0, fontSize: 10, color: "#6b7280" }}>julie.p@email.fr</p>
-                  </div>
+              <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "white" }}>JP</div>
+                <div>
+                  <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "white" }}>Julie P.</p>
+                  <p style={{ margin: 0, fontSize: 9, color: "#6b7280" }}>julie.p@email.fr</p>
                 </div>
-                <button ref={reportBtnRef} onClick={() => setShowReport(!showReport)} style={{ borderRadius: 20, border: `1px solid rgba(16,185,129,${showReport ? "0.5" : "0.3"})`, padding: "4px 10px", fontSize: 10, fontWeight: 600, color: emerald, background: showReport ? "rgba(16,185,129,0.15)" : "transparent", cursor: "pointer", transition: "all 0.2s" }}>
-                  📊 Rapport du patient
-                </button>
+                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, borderRadius: 20, padding: "3px 10px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b" }} />
+                  <span style={{ fontSize: 9, fontWeight: 600, color: "#f59e0b" }}>Fatigue pro</span>
+                </div>
               </div>
-              <div style={{ flex: 1, padding: 16, display: "flex", flexDirection: "column", gap: 10, overflow: "hidden" }}>
+              <div style={{ flex: 1, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10, overflow: "hidden" }}>
                 {julieConversation.map((msg, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: msg.role === "ai" ? "flex-end" : "flex-start" }}>
-                    <div style={{ maxWidth: "76%", borderRadius: 14, borderBottomRightRadius: msg.role === "ai" ? 4 : 14, borderBottomLeftRadius: msg.role === "patient" ? 4 : 14, padding: "8px 12px", fontSize: 11, lineHeight: 1.5, backgroundColor: msg.role === "ai" ? emerald : "#1e1e1e", color: msg.role === "ai" ? "black" : "rgba(255,255,255,0.8)" }}>
+                    <div style={{ maxWidth: "74%", borderRadius: 14, borderBottomRightRadius: msg.role === "ai" ? 4 : 14, borderBottomLeftRadius: msg.role === "patient" ? 4 : 14, padding: "8px 12px", fontSize: 11, lineHeight: 1.55, backgroundColor: msg.role === "ai" ? "#10b981" : "#1e1e1e", color: msg.role === "ai" ? "black" : "rgba(255,255,255,0.85)" }}>
                       {msg.text}
                     </div>
                   </div>
                 ))}
               </div>
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 10, background: "#1a1a1a", padding: "8px 12px" }}>
-                  <span style={{ flex: 1, fontSize: 10, color: "#4b5563" }}>Conversation en lecture seule</span>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: emerald }} />
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 10, background: "#161616", padding: "8px 12px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <span style={{ flex: 1, fontSize: 10, color: "#4b5563" }}>Conversation en lecture seule — accessible uniquement par le patient</span>
+                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981" }} />
                 </div>
               </div>
             </div>
 
-            {/* Panneau rapport */}
-            <div style={{ background: showReport ? "#0f0f0f" : "#111111", borderLeft: "1px solid rgba(255,255,255,0.06)", padding: 16, overflowY: "auto", transition: "background 0.3s" }}>
-              {!showReport ? (
-                <div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", marginBottom: 16 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "white", marginBottom: 8 }}>JP</div>
-                    <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "white" }}>Julie P.</p>
-                    <p style={{ margin: "2px 0 0", fontSize: 10, color: "#6b7280" }}>julie.p@email.fr</p>
-                  </div>
-                  <div style={{ borderRadius: 10, background: "#161616", padding: 10, marginBottom: 12 }}>
-                    {[{ label: "Âge", value: "28 ans" }, { label: "Objectif", value: "Rééquilibrage" }, { label: "Pathologie", value: "Aucune" }, { label: "Messages", value: "34" }].map((item, i) => (
-                      <div key={i} style={{ marginBottom: 6 }}>
-                        <p style={{ margin: 0, fontSize: 9, color: "#4b5563" }}>{item.label}</p>
-                        <p style={{ margin: 0, fontSize: 10, color: "#d1d5db" }}>{item.value}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ borderRadius: 10, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", padding: 10 }}>
-                    <p style={{ margin: "0 0 6px", fontSize: 9, color: "#9ca3af" }}>📊 Rapport mensuel</p>
-                    <div style={{ height: 4, background: "rgba(255,255,255,0.05)", borderRadius: 2, marginBottom: 4 }}>
-                      <div style={{ height: "100%", width: "65%", background: emerald, borderRadius: 2 }} />
-                    </div>
-                    <p style={{ margin: 0, fontSize: 9, color: "#4b5563" }}>Généré le 1er du mois</p>
+            {/* Fiche patient (droite) */}
+            <div style={{ background: "#0f0f0f", borderLeft: "1px solid rgba(255,255,255,0.06)", padding: 14, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+              {/* Identité — sans bulle avatar */}
+              <div style={{ textAlign: "center" }}>
+                <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "white" }}>Julie P.</p>
+                <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563" }}>julie.p@email.fr</p>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 20, padding: "3px 10px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }} />
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "#f59e0b" }}>Fatigue professionnelle</span>
+                </div>
+              </div>
+
+              {/* Victoire */}
+              <div style={{ background: "rgba(16,185,129,0.06)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.15)", padding: "8px 10px" }}>
+                <p style={{ margin: "0 0 3px", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#10b981" }}>Victoire récente</p>
+                <p style={{ margin: 0, fontSize: 10, color: "#94a3b8" }}>3 repas complets cette semaine</p>
+              </div>
+
+              {/* Murmure */}
+              <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "8px 10px" }}>
+                <p style={{ margin: "0 0 5px", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#10b981" }}>Murmures</p>
+                <p style={{ margin: 0, fontSize: 10, color: "#94a3b8", lineHeight: 1.5 }}>Rappelle-lui de prendre soin d'elle malgré la charge de travail.</p>
+              </div>
+
+              {/* Note privée */}
+              <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", padding: "8px 10px" }}>
+                <p style={{ margin: "0 0 5px", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Notes privées</p>
+                <p style={{ margin: 0, fontSize: 10, color: "#64748b", lineHeight: 1.5 }}>Lien fort alimentation / stress pro. Explorer en consultation.</p>
+              </div>
+
+              {/* Documents — bleu */}
+              <div style={{ background: "rgba(96,165,250,0.04)", borderRadius: 10, border: "1px solid rgba(96,165,250,0.15)", padding: "8px 10px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
+                  <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#60a5fa" }}>Documents</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 3, borderRadius: 5, padding: "2px 6px", background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)" }}>
+                    <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span style={{ fontSize: 8, fontWeight: 600, color: "#60a5fa" }}>Ajouter</span>
                   </div>
                 </div>
-              ) : (
-                <div style={{ animation: "slideInRight 0.4s cubic-bezier(0.16,1,0.3,1)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-                    <div>
-                      <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "white" }}>📊 Rapport - Julie P.</p>
-                      <p style={{ margin: "3px 0 0", fontSize: 10, color: "#4b5563" }}>Mai 2026</p>
-                    </div>
-                    <button onClick={() => setShowReport(false)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#9ca3af", fontSize: 14, cursor: "pointer", borderRadius: 6, width: 24, height: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+                <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Aucun document ajouté</p>
+              </div>
+
+              {/* Analyses IA */}
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#818cf8" }}>Analyses IA</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  <div style={{ height: 30, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: "#818cf8" }}>Préparer ma séance</span>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {reportSections.map((section, i) => (
-                      <div key={i} style={{ background: section.bg, border: `1px solid ${section.border}`, borderRadius: 10, padding: "10px 12px", animation: `slideInRight 0.4s ${i * 0.06}s cubic-bezier(0.16,1,0.3,1) both` }}>
-                        <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: section.color }}>{section.icon} {section.title}</p>
-                        <p style={{ margin: 0, fontSize: 11, color: "#9ca3af", lineHeight: 1.5 }}>{section.content}</p>
-                      </div>
-                    ))}
+                  <div style={{ height: 30, borderRadius: 8, background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.15)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: "#818cf8" }}>Rapport IA</span>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
@@ -323,11 +337,15 @@ function StaticDashboard() {
                 <p className="text-[13px] font-semibold text-white">Julie P.</p>
                 <p className="text-[10px] text-zinc-500">julie.p@email.fr</p>
               </div>
+              <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, borderRadius: 20, padding: "3px 8px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
+                <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#f59e0b" }} />
+                <span style={{ fontSize: 9, fontWeight: 600, color: "#f59e0b" }}>Fatigue pro</span>
+              </div>
             </div>
             <div className="space-y-2 mb-3">
               {julieConversation.map((msg, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: msg.role === "ai" ? "flex-end" : "flex-start" }}>
-                  <div style={{ maxWidth: "82%", borderRadius: 12, borderBottomRightRadius: msg.role === "ai" ? 4 : 12, borderBottomLeftRadius: msg.role === "patient" ? 4 : 12, padding: "7px 11px", fontSize: 12, lineHeight: 1.5, backgroundColor: msg.role === "ai" ? emerald : "#1e1e1e", color: msg.role === "ai" ? "black" : "rgba(255,255,255,0.8)" }}>
+                  <div style={{ maxWidth: "82%", borderRadius: 12, borderBottomRightRadius: msg.role === "ai" ? 4 : 12, borderBottomLeftRadius: msg.role === "patient" ? 4 : 12, padding: "7px 11px", fontSize: 12, lineHeight: 1.5, backgroundColor: msg.role === "ai" ? "#10b981" : "#1e1e1e", color: msg.role === "ai" ? "black" : "rgba(255,255,255,0.8)" }}>
                     {msg.text}
                   </div>
                 </div>
@@ -341,20 +359,26 @@ function StaticDashboard() {
         </div>
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0f0f0f] p-4">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-3 flex items-center justify-between">
             <div>
-              <p className="text-[13px] font-bold text-white">📊 Rapport - Julie P.</p>
+              <p className="text-[13px] font-bold text-white">Rapport IA — Julie P.</p>
               <p className="text-[10px] text-zinc-600">Mai 2026</p>
             </div>
             <div className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[10px] font-semibold text-violet-400">Mensuel</div>
           </div>
-          <div className="flex flex-col gap-3">
-            {reportSections.map((section, i) => (
-              <div key={i} style={{ background: section.bg, border: `1px solid ${section.border}`, borderRadius: 10, padding: "10px 12px" }}>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: section.color }}>{section.icon} {section.title}</p>
-                <p style={{ margin: 0, fontSize: 11, color: "#9ca3af", lineHeight: 1.5 }}>{section.content}</p>
-              </div>
-            ))}
+          <div className="flex flex-col gap-2">
+            <div style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, padding: "9px 11px" }}>
+              <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 700, color: "#10b981" }}>Points positifs</p>
+              <p style={{ margin: 0, fontSize: 11, color: "#9ca3af", lineHeight: 1.5 }}>Régularité des repas améliorée. Moins d'épisodes de grignotage nocturne cette semaine.</p>
+            </div>
+            <div style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: 10, padding: "9px 11px" }}>
+              <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 700, color: "#f59e0b" }}>Points de vigilance</p>
+              <p style={{ margin: 0, fontSize: 11, color: "#9ca3af", lineHeight: 1.5 }}>Stress professionnel identifié comme déclencheur principal. Hydratation insuffisante.</p>
+            </div>
+            <div style={{ background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)", borderRadius: 10, padding: "9px 11px" }}>
+              <p style={{ margin: "0 0 3px", fontSize: 11, fontWeight: 700, color: "#a78bfa" }}>Recommandations séance</p>
+              <p style={{ margin: 0, fontSize: 11, color: "#9ca3af", lineHeight: 1.5 }}>Explorer les stratégies de gestion du stress. Revoir les collations de l'après-midi.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -634,9 +658,24 @@ export default function Home() {
 
             <div className="grid gap-4 sm:grid-cols-3 max-w-5xl mx-auto mt-6 sm:mt-0">
               {[
-                { num: "01", title: "La transmission", desc: "Incorporez vos protocoles, vos guides et vos méthodes. Complétez son savoir par un échange guidé pour capturer chaque nuance de votre expertise.", icon: "📚" },
-                { num: "02", title: "L'apprentissage", desc: "Ajustez le ton, le style, les valeurs de votre double. Pour qu'il réponde exactement comme vous le feriez.", icon: "🧠" },
-                { num: "03", title: "Le relais", desc: "Donnez le lien à vos patients. Ils sont désormais épaulés 24h/24, toujours sous votre contrôle.", icon: "🤝" },
+                { num: "01", title: "La transmission", desc: "Incorporez vos protocoles, vos guides et vos méthodes. Complétez son savoir par un échange guidé pour capturer chaque nuance de votre expertise.", icon: (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+                  </svg>
+                )},
+                { num: "02", title: "L'apprentissage", desc: "Ajustez le ton, le style, les valeurs de votre double. Pour qu'il réponde exactement comme vous le feriez.", icon: (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2a5 5 0 0 1 5 5c0 2.5-1.5 4.5-3.5 5.4V14h-3v-1.6C8.5 11.5 7 9.5 7 7a5 5 0 0 1 5-5z"/>
+                    <path d="M9 14h6"/><path d="M10 17h4"/><path d="M11 20h2"/>
+                  </svg>
+                )},
+                { num: "03", title: "Le relais", desc: "Donnez le lien à vos patients. Ils sont désormais épaulés 24h/24, toujours sous votre contrôle.", icon: (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  </svg>
+                )},
               ].map((step, i) => (
                 <div key={i} className="rounded-2xl p-6 sm:p-8" style={{ border: "1px solid rgba(255,255,255,0.10)", background: "#0d0d0d" }}>
                   <div className="mb-5 flex items-start justify-between">
@@ -699,9 +738,23 @@ export default function Home() {
 
             <div className="grid gap-4 sm:grid-cols-3 max-w-5xl mx-auto">
               {[
-                { icon: "🔐", title: "Propriété Exclusive", desc: "Votre jumeau est privé. Votre savoir, vos protocoles et vos méthodes ne servent jamais à entraîner d'autres modèles." },
-                { icon: "🇫🇷", title: "Souveraineté & RGPD", desc: "Vos données et celles de vos patients sont stockées sur des serveurs basés à Paris, conformément au RGPD." },
-                { icon: "⚖️", title: "Cadre Éthique", desc: "NutriTwin est un assistant de suivi, pas de diagnostic. Pour toute question médicale, vous serez systématiquement consulté." },
+                { icon: (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                ), title: "Propriété Exclusive", desc: "Votre jumeau est privé. Votre savoir, vos protocoles et vos méthodes ne servent jamais à entraîner d'autres modèles." },
+                { icon: (
+                    <svg width="22" height="16" viewBox="0 0 22 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, overflow: "hidden", display: "block" }}>
+                      <rect width="7.33" height="16" fill="#002395"/>
+                      <rect x="7.33" width="7.34" height="16" fill="#FFFFFF"/>
+                      <rect x="14.67" width="7.33" height="16" fill="#ED2939"/>
+                    </svg>
+                  ), title: "Souveraineté & RGPD", desc: "Vos données et celles de vos patients sont stockées sur des serveurs basés à Paris, conformément au RGPD." },
+                { icon: (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 3v18M3 9l9-6 9 6"/><path d="M5 9l-2 6h4L5 9z"/><path d="M19 9l-2 6h4L19 9z"/><path d="M3 21h18"/>
+                  </svg>
+                ), title: "Cadre Éthique", desc: "NutriTwin est un assistant de suivi, pas de diagnostic. Pour toute question médicale, vous serez systématiquement consulté." },
               ].map((item, i) => (
                 <div key={i} className="rounded-2xl p-6 sm:p-8" style={{ border: "1px solid rgba(255,255,255,0.10)", background: "#0d0d0d" }}>
                   <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl text-xl" style={{ background: "rgba(16,185,129,0.10)", boxShadow: "0 0 0 1px rgba(16,185,129,0.25)" }}>
