@@ -26,15 +26,32 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    // Lire le curseur actuel pour ce patient
+    const { data: practitionerRow } = await supabase
+      .from("practitioners")
+      .select("bilan_cursors")
+      .eq("user_id", practitionerId)
+      .single();
+
+    const cursors = (practitionerRow?.bilan_cursors as Record<string, string> | null) ?? {};
+    const lastCursor = cursors[patientId] ?? null;
+
     // Récupérer les données du patient en parallèle
+    let conversationsQuery = supabase
+      .from("conversations")
+      .select("role, content, created_at")
+      .eq("patient_id", patientId)
+      .eq("practitioner_id", practitionerId)
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    // Filtrer après le curseur si présent
+    if (lastCursor) {
+      conversationsQuery = conversationsQuery.gt("created_at", lastCursor);
+    }
+
     const [{ data: chatMessages }, { data: journalEntries }, { data: patient }] = await Promise.all([
-      supabase
-        .from("conversations")
-        .select("role, content, created_at")
-        .eq("patient_id", patientId)
-        .eq("practitioner_id", practitionerId)
-        .order("created_at", { ascending: false })
-        .limit(50),
+      conversationsQuery,
       supabase
         .from("journal_entries")
         .select("date, mood, food_rating, emotions, content")
@@ -50,11 +67,25 @@ export async function POST(request: Request) {
 
     const firstName = (patient as { first_name?: string } | null)?.first_name ?? "le patient";
 
-    const chatData = (chatMessages ?? [])
-      .filter(m => m.role === "user")
+    // Compter les messages patient depuis le curseur
+    const patientMessages = (chatMessages ?? []).filter(m => m.role === "user");
+    const messageCount = patientMessages.length;
+
+    // Si moins de 5 messages depuis le dernier bilan, retourner un message honnête
+    if (messageCount < 5) {
+      const sinceText = lastCursor
+        ? "depuis votre dernière préparation de séance"
+        : "dans l'historique";
+      return NextResponse.json({
+        lowData: true,
+        message: `${firstName} n'a envoyé que ${messageCount} message${messageCount > 1 ? "s" : ""} ${sinceText}. Il n'y a pas encore suffisamment d'échanges pour générer des questions pertinentes. Revenez après quelques nouvelles conversations.`,
+      });
+    }
+
+    const chatData = patientMessages
       .slice(0, 20)
       .map(m => (m.content as string).slice(0, 200))
-      .join(" | ") || "Pas de conversations récentes";
+      .join(" | ");
 
     const journalData = (journalEntries ?? [])
       .map(e => {
@@ -73,31 +104,52 @@ export async function POST(request: Request) {
 
     const prompt = `Tu es l'assistant d'un nutritionniste qui prépare sa prochaine consultation avec ${firstName}.
 
-${patientProfile ? `PROFIL PATIENT :\n${patientProfile}\n\n` : ""}DERNIERS ÉCHANGES CHAT (messages du patient) :
+${patientProfile ? `PROFIL PATIENT :\n${patientProfile}\n\n` : ""}MESSAGES DU PATIENT DEPUIS LE DERNIER BILAN (${messageCount} messages) :
 ${chatData}
 
 JOURNAL DES 14 DERNIERS JOURS :
 ${journalData}
 
-Génère exactement 3 questions clés que le praticien devrait poser lors de la prochaine consultation. Les questions doivent être précises, personnalisées et montrer que le praticien a suivi de près l'évolution du patient. Chaque question doit avoir un contexte expliquant pourquoi elle est importante.
+Génère exactement 3 questions clés que le praticien devrait poser lors de la prochaine consultation. Les questions doivent être précises, personnalisées et montrer que le praticien a suivi de près l'évolution du patient.
+
+Pour chaque question :
+- "question" : la question à poser, formulée directement au patient
+- "justification" : pourquoi cette question est importante, basée sur les données observées
+- "objectif" : l'objectif clinique visé par cette question
+
+N'invente aucune donnée non présente dans les échanges. Si un point n'est pas documenté, ne le mentionne pas.
 
 Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks :
 [
-  {"question": "...", "contexte": "..."},
-  {"question": "...", "contexte": "..."},
-  {"question": "...", "contexte": "..."}
+  {"question": "...", "justification": "...", "objectif": "..."},
+  {"question": "...", "justification": "...", "objectif": "..."},
+  {"question": "...", "justification": "...", "objectif": "..."}
 ]`;
 
     const model = genAI.getGenerativeModel({
-      model: "gemini-3-flash",
-      generationConfig: { maxOutputTokens: 600, temperature: 0.6 },
+      model: "gemini-2.0-flash",
+      generationConfig: { maxOutputTokens: 800, temperature: 0.6 },
     });
 
     const result = await model.generateContent(prompt);
     const rawText = result.response.text().trim().replace(/```json|```/g, "").trim();
 
     // Valider que c'est bien du JSON
-    const questions = JSON.parse(rawText) as { question: string; contexte: string }[];
+    const questions = JSON.parse(rawText) as { question: string; justification: string; objectif: string }[];
+
+    // Mettre à jour le curseur avec le timestamp du message le plus récent
+    const newestMessage = (chatMessages ?? []).reduce((latest, msg) => {
+      const t = new Date(msg.created_at as string).getTime();
+      return t > latest ? t : latest;
+    }, 0);
+
+    if (newestMessage > 0) {
+      const newCursors = { ...cursors, [patientId]: new Date(newestMessage).toISOString() };
+      await supabase
+        .from("practitioners")
+        .update({ bilan_cursors: newCursors })
+        .eq("user_id", practitionerId);
+    }
 
     return NextResponse.json({ questions });
   } catch (error: unknown) {

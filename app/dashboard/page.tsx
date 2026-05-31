@@ -575,6 +575,10 @@ export default function DashboardPage() {
   const [savingSignature, setSavingSignature] = useState(false);
   const [visionSaved, setVisionSaved] = useState(false);
   const [signatureSaved, setSignatureSaved] = useState(false);
+  const [editingVision, setEditingVision] = useState(false);
+  const [editingSignature, setEditingSignature] = useState(false);
+  const [visionDraft, setVisionDraft] = useState("");
+  const [signatureDraft, setSignatureDraft] = useState("");
 
   const [reportPeriod, setReportPeriod] = useState<ReportPeriod>("month");
   const [reportDateFrom, setReportDateFrom] = useState("");
@@ -1152,34 +1156,26 @@ export default function DashboardPage() {
   };
 
   const generateReport = async () => {
-    if (!selectedPatientId) return;
+    if (!selectedPatientId || !practitionerId) return;
     setReportLoading(true); setReportContent(""); setReportError("");
     try {
       const now = new Date(); let dateFrom = ""; let dateTo = now.toISOString().split("T")[0];
       if (reportPeriod === "week") { const weekAgo = new Date(now); weekAgo.setDate(weekAgo.getDate() - 7); dateFrom = weekAgo.toISOString().split("T")[0]; }
       else if (reportPeriod === "month") { const monthAgo = new Date(now); monthAgo.setMonth(monthAgo.getMonth() - 1); dateFrom = monthAgo.toISOString().split("T")[0]; }
       else { dateFrom = reportDateFrom; dateTo = reportDateTo; }
-      const { data: journalEntries } = await supabase.from("journal_entries").select("date, mood, food_rating, emotions").eq("patient_id", selectedPatientId).gte("date", dateFrom).lte("date", dateTo).order("date", { ascending: true });
-      const { data: chatMessages } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", selectedPatientId).eq("practitioner_id", practitionerId!).gte("created_at", `${dateFrom}T00:00:00`).lte("created_at", `${dateTo}T23:59:59`).order("created_at", { ascending: true });
-      const hasJournal = journalEntries && journalEntries.length > 0;
-      const hasChat = chatMessages && chatMessages.length > 0;
-      if (!hasJournal && !hasChat) { setReportContent("Aucune donnée disponible sur cette période."); setReportLoading(false); return; }
-      let journalSection = "";
-      if (hasJournal) {
-        const avgMood = (journalEntries.reduce((sum, e) => sum + e.mood, 0) / journalEntries.length).toFixed(1);
-        const avgFood = (journalEntries.reduce((sum, e) => sum + e.food_rating, 0) / journalEntries.length).toFixed(1);
-        const allEmotions = journalEntries.flatMap((e) => e.emotions as string[]);
-        const emotionCounts: Record<string, number> = {};
-        allEmotions.forEach((em) => { emotionCounts[em] = (emotionCounts[em] ?? 0) + 1; });
-        const topEmotions = Object.entries(emotionCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([em, count]) => `${em} (${count}x)`).join(", ");
-        journalSection = `\nJOURNAL DE BORD (${journalEntries.length} entrées) :\n- Humeur moyenne : ${avgMood}/10\n- Alimentation moyenne : ${avgFood}/3\n- Émotions dominantes : ${topEmotions || "non renseignées"}`;
+      const res = await fetch("/api/generate-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId: selectedPatientId, practitionerId, dateFrom, dateTo }),
+      });
+      const data = await res.json() as { report?: { synthese: string; patterns: string; victoires: string; murmures_bilan: string }; lowData?: boolean; message?: string; error?: string };
+      if (data.lowData && data.message) {
+        setReportContent(JSON.stringify({ lowData: true, message: data.message }));
+      } else if (data.report) {
+        setReportContent(JSON.stringify(data.report));
+      } else {
+        setReportError("Impossible de générer le rapport. Réessayez.");
       }
-      let chatSection = "";
-      if (hasChat) { const patientMessages = chatMessages.filter((m) => m.role === "user").map((m) => m.content).join("\n- "); chatSection = `\nCONVERSATIONS (${chatMessages.length} messages) :\n- ${patientMessages}`; }
-      const prompt = `Génère un compte rendu professionnel pour un praticien en nutrition. Période du ${dateFrom} au ${dateTo}.\n${journalSection}\n${chatSection}\n\nStructure : 1. Vue d'ensemble 2. État émotionnel et alimentaire 3. Sujets abordés 4. Points positifs 5. Axes de travail 6. Questions clés à poser.\nTon professionnel et concis. Sans markdown.`;
-      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: prompt, practitionerId: practitionerId ?? undefined }) });
-      const aiData = (await res.json()) as { response?: string };
-      setReportContent(aiData.response ?? "Impossible de générer le rapport.");
     } catch { setReportError("La génération a échoué. Vérifiez votre connexion et réessayez."); }
     finally { setReportLoading(false); }
   };
@@ -1244,13 +1240,15 @@ export default function DashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ patientId: selectedPatientId, practitionerId }),
       });
-      const data = await res.json() as { questions?: { question: string; contexte: string }[]; error?: string };
-      if (data.questions) {
+      const data = await res.json() as { questions?: { question: string; justification: string; objectif: string }[]; lowData?: boolean; message?: string; error?: string };
+      if (data.lowData && data.message) {
+        setBilanContent(JSON.stringify({ lowData: true, message: data.message }));
+      } else if (data.questions) {
         setBilanContent(JSON.stringify(data.questions));
       } else {
-        setBilanContent("");
+        setBilanContent(JSON.stringify({ lowData: true, message: "Impossible de générer les questions. Réessayez après quelques échanges avec votre patient." }));
       }
-    } catch { setBilanContent(""); }
+    } catch { setBilanContent(JSON.stringify({ lowData: true, message: "Une erreur est survenue. Veuillez réessayer." })); }
     setBilanLoading(false);
   };
 
@@ -2057,7 +2055,7 @@ export default function DashboardPage() {
                 <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Un lien de réinitialisation sera envoyé à <strong style={{ color: "white" }}>{practitionerEmail}</strong></p>
                 <div style={{ display: "flex", gap: 10 }}>
                   <button onClick={() => setShowPasswordModal(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
-                  <button onClick={async () => { const s = createSupabaseBrowserClient(); await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/reset-password` }); setPasswordResetSent(true); }} style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>Envoyer le lien →</button>
+                  <button onClick={async () => { const s = createSupabaseBrowserClient(); await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/reset-password` }); setPasswordResetSent(true); }} style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>Envoyer le lien</button>
                 </div>
               </>
             )}
@@ -2126,7 +2124,7 @@ export default function DashboardPage() {
             </div>
             <div style={{ marginBottom: 24 }}>
               <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Sécurité</p>
-              <button onClick={() => setShowPasswordModal(true)} style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", fontSize: 14, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#94a3b8"; }}>Changer mon mot de passe →</button>
+              <button onClick={() => setShowPasswordModal(true)} style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", fontSize: 14, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#94a3b8"; }}>Changer mon mot de passe</button>
             </div>
             <div>
               <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Session</p>
@@ -2216,103 +2214,98 @@ export default function DashboardPage() {
               <button onClick={() => setShowJumeauModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
             </div>
 
-            {(() => {
-              const hasVision = visionText.trim().length > 0;
-              const hasSignature = signatureText.trim().length > 0;
-              const hasDocs = documents.length > 0;
-              const filled = (hasVision ? 1 : 0) + (hasSignature ? 1 : 0) + (hasDocs ? 1 : 0);
-              const score = filled === 0 ? 70 : filled === 1 ? 82 : filled === 2 ? 92 : 100;
-              const color = filled === 0 ? "#f59e0b" : filled === 1 ? "#f59e0b" : filled === 2 ? "#06b6d4" : "#10b981";
-              const msg = filled === 3
-                ? "Jumeau certifié — Précision maximale atteinte. Votre jumeau possède votre philosophie, votre voix et votre expertise."
-                : !hasVision
-                ? "Ajoutez votre Vision pour ancrer la philosophie de votre jumeau."
-                : !hasSignature
-                ? "Ajoutez votre Signature pour que votre jumeau capture votre voix unique."
-                : "Indexez des documents pour enrichir l'expertise métier de votre jumeau.";
-              return (
-                <div style={{ background: `${color}10`, borderRadius: 16, border: `2px solid ${color}40`, padding: "16px", marginBottom: 20, transition: "all 0.5s" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: "white" }}>Score de fidélité du jumeau</span>
-                    <span style={{ fontSize: 16, fontWeight: 800, color }}>{score}%</span>
-                  </div>
-                  <div style={{ height: 10, background: "rgba(255,255,255,0.08)", borderRadius: 5 }}>
-                    <div style={{ height: "100%", borderRadius: 5, backgroundColor: color, width: `${score}%`, transition: "width 0.7s" }} />
-                  </div>
-                  <p style={{ margin: "10px 0 0", fontSize: 13, color, fontWeight: 500 }}>{msg}</p>
-                </div>
-              );
-            })()}
-
+            {/* MA VISION — inline edit */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.8px" }}>Documents indexés ({documents.length})</p>
-                {documents.length > 0 && (
-                  <button onClick={() => setDocsExpanded(prev => !prev)}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#64748b", padding: "2px 6px", borderRadius: 6, transition: "color 0.2s" }}
-                    onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
-                    onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                    {docsExpanded ? "▴" : "▾"}
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Ma Vision</p>
+                {!editingVision && (
+                  <button onClick={() => { setVisionDraft(visionText); setEditingVision(true); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, color: emerald, padding: 0 }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
+                    onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+                    Modifier
                   </button>
                 )}
               </div>
-              {loadingDocs ? (
-                <p style={{ fontSize: 13, color: "#64748b" }}>Chargement...</p>
-              ) : documents.length === 0 ? (
-                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", padding: "20px", textAlign: "center" }}>
-                  <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>Aucun document indexé</p>
+              {editingVision ? (
+                <>
+                  <textarea value={visionDraft} onChange={e => setVisionDraft(e.target.value)} autoFocus
+                    placeholder="Exemple : Je crois que la santé commence dans l'intestin et que l'alimentation doit être un levier de vitalité, jamais une source d'anxiété..."
+                    rows={5} style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(16,185,129,0.4)", background: "#1a1a1a", color: "white", padding: "12px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", boxShadow: "0 0 0 3px rgba(16,185,129,0.1)" }} />
+                  <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+                    <button onClick={() => setEditingVision(false)}
+                      style={{ height: 34, padding: "0 14px", borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
+                      Annuler
+                    </button>
+                    <button onClick={() => { void saveVisionOrSignature("vision", visionDraft); setVisionText(visionDraft); setEditingVision(false); }}
+                      disabled={savingVision || !visionDraft.trim()}
+                      style={{ height: 34, padding: "0 16px", borderRadius: 8, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 12, fontWeight: 600, cursor: !visionDraft.trim() ? "not-allowed" : "pointer", opacity: !visionDraft.trim() ? 0.5 : 1 }}>
+                      Mettre à jour
+                    </button>
+                  </div>
+                </>
+              ) : visionText ? (
+                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "14px 16px" }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{visionText}</p>
                 </div>
-              ) : docsExpanded && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {documents.map((doc) => {
-                    const isAudio = ["mp3", "wav", "m4a"].includes(doc.file_type);
-                    return (
-                      <div key={doc.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.02)", borderRadius: 10, border: `1px solid ${editingAudioDoc?.id === doc.id ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.06)"}`, padding: "10px 14px", transition: "border-color 0.2s" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                          <span style={{ fontSize: 18, flexShrink: 0 }}>{fileTypeIcon(doc.file_type)}</span>
-                          <div style={{ minWidth: 0 }}>
-                            <p style={{ margin: 0, fontSize: 13, color: "white", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {doc.file_name.startsWith("dashboard_note_") ? "Note personnalisée" : doc.file_name.startsWith("memo_vocal_") ? "Mémo vocal" : doc.file_name.startsWith("slot1_vision_") ? "Note de vision" : doc.file_name.startsWith("slot2_signature_") ? "Note de signature" : doc.file_name.startsWith("memo_") ? "Mémo vocal" : doc.file_name}
-                            </p>
-                            <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{new Date(doc.created_at).toLocaleDateString("fr-FR")}</p>
-                          </div>
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0, marginLeft: 8 }}>
-                          {(doc.file_name.startsWith("slot1_vision_") || doc.file_name.startsWith("slot2_signature_")) && (
-                            <button
-                              onClick={() => { setEditingNote(doc); setJumeauText(doc.content ?? ""); setTimeout(() => document.getElementById("jumeau-textarea")?.focus(), 50); }}
-                              style={{ background: "none", border: "none", cursor: "pointer", color: editingNote?.id === doc.id ? "#10b981" : "#64748b", padding: "4px 8px", borderRadius: 6, fontSize: 12, transition: "color 0.2s" }}
-                              onMouseEnter={e => e.currentTarget.style.color = "#10b981"}
-                              onMouseLeave={e => e.currentTarget.style.color = editingNote?.id === doc.id ? "#10b981" : "#64748b"}>
-                              Modifier
-                            </button>
-                          )}
-                          {isAudio && (
-                            <button
-                              onClick={() => { setEditingAudioDoc(doc); setContinueFromSecs(0); setAudioBlob(null); setIsRecording(false); if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current); mediaRecorderRef.current?.stop(); }}
-                              style={{ background: "none", border: "none", cursor: "pointer", color: editingAudioDoc?.id === doc.id ? "#10b981" : "#64748b", padding: "4px 8px", borderRadius: 6, fontSize: 12, transition: "color 0.2s" }}
-                              onMouseEnter={e => e.currentTarget.style.color = "#10b981"}
-                              onMouseLeave={e => e.currentTarget.style.color = editingAudioDoc?.id === doc.id ? "#10b981" : "#64748b"}>
-                              Modifier
-                            </button>
-                          )}
-                          <button onClick={() => { void deleteDocument(doc.id, doc.file_name); if (editingNote?.id === doc.id) { setEditingNote(null); setJumeauText(""); } if (editingAudioDoc?.id === doc.id) { setEditingAudioDoc(null); setAudioBlob(null); } }}
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: "4px 8px", borderRadius: 6, transition: "color 0.2s" }}
-                            onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-                            onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+              ) : (
+                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", padding: "16px", textAlign: "center" }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 13, color: "#4b5563" }}>Non renseignée</p>
+                  <button onClick={() => { setVisionDraft(""); setEditingVision(true); }}
+                    style={{ fontSize: 12, color: emerald, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
+                    + Ajouter votre vision
+                  </button>
                 </div>
               )}
             </div>
 
-            <div style={{ marginBottom: 16 }}>
+            {/* MA SIGNATURE — inline edit */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Ma Signature</p>
+                {!editingSignature && (
+                  <button onClick={() => { setSignatureDraft(signatureText); setEditingSignature(true); }}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, color: emerald, padding: 0 }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
+                    onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+                    Modifier
+                  </button>
+                )}
+              </div>
+              {editingSignature ? (
+                <>
+                  <textarea value={signatureDraft} onChange={e => setSignatureDraft(e.target.value)} autoFocus
+                    placeholder={'Exemple : Je compare souvent le métabolisme à un feu de camp. Mon expression fétiche : "Un repas ne fait pas le moine, on tourne la page"...'}
+                    rows={5} style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(16,185,129,0.4)", background: "#1a1a1a", color: "white", padding: "12px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", boxShadow: "0 0 0 3px rgba(16,185,129,0.1)" }} />
+                  <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+                    <button onClick={() => setEditingSignature(false)}
+                      style={{ height: 34, padding: "0 14px", borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
+                      Annuler
+                    </button>
+                    <button onClick={() => { void saveVisionOrSignature("signature", signatureDraft); setSignatureText(signatureDraft); setEditingSignature(false); }}
+                      disabled={savingSignature || !signatureDraft.trim()}
+                      style={{ height: 34, padding: "0 16px", borderRadius: 8, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 12, fontWeight: 600, cursor: !signatureDraft.trim() ? "not-allowed" : "pointer", opacity: !signatureDraft.trim() ? 0.5 : 1 }}>
+                      Mettre à jour
+                    </button>
+                  </div>
+                </>
+              ) : signatureText ? (
+                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "14px 16px" }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{signatureText}</p>
+                </div>
+              ) : (
+                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", padding: "16px", textAlign: "center" }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 13, color: "#4b5563" }}>Non renseignée</p>
+                  <button onClick={() => { setSignatureDraft(""); setEditingSignature(true); }}
+                    style={{ fontSize: 12, color: emerald, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
+                    + Ajouter votre signature
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* AJOUTER DES DOCUMENTS */}
+            <div style={{ marginBottom: 20 }}>
               <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>Ajouter des documents</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 12 }}>
                 {[
@@ -2383,181 +2376,55 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* MA VISION */}
-            <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Ma Vision</p>
-              <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>L'ancrage de votre philosophie. Ce texte définit ce en quoi vous croyez profondément et dicte la ligne directrice de votre Jumeau.</p>
-              <textarea
-                value={visionText}
-                onChange={e => setVisionText(e.target.value)}
-                placeholder="Exemple : Je crois que la santé commence dans l'intestin et que l'alimentation doit être un levier de vitalité, jamais une source d'anxiété. Pour moi, aucun aliment n'est à diaboliser..."
-                rows={4}
-                style={{ width: "100%", borderRadius: 14, border: "1px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "12px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", transition: "border-color 0.2s, box-shadow 0.2s" }}
-                onFocus={e => { e.target.style.borderColor = emerald; e.target.style.boxShadow = "0 0 0 3px rgba(16,185,129,0.15)"; }}
-                onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }}
-              />
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
-                <button
-                  onClick={() => void saveVisionOrSignature("vision", visionText)}
-                  disabled={savingVision || !visionText.trim()}
-                  style={{ height: 36, borderRadius: 10, padding: "0 18px", fontSize: 13, fontWeight: 600, cursor: savingVision || !visionText.trim() ? "not-allowed" : "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.1)", color: visionSaved ? "#10b981" : emerald, opacity: !visionText.trim() ? 0.4 : 1, transition: "all 0.2s" }}
-                  onMouseEnter={e => { if (!savingVision && visionText.trim()) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                  {savingVision ? <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block" }} />Sauvegarde</span> : visionSaved ? "✓ Sauvegardé" : "Mettre à jour ma vision"}
-                </button>
-              </div>
-            </div>
-
-            {/* MA SIGNATURE */}
-            <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Ma Signature</p>
-              <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>Vos métaphores favorites, expressions fétiches pour dédramatiser un écart et mantras de motivation. Là où votre Jumeau capture votre voix unique.</p>
-              <textarea
-                value={signatureText}
-                onChange={e => setSignatureText(e.target.value)}
-                placeholder={'Exemple : Je compare souvent le métabolisme à un feu de camp. Mon expression fétiche : "Un repas ne fait pas le moine, on tourne la page". Mon mantra : "La régularité bat la perfection"...'}
-                rows={4}
-                style={{ width: "100%", borderRadius: 14, border: "1px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "12px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", transition: "border-color 0.2s, box-shadow 0.2s" }}
-                onFocus={e => { e.target.style.borderColor = emerald; e.target.style.boxShadow = "0 0 0 3px rgba(16,185,129,0.15)"; }}
-                onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }}
-              />
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
-                <button
-                  onClick={() => void saveVisionOrSignature("signature", signatureText)}
-                  disabled={savingSignature || !signatureText.trim()}
-                  style={{ height: 36, borderRadius: 10, padding: "0 18px", fontSize: 13, fontWeight: 600, cursor: savingSignature || !signatureText.trim() ? "not-allowed" : "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.1)", color: signatureSaved ? "#10b981" : emerald, opacity: !signatureText.trim() ? 0.4 : 1, transition: "all 0.2s" }}
-                  onMouseEnter={e => { if (!savingSignature && signatureText.trim()) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                  {savingSignature ? <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block" }} />Sauvegarde</span> : signatureSaved ? "✓ Sauvegardé" : "Mettre à jour ma signature"}
-                </button>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              {(() => {
-                const sectionLabel = "AJOUTER UNE INSTRUCTION";
-                const saveLabel = "Indexer cette note";
-                const newFileName = `note_praticien_${Date.now()}.txt`;
-
-                return (
-                  <>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                      <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>{sectionLabel}</p>
-                      {editingNote && (
-                        <button onClick={() => { setEditingNote(null); setJumeauText(""); }}
-                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#64748b", padding: 0, transition: "color 0.2s" }}
-                          onMouseEnter={e => e.currentTarget.style.color = "white"}
-                          onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                          Annuler
-                        </button>
-                      )}
-                    </div>
-
-                    {!editingNote && editingAudioDoc && !audioBlob && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                        <MicIcon size={13} color={emerald} />
-                        <span style={{ fontSize: 12, color: "#94a3b8", flex: 1 }}>Modification d'un mémo — enregistrez pour le remplacer.</span>
-                        <button onClick={() => { setEditingAudioDoc(null); setAudioBlob(null); }}
-                          style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#64748b", padding: 0, transition: "color 0.2s" }}
-                          onMouseEnter={e => e.currentTarget.style.color = "white"}
-                          onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                          Annuler
-                        </button>
-                      </div>
-                    )}
-
-                    <div style={{ position: "relative" }}>
-                      <textarea
-                        id="jumeau-textarea"
-                        value={jumeauText}
-                        onChange={e => setJumeauText(e.target.value)}
-                        placeholder="Ajoutez une nuance, une nouvelle méthode ou une instruction à votre jumeau..."
-                        rows={4}
-                        style={{ width: "100%", borderRadius: 16, border: "1px solid rgba(255,255,255,0.1)", background: "#1a1a1a", color: "white", padding: "14px 48px 14px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", transition: "border-color 0.2s, box-shadow 0.2s" }}
-                        onFocus={e => { e.target.style.borderColor = emerald; e.target.style.boxShadow = "0 0 0 3px rgba(16,185,129,0.15)"; }}
-                        onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.boxShadow = "none"; }} />
-                      {!editingNote && (
-                        <div style={{ position: "absolute", bottom: 12, right: 12, display: "flex", alignItems: "center", gap: 6 }}>
-                          {isRecording && <span style={{ fontSize: 11, color: "#f87171" }}>{formatTime(recordingTime)}</span>}
-                          {!audioBlob && (
-                            <button onClick={isRecording ? stopRecording : startRecording} title="Mémo vocal"
-                              style={{ width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", border: isRecording ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.3)", background: isRecording ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.15)", transition: "all 0.2s" }}>
-                              {isRecording ? <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f87171", animation: "breathe 1s ease-in-out infinite" }} /> : <MicIcon size={13} color={emerald} />}
-                            </button>
+            {/* DOCUMENTS INDEXÉS */}
+            {documents.length > 0 && (
+              <div style={{ marginTop: 4 }}>
+                <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>Documents indexés</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {documents.map((doc) => {
+                    const isAudio = doc.file_type?.startsWith("audio") || doc.file_name?.endsWith(".mp3") || doc.file_name?.endsWith(".wav") || doc.file_name?.endsWith(".m4a");
+                    const isNote = doc.file_name?.startsWith("note_praticien_");
+                    return (
+                      <div key={doc.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                          {isAudio ? (
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+                            </svg>
+                          ) : isNote ? (
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                            </svg>
+                          ) : (
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                            </svg>
                           )}
+                          <span style={{ fontSize: 12, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 320 }}>
+                            {isNote ? "Note praticien" : isAudio ? "Mémo vocal" : doc.file_name}
+                          </span>
+                          <span style={{ fontSize: 11, color: "#475569", flexShrink: 0 }}>
+                            {new Date(doc.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                          </span>
                         </div>
-                      )}
-                    </div>
-
-                    {!editingNote && audioBlob && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: emerald, flex: 1 }}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          <span style={{ fontSize: 13 }}>{editingAudioDoc ? "Nouveau mémo prêt" : "Mémo enregistré"} ({formatTime(recordingTime)})</span>
-                          {editingAudioDoc && <span style={{ fontSize: 11, color: "#64748b", display: "block" }}>Remplacera l'ancien mémo</span>}
-                        </span>
-                        <button onClick={async () => { if (audioBlob) await uploadAudioDirect(audioBlob, editingAudioDoc); }}
-                          disabled={audioUploading}
-                          style={{ borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, background: audioUploading ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${audioUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: audioUploading ? "#64748b" : emerald, cursor: audioUploading ? "not-allowed" : "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}
-                          onMouseEnter={e => { if (!audioUploading) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
-                          onMouseLeave={e => { e.currentTarget.style.background = audioUploading ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = audioUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"; }}>
-                          {audioUploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="12" height="12" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation...</> : "Indexer ce mémo"}
-                        </button>
-                        <button onClick={() => setAudioBlob(null)}
-                          style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4 }}
+                        <button
+                          onClick={async () => {
+                            await supabase.from("documents").delete().eq("id", doc.id);
+                            if (practitionerId) await loadDocuments(practitionerId);
+                          }}
+                          style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", padding: 4, flexShrink: 0, transition: "color 0.2s" }}
                           onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-                          onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          onMouseLeave={e => e.currentTarget.style.color = "#475569"}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
                           </svg>
                         </button>
                       </div>
-                    )}
-                    {!editingNote && uploadErrors.length > 0 && !audioBlob && (
-                      <div style={{ marginTop: 8 }}>
-                        {uploadErrors.map((e, i) => (
-                          <p key={i} style={{ margin: "0 0 4px", fontSize: 12, color: "#f87171", display: "flex", alignItems: "center", gap: 6 }}>
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>{e}
-                          </p>
-                        ))}
-                      </div>
-                    )}
-
-                    {jumeauText.trim() && !audioBlob && (
-                      <button onClick={async () => {
-                        setJumeauTextUploading(true);
-                        try {
-                          // En mode édition : supprimer l'ancien document d'abord
-                          if (editingNote) {
-                            await supabase.from("documents").delete().eq("practitioner_id", practitionerId ?? "").eq("file_name", editingNote.file_name);
-                          }
-                          const blob = new Blob([jumeauText], { type: "text/plain" });
-                          const file = new File([blob], newFileName, { type: "text/plain" });
-                          const formData = new FormData();
-                          formData.append("file", file);
-                          formData.append("practitionerId", practitionerId ?? "");
-                          formData.append("documentType", "protocole");
-                          const res = await fetch("/api/upload-document", { method: "POST", body: formData });
-                          const data = await res.json() as { success?: boolean };
-                          if (res.ok && data.success) {
-                            setJumeauText("");
-                            setEditingNote(null);
-                            if (practitionerId) await loadDocuments(practitionerId);
-                          }
-                        } catch { /* silencieux */ }
-                        setJumeauTextUploading(false);
-                      }} disabled={jumeauTextUploading}
-                        style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 12px", borderRadius: 12, background: jumeauTextUploading ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${jumeauTextUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: jumeauTextUploading ? "#64748b" : emerald, fontSize: 13, fontWeight: 600, cursor: jumeauTextUploading ? "not-allowed" : "pointer", transition: "all 0.2s", marginTop: 14 }}
-                        onMouseEnter={e => { if (!jumeauTextUploading) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
-                        onMouseLeave={e => { e.currentTarget.style.background = jumeauTextUploading ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = jumeauTextUploading ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"; }}>
-                        {jumeauTextUploading ? <><svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>Indexation en cours</> : saveLabel}
-                      </button>
-                    )}
-                    {jumeauTextUploading && <p style={{ fontSize: 12, color: "#f59e0b", textAlign: "center", marginTop: 6 }}>Patientez, l'indexation peut prendre quelques instants.</p>}
-                  </>
-                );
-              })()}
-            </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -2680,92 +2547,145 @@ export default function DashboardPage() {
       )}
 
       {showReportModal && (
-        <div onClick={(e) => { if (e.target === e.currentTarget) setShowReportModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 580, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white", display: "flex", alignItems: "center", gap: 8 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                Rapport — {selectedPatient?.firstName}
-              </h2>
-              <button onClick={() => setShowReportModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
-            </div>
-            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 16px", marginBottom: 20 }}>
-              <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>L'IA génère un compte rendu professionnel basé sur les conversations et le journal de votre patient sur la période choisie.</p>
-            </div>
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                {[{ value: "week", label: "Cette semaine" }, { value: "month", label: "Ce mois" }, { value: "custom", label: "Personnalisé" }].map((option) => (
-                  <button key={option.value} onClick={() => { setReportPeriod(option.value as ReportPeriod); setReportDateFrom(""); setReportDateTo(""); }}
-                    style={{ flex: 1, height: 38, borderRadius: 8, border: `1px solid ${reportPeriod === option.value ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.08)"}`, background: reportPeriod === option.value ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.02)", color: reportPeriod === option.value ? emerald : "#64748b", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
-                    onMouseEnter={e => { if (reportPeriod !== option.value) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#94a3b8"; } }}
-                    onMouseLeave={e => { if (reportPeriod !== option.value) { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#64748b"; } }}>
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-              {reportPeriod === "custom" && (
-                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", padding: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <button onClick={() => setReportMonth(new Date(reportMonth.getFullYear(), reportMonth.getMonth() - 1))}
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#94a3b8", fontSize: 14, transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>←</button>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "white", textTransform: "capitalize" }}>{reportMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</span>
-                    <button onClick={() => setReportMonth(new Date(reportMonth.getFullYear(), reportMonth.getMonth() + 1))}
-                      style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, width: 32, height: 32, cursor: "pointer", color: "#94a3b8", fontSize: 14, transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>→</button>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
-                    {["L","M","M","J","V","S","D"].map((d, i) => <div key={i} style={{ textAlign: "center", fontSize: 11, fontWeight: 600, color: "#64748b", padding: "4px 0" }}>{d}</div>)}
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
-                    {getCalendarDays().map((day, i) => {
-                      if (!day) return <div key={i} />;
-                      const isFuture = day.date > today;
-                      const isFrom = day.date === reportDateFrom;
-                      const isTo = day.date === reportDateTo;
-                      const isInRange = reportDateFrom && reportDateTo && day.date > reportDateFrom && day.date < reportDateTo;
-                      return (
-                        <button key={i} onClick={() => { if (isFuture) return; if (!reportDateFrom || (reportDateFrom && reportDateTo)) { setReportDateFrom(day.date); setReportDateTo(""); } else if (day.date >= reportDateFrom) setReportDateTo(day.date); else { setReportDateFrom(day.date); setReportDateTo(""); } }}
-                          style={{ aspectRatio: "1", borderRadius: 8, border: "none", cursor: isFuture ? "not-allowed" : "pointer", background: isFrom || isTo ? emerald : isInRange ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.03)", color: isFrom || isTo ? "black" : isFuture ? "#374151" : "white", fontSize: 12, fontWeight: isFrom || isTo ? 700 : 400, opacity: isFuture ? 0.3 : 1 }}>
-                          {day.day}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {reportDateFrom && <p style={{ margin: "12px 0 0", fontSize: 12, color: emerald, textAlign: "center" }}>{reportDateTo ? `Du ${new Date(reportDateFrom + "T12:00:00").toLocaleDateString("fr-FR")} au ${new Date(reportDateTo + "T12:00:00").toLocaleDateString("fr-FR")}` : `Début : ${new Date(reportDateFrom + "T12:00:00").toLocaleDateString("fr-FR")} - Sélectionnez la fin`}</p>}
+        <div onClick={(e) => { if (e.target === e.currentTarget) { setShowReportModal(false); setReportContent(""); setReportError(""); } }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 560, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)", maxHeight: "90vh", overflowY: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 9, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                 </div>
-              )}
+                <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "white" }}>Rapport — {selectedPatient?.firstName}</h2>
+              </div>
+              <button onClick={() => { setShowReportModal(false); setReportContent(""); setReportError(""); }}
+                style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, transition: "all 0.2s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "white"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#94a3b8"; }}>×</button>
             </div>
-            {reportError && (
-              <div style={{ background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", borderRadius: 12, padding: "12px 16px", marginBottom: 12, fontSize: 13, color: "#f87171", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span>{reportError}</span>
-                <button onClick={() => void generateReport()} style={{ background: "rgba(244,63,94,0.12)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 8, padding: "6px 14px", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Réessayer</button>
+            <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.1)", borderRadius: 10, padding: "11px 14px", marginBottom: 18 }}>
+              <p style={{ margin: 0, fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>L'IA génère un compte rendu professionnel basé sur les conversations de votre patient sur la période choisie.</p>
+            </div>
+            {!reportContent && (
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                  {[{ value: "week", label: "Cette semaine" }, { value: "month", label: "Ce mois" }, { value: "custom", label: "Personnalisé" }].map((option) => (
+                    <button key={option.value} onClick={() => { setReportPeriod(option.value as ReportPeriod); setReportDateFrom(""); setReportDateTo(""); }}
+                      style={{ flex: 1, height: 34, borderRadius: 8, border: `1px solid ${reportPeriod === option.value ? "rgba(99,102,241,0.4)" : "rgba(255,255,255,0.08)"}`, background: reportPeriod === option.value ? "rgba(99,102,241,0.1)" : "rgba(255,255,255,0.02)", color: reportPeriod === option.value ? "#818cf8" : "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                      onMouseEnter={e => { if (reportPeriod !== option.value) { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = "#94a3b8"; } }}
+                      onMouseLeave={e => { if (reportPeriod !== option.value) { e.currentTarget.style.background = "rgba(255,255,255,0.02)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#64748b"; } }}>
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                {reportPeriod === "custom" && (
+                  <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "12px 12px 10px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                      <button onClick={() => setReportMonth(new Date(reportMonth.getFullYear(), reportMonth.getMonth() - 1))}
+                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 6, width: 26, height: 26, cursor: "pointer", color: "#94a3b8", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>←</button>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "white", textTransform: "capitalize" }}>{reportMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</span>
+                      <button onClick={() => setReportMonth(new Date(reportMonth.getFullYear(), reportMonth.getMonth() + 1))}
+                        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 6, width: 26, height: 26, cursor: "pointer", color: "#94a3b8", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>→</button>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>
+                      {["L","M","M","J","V","S","D"].map((d, i) => <div key={i} style={{ textAlign: "center", fontSize: 10, fontWeight: 600, color: "#475569", padding: "3px 0" }}>{d}</div>)}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
+                      {getCalendarDays().map((day, i) => {
+                        if (!day) return <div key={i} />;
+                        const isFuture = day.date > today;
+                        const isFrom = day.date === reportDateFrom;
+                        const isTo = day.date === reportDateTo;
+                        const isInRange = reportDateFrom && reportDateTo && day.date > reportDateFrom && day.date < reportDateTo;
+                        return (
+                          <button key={i} onClick={() => { if (isFuture) return; if (!reportDateFrom || (reportDateFrom && reportDateTo)) { setReportDateFrom(day.date); setReportDateTo(""); } else if (day.date >= reportDateFrom) setReportDateTo(day.date); else { setReportDateFrom(day.date); setReportDateTo(""); } }}
+                            style={{ aspectRatio: "1", borderRadius: 5, border: "none", cursor: isFuture ? "not-allowed" : "pointer", background: isFrom || isTo ? emerald : isInRange ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.03)", color: isFrom || isTo ? "black" : isFuture ? "#374151" : "#e2e8f0", fontSize: 11, fontWeight: isFrom || isTo ? 700 : 400, opacity: isFuture ? 0.25 : 1, padding: "4px 0" }}>
+                            {day.day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {reportDateFrom && <p style={{ margin: "10px 0 0", fontSize: 11, color: emerald, textAlign: "center" }}>{reportDateTo ? `Du ${new Date(reportDateFrom + "T12:00:00").toLocaleDateString("fr-FR")} au ${new Date(reportDateTo + "T12:00:00").toLocaleDateString("fr-FR")}` : `Début : ${new Date(reportDateFrom + "T12:00:00").toLocaleDateString("fr-FR")} — sélectionnez la date de fin`}</p>}
+                  </div>
+                )}
               </div>
             )}
-            {!reportContent && (
-              <button onClick={() => void generateReport()} disabled={reportLoading || (reportPeriod === "custom" && (!reportDateFrom || !reportDateTo))}
-                style={{ width: "100%", height: 48, borderRadius: 12, background: reportLoading ? "#1a1a1a" : emerald, border: "none", color: reportLoading ? "#4a4a4a" : "black", fontSize: 15, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}>
-                {reportLoading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Génération en cours</span> : "Générer le rapport IA"}
+            {reportError && (
+              <div style={{ background: "rgba(244,63,94,0.06)", border: "1px solid rgba(244,63,94,0.18)", borderRadius: 10, padding: "11px 14px", marginBottom: 14, fontSize: 13, color: "#f87171", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <span>{reportError}</span>
+                <button onClick={() => void generateReport()} style={{ background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.25)", borderRadius: 7, padding: "5px 12px", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>Réessayer</button>
+              </div>
+            )}
+            {!reportContent && !reportLoading && (
+              <button onClick={() => void generateReport()} disabled={reportPeriod === "custom" && (!reportDateFrom || !reportDateTo)}
+                style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: (reportPeriod === "custom" && (!reportDateFrom || !reportDateTo)) ? "#374151" : "#94a3b8", fontSize: 14, fontWeight: 600, cursor: (reportPeriod === "custom" && (!reportDateFrom || !reportDateTo)) ? "not-allowed" : "pointer", marginBottom: 4, transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                onMouseEnter={e => { if (!(reportPeriod === "custom" && (!reportDateFrom || !reportDateTo))) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.16)"; e.currentTarget.style.color = "white"; } }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = (reportPeriod === "custom" && (!reportDateFrom || !reportDateTo)) ? "#374151" : "#94a3b8"; }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                Générer le rapport
               </button>
             )}
-            {reportContent && (
-              <>
-                <div style={{ background: "#0a0a0a", borderRadius: 16, padding: "20px", border: "1px solid rgba(255,255,255,0.06)", fontSize: 14, color: "#e2e8f0", lineHeight: 1.8, whiteSpace: "pre-wrap", marginBottom: 16 }}>{reportContent}</div>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={() => setReportContent("")} style={{ flex: 1, height: 44, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>Nouvelle période</button>
-                  <button onClick={() => void navigator.clipboard.writeText(reportContent)} style={{ flex: 1, height: 44, borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "none", color: "white", cursor: "pointer", fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                    Copier
-                  </button>
-                  <button onClick={() => void exportPDF()} style={{ flex: 1, height: 44, borderRadius: 12, background: emerald, border: "none", color: "black", cursor: "pointer", fontSize: 14, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg>
-                    PDF
-                  </button>
-                </div>
-              </>
+            {reportLoading && (
+              <div style={{ textAlign: "center", padding: "44px 0" }}>
+                <svg style={{ animation: "spin 1s linear infinite", marginBottom: 14 }} width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(99,102,241,0.2)" strokeWidth="3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="#818cf8" strokeWidth="3" strokeLinecap="round"/></svg>
+                <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>Génération du rapport en cours...</p>
+              </div>
             )}
+            {reportContent && (() => {
+              try {
+                const parsed = JSON.parse(reportContent) as { lowData?: boolean; message?: string; synthese?: string; patterns?: string; victoires?: string; murmures_bilan?: string };
+                if (parsed.lowData) {
+                  return (
+                    <div style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.18)", borderRadius: 14, padding: "20px", textAlign: "center", marginBottom: 16 }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 10 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                      <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.7 }}>{parsed.message}</p>
+                    </div>
+                  );
+                }
+                const sections = [
+                  { key: "synthese", label: "Synthèse", color: "#818cf8", borderColor: "rgba(99,102,241,0.2)", bg: "rgba(99,102,241,0.04)" },
+                  { key: "patterns", label: "Patterns observés", color: "#60a5fa", borderColor: "rgba(96,165,250,0.2)", bg: "rgba(96,165,250,0.04)" },
+                  { key: "victoires", label: "Victoires de la période", color: emerald, borderColor: "rgba(16,185,129,0.2)", bg: "rgba(16,185,129,0.04)" },
+                  { key: "murmures_bilan", label: "Points à approfondir", color: "#f59e0b", borderColor: "rgba(245,158,11,0.2)", bg: "rgba(245,158,11,0.04)" },
+                ];
+                return (
+                  <>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+                      {sections.map(({ key, label, color, borderColor, bg }) => (
+                        <div key={key} style={{ background: bg, border: `1px solid ${borderColor}`, borderRadius: 12, padding: "14px 16px" }}>
+                          <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 700, color, textTransform: "uppercase", letterSpacing: "0.12em" }}>{label}</p>
+                          <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.7 }}>{parsed[key as keyof typeof parsed] as string ?? "—"}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => { setReportContent(""); setReportError(""); }}
+                        style={{ flex: 1, height: 40, borderRadius: 9, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", color: "#64748b", cursor: "pointer", fontSize: 13, fontWeight: 500, transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.color = "#94a3b8"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.color = "#64748b"; }}>Nouvelle période</button>
+                      <button onClick={() => void navigator.clipboard.writeText([parsed.synthese, parsed.patterns, parsed.victoires, parsed.murmures_bilan].filter(Boolean).join("\n\n"))}
+                        style={{ flex: 1, height: 40, borderRadius: 9, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", color: "#64748b", cursor: "pointer", fontSize: 13, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.color = "#94a3b8"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.color = "#64748b"; }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        Copier
+                      </button>
+                      <button onClick={() => void exportPDF()}
+                        style={{ flex: 1, height: 40, borderRadius: 9, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.09)", color: "#64748b", cursor: "pointer", fontSize: 13, fontWeight: 500, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.color = "#94a3b8"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.color = "#64748b"; }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        PDF
+                      </button>
+                    </div>
+                  </>
+                );
+              } catch {
+                return <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{reportContent}</p>;
+              }
+            })()}
           </div>
         </div>
       )}
@@ -3077,57 +2997,74 @@ export default function DashboardPage() {
       )}
 
       {showBilanModal && (
-        <div onClick={e => { if (e.target === e.currentTarget) setShowBilanModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+        <div onClick={e => { if (e.target === e.currentTarget) { setShowBilanModal(false); setBilanContent(""); } }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 520, border: "1px solid rgba(99,102,241,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "85vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>✨ Préparer ma séance</h2>
-                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>3 questions clés pour {selectedPatient?.firstName}</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                </div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Préparer ma séance</h2>
               </div>
-              <button onClick={() => setShowBilanModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
+              <button onClick={() => { setShowBilanModal(false); setBilanContent(""); }} style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, transition: "all 0.2s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "white"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#94a3b8"; }}>×</button>
             </div>
-            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "12px 16px", marginBottom: 20 }}>
-              <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>L'IA analyse les derniers échanges et le journal de votre patient pour vous suggérer 3 questions clés à poser lors de votre prochaine consultation.</p>
+            <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.12)", borderRadius: 12, padding: "12px 16px", marginBottom: 20 }}>
+              <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>L'IA analyse les derniers échanges de votre patient pour vous suggérer 3 questions clés à poser lors de votre prochaine consultation.</p>
             </div>
             {!bilanContent && !bilanLoading && (
               <button onClick={() => void generateBilan()}
-                style={{ width: "100%", height: 44, borderRadius: 12, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 16, transition: "all 0.2s" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>
+                style={{ width: "100%", height: 44, borderRadius: 12, background: "rgba(99,102,241,0.14)", border: "1px solid rgba(99,102,241,0.35)", color: "#818cf8", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 16, transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(99,102,241,0.22)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.5)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(99,102,241,0.14)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.35)"; }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                 Générer les questions
               </button>
             )}
             {bilanLoading ? (
-              <div style={{ textAlign: "center", padding: "40px 0" }}>
-                <p style={{ fontSize: 13, color: "#64748b" }}>Analyse des échanges en cours... 🧬</p>
+              <div style={{ textAlign: "center", padding: "48px 0" }}>
+                <svg style={{ animation: "spin 1s linear infinite", marginBottom: 14 }} width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(99,102,241,0.2)" strokeWidth="3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="#818cf8" strokeWidth="3" strokeLinecap="round"/></svg>
+                <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>Analyse de l'historique du chat en cours...</p>
               </div>
             ) : bilanContent ? (
               (() => {
                 try {
-                  const questions = JSON.parse(bilanContent.replace(/```json|```/g, "").trim()) as { question: string; contexte: string }[];
+                  const parsed = JSON.parse(bilanContent) as { lowData?: boolean; message?: string } | { question: string; justification: string; objectif: string }[];
+                  if (!Array.isArray(parsed) && parsed.lowData) {
+                    return (
+                      <div style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 14, padding: "20px 20px", textAlign: "center" }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 10 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.7 }}>{(parsed as { message?: string }).message}</p>
+                      </div>
+                    );
+                  }
+                  const questions = parsed as { question: string; justification: string; objectif: string }[];
                   return (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       {questions.map((q, i) => (
-                        <div key={i} style={{ background: "rgba(99,102,241,0.05)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: 20 }}>
-                          <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#818cf8", textTransform: "uppercase", letterSpacing: "0.1em" }}>Question {i + 1}</p>
-                          <p style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 600, color: "white", lineHeight: 1.5 }}>"{q.question}"</p>
-                          <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{q.contexte}</p>
+                        <div key={i} style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.18)", borderRadius: 16, padding: "18px 20px" }}>
+                          <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 700, color: "#6366f1", textTransform: "uppercase", letterSpacing: "0.12em" }}>Question {i + 1}</p>
+                          <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 700, color: "white", lineHeight: 1.5 }}>{q.question}</p>
+                          <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                            <div>
+                              <p style={{ margin: "0 0 3px", fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.1em" }}>Justification IA</p>
+                              <p style={{ margin: 0, fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>{q.justification}</p>
+                            </div>
+                            <div>
+                              <p style={{ margin: "0 0 3px", fontSize: 10, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.1em" }}>Objectif clinique</p>
+                              <p style={{ margin: 0, fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>{q.objectif}</p>
+                            </div>
+                          </div>
                         </div>
                       ))}
-                      <button onClick={() => void navigator.clipboard.writeText(questions.map((q, i) => `${i + 1}. ${q.question}`).join("\n"))}
-                        style={{ height: 44, borderRadius: 12, background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", color: "#818cf8", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                        Copier les questions
-                      </button>
                     </div>
                   );
                 } catch {
                   return <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7 }}>{bilanContent}</p>;
                 }
               })()
-            ) : (
-              <p style={{ fontSize: 13, color: "#64748b", textAlign: "center", padding: "40px 0" }}>Impossible de générer le bilan.</p>
-            )}
+            ) : null}
           </div>
         </div>
       )}
