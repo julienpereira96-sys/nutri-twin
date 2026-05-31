@@ -66,6 +66,19 @@ const questions: Question[] = [
 const BLOCKS = ["Identité & Caractère", "Philosophie Nutritionnelle", "Gestion Humaine & Émotions", "Sécurité & Limites", "Mises en situation", "Votre Expertise"];
 const AUTRE_OPTION = "Autre (Précisez...)";
 
+const NoteIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+);
+
+const TrashIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+  </svg>
+);
+
 export default function OnboardingPage() {
   const router = useRouter();
 
@@ -89,6 +102,7 @@ export default function OnboardingPage() {
     } catch { return ""; }
   });
 
+  // Core UI states
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [alreadyDone, setAlreadyDone] = useState(false);
@@ -106,37 +120,47 @@ export default function OnboardingPage() {
     if (typeof window === "undefined") return "";
     return localStorage.getItem("onboarding_autre") ?? "";
   });
-  const [visionText, setVisionText] = useState<string>("");
-  const [signatureText, setSignatureText] = useState<string>("");
 
+  // Vision & Signature states
+  const [visionText, setVisionText] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("onboarding_vision") ?? "";
+  });
+  const [signatureText, setSignatureText] = useState<string>(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("onboarding_signature") ?? "";
+  });
+  const [visionSaved, setVisionSaved] = useState(false);
+  const [signatureSaved, setSignatureSaved] = useState(false);
+  const [visionEditing, setVisionEditing] = useState(false);
+  const [signatureEditing, setSignatureEditing] = useState(false);
+  const [savingVision, setSavingVision] = useState(false);
+  const [savingSignature, setSavingSignature] = useState(false);
+
+  // Computed values
   const total = questions.length;
   const isIdentityStep = step === total;
   const currentQuestion = questions[step];
   const progress = genDone ? 100 : isGenerating ? 99 : isIdentityStep ? 98 : Math.round((step / total) * 95);
   const currentBlock = isIdentityStep ? "" : currentQuestion?.block ?? "";
   const blockIndex = BLOCKS.indexOf(currentBlock);
-  const visionFilled = visionText.trim().length > 0;
-  const signatureFilled = signatureText.trim().length > 0;
-  const identityFilled = (visionFilled ? 1 : 0) + (signatureFilled ? 1 : 0);
-  const identityScore = identityFilled === 0 ? 70 : identityFilled === 1 ? 85 : 100;
+  const identityFilled = (visionSaved ? 1 : 0) + (signatureSaved ? 1 : 0);
+  const identityScore = identityFilled === 0 ? 80 : identityFilled === 1 ? 90 : 100;
   const identityColor = identityFilled === 0 ? "#f59e0b" : identityFilled === 1 ? "#06b6d4" : "#10b981";
 
-  useEffect(() => {
-  localStorage.setItem("onboarding_step", "34")
-  }, [step]);
+  // Per-section colors
+  const visionColor = !visionSaved ? "#64748b" : signatureSaved ? "#10b981" : "#06b6d4";
+  const signatureColor = !signatureSaved ? "#64748b" : visionSaved ? "#10b981" : "#06b6d4";
 
-  useEffect(() => {
-    localStorage.setItem("onboarding_answers", JSON.stringify(answers));
-  }, [answers]);
+  // Persistence effects
+  useEffect(() => { localStorage.setItem("onboarding_step", String(step)); }, [step]);
+  useEffect(() => { localStorage.setItem("onboarding_answers", JSON.stringify(answers)); }, [answers]);
+  useEffect(() => { localStorage.setItem("onboarding_selected", JSON.stringify(selected)); }, [selected]);
+  useEffect(() => { localStorage.setItem("onboarding_autre", autreText); }, [autreText]);
+  useEffect(() => { localStorage.setItem("onboarding_vision", visionText); }, [visionText]);
+  useEffect(() => { localStorage.setItem("onboarding_signature", signatureText); }, [signatureText]);
 
-  useEffect(() => {
-    localStorage.setItem("onboarding_selected", JSON.stringify(selected));
-  }, [selected]);
-
-  useEffect(() => {
-    localStorage.setItem("onboarding_autre", autreText);
-  }, [autreText]);
-
+  // Restore selected answer when navigating between questions
   useEffect(() => {
     if (isIdentityStep) return;
     const q = questions[step];
@@ -152,10 +176,7 @@ export default function OnboardingPage() {
         const autreVal = arr.find(v => !q.options?.slice(0, -1).includes(v)) ?? "";
         setSelected([...arr.filter(v => q.options?.slice(0, -1).includes(v)), AUTRE_OPTION]);
         setAutreText(autreVal);
-      } else {
-        setSelected(arr);
-        setAutreText("");
-      }
+      } else { setSelected(arr); setAutreText(""); }
     } else if (q.type === "single_with_free") {
       const isOption = q.options?.includes(saved as string);
       if (isOption) { setSelected(saved as string); setAutreText(""); }
@@ -167,14 +188,15 @@ export default function OnboardingPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
+  // Init: load onboarding state + vision/signature from Supabase
   useEffect(() => {
     const init = async () => {
       const supabase = createSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data } = await supabase.from("practitioners").select("onboarding_done").eq("user_id", user.id).single();
-      if (data?.onboarding_done) {
+      const { data: prac } = await supabase.from("practitioners").select("onboarding_done").eq("user_id", user.id).single();
+      if (prac?.onboarding_done) {
         setAlreadyDone(true);
       } else {
         const savedUserId = localStorage.getItem("onboarding_user_id");
@@ -183,13 +205,34 @@ export default function OnboardingPage() {
           localStorage.removeItem("onboarding_answers");
           localStorage.removeItem("onboarding_selected");
           localStorage.removeItem("onboarding_autre");
+          localStorage.removeItem("onboarding_vision");
+          localStorage.removeItem("onboarding_signature");
         }
         localStorage.setItem("onboarding_user_id", user.id);
+      }
+
+      // Load existing vision/signature from Supabase (source of truth for saved state)
+      const { data: profile } = await supabase
+        .from("practitioner_profiles")
+        .select("vision, signature")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (profile?.vision) {
+        setVisionText(profile.vision);
+        setVisionSaved(true);
+        localStorage.setItem("onboarding_vision", profile.vision);
+      }
+      if (profile?.signature) {
+        setSignatureText(profile.signature);
+        setSignatureSaved(true);
+        localStorage.setItem("onboarding_signature", profile.signature);
       }
     };
     void init();
   }, []);
 
+  // Block browser back navigation
   useEffect(() => {
     const handlePopState = () => window.history.pushState(null, "", window.location.pathname);
     window.history.pushState(null, "", window.location.pathname);
@@ -201,6 +244,7 @@ export default function OnboardingPage() {
     };
   }, []);
 
+  // Question navigation
   const canGoNext = () => {
     if (currentQuestion?.optional) return true;
     if (currentQuestion?.type === "multiple") return Array.isArray(selected) && selected.length > 0;
@@ -239,6 +283,65 @@ export default function OnboardingPage() {
     });
   };
 
+  // Save vision to Supabase
+  const saveVision = async () => {
+    if (!visionText.trim() || savingVision) return;
+    setSavingVision(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const res = await fetch("/api/save-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: { vision: visionText.trim() }, userId: user?.id ?? null }),
+      });
+      if (res.ok) { setVisionSaved(true); setVisionEditing(false); }
+    } finally { setSavingVision(false); }
+  };
+
+  // Save signature to Supabase
+  const saveSignature = async () => {
+    if (!signatureText.trim() || savingSignature) return;
+    setSavingSignature(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const res = await fetch("/api/save-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: { signature: signatureText.trim() }, userId: user?.id ?? null }),
+      });
+      if (res.ok) { setSignatureSaved(true); setSignatureEditing(false); }
+    } finally { setSavingSignature(false); }
+  };
+
+  // Delete vision from Supabase
+  const deleteVision = async () => {
+    const supabase = createSupabaseBrowserClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    await fetch("/api/save-profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers: { vision: "" }, userId: user?.id ?? null }),
+    });
+    setVisionText(""); setVisionSaved(false); setVisionEditing(false);
+    localStorage.removeItem("onboarding_vision");
+  };
+
+  // Delete signature from Supabase
+  const deleteSignature = async () => {
+    const supabase = createSupabaseBrowserClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    await fetch("/api/save-profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ answers: { signature: "" }, userId: user?.id ?? null }),
+    });
+    setSignatureText(""); setSignatureSaved(false); setSignatureEditing(false);
+    localStorage.removeItem("onboarding_signature");
+  };
+
+  // Save all answers + activate
   const saveProfile = async (redirect = true, extras?: { vision?: string; signature?: string }) => {
     if (isSaving) return;
     setIsSaving(true); setSaveError("");
@@ -301,6 +404,17 @@ export default function OnboardingPage() {
     }, 43000);
     genTimeoutsRef.current.push(t2);
   };
+
+  // Reusable save button style helper
+  const saveBtnStyle = (active: boolean, loading: boolean) => ({
+    background: active && !loading ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)",
+    border: active && !loading ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)",
+    color: active && !loading ? "#10b981" : "#3f3f46",
+    borderRadius: 10, padding: "9px 20px", fontSize: 13, fontWeight: 600,
+    cursor: active && !loading ? "pointer" : "not-allowed",
+    opacity: loading ? 0.7 : 1,
+    display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s",
+  });
 
   return (
     <>
@@ -443,12 +557,8 @@ export default function OnboardingPage() {
                       style={{ background: "rgba(16,185,129,0.12)", border: "2px solid rgba(16,185,129,0.4)" }}>
                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="4 12 9 17 20 6" stroke="rgba(16,185,129,0.15)" strokeWidth="2"/>
-                        <polyline points="4 12 9 17 20 6" stroke="#10b981" strokeWidth="2"
-                          strokeDasharray="30" strokeDashoffset="30"
-                          style={{ animation: "drawCheck 5s ease 0.3s forwards" }}/>
-                        <polyline points="4 12 9 17 20 6" stroke="white" strokeWidth="3"
-                          strokeDasharray="2 28" strokeDashoffset="30"
-                          style={{ animation: "drawCheck 5s ease 0.3s forwards, fadeOut 0.5s ease 5.3s forwards", opacity: 0.8, filter: "blur(0.5px)" }}/>
+                        <polyline points="4 12 9 17 20 6" stroke="#10b981" strokeWidth="2" strokeDasharray="30" strokeDashoffset="30" style={{ animation: "drawCheck 5s ease 0.3s forwards" }}/>
+                        <polyline points="4 12 9 17 20 6" stroke="white" strokeWidth="3" strokeDasharray="2 28" strokeDashoffset="30" style={{ animation: "drawCheck 5s ease 0.3s forwards, fadeOut 0.5s ease 5.3s forwards", opacity: 0.8, filter: "blur(0.5px)" }}/>
                       </svg>
                     </div>
                     <p className="text-xs font-mono font-bold tracking-widest text-[#10b981] uppercase mb-3">Configuration terminée</p>
@@ -488,8 +598,7 @@ export default function OnboardingPage() {
                           <circle cx="50" cy="50" r="46" fill="none" stroke="#10b981" strokeWidth="1.5" strokeDasharray="80 210" strokeLinecap="round"/>
                         </svg>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-16 h-16 rounded-full flex items-center justify-center"
-                            style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
+                          <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)" }}>
                             <span style={{ fontSize: 22 }}>🌿</span>
                           </div>
                         </div>
@@ -540,93 +649,197 @@ export default function OnboardingPage() {
               <section className="rounded-3xl border border-white/10 bg-[#121212] p-6 sm:p-8">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#10b981]">Votre Expertise</p>
                 <h1 className="text-xl font-bold leading-tight sm:text-2xl">Définissez votre vision et votre signature</h1>
-                <p className="mt-2 text-sm text-zinc-400 leading-relaxed">
-                  Ces deux éléments sont injectés directement dans l'identité de votre jumeau — pas dans une base documentaire. C'est ce qui lui donne votre ton unique et votre philosophie profonde.
-                </p>
 
                 {/* Score bar */}
-                <div className="mt-6 rounded-2xl p-5 transition-all duration-500"
+                <div className="mt-5 rounded-2xl p-5 transition-all duration-500"
                   style={{ background: `${identityColor}12`, border: `2px solid ${identityColor}40` }}>
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-bold text-white">Niveau d'identité du jumeau</p>
+                    <p className="text-sm font-bold text-white">Niveau de fidélité du jumeau</p>
                     <span className="text-lg font-bold" style={{ color: identityColor }}>{identityScore}%</span>
                   </div>
                   <div className="h-3 w-full rounded-full bg-white/10">
                     <div className="h-full rounded-full transition-all duration-700"
                       style={{ width: `${identityScore}%`, backgroundColor: identityColor }} />
                   </div>
-                  <p className="mt-3 text-sm" style={{ color: identityColor }}>
-                    {identityFilled === 0 && "Complétez votre Vision et votre Signature pour finaliser votre jumeau."}
-                    {identityFilled === 1 && `Plus qu'un élément — ajoutez votre ${visionFilled ? "Signature" : "Vision"} pour atteindre 100%.`}
-                    {identityFilled === 2 && "Identité complète — Votre jumeau possède votre vision et votre signature."}
+                  <p className="mt-3 text-sm leading-relaxed" style={{ color: identityColor }}>
+                    {identityFilled === 0 && "Complétez votre Vision et votre Signature pour finaliser votre jumeau. Ces deux éléments seront injectés directement dans son identité pour lui donner votre ton unique et votre philosophie profonde."}
+                    {identityFilled === 1 && visionSaved && "Votre Jumeau possède désormais votre philosophie. Il ne lui reste plus qu'à capturer votre ton pour atteindre une fidélité à 100%."}
+                    {identityFilled === 1 && signatureSaved && "Votre Jumeau possède désormais votre ton. Il ne lui reste plus qu'à capturer votre vision pour atteindre une fidélité à 100%."}
+                    {identityFilled === 2 && "Votre jumeau possède votre vision et votre signature. Il est désormais prêt à prendre le relais auprès de vos patients."}
                   </p>
                 </div>
 
-                {/* Section 1 — Ma Vision */}
-                <div className="mt-8">
+                {/* ── Section 1 — Ma Vision ── */}
+                <div className="mt-10">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold flex-shrink-0 border"
+                    <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold flex-shrink-0 border transition-all duration-500"
                       style={{
-                        background: visionFilled ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)",
-                        color: visionFilled ? "#10b981" : "#64748b",
-                        borderColor: visionFilled ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)",
+                        background: visionSaved ? `${visionColor}30` : "rgba(255,255,255,0.06)",
+                        color: visionColor,
+                        borderColor: visionSaved ? `${visionColor}60` : "rgba(255,255,255,0.1)",
                       }}>1</div>
-                    <p className="text-base font-bold" style={{ color: visionFilled ? "#10b981" : "white" }}>Ma Vision</p>
-                    {visionFilled && <span className="text-xs font-semibold text-emerald-500">✓ Renseigné</span>}
+                    <p className="text-base font-bold transition-colors duration-500" style={{ color: visionSaved ? visionColor : "white" }}>
+                      Ma Vision
+                    </p>
+                    {visionSaved && (
+                      <span className="text-xs font-semibold transition-colors duration-500" style={{ color: visionColor }}>
+                        ✓ Renseignée
+                      </span>
+                    )}
                   </div>
-                  <p className="text-sm text-zinc-400 mb-4 ml-10 leading-relaxed">
-                    Votre philosophie profonde, ce qui vous a amené à ce métier, ce que vous voulez transmettre. Ce texte sera injecté directement dans l'identité de votre jumeau.
-                  </p>
-                  <textarea
-                    value={visionText}
-                    onChange={e => setVisionText(e.target.value)}
-                    placeholder="Exemple : Je crois que l'alimentation est un acte de soin envers soi-même. Mon rôle est d'aider chaque patient à retrouver une relation apaisée avec la nourriture, sans frustration ni culpabilité..."
-                    rows={6}
-                    className="w-full rounded-2xl bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition placeholder:text-zinc-600"
-                    style={{
-                      border: `1px solid ${visionFilled ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)"}`,
-                      boxShadow: visionFilled ? "0 0 0 1px rgba(16,185,129,0.08)" : "none",
-                    }}
-                    onFocus={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(16,185,129,0.15)"; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = visionFilled ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = visionFilled ? "0 0 0 1px rgba(16,185,129,0.08)" : "none"; }}
-                  />
+
+                  <div className="ml-10">
+                    <p className="text-xs font-semibold text-white mb-1">L'ancrage de votre philosophie</p>
+                    <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
+                      Ce texte définit ce en quoi vous croyez profondément et dicte la ligne directrice de votre Jumeau. C'est votre &quot;pourquoi&quot; : vos convictions nutritionnelles qui guideront chacune de ses recommandations.
+                    </p>
+
+                    {visionSaved && !visionEditing ? (
+                      /* Saved note row */
+                      <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[#1a1a1a] px-4 py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="flex-shrink-0" style={{ color: visionColor }}><NoteIcon /></span>
+                          <p className="text-sm font-medium text-white truncate">Note de vision</p>
+                        </div>
+                        <div className="flex items-center gap-1 ml-3 flex-shrink-0">
+                          <button type="button" onClick={() => setVisionEditing(true)}
+                            className="px-2 py-1 rounded-lg text-xs transition-all duration-200 cursor-pointer"
+                            style={{ color: "#52525b" }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#ffffff"}
+                            onMouseLeave={e => e.currentTarget.style.color = "#52525b"}>
+                            Modifier
+                          </button>
+                          <button type="button" onClick={() => void deleteVision()}
+                            className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer"
+                            style={{ color: "#64748b" }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                            onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                            <TrashIcon />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Textarea + save button */
+                      <>
+                        <textarea
+                          value={visionText}
+                          onChange={e => setVisionText(e.target.value)}
+                          placeholder="Je crois que la santé commence dans l'intestin et que l'alimentation doit être un levier de vitalité, jamais une source d'anxiété. Pour moi, aucun aliment n'est à diaboliser..."
+                          rows={6}
+                          className="w-full rounded-2xl bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition-all placeholder:text-zinc-600"
+                          style={{ border: `1px solid ${visionText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"}` }}
+                          onFocus={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(16,185,129,0.12)"; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = visionText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+                        />
+                        <div className="mt-3 flex items-center justify-end gap-3">
+                          {visionEditing && (
+                            <button type="button" onClick={() => setVisionEditing(false)}
+                              className="text-sm text-zinc-500 hover:text-white transition cursor-pointer">
+                              Annuler
+                            </button>
+                          )}
+                          <button type="button" onClick={() => void saveVision()} disabled={!visionText.trim() || savingVision}
+                            style={saveBtnStyle(!!visionText.trim(), savingVision)}
+                            onMouseEnter={e => { if (visionText.trim() && !savingVision) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                            onMouseLeave={e => { if (visionText.trim()) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
+                            {savingVision
+                              ? <><span style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block", flexShrink: 0 }} />Enregistrement...</>
+                              : visionEditing ? "Mettre à jour ma vision" : "Enregistrer ma vision"}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Separator */}
-                <div className="my-8 flex items-center gap-3">
+                <div className="my-10 flex items-center gap-3">
                   <div className="flex-1 h-px bg-white/10" />
                   <span className="text-xs text-zinc-600 font-medium px-2">et</span>
                   <div className="flex-1 h-px bg-white/10" />
                 </div>
 
-                {/* Section 2 — Ma Signature */}
+                {/* ── Section 2 — Ma Signature ── */}
                 <div>
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold flex-shrink-0 border"
+                    <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold flex-shrink-0 border transition-all duration-500"
                       style={{
-                        background: signatureFilled ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)",
-                        color: signatureFilled ? "#10b981" : "#64748b",
-                        borderColor: signatureFilled ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)",
+                        background: signatureSaved ? `${signatureColor}30` : "rgba(255,255,255,0.06)",
+                        color: signatureColor,
+                        borderColor: signatureSaved ? `${signatureColor}60` : "rgba(255,255,255,0.1)",
                       }}>2</div>
-                    <p className="text-base font-bold" style={{ color: signatureFilled ? "#10b981" : "white" }}>Ma Signature</p>
-                    {signatureFilled && <span className="text-xs font-semibold text-emerald-500">✓ Renseigné</span>}
+                    <p className="text-base font-bold transition-colors duration-500" style={{ color: signatureSaved ? signatureColor : "white" }}>
+                      Ma Signature
+                    </p>
+                    {signatureSaved && (
+                      <span className="text-xs font-semibold transition-colors duration-500" style={{ color: signatureColor }}>
+                        ✓ Renseignée
+                      </span>
+                    )}
                   </div>
-                  <p className="text-sm text-zinc-400 mb-4 ml-10 leading-relaxed">
-                    Ce qui vous distingue des autres praticiens. Votre approche unique, votre manière d'être avec vos patients. Ce texte définit la personnalité profonde de votre jumeau.
-                  </p>
-                  <textarea
-                    value={signatureText}
-                    onChange={e => setSignatureText(e.target.value)}
-                    placeholder="Exemple : Ma signature, c'est la bienveillance radicale. Je ne juge jamais. Je commence toujours par valider l'émotion avant de proposer une solution. Je parle à mes patients comme à des amis intelligents..."
-                    rows={6}
-                    className="w-full rounded-2xl bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition placeholder:text-zinc-600"
-                    style={{
-                      border: `1px solid ${signatureFilled ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)"}`,
-                      boxShadow: signatureFilled ? "0 0 0 1px rgba(16,185,129,0.08)" : "none",
-                    }}
-                    onFocus={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(16,185,129,0.15)"; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = signatureFilled ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = signatureFilled ? "0 0 0 1px rgba(16,185,129,0.08)" : "none"; }}
-                  />
+
+                  <div className="ml-10">
+                    <p className="text-xs font-semibold text-white mb-1">L'étape finale pour passer de l'intelligence artificielle à votre intelligence émotionnelle</p>
+                    <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
+                      Partagez ici vos métaphores favorites, vos expressions fétiches pour dédramatiser un écart et vos mantras de motivation. C'est ici que votre Jumeau capture votre intuition et ces nuances uniques qui font votre voix.
+                    </p>
+
+                    {signatureSaved && !signatureEditing ? (
+                      /* Saved note row */
+                      <div className="flex items-center justify-between rounded-xl border border-white/10 bg-[#1a1a1a] px-4 py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="flex-shrink-0" style={{ color: signatureColor }}><NoteIcon /></span>
+                          <p className="text-sm font-medium text-white truncate">Note de signature</p>
+                        </div>
+                        <div className="flex items-center gap-1 ml-3 flex-shrink-0">
+                          <button type="button" onClick={() => setSignatureEditing(true)}
+                            className="px-2 py-1 rounded-lg text-xs transition-all duration-200 cursor-pointer"
+                            style={{ color: "#52525b" }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#ffffff"}
+                            onMouseLeave={e => e.currentTarget.style.color = "#52525b"}>
+                            Modifier
+                          </button>
+                          <button type="button" onClick={() => void deleteSignature()}
+                            className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer"
+                            style={{ color: "#64748b" }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
+                            onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                            <TrashIcon />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Textarea + save button */
+                      <>
+                        <textarea
+                          value={signatureText}
+                          onChange={e => setSignatureText(e.target.value)}
+                          placeholder={"Je compare souvent le métabolisme à un feu de camp. Mon expression fétiche pour relancer la machine c'est : \"Un repas ne fait pas le moine, on tourne la page\". Mon mantra : \"La régularité bat la perfection\"..."}
+                          rows={6}
+                          className="w-full rounded-2xl bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition-all placeholder:text-zinc-600"
+                          style={{ border: `1px solid ${signatureText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"}` }}
+                          onFocus={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(16,185,129,0.12)"; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = signatureText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+                        />
+                        <div className="mt-3 flex items-center justify-end gap-3">
+                          {signatureEditing && (
+                            <button type="button" onClick={() => setSignatureEditing(false)}
+                              className="text-sm text-zinc-500 hover:text-white transition cursor-pointer">
+                              Annuler
+                            </button>
+                          )}
+                          <button type="button" onClick={() => void saveSignature()} disabled={!signatureText.trim() || savingSignature}
+                            style={saveBtnStyle(!!signatureText.trim(), savingSignature)}
+                            onMouseEnter={e => { if (signatureText.trim() && !savingSignature) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                            onMouseLeave={e => { if (signatureText.trim()) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
+                            {savingSignature
+                              ? <><span style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block", flexShrink: 0 }} />Enregistrement...</>
+                              : signatureEditing ? "Mettre à jour ma signature" : "Enregistrer ma signature"}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Bottom actions */}
@@ -641,10 +854,10 @@ export default function OnboardingPage() {
                     {showCertTooltip && identityFilled < 2 && (
                       <>
                         <div className="hidden sm:block" style={{ position: "absolute", top: "50%", right: "calc(100% + 12px)", transform: "translateY(-50%)", width: 280, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
-                          🔒 Complétez votre {!visionFilled && !signatureFilled ? "Vision et votre Signature" : !visionFilled ? "Vision" : "Signature"} pour activer votre Jumeau.
+                          🔒 Enregistrez votre {!visionSaved && !signatureSaved ? "Vision et votre Signature" : !visionSaved ? "Vision" : "Signature"} pour activer votre Jumeau.
                         </div>
                         <div className="block sm:hidden" style={{ position: "absolute", bottom: "calc(100% + 8px)", right: 0, width: 240, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
-                          🔒 Complétez votre {!visionFilled && !signatureFilled ? "Vision et votre Signature" : !visionFilled ? "Vision" : "Signature"} pour activer votre Jumeau.
+                          🔒 Enregistrez votre {!visionSaved && !signatureSaved ? "Vision et votre Signature" : !visionSaved ? "Vision" : "Signature"} pour activer votre Jumeau.
                         </div>
                       </>
                     )}
