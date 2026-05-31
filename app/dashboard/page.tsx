@@ -1651,11 +1651,8 @@ export default function DashboardPage() {
                       const notActivated = !p.onboardingCompleted && p.onboardingStatus !== "password_set";
                       if (!notActivated) return null;
                       if (resentInvite) return (
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, margin: "8px auto 0" }}>
-                          <div style={{ width: 18, height: 18, borderRadius: "50%", background: "linear-gradient(135deg, #6ee7b7, #10b981)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                          </div>
-                          <p style={{ margin: 0, fontSize: 11, color: emerald }}>Lien envoyé !</p>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", margin: "8px auto 0" }}>
+                          <CheckCircleSent />
                         </div>
                       );
                       return (

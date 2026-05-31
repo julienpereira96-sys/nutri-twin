@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const EyeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-5">
@@ -19,6 +19,7 @@ const EyeOffIcon = () => (
 
 export default function SetPasswordPage() {
   const router = useRouter();
+  const supabaseRef = useRef<SupabaseClient | null>(null);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -30,10 +31,12 @@ export default function SetPasswordPage() {
   const [acceptData, setAcceptData] = useState(false);
 
   useEffect(() => {
+    // Instance unique partagée entre le listener et handleSubmit
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
+    supabaseRef.current = supabase;
 
     const timeout = setTimeout(() => {
       setReady(false);
@@ -60,7 +63,8 @@ export default function SetPasswordPage() {
 
     setLoading(true); setError("");
 
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const supabase = supabaseRef.current;
+    if (!supabase) { setError("Session expirée. Contactez votre praticien."); setLoading(false); return; }
 
     // Vérifier que la session magic link est toujours active
     const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -175,10 +179,10 @@ export default function SetPasswordPage() {
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
                 {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Création en cours</span> : "Accéder à mon espace"}
               </button>
-              <p className="mt-2 text-center text-xs text-zinc-500 flex items-center justify-center gap-1.5">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                Chiffrement de bout en bout · Données traitées en Europe (RGPD)
-              </p>
+              <div className="mt-2 text-center">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-1 text-zinc-500"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <p className="text-xs text-zinc-500">Chiffrement de bout en bout · Données traitées en Europe (RGPD)</p>
+              </div>
             </div>
           )}
         </div>
