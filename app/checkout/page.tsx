@@ -222,9 +222,9 @@ function PaymentForm({ plan }: { plan: string }) {
 
       <p className="mt-4 text-[12px] text-zinc-500 text-center leading-relaxed">
         En confirmant, vous acceptez nos{" "}
-        <Link href="/cgu" className="underline hover:text-zinc-500 transition">CGU</Link>
+        <Link href="/cgu" target="_blank" rel="noopener noreferrer" className="underline hover:text-zinc-500 transition">CGU</Link>
         {" "}et notre{" "}
-        <Link href="/confidentialite" className="underline hover:text-zinc-500 transition">politique de confidentialité</Link>.
+        <Link href="/confidentialite" target="_blank" rel="noopener noreferrer" className="underline hover:text-zinc-500 transition">politique de confidentialité</Link>.
       </p>
     </div>
   );

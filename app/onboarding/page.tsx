@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
-type QuestionType = "single" | "multiple" | "free" | "single_with_free";
+type QuestionType = "single" | "multiple" | "multiple_with_free" | "free" | "single_with_free";
 
 type Question = {
   id: string;
@@ -17,20 +17,9 @@ type Question = {
   optional?: boolean;
 };
 
-type IndexedFile = {
-  name: string;
-  fileName: string;
-  type: "protocole" | "patient";
-  indexedAt: string;
-  fileType: "pdf" | "image" | "audio" | "spreadsheet" | "text" | "note";
-  textContent?: string;
-  durationSecs?: number;
-  audioBlobUrl?: string;
-};
-
 const questions: Question[] = [
   // BLOC 1 — IDENTITÉ & CARACTÈRE
-  { id: "tone_of_voice", block: "Identité & Caractère", label: "Quelle posture relationnelle votre jumeau doit-il adopter ?", sublabel: "Le ton qu'il devra adopter par défaut avec vos patients", type: "single_with_free", options: ["Le Médical: factuel, précis, sobre, sans émojis", "Le Coach: énergique, motivant, direct, ça bouge", "Le Complice: chaleureux, empathique, très humain", "Le Pédagogue: explique, vulgarise, rassure", "Autre (Précisez...)"] },
+  { id: "tone_of_voice", block: "Identité & Caractère", label: "Quelle posture relationnelle votre jumeau doit-il adopter ?", sublabel: "Le ton qu'il devra adopter par défaut avec vos patients", type: "single_with_free", options: ["Le Médical — factuel, précis, sobre, sans émojis", "Le Coach — énergique, motivant, direct, ça bouge", "Le Complice — chaleureux, empathique, très humain", "Le Pédagogue — il explique, vulgarise, rassure", "Autre (Précisez...)"] },
   { id: "tutoiement", block: "Identité & Caractère", label: "Votre jumeau doit-il tutoyer ou vouvoyer vos patients ?", type: "single", options: ["Vouvoiement strict", "Vouvoiement bienveillant", "Tutoiement naturel", "Il s'adapte selon le patient"] },
   { id: "technicite", block: "Identité & Caractère", label: "Quel niveau de langage votre jumeau doit-il utiliser ?", type: "single", options: ["Très vulgarisé, zéro jargon", "Quelques termes techniques expliqués simplement", "Scientifique et précis", "Il s'adapte selon le patient"] },
   { id: "longueur_reponses", block: "Identité & Caractère", label: "Quel style de réponse votre jumeau doit-il privilégier ?", type: "single", options: ["Court et direct, l'essentiel en 2-3 phrases", "Détaillé et complet, il explique tout", "Empathique d'abord, il valide l'émotion avant le conseil", "Adapté à la complexité de la question"] },
@@ -38,7 +27,7 @@ const questions: Question[] = [
 
   // BLOC 2 — PHILOSOPHIE NUTRITIONNELLE
   { id: "approche_generale", block: "Philosophie Nutritionnelle", label: "Quelle est votre philosophie principale ?", type: "single_with_free", options: ["Rééquilibrage alimentaire progressif", "Alimentation intuitive et anti-régime strict", "Micronutrition fonctionnelle", "Contrôle des macros (déficit calorique mesuré)", "Autre (Précisez...)"] },
-  { id: "pathologies", block: "Philosophie Nutritionnelle", label: "Quel est votre cœur de métier ?", sublabel: "Vous pouvez en sélectionner plusieurs", type: "multiple", options: ["Perte de poids / obésité", "TCA (troubles du comportement alimentaire)", "Diabète / glycémie / métabolisme", "Performance sportive", "Inconfort digestif / FODMAP", "Fatigue / micronutrition", "Femme enceinte / post-partum", "Enfants / adolescents"] },
+  { id: "pathologies", block: "Philosophie Nutritionnelle", label: "Quel est votre cœur de métier ?", sublabel: "Vous pouvez en sélectionner plusieurs", type: "multiple_with_free", options: ["Perte de poids / obésité", "TCA (troubles du comportement alimentaire)", "Diabète / glycémie / métabolisme", "Performance sportive", "Inconfort digestif / FODMAP", "Fatigue / micronutrition", "Femme enceinte / post-partum", "Enfants / adolescents", "Autre (Précisez...)"] },
   { id: "position_regimes", block: "Philosophie Nutritionnelle", label: "Votre avis sur les régimes restrictifs ?", type: "single", options: ["Je les déconseille systématiquement", "Je les étudie cas par cas", "Certains sont utiles dans mon protocole", "Je reste neutre et m'adapte"] },
   { id: "position_glucides", block: "Philosophie Nutritionnelle", label: "Votre position sur les glucides ?", type: "single", options: ["Indispensables à chaque repas", "À moduler selon l'objectif et le profil", "Je les limite en général", "Dépend du patient et du moment"] },
   { id: "position_jeune", block: "Philosophie Nutritionnelle", label: "Votre position sur le jeûne intermittent ?", type: "single_with_free", options: ["Je le déconseille", "Utile dans des cas précis, sur indication", "Outil intéressant si bien adapté à la personne", "Je le pratique moi-même et l'intègre souvent", "Autre (Précisez...)"] },
@@ -64,7 +53,7 @@ const questions: Question[] = [
 
   // MISES EN SITUATION
   { id: "situation_craquage", block: "Mises en situation", label: "Il est 22h. Un patient vous écrit :", sublabel: '"J\'ai craqué sur tout le frigo ce soir, je me déteste, je suis nul(le). Je vais jamais y arriver."', type: "free", placeholder: "Vous auriez répondu quoi ?" },
-  { id: "situation_stagnation", block: "Mises en situation", label: "La balance ne bouge plus. Un patient vous écrit :", sublabel: '"La balance n\'a pas bougé d\'un gramme cette semaine alors que j\'ai été irréprochable. Ça m\'énerve, j\'ai envie de tout arrêter."', type: "free", placeholder: "Vous auriez répondu quoi ?" },
+  { id: "situation_stagnation", block: "Mises en situation", label: "Un patient vous écrit :", sublabel: '"La balance n\'a pas bougé d\'un gramme cette semaine alors que j\'ai été irréprochable. Ça m\'énerve, j\'ai envie de tout arrêter."', type: "free", placeholder: "Vous auriez répondu quoi ?" },
   { id: "situation_abandon", block: "Mises en situation", label: "Un patient disparu revient après 3 semaines de silence :", sublabel: '"J\'ai honte de revenir. J\'ai tout sabordé ces dernières semaines, j\'ai même pas osé vous écrire tellement c\'était mauvais."', type: "free", placeholder: "Vous auriez répondu quoi ?" },
   { id: "situation_prediabete", block: "Mises en situation", label: "Un patient sort de chez son médecin :", sublabel: '"Mon médecin m\'a dit que j\'ai un prédiabète. Est-ce que je dois arrêter les féculents complètement ?"', type: "free", placeholder: "Vous auriez répondu quoi ?" },
   { id: "situation_alcool", block: "Mises en situation", label: "Un patient vous pose LA question du week-end :", sublabel: '"Est-ce que j\'ai le droit de boire mes 3 verres de vin ou mes bières le week-end avec mes amis, ou ça ruine tout ?"', type: "free", placeholder: "Vous auriez répondu quoi ?" },
@@ -72,55 +61,10 @@ const questions: Question[] = [
   { id: "situation_drastique", block: "Mises en situation", label: "Un patient vous demande quelque chose d'irréaliste :", sublabel: '"Je veux perdre 8 kilos en 3 semaines pour mon mariage. On fait comment ?"', type: "free", placeholder: "Vous auriez répondu quoi ?" },
   { id: "situation_flemme", block: "Mises en situation", label: "Le classique du soir de semaine :", sublabel: '"Je rentre du boulot à 19h, je suis crevé(e), j\'ai rien à cuisiner et zéro motivation. Qu\'est-ce que je peux faire de rapide sans tout ruiner ?"', type: "free", placeholder: "Vous auriez répondu quoi ?" },
   { id: "situation_coup_dur", block: "Mises en situation", label: "Un patient traverse quelque chose de difficile :", sublabel: '"J\'ai appris une très mauvaise nouvelle aujourd\'hui. Je n\'ai plus la force de cuisiner ni de suivre le programme."', type: "free", placeholder: "Vous auriez répondu quoi ?" },
-
-  // MA VISION
-  { id: "vision", block: "Ma Vision", label: "Ma Vision", sublabel: "L'ancrage de votre philosophie. Ce texte définit ce en quoi vous croyez profondément et dicte la ligne directrice de votre Jumeau. C'est votre \"pourquoi\" : les convictions nutritionnelles et métaboliques non négociables qui guideront chacune de ses recommandations.", type: "free", optional: true, placeholder: "Exemple : Je crois que la santé commence dans l'intestin et que l'alimentation doit être un levier de vitalité, jamais une source d'anxiété. Pour moi, aucun aliment n'est à diaboliser..." },
-
-  // MA SIGNATURE
-  { id: "signature", block: "Ma Signature", label: "Ma Signature", sublabel: "L'étape finale pour passer de l'intelligence artificielle à votre intelligence émotionnelle. Partagez ici vos métaphores favorites, vos expressions fétiches pour dédramatiser un écart et vos mantras de motivation. C'est ici que votre Jumeau capture votre intuition et ces nuances uniques qui font votre voix.", type: "free", optional: true, placeholder: "Exemple : Je compare souvent le métabolisme à un feu de camp. Mon expression fétiche pour relancer la machine c'est : \"Un repas ne fait pas le moine, on tourne la page\". Mon mantra : \"La régularité bat la perfection\"..." },
 ];
 
-const BLOCKS = ["Identité & Caractère", "Philosophie Nutritionnelle", "Gestion Humaine & Émotions", "Sécurité & Limites", "Mises en situation", "Ma Vision", "Ma Signature", "Vos documents"];
+const BLOCKS = ["Identité & Caractère", "Philosophie Nutritionnelle", "Gestion Humaine & Émotions", "Sécurité & Limites", "Mises en situation", "Votre Expertise"];
 const AUTRE_OPTION = "Autre (Précisez...)";
-
-const getFileType = (fileName: string): IndexedFile["fileType"] => {
-  const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
-  if (["mp3", "wav", "m4a"].includes(ext) || fileName.startsWith("memo_")) return "audio";
-  if (["jpg", "jpeg", "png"].includes(ext)) return "image";
-  if (["xlsx", "csv"].includes(ext)) return "spreadsheet";
-  if (fileName.startsWith("slot1_vision_") || fileName.startsWith("slot2_signature_")) return "note";
-  return "pdf";
-};
-
-const getFileIcon = (fileType: IndexedFile["fileType"]) => {
-  switch (fileType) {
-    case "audio": return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-      </svg>
-    );
-    case "image": return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
-      </svg>
-    );
-    case "spreadsheet": return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/>
-      </svg>
-    );
-    case "note": return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-      </svg>
-    );
-    default: return (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-      </svg>
-    );
-  }
-};
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -144,14 +88,9 @@ export default function OnboardingPage() {
       return saved ? JSON.parse(saved) as string | string[] : "";
     } catch { return ""; }
   });
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [slot1Errors, setSlot1Errors] = useState<string[]>([]);
-  const [slot2Errors, setSlot2Errors] = useState<string[]>([]);
-  const [showSlot1Text, setShowSlot1Text] = useState(true);
-  const [showSlot2Text, setShowSlot2Text] = useState(true);
-  const [practitionerId, setPractitionerId] = useState<string | null>(null);
   const [alreadyDone, setAlreadyDone] = useState(false);
   const [showCertTooltip, setShowCertTooltip] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -161,102 +100,83 @@ export default function OnboardingPage() {
   const [genFlash, setGenFlash] = useState(false);
   const genTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const genIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [slot1Done, setSlot1Done] = useState(false);
-  const [slot2Done, setSlot2Done] = useState(false);
-  const [slot1IndexedFiles, setSlot1IndexedFiles] = useState<IndexedFile[]>([]);
-  const [slot2IndexedFiles, setSlot2IndexedFiles] = useState<IndexedFile[]>([]);
-  const [slot1TypeHover, setSlot1TypeHover] = useState<"protocole" | "patient" | null>(null);
-  const [uploadingSlot1, setUploadingSlot1] = useState(false);
-  const [uploadingSlot2, setUploadingSlot2] = useState(false);
-  const [slot1Files, setSlot1Files] = useState<{ file: File; docType: "protocole" | "patient" }[]>([]);
-  const [slot1ActiveRecording, setSlot1ActiveRecording] = useState(false);
-  const [slot2ActiveRecording, setSlot2ActiveRecording] = useState(false);
-  const [duplicateError, setDuplicateError] = useState("");
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [editingSlot1, setEditingSlot1] = useState<IndexedFile | null>(null);
-  const [editingSlot2, setEditingSlot2] = useState<IndexedFile | null>(null);
-  const [audioReplaceMode, setAudioReplaceMode] = useState(false);
-  const [continueFromSecs, setContinueFromSecs] = useState(0);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [activating, setActivating] = useState(false);
   const [navigating, setNavigating] = useState(false);
-  const [savingAll1, setSavingAll1] = useState(false);
-  const [savingAll2, setSavingAll2] = useState(false);
-  const [indexProgress1, setIndexProgress1] = useState<{ current: number; total: number } | null>(null);
-  const [indexProgress2, setIndexProgress2] = useState<{ current: number; total: number } | null>(null);
   const [autreText, setAutreText] = useState<string>(() => {
     if (typeof window === "undefined") return "";
     return localStorage.getItem("onboarding_autre") ?? "";
   });
+  const [visionText, setVisionText] = useState<string>("");
+  const [signatureText, setSignatureText] = useState<string>("");
 
   const total = questions.length;
-  const isUploadStep = step === total;
+  const isIdentityStep = step === total;
   const currentQuestion = questions[step];
-  const progress = genDone ? 100 : isGenerating ? 99 : isUploadStep ? 98 : Math.round((step / total) * 95);
-  const currentBlock = isUploadStep ? "" : currentQuestion?.block ?? "";
+  const progress = genDone ? 100 : isGenerating ? 99 : isIdentityStep ? 98 : Math.round((step / total) * 95);
+  const currentBlock = isIdentityStep ? "" : currentQuestion?.block ?? "";
   const blockIndex = BLOCKS.indexOf(currentBlock);
-  const filled = (slot1Done ? 1 : 0) + (slot2Done ? 1 : 0);
-  const slotScore = filled === 0 ? 80 : filled === 1 ? 90 : 100;
-  const slotColor = filled === 0 ? "#f59e0b" : filled === 1 ? "#06b6d4" : "#10b981";
-  const slotMsg = filled === 0
-    ? "⚠️ Jumeau initialisé — Vos réponses ont été intégrées. Vous pouvez enrichir votre jumeau en uploadant vos protocoles et mémos vocaux. C'est optionnel mais améliore la précision."
-    : filled === 1
-    ? "Jumeau enrichi — Vos documents ont été indexés. Ajoutez des mémos vocaux pour capturer encore plus de nuances."
-    : "Jumeau expert — Précision maximale atteinte. Votre jumeau possède votre expertise complète.";
+  const visionFilled = visionText.trim().length > 0;
+  const signatureFilled = signatureText.trim().length > 0;
+  const identityFilled = (visionFilled ? 1 : 0) + (signatureFilled ? 1 : 0);
+  const identityScore = identityFilled === 0 ? 70 : identityFilled === 1 ? 85 : 100;
+  const identityColor = identityFilled === 0 ? "#f59e0b" : identityFilled === 1 ? "#06b6d4" : "#10b981";
 
-    useEffect(() => {
-      localStorage.setItem("onboarding_step", String(step));
-    }, [step]);
-    
-    useEffect(() => {
-      localStorage.setItem("onboarding_answers", JSON.stringify(answers));
-    }, [answers]);
-    
-    useEffect(() => {
-      localStorage.setItem("onboarding_selected", JSON.stringify(selected));
-    }, [selected]);
+  useEffect(() => {
+    localStorage.setItem("onboarding_step", String(step));
+  }, [step]);
 
-    useEffect(() => {
-      localStorage.setItem("onboarding_autre", autreText);
-    }, [autreText]);
+  useEffect(() => {
+    localStorage.setItem("onboarding_answers", JSON.stringify(answers));
+  }, [answers]);
 
-    useEffect(() => {
-      if (isUploadStep) return;
-      const q = questions[step];
-      if (!q) return;
-      const saved = answers[q.id];
-      if (saved === undefined || saved === null) {
-        setSelected(q.type === "multiple" ? [] : "");
-        setAutreText("");
-      } else if (q.type === "multiple") {
-        setSelected(Array.isArray(saved) ? saved : []);
-        setAutreText("");
-      } else if (q.type === "single_with_free") {
-        const isOption = q.options?.includes(saved as string);
-        if (isOption) { setSelected(saved as string); setAutreText(""); }
-        else { setSelected(AUTRE_OPTION); setAutreText(saved as string); }
+  useEffect(() => {
+    localStorage.setItem("onboarding_selected", JSON.stringify(selected));
+  }, [selected]);
+
+  useEffect(() => {
+    localStorage.setItem("onboarding_autre", autreText);
+  }, [autreText]);
+
+  useEffect(() => {
+    if (isIdentityStep) return;
+    const q = questions[step];
+    if (!q) return;
+    const saved = answers[q.id];
+    if (saved === undefined || saved === null) {
+      setSelected(q.type === "multiple" || q.type === "multiple_with_free" ? [] : "");
+      setAutreText("");
+    } else if (q.type === "multiple" || q.type === "multiple_with_free") {
+      const arr = Array.isArray(saved) ? saved : [];
+      const hasAutre = q.type === "multiple_with_free" && arr.some(v => !q.options?.slice(0, -1).includes(v));
+      if (hasAutre) {
+        const autreVal = arr.find(v => !q.options?.slice(0, -1).includes(v)) ?? "";
+        setSelected([...arr.filter(v => q.options?.slice(0, -1).includes(v)), AUTRE_OPTION]);
+        setAutreText(autreVal);
       } else {
-        setSelected(typeof saved === "string" ? saved : "");
+        setSelected(arr);
         setAutreText("");
       }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [step]);
+    } else if (q.type === "single_with_free") {
+      const isOption = q.options?.includes(saved as string);
+      if (isOption) { setSelected(saved as string); setAutreText(""); }
+      else { setSelected(AUTRE_OPTION); setAutreText(saved as string); }
+    } else {
+      setSelected(typeof saved === "string" ? saved : "");
+      setAutreText("");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
-    useEffect(() => {
-      const init = async () => {
-        const supabase = createSupabaseBrowserClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+  useEffect(() => {
+    const init = async () => {
+      const supabase = createSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-       // Vérifier si onboarding déjà fait
       const { data } = await supabase.from("practitioners").select("onboarding_done").eq("user_id", user.id).single();
       if (data?.onboarding_done) {
         setAlreadyDone(true);
       } else {
-        // Vider localStorage seulement si c'est un utilisateur différent (multi-compte sur même navigateur)
         const savedUserId = localStorage.getItem("onboarding_user_id");
         if (savedUserId && savedUserId !== user.id) {
           localStorage.removeItem("onboarding_step");
@@ -264,33 +184,11 @@ export default function OnboardingPage() {
           localStorage.removeItem("onboarding_selected");
           localStorage.removeItem("onboarding_autre");
         }
-        // Mémoriser l'ID courant pour la prochaine détection
         localStorage.setItem("onboarding_user_id", user.id);
       }
-  
-        // Charger les documents indexés
-        const { data: docs } = await supabase
-          .from("practitioner_documents")
-          .select("id, file_name, document_type, created_at")
-          .eq("practitioner_id", user.id)
-          .order("created_at", { ascending: false });
-  
-          if (docs && docs.length > 0) {
-            const mapDoc = (d: { id: string; file_name: string; document_type: string; created_at: string }): IndexedFile => ({
-              name: d.file_name,
-              fileName: d.file_name,
-              type: d.document_type as "protocole" | "patient",
-              indexedAt: new Date(d.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }),
-              fileType: getFileType(d.file_name),
-            });
-            setSlot1IndexedFiles(docs.filter(d => d.document_type === "protocole").map(mapDoc));
-            setSlot2IndexedFiles(docs.filter(d => d.document_type === "patient").map(mapDoc));
-            if (docs.filter(d => d.document_type === "protocole").length > 0) setSlot1Done(true);
-            if (docs.filter(d => d.document_type === "patient").length > 0) setSlot2Done(true);
-          }
-      };
-      void init();
-    }, []);  
+    };
+    void init();
+  }, []);
 
   useEffect(() => {
     const handlePopState = () => window.history.pushState(null, "", window.location.pathname);
@@ -306,6 +204,11 @@ export default function OnboardingPage() {
   const canGoNext = () => {
     if (currentQuestion?.optional) return true;
     if (currentQuestion?.type === "multiple") return Array.isArray(selected) && selected.length > 0;
+    if (currentQuestion?.type === "multiple_with_free") {
+      if (!Array.isArray(selected) || selected.length === 0) return false;
+      if (selected.includes(AUTRE_OPTION)) return autreText.trim().length > 0;
+      return true;
+    }
     if (currentQuestion?.type === "free") return typeof selected === "string" && selected.trim().length > 0;
     if (currentQuestion?.type === "single_with_free") {
       if (typeof selected !== "string" || selected.length === 0) return false;
@@ -316,12 +219,15 @@ export default function OnboardingPage() {
   };
 
   const goNext = () => {
-    if (!canGoNext() || isUploadStep) return;
-    const valueToSave = currentQuestion.type === "single_with_free" && selected === AUTRE_OPTION
-      ? autreText.trim()
-      : selected;
+    if (!canGoNext() || isIdentityStep) return;
+    let valueToSave: string | string[] = selected;
+    if (currentQuestion.type === "single_with_free" && selected === AUTRE_OPTION) {
+      valueToSave = autreText.trim();
+    } else if (currentQuestion.type === "multiple_with_free" && Array.isArray(selected) && selected.includes(AUTRE_OPTION)) {
+      valueToSave = selected.map(v => v === AUTRE_OPTION ? autreText.trim() : v).filter(Boolean);
+    }
     setAnswers(prev => ({ ...prev, [currentQuestion.id]: valueToSave }));
-    setSelected(currentQuestion.type === "multiple" ? [] : "");
+    setSelected(currentQuestion.type === "multiple" || currentQuestion.type === "multiple_with_free" ? [] : "");
     setAutreText("");
     setStep(prev => prev + 1);
   };
@@ -333,277 +239,26 @@ export default function OnboardingPage() {
     });
   };
 
-  const startRecording = async (slot: "slot1" | "slot2") => {
-    if (isRecording) {
-      mediaRecorderRef.current?.stop();
-      if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
-      await new Promise(r => setTimeout(r, 300));
-    }
-    setAudioBlob(null); setIsRecording(false); setRecordingTime(0);
-    if (slot === "slot1") { setSlot1ActiveRecording(true); setSlot2ActiveRecording(false); }
-    else { setSlot2ActiveRecording(true); setSlot1ActiveRecording(false); }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      const chunks: BlobPart[] = [];
-      mediaRecorder.ondataavailable = e => chunks.push(e.data);
-      mediaRecorder.onstop = () => { setAudioBlob(new Blob(chunks, { type: "audio/mp3" })); stream.getTracks().forEach(t => t.stop()); };
-      mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(); setIsRecording(true); setRecordingTime(0);
-      recordingIntervalRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
-    } catch { alert("Impossible d'accéder au microphone."); }
-  };
-
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop(); setIsRecording(false);
-    if (recordingIntervalRef.current) { clearInterval(recordingIntervalRef.current); recordingIntervalRef.current = null; }
-  };
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, "0");
-    const s = (seconds % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
-  };
-
-  const formatDate = () => new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-
-  const audioBufferToWavBlob = (buffer: AudioBuffer): Blob => {
-    const numChannels = buffer.numberOfChannels;
-    const sampleRate = buffer.sampleRate;
-    const numSamples = buffer.length;
-    const dataSize = numSamples * numChannels * 2;
-    const ab = new ArrayBuffer(44 + dataSize);
-    const view = new DataView(ab);
-    const ws = (off: number, str: string) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
-    ws(0, "RIFF"); view.setUint32(4, 36 + dataSize, true); ws(8, "WAVE");
-    ws(12, "fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
-    view.setUint16(22, numChannels, true); view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * numChannels * 2, true); view.setUint16(32, numChannels * 2, true);
-    view.setUint16(34, 16, true); ws(36, "data"); view.setUint32(40, dataSize, true);
-    let off = 44;
-    for (let i = 0; i < numSamples; i++) {
-      for (let c = 0; c < numChannels; c++) {
-        const s = Math.max(-1, Math.min(1, buffer.getChannelData(c)[i]));
-        view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7FFF, true); off += 2;
-      }
-    }
-    return new Blob([ab], { type: "audio/wav" });
-  };
-
-  const concatenateAudioBlobs = async (oldUrl: string, newBlob: Blob): Promise<Blob> => {
-    const audioCtx = new AudioContext();
-    const [buf1, buf2] = await Promise.all([
-      fetch(oldUrl).then(r => r.arrayBuffer()).then(ab => audioCtx.decodeAudioData(ab)),
-      newBlob.arrayBuffer().then(ab => audioCtx.decodeAudioData(ab)),
-    ]);
-    const ch = Math.max(buf1.numberOfChannels, buf2.numberOfChannels);
-    const combined = audioCtx.createBuffer(ch, buf1.length + buf2.length, audioCtx.sampleRate);
-    for (let c = 0; c < ch; c++) {
-      const d1 = buf1.numberOfChannels > c ? buf1.getChannelData(c) : new Float32Array(buf1.length);
-      const d2 = buf2.numberOfChannels > c ? buf2.getChannelData(c) : new Float32Array(buf2.length);
-      combined.copyToChannel(d1, c, 0);
-      combined.copyToChannel(d2, c, buf1.length);
-    }
-    await audioCtx.close();
-    return audioBufferToWavBlob(combined);
-  };
-
-  const getPid = async () => {
-    const supabase = createSupabaseBrowserClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    const pid = user?.id ?? "";
-    setPractitionerId(pid);
-    return pid;
-  };
-
-  const deleteFromSupabase = async (fileName: string) => {
-    const pid = practitionerId ?? await getPid();
-    try {
-      await fetch("/api/delete-document", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fileName, practitionerId: pid }) });
-    } catch { /* silencieux */ }
-  };
-
-  const uploadToSlot = async (file: File, slot: "slot1" | "slot2", docType: "protocole" | "patient", extraMeta?: { textContent?: string; durationSecs?: number; audioBlobUrl?: string }) => {
-    if (slot === "slot1") setUploadingSlot1(true); else setUploadingSlot2(true);
-    const pid = await getPid();
-    const formData = new FormData();
-    formData.append("file", file); formData.append("practitionerId", pid); formData.append("documentType", docType);
-    const isVision = file.name.startsWith("slot1_vision_");
-    const isSignature = file.name.startsWith("slot2_signature_");
-    const isNote = isVision || isSignature;
-    const isAudio = file.name.startsWith("memo_");
-    const audioDuration = extraMeta?.durationSecs ?? recordingTime;
-    const displayName = isVision ? "Note de vision" : isSignature ? "Note de signature" : isAudio ? `Mémo vocal (${formatTime(audioDuration)})` : file.name;
-    try {
-      const res = await fetch("/api/upload-document", { method: "POST", body: formData });
-      const data = await res.json() as { success?: boolean; error?: string };
-      if (res.ok && data.success) {
-        const fileType = isNote ? "note" : isAudio ? "audio" : getFileType(file.name);
-        const indexedFile: IndexedFile = { name: displayName, fileName: file.name, type: docType, indexedAt: formatDate(), fileType, textContent: extraMeta?.textContent, durationSecs: extraMeta?.durationSecs, audioBlobUrl: extraMeta?.audioBlobUrl };
-        if (slot === "slot1") { setSlot1IndexedFiles(prev => [...prev, indexedFile]); setSlot1Done(true); localStorage.removeItem("onboarding_slot1text"); }
-        else { setSlot2IndexedFiles(prev => [...prev, indexedFile]); setSlot2Done(true); localStorage.removeItem("onboarding_slot2text"); }
-      } else {
-        const msg = `${displayName} : ${data.error ?? "Erreur"}`;
-        const setErr = slot === "slot1" ? setSlot1Errors : setSlot2Errors;
-        setErr(prev => [...prev, msg]);
-        setTimeout(() => setErr(prev => prev.filter(e => e !== msg)), 6000);
-      }
-    } catch {
-      const msg = `${displayName} : Erreur réseau`;
-      const setErr = slot === "slot1" ? setSlot1Errors : setSlot2Errors;
-      setErr(prev => [...prev, msg]);
-      setTimeout(() => setErr(prev => prev.filter(e => e !== msg)), 6000);
-    }
-    if (slot === "slot1") setUploadingSlot1(false); else setUploadingSlot2(false);
-  };
-
-  const handleSlotFile = (e: React.ChangeEvent<HTMLInputElement>, slot: "slot1" | "slot2", docType: "protocole" | "patient") => {
-    const files = Array.from(e.target.files ?? []);
-    if (files.length === 0) return;
-    setDuplicateError("");
-    if (slot === "slot1") {
-      const allNames = [...slot1Files.map(f => f.file.name), ...slot1IndexedFiles.map(f => f.fileName)];
-      const duplicates = files.filter(f => allNames.includes(f.name));
-      if (duplicates.length > 0) { setDuplicateError(`Fichier déjà ajouté : ${duplicates.map(f => f.name).join(", ")}`); return; }
-      setSlot1Files(prev => [...prev, ...files.map(f => ({ file: f, docType }))]);
-    } else {
-      const allNames = slot2IndexedFiles.map(f => f.fileName);
-      const duplicates = files.filter(f => allNames.includes(f.name));
-      if (duplicates.length > 0) { setDuplicateError(`Fichier déjà ajouté : ${duplicates.map(f => f.name).join(", ")}`); return; }
-      void uploadToSlot(files[0], slot, docType);
-    }
-    if (e.target) e.target.value = "";
-  };
-
-  const indexSlot1Files = async (onProgress?: (current: number) => void, startFrom = 0) => {
-    if (slot1Files.length === 0) return;
-    const files = [...slot1Files];
-    let completed = startFrom;
-    const CONCURRENCY = 3;
-    for (let i = 0; i < files.length; i += CONCURRENCY) {
-      const batch = files.slice(i, i + CONCURRENCY);
-      await Promise.all(batch.map(async ({ file, docType }) => {
-        await uploadToSlot(file, "slot1", docType);
-        completed++;
-        onProgress?.(completed);
-      }));
-    }
-    setSlot1Files([]);
-  };
-
-
-  const saveSlotAudio = async (slot: "slot1" | "slot2", blobToSave?: Blob, offsetSecs?: number) => {
-    const blob = blobToSave ?? audioBlob;
-    if (!blob) return;
-    const totalSecs = (offsetSecs ?? continueFromSecs) + recordingTime;
-    const audioBlobUrl = URL.createObjectURL(blob);
-    const file = new File([blob], `memo_${slot}_${Date.now()}.mp3`, { type: "audio/mp3" });
-    await uploadToSlot(file, slot, "protocole", { durationSecs: totalSecs, audioBlobUrl });
-    setAudioBlob(null);
-    setContinueFromSecs(0);
-    if (slot === "slot1") setSlot1ActiveRecording(false); else setSlot2ActiveRecording(false);
-  };
-
-  const saveSlot1All = async () => {
-    setSavingAll1(true);
-    const hasFiles = slot1Files.length > 0;
-    const hasAudio = !!(audioBlob && slot1ActiveRecording);
-    const total = slot1Files.length + (hasAudio ? 1 : 0);
-    let completed = 0;
-    setIndexProgress1({ current: 0, total });
-
-    if (hasFiles) {
-      await indexSlot1Files((c) => {
-        completed = c;
-        setIndexProgress1({ current: c, total });
-      });
-      completed = slot1Files.length;
-    }
-    if (hasAudio) {
-      const capturedOffset = continueFromSecs;
-      const editing = editingSlot1;
-      if (editing?.fileType === "audio" && audioReplaceMode && editing.audioBlobUrl) {
-        try {
-          const merged = await concatenateAudioBlobs(editing.audioBlobUrl, audioBlob!);
-          await saveSlotAudio("slot1", merged, capturedOffset);
-          await deleteFromSupabase(editing.fileName);
-          setSlot1IndexedFiles(prev => prev.filter(f => f.fileName !== editing.fileName));
-        } catch {
-          await saveSlotAudio("slot1");
-        }
-      } else {
-        await saveSlotAudio("slot1");
-      }
-      setEditingSlot1(null);
-      setAudioReplaceMode(false);
-      completed++;
-      setIndexProgress1({ current: completed, total });
-    }
-    setIndexProgress1(null);
-    setSavingAll1(false);
-  };
-
-  const saveSlot2All = async () => {
-    setSavingAll2(true);
-    const hasAudio = !!(audioBlob && slot2ActiveRecording);
-    const total = hasAudio ? 1 : 0;
-    let completed = 0;
-    setIndexProgress2({ current: 0, total });
-
-    if (hasAudio) {
-      const capturedOffset = continueFromSecs;
-      const editing = editingSlot2;
-      if (editing?.fileType === "audio" && audioReplaceMode && editing.audioBlobUrl) {
-        try {
-          const merged = await concatenateAudioBlobs(editing.audioBlobUrl, audioBlob!);
-          await saveSlotAudio("slot2", merged, capturedOffset);
-          await deleteFromSupabase(editing.fileName);
-          setSlot2IndexedFiles(prev => prev.filter(f => f.fileName !== editing.fileName));
-        } catch {
-          await saveSlotAudio("slot2");
-        }
-      } else {
-        await saveSlotAudio("slot2");
-      }
-      setEditingSlot2(null);
-      setAudioReplaceMode(false);
-      completed++;
-      setIndexProgress2({ current: completed, total });
-    }
-    setIndexProgress2(null);
-    setSavingAll2(false);
-  };
-
-  const getSlot1Label = () => {
-    const hasFiles = slot1Files.length > 0;
-    const hasMemo = !!audioBlob && slot1ActiveRecording;
-    if (editingSlot1?.fileType === "audio" && hasMemo) return audioReplaceMode ? "Mettre à jour mon mémo" : "Ajouter à mon mémo";
-    const count = (hasFiles ? 1 : 0) + (hasMemo ? 1 : 0);
-    if (count === 0) return "Indexer";
-    if (count > 1) return "Tout indexer";
-    if (hasFiles) return slot1Files.length > 1 ? `Indexer mes ${slot1Files.length} documents` : "Indexer mon document";
-    return "Indexer mon mémo";
-  };
-
-  const getSlot2Label = () => {
-    const hasMemo = !!audioBlob && slot2ActiveRecording;
-    if (editingSlot2?.fileType === "audio" && hasMemo) return audioReplaceMode ? "Mettre à jour mon mémo" : "Ajouter à mon mémo";
-    if (!hasMemo) return "Indexer";
-    return "Indexer mon mémo";
-  };
-
-  const hasSlot1Pending = slot1Files.length > 0 || (!!audioBlob && slot1ActiveRecording);
-  const hasSlot2Pending = !!(audioBlob && slot2ActiveRecording);
-
-  const saveProfile = async (redirect = true) => {
+  const saveProfile = async (redirect = true, extras?: { vision?: string; signature?: string }) => {
     if (isSaving) return;
     setIsSaving(true); setSaveError("");
     try {
       const supabase = createSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
-      const formattedAnswers = Object.fromEntries(Object.entries(answers).map(([k, v]) => [k, Array.isArray(v) ? v.join(", ") : v]));
-      const response = await fetch("/api/save-profile", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers: formattedAnswers, userId: user?.id ?? null }) });
-      if (!response.ok) { const data = await response.json() as { error?: string }; throw new Error(data.error ?? "Erreur lors de la sauvegarde."); }
+      const formattedAnswers = Object.fromEntries(
+        Object.entries(answers).map(([k, v]) => [k, Array.isArray(v) ? v.join(", ") : v])
+      );
+      if (extras?.vision) formattedAnswers.vision = extras.vision;
+      if (extras?.signature) formattedAnswers.signature = extras.signature;
+      const response = await fetch("/api/save-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: formattedAnswers, userId: user?.id ?? null }),
+      });
+      if (!response.ok) {
+        const data = await response.json() as { error?: string };
+        throw new Error(data.error ?? "Erreur lors de la sauvegarde.");
+      }
       await supabase.from("practitioners").update({ onboarding_done: true }).eq("user_id", user?.id ?? "");
       localStorage.removeItem("onboarding_step");
       localStorage.removeItem("onboarding_answers");
@@ -616,7 +271,7 @@ export default function OnboardingPage() {
   };
 
   const startGeneration = () => {
-    void saveProfile(false);
+    void saveProfile(false, { vision: visionText, signature: signatureText });
     setIsGenerating(true); setGenStep(0); setGenProgress(0);
     genTimeoutsRef.current = [];
     const totalDuration = 40000;
@@ -647,109 +302,16 @@ export default function OnboardingPage() {
     genTimeoutsRef.current.push(t2);
   };
 
-  const TrashIcon = () => (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-    </svg>
-  );
-
-  const Spinner = () => (
-    <svg style={{ animation: "spin 1s linear infinite" }} width="14" height="14" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25"/>
-      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-    </svg>
-  );
-
-  const IndexedFileRow = ({ f, i, slot }: { f: IndexedFile; i: number; slot: "slot1" | "slot2" }) => {
-    const isEditable = f.fileType === "audio";
-    const isBeingEdited = slot === "slot1" ? editingSlot1?.fileName === f.fileName : editingSlot2?.fileName === f.fileName;
-    const handleEdit = () => {
-      if (f.fileType === "audio") {
-        if (slot === "slot1") setEditingSlot1(f);
-        else setEditingSlot2(f);
-      }
-    };
-    return (
-      <div className={`flex items-center justify-between rounded-xl border px-4 py-3 group transition-all duration-200 ${isBeingEdited ? "border-emerald-500/30 bg-emerald-500/5" : "border-white/10 bg-[#1a1a1a]"}`}>
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="flex-shrink-0 text-zinc-400">{getFileIcon(f.fileType)}</span>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-white truncate">{f.name}</p>
-            <p className="text-xs text-zinc-500">Dernière mise à jour : {f.indexedAt}{f.type === "patient" ? <span className="ml-2 text-blue-400">🔒 Anonymisé</span> : (f.fileType !== "note" && f.fileType !== "audio") ? <span className="ml-2 text-emerald-500">Tel quel</span> : null}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1 ml-3 flex-shrink-0">
-          {isEditable && !isBeingEdited && (
-            <button type="button" onClick={handleEdit}
-              className="px-2 py-1 rounded-lg text-xs transition-all duration-200 cursor-pointer"
-              style={{ color: "#52525b" }}
-              onMouseEnter={e => e.currentTarget.style.color = "#ffffff"}
-              onMouseLeave={e => e.currentTarget.style.color = "#52525b"}>
-              Modifier
-            </button>
-          )}
-          {isBeingEdited && (
-            <button type="button" onClick={() => {
-              if (slot === "slot1") setEditingSlot1(null);
-              else setEditingSlot2(null);
-              setAudioReplaceMode(false);
-            }}
-              className="px-2 py-1 rounded-lg text-xs transition-all duration-200 cursor-pointer"
-              style={{ color: "#10b981" }}>
-              Annuler
-            </button>
-          )}
-          <button type="button"
-            onClick={() => {
-              if (slot === "slot1") {
-                setSlot1IndexedFiles(prev => { const next = prev.filter((_, j) => j !== i); if (next.length === 0) setSlot1Done(false); return next; });
-                if (editingSlot1?.fileName === f.fileName) setEditingSlot1(null);
-              } else {
-                setSlot2IndexedFiles(prev => { const next = prev.filter((_, j) => j !== i); if (next.length === 0) setSlot2Done(false); return next; });
-                if (editingSlot2?.fileName === f.fileName) setEditingSlot2(null);
-              }
-              setAudioReplaceMode(false);
-              void deleteFromSupabase(f.fileName);
-            }}
-            className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer" style={{ color: "#64748b" }}
-            onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
-            onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-            <TrashIcon />
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  const btnStyle = {
-    width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-    padding: "11px 12px", borderRadius: 12,
-    background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))",
-    border: "1px solid rgba(16,185,129,0.18)", cursor: "pointer", transition: "all 0.2s",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.3)", color: "#10b981", fontSize: 14, fontWeight: 600,
-  };
-
-  const btnHover = {
-    onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
-      if (!e.currentTarget.disabled) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }
-    },
-    onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
-      e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))";
-      e.currentTarget.style.transform = "translateY(0)";
-    },
-  };
   return (
     <>
       {alreadyDone ? (
         <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-4">
           <div className="rounded-3xl border border-[#10b981]/30 bg-[#121212] p-8 max-w-md w-full text-center">
-            <div className="relative w-28 h-28 mx-auto mb-6">
-              <div className="w-28 h-28 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(16,185,129,0.12)", border: "2px solid rgba(16,185,129,0.4)" }}>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="4 12 9 17 20 6" stroke="#10b981" strokeWidth="2"/>
-                </svg>
-              </div>
+            <div className="w-28 h-28 rounded-full flex items-center justify-center mx-auto mb-6"
+              style={{ background: "rgba(16,185,129,0.12)", border: "2px solid rgba(16,185,129,0.4)" }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="4 12 9 17 20 6" stroke="#10b981" strokeWidth="2"/>
+              </svg>
             </div>
             <p className="text-xs font-mono font-bold tracking-widest text-[#10b981] uppercase mb-3">Jumeau opérationnel</p>
             <h1 className="text-xl font-bold text-white mb-3">Votre jumeau s'est finalisé<br />en arrière-plan.</h1>
@@ -760,7 +322,9 @@ export default function OnboardingPage() {
               style={{ background: "#10b981", color: "black", borderRadius: 12, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }}
               onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; }}
               onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 14px rgba(16,185,129,0.3)"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
-              {navigating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement</span> : "Accéder à mon cabinet numérique"}
+              {navigating
+                ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement</span>
+                : "Accéder à mon cabinet numérique"}
             </button>
           </div>
         </div>
@@ -768,19 +332,24 @@ export default function OnboardingPage() {
         <div className="min-h-screen bg-[#0a0a0a] text-white">
           <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
 
+            {/* Progress bar */}
             <div className="mb-8">
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-medium text-zinc-300">Configuration de votre jumeau - {progress}%</p>
-                {!isUploadStep && !isGenerating && <p className="text-xs text-zinc-500">{step + 1} / {total}</p>}
+                <p className="text-sm font-medium text-zinc-300">Configuration de votre jumeau — {progress}%</p>
+                {!isIdentityStep && !isGenerating && <p className="text-xs text-zinc-500">{step + 1} / {total}</p>}
               </div>
               <div className="h-1.5 w-full rounded-full bg-white/10">
                 <div className="h-full rounded-full bg-[#10b981] transition-all duration-500" style={{ width: `${progress}%` }} />
               </div>
-              {!isUploadStep && !isGenerating && (
+              {!isIdentityStep && !isGenerating && (
                 <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
                   {BLOCKS.map((block, i) => (
                     <span key={block} className="whitespace-nowrap rounded-lg px-3 py-1 text-xs font-medium transition"
-                      style={{ background: i === blockIndex ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)", color: i === blockIndex ? "#10b981" : "#52525b", border: i === blockIndex ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)" }}>
+                      style={{
+                        background: i === blockIndex ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
+                        color: i === blockIndex ? "#10b981" : "#52525b",
+                        border: i === blockIndex ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)",
+                      }}>
                       {block}
                     </span>
                   ))}
@@ -788,7 +357,8 @@ export default function OnboardingPage() {
               )}
             </div>
 
-            {!isUploadStep && !isGenerating && currentQuestion ? (
+            {/* Question step */}
+            {!isIdentityStep && !isGenerating && currentQuestion ? (
               <section className="rounded-3xl border border-white/10 bg-[#121212] p-6 sm:p-8">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#10b981]">{currentQuestion.block}</p>
                 <h1 className="text-xl font-bold leading-tight sm:text-2xl">{currentQuestion.label}</h1>
@@ -817,18 +387,13 @@ export default function OnboardingPage() {
                         </button>
                       ))}
                       {selected === AUTRE_OPTION && (
-                        <input
-                          type="text"
-                          value={autreText}
-                          onChange={e => setAutreText(e.target.value)}
-                          placeholder="Précisez votre approche..."
-                          autoFocus
-                          className="w-full rounded-2xl border border-[#10b981]/50 bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition placeholder:text-zinc-600 focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
-                        />
+                        <input type="text" value={autreText} onChange={e => setAutreText(e.target.value)}
+                          placeholder="Précisez votre approche..." autoFocus
+                          className="w-full rounded-2xl border border-[#10b981]/50 bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition placeholder:text-zinc-600 focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25" />
                       )}
                     </div>
                   )}
-                  {currentQuestion.type === "multiple" && (
+                  {(currentQuestion.type === "multiple" || currentQuestion.type === "multiple_with_free") && (
                     <div className="grid gap-3 sm:grid-cols-2">
                       {currentQuestion.options?.map(option => {
                         const arr = Array.isArray(selected) ? selected : [];
@@ -840,21 +405,19 @@ export default function OnboardingPage() {
                           </button>
                         );
                       })}
+                      {currentQuestion.type === "multiple_with_free" && Array.isArray(selected) && selected.includes(AUTRE_OPTION) && (
+                        <div className="sm:col-span-2">
+                          <input type="text" value={autreText} onChange={e => setAutreText(e.target.value)}
+                            placeholder="Précisez votre spécialité..." autoFocus
+                            className="w-full rounded-2xl border border-[#10b981]/50 bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition placeholder:text-zinc-600 focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25" />
+                        </div>
+                      )}
                     </div>
                   )}
-                  {currentQuestion.type === "free" && currentQuestion.id !== "vision" && currentQuestion.id !== "signature" && (
+                  {currentQuestion.type === "free" && (
                     <textarea value={typeof selected === "string" ? selected : ""} onChange={e => setSelected(e.target.value)}
                       placeholder={currentQuestion.placeholder} rows={5}
                       className="w-full rounded-2xl border border-white/10 bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition placeholder:text-zinc-600 focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25" />
-                  )}
-                  {(currentQuestion.id === "vision" || currentQuestion.id === "signature") && (
-                    <textarea
-                      value={typeof selected === "string" ? selected : ""}
-                      onChange={e => setSelected(e.target.value)}
-                      placeholder={currentQuestion.placeholder}
-                      rows={8}
-                      className="w-full rounded-2xl border border-white/10 bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition placeholder:text-zinc-600 focus:border-[#10b981] focus:ring-2 focus:ring-[#10b981]/25"
-                    />
                   )}
                 </div>
                 <div className="mt-8 flex items-center justify-between">
@@ -872,35 +435,36 @@ export default function OnboardingPage() {
               </section>
 
             ) : isGenerating ? (
+              /* Generation screen */
               <section className="rounded-3xl border border-[#10b981]/20 bg-[#0d0d0d] p-8 min-h-[520px] flex flex-col overflow-hidden">
                 {genDone ? (
                   <div className="flex-1 flex flex-col items-center justify-center text-center" style={{ animation: "fadeInUp 0.6s ease forwards" }}>
-                    <div className="relative w-28 h-28 mb-8">
-                      <div className="w-28 h-28 rounded-full flex items-center justify-center"
-                        style={{ background: "rgba(16,185,129,0.12)", border: "2px solid rgba(16,185,129,0.4)" }}>
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="4 12 9 17 20 6" stroke="rgba(16,185,129,0.15)" strokeWidth="2"/>
-                          <polyline points="4 12 9 17 20 6" stroke="#10b981" strokeWidth="2"
-                            strokeDasharray="30" strokeDashoffset="30"
-                            style={{ animation: "drawCheck 5s ease 0.3s forwards" }}/>
-                          <polyline points="4 12 9 17 20 6" stroke="white" strokeWidth="3"
-                            strokeDasharray="2 28" strokeDashoffset="30"
-                            style={{ animation: "drawCheck 5s ease 0.3s forwards, fadeOut 0.5s ease 5.3s forwards", opacity: 0.8, filter: "blur(0.5px)" }}/>
-                        </svg>
-                      </div>
+                    <div className="w-28 h-28 rounded-full flex items-center justify-center mb-8"
+                      style={{ background: "rgba(16,185,129,0.12)", border: "2px solid rgba(16,185,129,0.4)" }}>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="4 12 9 17 20 6" stroke="rgba(16,185,129,0.15)" strokeWidth="2"/>
+                        <polyline points="4 12 9 17 20 6" stroke="#10b981" strokeWidth="2"
+                          strokeDasharray="30" strokeDashoffset="30"
+                          style={{ animation: "drawCheck 5s ease 0.3s forwards" }}/>
+                        <polyline points="4 12 9 17 20 6" stroke="white" strokeWidth="3"
+                          strokeDasharray="2 28" strokeDashoffset="30"
+                          style={{ animation: "drawCheck 5s ease 0.3s forwards, fadeOut 0.5s ease 5.3s forwards", opacity: 0.8, filter: "blur(0.5px)" }}/>
+                      </svg>
                     </div>
                     <p className="text-xs font-mono font-bold tracking-widest text-[#10b981] uppercase mb-3">Configuration terminée</p>
                     <h2 className="text-2xl font-bold text-white mb-3 leading-tight">Votre Jumeau est prêt.</h2>
                     <p className="text-sm text-zinc-400 max-w-sm leading-relaxed mb-2">
                       Votre double numérique est désormais capable de prendre le relais auprès de vos patients, avec votre philosophie, votre expertise et votre signature.
                     </p>
-                    <p className="text-xs font-mono text-[#10b981]/50 mb-10">[NT-006] Certification validée - Jumeau opérationnel</p>
+                    <p className="text-xs font-mono text-[#10b981]/50 mb-10">[NT-006] Certification validée — Jumeau opérationnel</p>
                     {saveError && <p className="mb-4 text-sm text-red-400">{saveError}</p>}
                     <button type="button" onClick={() => { setNavigating(true); setTimeout(() => router.push("/dashboard"), 800); }}
                       style={{ background: "#10b981", color: "black", borderRadius: 12, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }}
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 14px rgba(16,185,129,0.3)"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
-                      {navigating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement</span> : "Accéder à mon cabinet numérique"}
+                      {navigating
+                        ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement</span>
+                        : "Accéder à mon cabinet numérique"}
                     </button>
                   </div>
                 ) : (
@@ -964,310 +528,164 @@ export default function OnboardingPage() {
                         {genStep === 3 && "› Injection du profil stylistique dans le LLM..."}
                         {genStep === 4 && "› Fusion des documents d'expertise avec le profil..."}
                         {genStep === 5 && "› Application de la signature émotionnelle unique..."}
-                        {genStep === 6 && "› Jumeau certifié - Lancement imminent..."}
+                        {genStep === 6 && "› Jumeau certifié — Lancement imminent..."}
                       </p>
                     </div>
                   </>
                 )}
               </section>
 
-            ) : isUploadStep ? (
+            ) : isIdentityStep ? (
+              /* Identity step — Vision & Signature */
               <section className="rounded-3xl border border-white/10 bg-[#121212] p-6 sm:p-8">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#10b981]">Votre expertise</p>
-                <h1 className="text-xl font-bold leading-tight sm:text-2xl">Enrichissez votre jumeau avec votre expertise</h1>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#10b981]">Votre Expertise</p>
+                <h1 className="text-xl font-bold leading-tight sm:text-2xl">Définissez votre vision et votre signature</h1>
+                <p className="mt-2 text-sm text-zinc-400 leading-relaxed">
+                  Ces deux éléments sont injectés directement dans l'identité de votre jumeau — pas dans une base documentaire. C'est ce qui lui donne votre ton unique et votre philosophie profonde.
+                </p>
 
-                <div className="mt-5 rounded-2xl p-5 transition-all duration-500" style={{ background: `${slotColor}10`, border: `2px solid ${slotColor}40` }}>
+                {/* Score bar */}
+                <div className="mt-6 rounded-2xl p-5 transition-all duration-500"
+                  style={{ background: `${identityColor}12`, border: `2px solid ${identityColor}40` }}>
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm font-bold text-white">Score de fidélité du jumeau</p>
-                    <span className="text-lg font-bold" style={{ color: slotColor }}>{slotScore}%</span>
+                    <p className="text-sm font-bold text-white">Niveau d'identité du jumeau</p>
+                    <span className="text-lg font-bold" style={{ color: identityColor }}>{identityScore}%</span>
                   </div>
                   <div className="h-3 w-full rounded-full bg-white/10">
-                    <div className="h-full rounded-full transition-all duration-700" style={{ width: `${slotScore}%`, backgroundColor: slotColor }} />
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${identityScore}%`, backgroundColor: identityColor }} />
                   </div>
-                  <p className="mt-3 text-sm" style={{ color: slotColor }}>{slotMsg}</p>
+                  <p className="mt-3 text-sm" style={{ color: identityColor }}>
+                    {identityFilled === 0 && "Complétez votre Vision et votre Signature pour finaliser votre jumeau."}
+                    {identityFilled === 1 && `Plus qu'un élément — ajoutez votre ${visionFilled ? "Signature" : "Vision"} pour atteindre 100%.`}
+                    {identityFilled === 2 && "Identité complète — Votre jumeau possède votre vision et votre signature."}
+                  </p>
                 </div>
 
-                {/* SLOT 1 */}
-                <div className="mt-10">
-                  <div className="flex items-center gap-3 mb-2">
+                {/* Section 1 — Ma Vision */}
+                <div className="mt-8">
+                  <div className="flex items-center gap-3 mb-3">
                     <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold flex-shrink-0 border"
-                      style={{ background: slot1Done ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)", color: slot1Done ? "#10b981" : "#64748b", borderColor: slot1Done ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)" }}>1</div>
-                    <p className="text-base font-bold" style={{ color: slot1Done ? "#10b981" : "white" }}>Vos documents & protocoles</p>
-                    {slot1Done && <span className="text-xs font-semibold text-emerald-500 ml-1">✓ Indexés</span>}
+                      style={{
+                        background: visionFilled ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)",
+                        color: visionFilled ? "#10b981" : "#64748b",
+                        borderColor: visionFilled ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)",
+                      }}>1</div>
+                    <p className="text-base font-bold" style={{ color: visionFilled ? "#10b981" : "white" }}>Ma Vision</p>
+                    {visionFilled && <span className="text-xs font-semibold text-emerald-500">✓ Renseigné</span>}
                   </div>
-                  <p className="text-sm text-zinc-400 mb-6 leading-relaxed ml-0 sm:ml-10">Uploadez vos plans alimentaires types, protocoles ou articles. Votre jumeau les intégrera pour répondre avec votre précision.</p>
-                  <div className="ml-0 sm:ml-10 space-y-3">
-                    <div className="pt-2">
-                      <p className="text-sm font-semibold text-white mb-1">Quel type de document uploadez-vous ?</p>
-                      <p className="text-xs text-zinc-500 mb-4">Cela détermine si vos documents seront anonymisés ou non.</p>
-                      <div className={`grid grid-cols-2 gap-3 mb-4 transition-all duration-200 ${savingAll1 ? "opacity-40 pointer-events-none" : ""}`}>
-                        <label className="relative flex flex-col rounded-2xl border-2 border-dashed p-4 text-left cursor-pointer transition-all duration-200 group"
-                          style={{ borderColor: slot1TypeHover === "protocole" ? "#10b981" : "rgba(255,255,255,0.15)", background: slot1TypeHover === "protocole" ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)" }}
-                          onMouseEnter={() => setSlot1TypeHover("protocole")} onMouseLeave={() => setSlot1TypeHover(null)}>
-                          <input type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a" onChange={e => handleSlotFile(e, "slot1", "protocole")} className="hidden" disabled={savingAll1} />
-                          <p className="text-2xl mb-2">📋</p>
-                          <p className="text-sm font-bold text-white mb-1">Mes protocoles & méthodes</p>
-                          <p className="text-xs text-zinc-500 mb-3">Articles, plans alimentaires types, guides nutritionnels</p>
-                          <p className="text-xs font-medium text-emerald-500 mb-3">✓ Indexé tel quel</p>
-                          <div className="mt-auto rounded-xl border border-dashed border-white/15 group-hover:border-emerald-500/40 px-3 py-2 text-center transition-all duration-200">
-                            <p className="text-xs text-zinc-500 group-hover:text-zinc-400 transition">Cliquez pour sélectionner</p>
-                            <p className="text-xs text-zinc-600 mt-0.5">PDF, DOCX, TXT, JPG, PNG, Excel, CSV, MP3</p>
-                          </div>
-                        </label>
-                        <label className="relative flex flex-col rounded-2xl border-2 border-dashed p-4 text-left cursor-pointer transition-all duration-200 group"
-                          style={{ borderColor: slot1TypeHover === "patient" ? "#60a5fa" : "rgba(255,255,255,0.15)", background: slot1TypeHover === "patient" ? "rgba(96,165,250,0.08)" : "rgba(255,255,255,0.02)" }}
-                          onMouseEnter={() => setSlot1TypeHover("patient")} onMouseLeave={() => setSlot1TypeHover(null)}>
-                          <input type="file" multiple accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.xlsx,.csv,.mp3,.wav,.m4a" onChange={e => handleSlotFile(e, "slot1", "patient")} className="hidden" disabled={savingAll1} />
-                          <p className="text-2xl mb-2">🗂️</p>
-                          <p className="text-sm font-bold text-white mb-1">Données patients</p>
-                          <p className="text-xs text-zinc-500 mb-3">Bilans, comptes-rendus, analyses sanguines</p>
-                          <div className="text-xs font-medium text-blue-400 mb-3 leading-relaxed space-y-0.5">
-                            <p>🔒 Anonymisés par IA avant indexation</p>
-                            <p>Aucune donnée personnelle conservée</p>
-                            <p>Serveurs sécurisés en Europe</p>
-                          </div>
-                          <div className="mt-auto rounded-xl border border-dashed border-white/15 group-hover:border-blue-500/40 px-3 py-2 text-center transition-all duration-200">
-                            <p className="text-xs text-zinc-500 group-hover:text-zinc-400 transition">Cliquez pour sélectionner</p>
-                            <p className="text-xs text-zinc-600 mt-0.5">PDF, DOCX, TXT, JPG, PNG, Excel, CSV, MP3</p>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-                    {duplicateError && <p className="text-xs text-amber-400">{duplicateError}</p>}
-                    {slot1Files.length > 0 && (
-                      <div className="space-y-2">
-                        {slot1Files.map((f, i) => (
-                          <div key={i} className="flex items-center justify-between rounded-xl border border-white/10 bg-[#1a1a1a] px-4 py-3">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <span className="flex-shrink-0 text-zinc-400">{getFileIcon(getFileType(f.file.name))}</span>
-                              <span className="text-sm text-zinc-300 truncate">{f.file.name}</span>
-                              <span className="text-xs flex-shrink-0 flex items-center gap-1" style={{ color: f.docType === "patient" ? "#60a5fa" : "#10b981" }}>{f.docType === "patient" ? "🔒 Anonymisé" : "✓ Tel quel"}</span>
-                            </div>
-                            <button type="button" onClick={() => setSlot1Files(prev => prev.filter((_, j) => j !== i))}
-                              disabled={savingAll1}
-                              className="ml-3 flex-shrink-0 p-1.5 rounded-lg transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ color: "#64748b" }}
-                              onMouseEnter={e => e.currentTarget.style.color = "#f87171"} onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                              <TrashIcon />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {slot1Errors.length > 0 && (
-                      <div className="space-y-1">
-                        {slot1Errors.map((e, i) => <p key={i} className="text-xs text-red-400 flex items-center gap-1.5"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>{e}</p>)}
-                      </div>
-                    )}
-                    <div className="pt-2">
-                      <p className="text-sm font-semibold text-white mb-1">Enrichir avec un mémo vocal</p>
-                      <p className="text-xs text-zinc-500 mb-3">Enregistrez vos nuances, détails non écrits, ou instructions particulières directement à la voix.</p>
-                      <div className="relative">
-                        <div className="flex items-center gap-3 p-4 rounded-2xl border border-white/10 bg-[#1a1a1a]">
-                          <button type="button"
-                            onClick={() => isRecording && slot1ActiveRecording ? stopRecording() : void startRecording("slot1")}
-                            disabled={savingAll1}
-                            className="w-10 h-10 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                            style={{ background: isRecording && slot1ActiveRecording ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.15)", border: isRecording && slot1ActiveRecording ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.3)" }}>
-                            {isRecording && slot1ActiveRecording ? <span className="h-2.5 w-2.5 rounded-full bg-red-400 animate-pulse" /> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>}
-                          </button>
-                          <p className="text-sm text-zinc-400">{isRecording && slot1ActiveRecording ? <span className="text-red-400 flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />Enregistrement en cours — {formatTime(continueFromSecs + recordingTime)}</span> : "Cliquez pour démarrer l’enregistrement"}</p>
-                        </div>
-                      </div>
-                      {editingSlot1?.fileType === "audio" && !audioBlob && !isRecording && (
-                        <div className="flex flex-wrap items-center gap-2 mt-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-                            <span className="text-sm text-zinc-300 truncate">{editingSlot1.name}</span>
-                          </div>
-                          <button type="button" onClick={() => { setAudioReplaceMode(true); setContinueFromSecs(editingSlot1.durationSecs ?? 0); void startRecording("slot1"); }}
-                            style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap" }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                            Reprendre ce mémo
-                          </button>
-                        </div>
-                      )}
-                      {audioBlob && slot1ActiveRecording && (
-                        <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-white/10 bg-[#1a1a1a]">
-                          <p className="text-sm text-emerald-500 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(continueFromSecs + recordingTime)})</p>
-                          <button type="button" onClick={() => { setAudioBlob(null); setSlot1ActiveRecording(false); setAudioReplaceMode(false); }}
-                            disabled={savingAll1}
-                            className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ color: "#64748b" }}
-                            onMouseEnter={e => e.currentTarget.style.color = "#f87171"} onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                            <TrashIcon />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    {slot1IndexedFiles.length > 0 && (
-                      <div className="pt-2 space-y-2">
-                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Documents indexés</p>
-                        {slot1IndexedFiles.map((f, i) => <IndexedFileRow key={i} f={f} i={i} slot="slot1" />)}
-                      </div>
-                    )}
-                    {savingAll1 && indexProgress1 && (
-                      <div className="pt-2 space-y-1">
-                        {editingSlot1 ? (
-                          <p className="text-xs text-amber-400">Patientez, cela peut prendre quelques instants...</p>
-                        ) : (
-                          <>
-                            <p className="text-xs text-amber-400 mb-1">Patientez, cela peut prendre quelques instants...</p>
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-zinc-400">{indexProgress1.current} / {indexProgress1.total} fichier{indexProgress1.total > 1 ? "s" : ""} indexé{indexProgress1.total > 1 ? "s" : ""}</span>
-                              <span className="text-xs text-zinc-500">{Math.round((indexProgress1.current / indexProgress1.total) * 100)}%</span>
-                            </div>
-                            <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                              <div style={{ height: "100%", width: `${(indexProgress1.current / indexProgress1.total) * 100}%`, background: "rgba(16,185,129,0.5)", borderRadius: 2, transition: "width 0.4s ease" }} />
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                    <div className="pt-3 flex items-center justify-end gap-3">
-                      <button type="button" onClick={() => void saveSlot1All()} disabled={savingAll1 || !hasSlot1Pending}
-                        style={{ background: hasSlot1Pending ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", border: hasSlot1Pending ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)", color: hasSlot1Pending ? "#10b981" : "#3f3f46", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 600, cursor: (savingAll1 || !hasSlot1Pending) ? "not-allowed" : "pointer", opacity: savingAll1 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
-                        onMouseEnter={e => { if (!savingAll1 && hasSlot1Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
-                        onMouseLeave={e => { if (hasSlot1Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
-                        {savingAll1 ? <><Spinner />Indexation en cours</> : getSlot1Label()}
-                      </button>
-                    </div>
-                  </div>
+                  <p className="text-sm text-zinc-400 mb-4 ml-10 leading-relaxed">
+                    Votre philosophie profonde, ce qui vous a amené à ce métier, ce que vous voulez transmettre. Ce texte sera injecté directement dans l'identité de votre jumeau.
+                  </p>
+                  <textarea
+                    value={visionText}
+                    onChange={e => setVisionText(e.target.value)}
+                    placeholder="Exemple : Je crois que l'alimentation est un acte de soin envers soi-même. Mon rôle est d'aider chaque patient à retrouver une relation apaisée avec la nourriture, sans frustration ni culpabilité..."
+                    rows={6}
+                    className="w-full rounded-2xl bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition placeholder:text-zinc-600"
+                    style={{
+                      border: `1px solid ${visionFilled ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)"}`,
+                      boxShadow: visionFilled ? "0 0 0 1px rgba(16,185,129,0.08)" : "none",
+                    }}
+                    onFocus={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(16,185,129,0.15)"; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = visionFilled ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = visionFilled ? "0 0 0 1px rgba(16,185,129,0.08)" : "none"; }}
+                  />
                 </div>
 
-                <div className="my-10 flex items-center gap-3">
+                {/* Separator */}
+                <div className="my-8 flex items-center gap-3">
                   <div className="flex-1 h-px bg-white/10" />
                   <span className="text-xs text-zinc-600 font-medium px-2">et</span>
                   <div className="flex-1 h-px bg-white/10" />
                 </div>
 
-                {/* SLOT 2 */}
+                {/* Section 2 — Ma Signature */}
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-3">
                     <div className="flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold flex-shrink-0 border"
-                      style={{ background: slot2Done ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)", color: slot2Done ? "#10b981" : "#64748b", borderColor: slot2Done ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)" }}>2</div>
-                    <p className="text-base font-bold" style={{ color: slot2Done ? "#10b981" : "white" }}>Mémos vocaux patients</p>
-                    {slot2Done && <span className="text-xs font-semibold text-emerald-500 ml-1">✓ Indexés</span>}
+                      style={{
+                        background: signatureFilled ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.06)",
+                        color: signatureFilled ? "#10b981" : "#64748b",
+                        borderColor: signatureFilled ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)",
+                      }}>2</div>
+                    <p className="text-base font-bold" style={{ color: signatureFilled ? "#10b981" : "white" }}>Ma Signature</p>
+                    {signatureFilled && <span className="text-xs font-semibold text-emerald-500">✓ Renseigné</span>}
                   </div>
-                  <p className="text-sm text-zinc-400 mb-6 leading-relaxed ml-10">Enregistrez des mémos vocaux sur des cas patients types, des situations récurrentes ou des nuances de votre approche clinique.</p>
-                  <div className="ml-0 sm:ml-10 space-y-3">
-                    {slot2Errors.length > 0 && (
-                      <div className="space-y-1">
-                        {slot2Errors.map((e, i) => <p key={i} className="text-xs text-red-400 flex items-center gap-1.5"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>{e}</p>)}
-                      </div>
-                    )}
-                    <div className="pt-2">
-                      <div className="flex items-center gap-3 p-4 rounded-2xl border border-white/10 bg-[#1a1a1a]">
-                        <button type="button"
-                          onClick={() => isRecording && slot2ActiveRecording ? stopRecording() : void startRecording("slot2")}
-                          disabled={savingAll2}
-                          className="w-10 h-10 flex items-center justify-center rounded-full transition-all duration-200 hover:scale-110 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                          style={{ background: isRecording && slot2ActiveRecording ? "rgba(239,68,68,0.2)" : "rgba(16,185,129,0.15)", border: isRecording && slot2ActiveRecording ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.3)" }}>
-                          {isRecording && slot2ActiveRecording ? <span className="h-2.5 w-2.5 rounded-full bg-red-400 animate-pulse" /> : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>}
-                        </button>
-                        <p className="text-sm text-zinc-400">{isRecording && slot2ActiveRecording ? <span className="text-red-400 flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />Enregistrement en cours — {formatTime(continueFromSecs + recordingTime)}</span> : "Cliquez pour démarrer l'enregistrement"}</p>
-                      </div>
-                      {editingSlot2?.fileType === "audio" && !audioBlob && !isRecording && (
-                        <div className="flex flex-wrap items-center gap-2 mt-3 p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-                            <span className="text-sm text-zinc-300 truncate">{editingSlot2.name}</span>
-                          </div>
-                          <button type="button" onClick={() => { setAudioReplaceMode(true); setContinueFromSecs(editingSlot2.durationSecs ?? 0); void startRecording("slot2"); }}
-                            style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", borderRadius: 8, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap" }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                            Reprendre ce mémo
-                          </button>
-                        </div>
-                      )}
-                      {audioBlob && slot2ActiveRecording && (
-                        <div className="flex items-center gap-3 mt-3 p-3 rounded-xl border border-white/10 bg-[#1a1a1a]">
-                          <p className="text-sm text-emerald-500 flex-1 flex items-center gap-1.5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Mémo enregistré ({formatTime(continueFromSecs + recordingTime)})</p>
-                          <button type="button" onClick={() => { setAudioBlob(null); setSlot2ActiveRecording(false); setAudioReplaceMode(false); }}
-                            disabled={savingAll2}
-                            className="p-1.5 rounded-lg transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed" style={{ color: "#64748b" }}
-                            onMouseEnter={e => e.currentTarget.style.color = "#f87171"} onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                            <TrashIcon />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    {slot2IndexedFiles.length > 0 && (
-                      <div className="pt-2 space-y-2">
-                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Documents indexés</p>
-                        {slot2IndexedFiles.map((f, i) => <IndexedFileRow key={i} f={f} i={i} slot="slot2" />)}
-                      </div>
-                    )}
-                    {savingAll2 && indexProgress2 && (
-                      <div className="pt-2 space-y-1">
-                        {editingSlot2 ? (
-                          <p className="text-xs text-amber-400">Patientez, cela peut prendre quelques instants...</p>
-                        ) : (
-                          <>
-                            <p className="text-xs text-amber-400 mb-1">Patientez, cela peut prendre quelques instants...</p>
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-zinc-400">{indexProgress2.current} / {indexProgress2.total} fichier{indexProgress2.total > 1 ? "s" : ""} indexé{indexProgress2.total > 1 ? "s" : ""}</span>
-                              <span className="text-xs text-zinc-500">{Math.round((indexProgress2.current / indexProgress2.total) * 100)}%</span>
-                            </div>
-                            <div style={{ height: 3, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                              <div style={{ height: "100%", width: `${(indexProgress2.current / indexProgress2.total) * 100}%`, background: "rgba(16,185,129,0.5)", borderRadius: 2, transition: "width 0.4s ease" }} />
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                    <div className="pt-3 flex items-center justify-end gap-3">
-                      <button type="button" onClick={() => void saveSlot2All()} disabled={savingAll2 || !hasSlot2Pending}
-                        style={{ background: hasSlot2Pending ? "rgba(16,185,129,0.12)" : "rgba(255,255,255,0.03)", border: hasSlot2Pending ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(255,255,255,0.06)", color: hasSlot2Pending ? "#10b981" : "#3f3f46", borderRadius: 12, padding: "10px 22px", fontSize: 13, fontWeight: 600, cursor: (savingAll2 || !hasSlot2Pending) ? "not-allowed" : "pointer", opacity: savingAll2 ? 0.7 : 1, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
-                        onMouseEnter={e => { if (!savingAll2 && hasSlot2Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
-                        onMouseLeave={e => { if (hasSlot2Pending) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
-                        {savingAll2 ? <><Spinner />Indexation en cours</> : getSlot2Label()}
-                      </button>
-                    </div>
-                  </div>
+                  <p className="text-sm text-zinc-400 mb-4 ml-10 leading-relaxed">
+                    Ce qui vous distingue des autres praticiens. Votre approche unique, votre manière d'être avec vos patients. Ce texte définit la personnalité profonde de votre jumeau.
+                  </p>
+                  <textarea
+                    value={signatureText}
+                    onChange={e => setSignatureText(e.target.value)}
+                    placeholder="Exemple : Ma signature, c'est la bienveillance radicale. Je ne juge jamais. Je commence toujours par valider l'émotion avant de proposer une solution. Je parle à mes patients comme à des amis intelligents..."
+                    rows={6}
+                    className="w-full rounded-2xl bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition placeholder:text-zinc-600"
+                    style={{
+                      border: `1px solid ${signatureFilled ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)"}`,
+                      boxShadow: signatureFilled ? "0 0 0 1px rgba(16,185,129,0.08)" : "none",
+                    }}
+                    onFocus={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(16,185,129,0.15)"; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = signatureFilled ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = signatureFilled ? "0 0 0 1px rgba(16,185,129,0.08)" : "none"; }}
+                  />
                 </div>
 
-                  <div className="mt-10 flex items-center justify-between">
+                {/* Bottom actions */}
+                <div className="mt-10 flex items-center justify-between">
                   <button type="button" onClick={() => setStep(prev => prev - 1)}
                     className="text-sm text-zinc-500 transition-all duration-200 hover:text-white cursor-pointer">← Retour</button>
 
-                    <div style={{ position: "relative", display: "inline-block" }}
-                    onMouseEnter={() => { if (filled < 2) setShowCertTooltip(true); }}
+                  <div style={{ position: "relative", display: "inline-block" }}
+                    onMouseEnter={() => { if (identityFilled < 2) setShowCertTooltip(true); }}
                     onMouseLeave={() => setShowCertTooltip(false)}
-                    onClick={() => { if (filled < 2) setShowCertTooltip(prev => !prev); }}>
-                    {showCertTooltip && filled < 2 && (
+                    onClick={() => { if (identityFilled < 2) setShowCertTooltip(prev => !prev); }}>
+                    {showCertTooltip && identityFilled < 2 && (
                       <>
                         <div className="hidden sm:block" style={{ position: "absolute", top: "50%", right: "calc(100% + 12px)", transform: "translateY(-50%)", width: 280, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>🔒 Certification requise - Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.</span>
+                          🔒 Complétez votre {!visionFilled && !signatureFilled ? "Vision et votre Signature" : !visionFilled ? "Vision" : "Signature"} pour activer votre Jumeau.
                         </div>
                         <div className="block sm:hidden" style={{ position: "absolute", bottom: "calc(100% + 8px)", right: 0, width: 240, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>🔒 Certification requise - Complétez votre Vision et votre Signature pour activer votre Jumeau à 100%.</span>
+                          🔒 Complétez votre {!visionFilled && !signatureFilled ? "Vision et votre Signature" : !visionFilled ? "Vision" : "Signature"} pour activer votre Jumeau.
                         </div>
                       </>
                     )}
                     <button type="button"
-                      onClick={filled === 2 ? () => {
+                      onClick={identityFilled === 2 ? () => {
                         setActivating(true);
-                        setTimeout(() => {
-                          setActivating(false);
-                          startGeneration();
-                        }, 1500);
+                        setTimeout(() => { setActivating(false); startGeneration(); }, 1500);
                       } : undefined}
                       style={{
-                        background: filled === 2 ? "linear-gradient(135deg, rgba(16,185,129,0.28), rgba(16,185,129,0.10))" : "transparent",
-                        color: filled === 2 ? "#10b981" : "#64748b",
-                        border: filled === 2 ? "1px solid rgba(16,185,129,0.5)" : "1px solid rgba(255,255,255,0.1)",
-                        cursor: filled === 2 ? "pointer" : "not-allowed",
-                        boxShadow: filled === 2 ? "0 0 24px rgba(16,185,129,0.2), inset 0 1px 0 rgba(16,185,129,0.15)" : "none",
-                        borderRadius: 12, padding: "14px 36px", fontSize: 15, fontWeight: 700, transition: "all 0.2s"
+                        background: identityFilled === 2 ? "linear-gradient(135deg, rgba(16,185,129,0.28), rgba(16,185,129,0.10))" : "transparent",
+                        color: identityFilled === 2 ? "#10b981" : "#64748b",
+                        border: identityFilled === 2 ? "1px solid rgba(16,185,129,0.5)" : "1px solid rgba(255,255,255,0.1)",
+                        cursor: identityFilled === 2 ? "pointer" : "not-allowed",
+                        boxShadow: identityFilled === 2 ? "0 0 24px rgba(16,185,129,0.2), inset 0 1px 0 rgba(16,185,129,0.15)" : "none",
+                        borderRadius: 12, padding: "14px 36px", fontSize: 15, fontWeight: 700, transition: "all 0.2s",
                       }}
-                      onMouseEnter={e => { if (filled === 2) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.40), rgba(16,185,129,0.16))"; e.currentTarget.style.boxShadow = "0 0 32px rgba(16,185,129,0.35), inset 0 1px 0 rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.7)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
-                      onMouseLeave={e => { e.currentTarget.style.background = filled === 2 ? "linear-gradient(135deg, rgba(16,185,129,0.28), rgba(16,185,129,0.10))" : "transparent"; e.currentTarget.style.boxShadow = filled === 2 ? "0 0 24px rgba(16,185,129,0.2), inset 0 1px 0 rgba(16,185,129,0.15)" : "none"; e.currentTarget.style.borderColor = filled === 2 ? "rgba(16,185,129,0.5)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
-                      {activating ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Activation</span> : `Activer mon Jumeau ${filled === 2 ? "🌿" : ""}`}
+                      onMouseEnter={e => {
+                        if (identityFilled === 2) {
+                          e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.40), rgba(16,185,129,0.16))";
+                          e.currentTarget.style.boxShadow = "0 0 32px rgba(16,185,129,0.35), inset 0 1px 0 rgba(16,185,129,0.2)";
+                          e.currentTarget.style.borderColor = "rgba(16,185,129,0.7)";
+                          e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = identityFilled === 2 ? "linear-gradient(135deg, rgba(16,185,129,0.28), rgba(16,185,129,0.10))" : "transparent";
+                        e.currentTarget.style.boxShadow = identityFilled === 2 ? "0 0 24px rgba(16,185,129,0.2), inset 0 1px 0 rgba(16,185,129,0.15)" : "none";
+                        e.currentTarget.style.borderColor = identityFilled === 2 ? "rgba(16,185,129,0.5)" : "rgba(255,255,255,0.1)";
+                        e.currentTarget.style.transform = "translateY(0) scale(1)";
+                      }}>
+                      {activating
+                        ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block" }} />
+                            Activation
+                          </span>
+                        : `Activer mon Jumeau${identityFilled === 2 ? " 🌿" : ""}`}
                     </button>
                   </div>
                 </div>
               </section>
+
             ) : null}
           </main>
 
@@ -1276,7 +694,6 @@ export default function OnboardingPage() {
             @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
             @keyframes drawCheck { from { stroke-dashoffset: 30; } to { stroke-dashoffset: 0; } }
             @keyframes fadeOut { from { opacity: 0.8; } to { opacity: 0; } }
-            @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
           `}</style>
         </div>
       )}

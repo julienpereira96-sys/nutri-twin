@@ -13,6 +13,13 @@ function PaymentSuccessContent() {
   const [navigating, setNavigating] = useState(false);
 
   useEffect(() => {
+    window.history.pushState(null, "", window.location.pathname);
+    const handlePopState = () => window.history.pushState(null, "", window.location.pathname);
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
     const supabase = createSupabaseBrowserClient();
     let attempts = 0;
     const maxAttempts = 20;
