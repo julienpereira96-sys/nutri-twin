@@ -596,16 +596,22 @@ export default function DashboardPage() {
       }
       const pid = data.user.id;
       setPractitionerId(pid);
-      const { data: practitioner } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin, dashboard_tour_done").eq("user_id", pid).single();
+      const { data: practitioner } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin").eq("user_id", pid).single();
       if (practitioner) {
-        const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string; dashboard_tour_done?: boolean };
+        const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string };
         setPractitionerName(`${p.first_name} ${p.last_name}`);
         setPractitionerEmail(p.email ?? "");
         setPractitionerSpecialty(p.specialty ?? "");
         setSavedPin(p.discrete_pin ?? "");
-        if (!p.dashboard_tour_done) {
-          setTimeout(() => { setShowOnboarding(true); setOnboardingDemoMode(true); }, 800);
-        }
+      }
+      // Tour check séparé pour ne pas bloquer le chargement si la colonne n'existe pas encore
+      const { data: tourData, error: tourError } = await supabase.from("practitioners").select("dashboard_tour_done").eq("user_id", pid).single();
+      if (!tourError && tourData) {
+        const tourDone = (tourData as { dashboard_tour_done?: boolean }).dashboard_tour_done;
+        if (!tourDone) setTimeout(() => { setShowOnboarding(true); setOnboardingDemoMode(true); }, 800);
+      } else if (tourError) {
+        // Colonne absente (migration non encore lancée) → afficher le tour quand même
+        setTimeout(() => { setShowOnboarding(true); setOnboardingDemoMode(true); }, 800);
       }
       const { count } = await supabase.from("documents").select("*", { count: "exact", head: true }).eq("practitioner_id", pid);
       setHasDocuments((count ?? 0) > 0);

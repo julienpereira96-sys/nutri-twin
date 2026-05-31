@@ -114,6 +114,8 @@ export default function OnboardingPage() {
   const [genFlash, setGenFlash] = useState(false);
   const genTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
   const genIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const blockBarRef = useRef<HTMLDivElement | null>(null);
+  const activeBlockRef = useRef<HTMLSpanElement | null>(null);
   const [activating, setActivating] = useState(false);
   const [navigating, setNavigating] = useState(false);
   const [autreText, setAutreText] = useState<string>(() => {
@@ -159,6 +161,13 @@ export default function OnboardingPage() {
   useEffect(() => { localStorage.setItem("onboarding_autre", autreText); }, [autreText]);
   useEffect(() => { localStorage.setItem("onboarding_vision", visionText); }, [visionText]);
   useEffect(() => { localStorage.setItem("onboarding_signature", signatureText); }, [signatureText]);
+
+  // Auto-scroll la barre de blocs pour garder l'élément actif visible
+  useEffect(() => {
+    if (activeBlockRef.current && blockBarRef.current) {
+      activeBlockRef.current.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  }, [blockIndex]);
 
   // Restore selected answer when navigating between questions
   useEffect(() => {
@@ -456,9 +465,11 @@ export default function OnboardingPage() {
                 <div className="h-full rounded-full bg-[#10b981] transition-all duration-500" style={{ width: `${progress}%` }} />
               </div>
               {!isIdentityStep && !isGenerating && (
-                <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                <div ref={blockBarRef} className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-none" style={{ scrollbarWidth: "none" }}>
                   {BLOCKS.map((block, i) => (
-                    <span key={block} className="whitespace-nowrap rounded-lg px-3 py-1 text-xs font-medium transition"
+                    <span key={block}
+                      ref={i === blockIndex ? activeBlockRef : null}
+                      className="whitespace-nowrap rounded-lg px-3 py-1 text-xs font-medium transition"
                       style={{
                         background: i === blockIndex ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
                         color: i === blockIndex ? "#10b981" : "#52525b",
