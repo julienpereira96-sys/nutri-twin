@@ -153,6 +153,7 @@ type MonthlyStats = { messages_geres: number; crises_nocturnes: number; temps_ec
 const AVATAR_COLORS = ["#f43f5e", "#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ec4899", "#06b6d4", "#f97316"];
 
 function getStatusColor(status?: string) { if (status === "red") return coral; if (status === "orange") return amber; return emerald; }
+function getStatusEmoji(status?: string) { if (status === "red" || status === "red_critical") return "🔴"; if (status === "orange") return "🟡"; return "🟢"; }
 
 // ═══ SVG ICONS ═══
 const AlertIcon = ({ size = 16, color = coral }: { size?: number; color?: string }) => (
@@ -1325,7 +1326,7 @@ export default function DashboardPage() {
                             <span style={{ fontSize: 13, fontWeight: 600, color: isSelected ? emerald : "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{patient.firstName}</span>
                             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                               {patient.latest_victory && <TrophyIcon size={11} color="#f59e0b" />}
-                              <span style={{ fontSize: 10, color: statusColor }}>●</span>
+                              <span style={{ fontSize: 10 }}>{getStatusEmoji(patient.emotional_status)}</span>
                             </div>
                           </div>
                           <p style={{ margin: 0, fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
@@ -1799,9 +1800,7 @@ export default function DashboardPage() {
                             <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{patient.totalMessages} messages</p>
                           </div>
                         </button>
-                        <span style={{ width: 18, height: 18, borderRadius: "50%", background: isCritical ? coral : getStatusColor(patient.emotional_status), display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: isCritical ? 1 : 0.85 }}>
-                          {isCritical && <svg width="9" height="9" viewBox="0 0 24 24" fill="none"><line x1="12" y1="6" x2="12" y2="13" stroke="white" strokeWidth="2.5" strokeLinecap="round"/><line x1="12" y1="17" x2="12.01" y2="17" stroke="white" strokeWidth="2.5" strokeLinecap="round"/></svg>}
-                        </span>
+                        <span style={{ fontSize: 14, flexShrink: 0 }}>{getStatusEmoji(patient.emotional_status)}</span>
                       </div>
                       {patient.emotional_insight && (
                         <p style={{ margin: "0 0 10px", fontSize: 12, color: statusColor, lineHeight: 1.5, fontStyle: "italic", filter: discretMode ? "blur(4px)" : "none" }}>

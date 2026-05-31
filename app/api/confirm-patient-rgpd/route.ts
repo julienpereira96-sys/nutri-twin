@@ -2,7 +2,20 @@ import { createClient } from "@supabase/supabase-js";
 import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 export async function POST(request: Request) {
-  const user = await getSessionUser();
+  // Support Bearer token (client-side magic link sessions qui n'ont pas de cookie SSR)
+  let user = null;
+  const authHeader = request.headers.get("Authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    const anonClient = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data } = await anonClient.auth.getUser(token);
+    user = data.user;
+  } else {
+    user = await getSessionUser();
+  }
   if (!user) return unauthorized();
 
   const { userId, email } = await request.json() as {
