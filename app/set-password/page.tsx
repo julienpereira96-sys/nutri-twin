@@ -41,7 +41,6 @@ export default function SetPasswordPage() {
     }, 15000); // 15s - couvre les connexions lentes
 
     supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth event:", event, "Session:", session?.user?.id);
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "INITIAL_SESSION") {
         if (session) {
           clearTimeout(timeout);
@@ -62,18 +61,15 @@ export default function SetPasswordPage() {
     setLoading(true); setError("");
 
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+
+    // Vérifier que la session magic link est toujours active
     const { data: { user: currentUser } } = await supabase.auth.getUser();
-    console.log("currentUser:", currentUser?.id);
     if (!currentUser) { setError("Session expirée. Contactez votre praticien."); setLoading(false); return; }
 
-    const res = await fetch("/api/set-patient-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: currentUser.id, password }),
-    });
-    const resData = await res.json() as { error?: string };
-    console.log("set-patient-password response:", res.status, resData);
-    if (!res.ok) {
+    // Mettre à jour le mot de passe directement via la session magic link
+    // (évite le 401 : pas besoin de l'API /set-patient-password qui lit les cookies SSR)
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    if (updateError) {
       setError("Une erreur est survenue. Veuillez réessayer.");
       setLoading(false);
       return;
@@ -92,13 +88,12 @@ export default function SetPasswordPage() {
       return;
     }
 
-    // Se reconnecter avec le nouveau mot de passe pour rafraîchir la session
+    // Se reconnecter avec le nouveau mot de passe pour initialiser la session cookie (SSR)
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email: currentUser.email!,
       password,
     });
     if (signInError) {
-      // Session toujours active via le magic link - rediriger quand même
       window.location.href = "/patient-login?reason=set_password_done";
       return;
     }
