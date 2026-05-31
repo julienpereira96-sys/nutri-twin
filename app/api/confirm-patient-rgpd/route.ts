@@ -1,38 +1,34 @@
 import { createClient } from "@supabase/supabase-js";
-import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 export async function POST(request: Request) {
-  // Support Bearer token (client-side magic link sessions qui n'ont pas de cookie SSR)
-  let user = null;
-  const authHeader = request.headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice(7);
-    const anonClient = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    );
-    const { data } = await anonClient.auth.getUser(token);
-    user = data.user;
-  } else {
-    user = await getSessionUser();
-  }
-  if (!user) return unauthorized();
-
   const { userId, email } = await request.json() as {
     userId: string;
     email: string;
   };
 
-  if (user.id !== userId) return forbidden();
+  if (!userId || typeof userId !== "string") {
+    return Response.json({ error: "userId requis." }, { status: 400 });
+  }
+  if (!email || typeof email !== "string") {
+    return Response.json({ error: "email requis." }, { status: 400 });
+  }
 
   const supabase = createClient(
     process.env.SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
+  // Valider que userId + email correspondent bien à un utilisateur réel dans Supabase Auth
+  const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId);
+  if (userError || !user) {
+    return Response.json({ error: "Utilisateur introuvable." }, { status: 401 });
+  }
+  if (user.email?.toLowerCase() !== email.trim().toLowerCase()) {
+    return Response.json({ error: "Identifiants invalides." }, { status: 401 });
+  }
+
   const now = new Date().toISOString();
 
-  // Mettre à jour uniquement onboarding_status et rgpd sans toucher aux autres champs
   const { error } = await supabase.from("patients")
     .update({
       rgpd_accepted_at: now,

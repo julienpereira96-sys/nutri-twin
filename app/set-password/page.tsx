@@ -81,13 +81,9 @@ export default function SetPasswordPage() {
 
     // Sauvegarder le consentement RGPD et passer onboarding_status à "password_set"
     // (débloque l'accès à /patient-onboarding via le middleware)
-    const { data: { session } } = await supabase.auth.getSession();
     const rgpdRes = await fetch("/api/confirm-patient-rgpd", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: currentUser.id, email: currentUser.email }),
     });
     if (!rgpdRes.ok) {
@@ -183,10 +179,7 @@ export default function SetPasswordPage() {
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
                 {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Création en cours</span> : "Accéder à mon espace"}
               </button>
-              <div className="mt-2 flex items-center justify-center gap-1.5">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-zinc-500"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <p className="text-xs text-zinc-500">Chiffrement de bout en bout · Données traitées en Europe (RGPD)</p>
-              </div>
+              <p className="mt-2 text-center text-xs text-zinc-500 whitespace-nowrap">Chiffrement de bout en bout · Données traitées en Europe (RGPD)</p>
             </div>
           )}
         </div>
