@@ -149,7 +149,9 @@ function VerifyOTPForm() {
                 onChange={e => handleChange(i, e.target.value)}
                 onKeyDown={e => handleKeyDown(i, e)}
                 onPaste={handlePaste}
-                className="w-12 h-14 rounded-xl border text-center text-[20px] font-bold text-white bg-[#161616] outline-none transition-all"
+                readOnly={loading || success}
+                disabled={loading || success}
+                className="w-12 h-14 rounded-xl border text-center text-[20px] font-bold text-white bg-[#161616] outline-none transition-all disabled:opacity-70 disabled:cursor-not-allowed"
                 style={{
                   borderColor: digit ? emerald : "rgba(255,255,255,0.1)",
                   boxShadow: digit ? `0 0 0 1px ${emerald}20` : "none",
@@ -200,7 +202,7 @@ function VerifyOTPForm() {
             </button>
           )}
 
-          <div className="mt-5 text-center">
+          {!loading && !success && <div className="mt-5 text-center">
             <p className="text-[13px] text-zinc-400">
               Vous n'avez pas reçu le code ?{" "}
               {countdown > 0 ? (
@@ -216,7 +218,7 @@ function VerifyOTPForm() {
                 </button>
               )}
             </p>
-          </div>
+          </div>}
         </div>
 
         <p className="mt-6 text-center text-[11px] text-zinc-500">

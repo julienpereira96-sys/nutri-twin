@@ -742,9 +742,9 @@ export default function Home() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3 max-w-5xl mx-auto">
-              <PricingCard name="Essentiel" price="149€" description="Pour démarrer et accompagner vos patients prioritaires." features={["Jusqu'à 10 patients", "1 praticien", "Jumeau configuré sur 31 questions", "Chat patient 24h/24", "Journal de bord patient", "Dashboard praticien", "Support par email"]} plan="essentiel" featured={false} />
-              <PricingCard name="Professionnel" price="249€" badge="Recommandé" description="Le jumeau le plus fidèle à votre expertise." features={["Jusqu'à 100 patients", "1 praticien", "Jumeau configuré sur 31 questions", "Upload documents & protocoles", "Fidélité maximale du jumeau", "Rapport IA mensuel par patient", "Journal de bord patient", "Support prioritaire"]} plan="pro" featured={true} />
-              <PricingCard name="Cabinet" price="499€" description="Pour les cabinets multi-praticiens." features={["Patients illimités", "3 praticiens inclus", "Upload documents illimité", "Rapport IA mensuel par patient", "Journal de bord patient", "+99€/praticien supplémentaire", "Support dédié"]} plan="cabinet" featured={false} />
+              <PricingCard name="Essentiel" price="149€" description="Pour démarrer et accompagner vos patients prioritaires." features={["Jusqu'à 10 patients", "1 praticien", "Jumeau configuré sur 31 questions", "Chat patient 24h/24", "Dashboard praticien", "Support par email"]} plan="essentiel" featured={false} />
+              <PricingCard name="Professionnel" price="249€" badge="Recommandé" description="Le jumeau le plus fidèle à votre expertise." features={["Jusqu'à 50 patients", "1 praticien", "Jumeau configuré sur 31 questions", "Upload documents & protocoles", "Fidélité maximale du jumeau", "Rapport IA mensuel par patient", "Support prioritaire"]} plan="pro" featured={true} />
+              <PricingCard name="Cabinet" price="499€" description="Pour les cabinets multi-praticiens." features={["Jusqu'à 150 patients", "3 praticiens inclus", "Upload documents illimité", "Rapport IA mensuel par patient", "+99€/praticien supplémentaire", "Support dédié"]} plan="cabinet" featured={false} />
             </div>
           </div>
         </section>
