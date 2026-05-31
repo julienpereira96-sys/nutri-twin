@@ -25,108 +25,218 @@ const DEMO_CONVERSATIONS: { id: string; role: "user" | "assistant"; content: str
 ];
 
 const ONBOARDING_STEPS = [
-  { id: "welcome", icon: "🌿", title: "Bienvenue sur votre dashboard", text: "Votre jumeau numérique est prêt à prendre le relais entre vos séances. Laissez-moi vous montrer vos outils en quelques secondes.", highlight: null, position: "center" as const },
-  { id: "patients", icon: "👥", title: "Vos patients", text: "Ici s'affichent vos patients triés par niveau d'urgence émotionnelle. Cliquez sur l'un d'eux pour voir sa conversation en temps réel.", highlight: "patients", position: "sidebar" as const, glowColor: "rgba(16,185,129,0.5)" },
-  { id: "radar", icon: "🎯", title: "Le Radar de Résilience", text: "Le Radar trie vos patients par niveau d'urgence émotionnelle. Ne consacrez votre énergie qu'à ceux qui en ont réellement besoin, l'IA s'occupe du reste.", highlight: "radar", position: "top-right" as const, glowColor: "rgba(244,63,94,0.4)" },
-  { id: "murmure", icon: "🎙️", title: "Le Murmure", text: "C'est votre ligne directe avec votre jumeau. Une instruction, et il adapte immédiatement son approche avec ce patient.", highlight: "murmure", position: "right" as const, glowColor: "rgba(16,185,129,0.4)" },
-  { id: "rapport", icon: "📊", title: "Le Rapport mensuel", text: "Chaque mois, votre jumeau génère un rapport complet pour préparer vos consultations. Un gain de temps considérable.", highlight: "rapport", position: "right" as const, glowColor: "rgba(99,102,241,0.4)" },
-  { id: "invite", icon: "✉️", title: "Inviter un patient", text: "Tout est prêt. Envoyez le lien à votre premier patient et votre jumeau prend le relais immédiatement.", highlight: "invite", position: "bottom-left" as const, glowColor: "rgba(16,185,129,0.4)" },
+  { id: "welcome", title: "Bienvenue sur votre dashboard", text: "Votre jumeau numérique est désormais prêt à prendre le relais entre vos séances. Découvrez les différentes fonctionnalités disponibles au sein de votre cabinet numérique.", highlight: null, tooltipSide: null as null },
+  { id: "patients", title: "Vos patients", text: "Ici s'affichent vos patients triés par niveau d'urgence émotionnelle. Cliquez sur l'un d'eux pour voir sa conversation en temps réel.", highlight: "patients", tooltipSide: "right" as const },
+  { id: "radar", title: "Le Radar de Résilience", text: "Le Radar trie vos patients par niveau d'urgence émotionnelle. Ne consacrez votre énergie qu'à ceux qui en ont réellement besoin, l'IA s'occupe du reste.", highlight: "radar", tooltipSide: "bottom" as const },
+  { id: "murmure", title: "Le Murmure", text: "C'est votre ligne directe avec votre jumeau. Une instruction, et il adapte immédiatement son approche avec ce patient.", highlight: "murmure", tooltipSide: "left" as const },
+  { id: "rapport", title: "Le Rapport mensuel", text: "Chaque mois, votre jumeau génère un rapport complet pour préparer vos consultations. Un gain de temps considérable.", highlight: "rapport", tooltipSide: "left" as const },
+  { id: "invite", title: "Inviter un patient", text: "Tout est prêt. Envoyez le lien à votre premier patient et votre jumeau prend le relais immédiatement.", highlight: "invite", tooltipSide: "right" as const },
 ];
 
-type OnboardingStep = typeof ONBOARDING_STEPS[0];
+const TOUR_ACCENT: Record<string, string> = { patients: "#10b981", radar: "#f43f5e", murmure: "#10b981", rapport: "#818cf8", invite: "#10b981" };
+const TOUR_ACCENT_RGB: Record<string, string> = { patients: "16,185,129", radar: "244,63,94", murmure: "16,185,129", rapport: "129,140,248", invite: "16,185,129" };
+
+const TourUsersIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+);
+const TourRadarIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="#f43f5e" fillOpacity="0.4"/>
+  </svg>
+);
+const TourMicIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+  </svg>
+);
+const TourChartIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+    <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
+  </svg>
+);
+const TourAddUserIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/>
+    <line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
+  </svg>
+);
+const TOUR_ICONS: Record<string, React.ReactNode> = {
+  patients: <TourUsersIcon />, radar: <TourRadarIcon />, murmure: <TourMicIcon />,
+  rapport: <TourChartIcon />, invite: <TourAddUserIcon />,
+};
 
 type OnboardingProps = {
   step: number;
   practitionerName: string;
   onNext: () => void;
   onSkip: () => void;
+  onBack: () => void;
 };
 
-const OnboardingTour = ({ step, practitionerName, onNext, onSkip }: OnboardingProps) => {
+const OnboardingTour = ({ step, practitionerName, onNext, onSkip, onBack }: OnboardingProps) => {
   const [visible, setVisible] = useState(true);
-  const current: OnboardingStep = ONBOARDING_STEPS[step];
+  const [highlightRect, setHighlightRect] = useState<DOMRect | null>(null);
+  const current = ONBOARDING_STEPS[step];
   const isLast = step === ONBOARDING_STEPS.length - 1;
-  const firstName = practitionerName.split(" ")[0];
+  const firstName = (practitionerName.split(" ")[0] || practitionerName).trim();
+  const accentColor = current.highlight ? (TOUR_ACCENT[current.highlight] ?? "#10b981") : "#10b981";
+  const accentRgb = current.highlight ? (TOUR_ACCENT_RGB[current.highlight] ?? "16,185,129") : "16,185,129";
 
   useEffect(() => {
     setVisible(false);
-    const t = setTimeout(() => setVisible(true), 50);
+    const t = setTimeout(() => setVisible(true), 60);
     return () => clearTimeout(t);
   }, [step]);
 
-  const getBubblePosition = (): React.CSSProperties => {
+  useEffect(() => {
+    if (!current.highlight) { setHighlightRect(null); return; }
+    const update = () => {
+      const el = document.querySelector(`[data-tour="${current.highlight}"]`) as HTMLElement | null;
+      if (el) setHighlightRect(el.getBoundingClientRect());
+      else setHighlightRect(null);
+    };
+    const timer = setTimeout(update, 200);
+    window.addEventListener("resize", update);
+    return () => { clearTimeout(timer); window.removeEventListener("resize", update); };
+  }, [step, current.highlight]);
+
+  const getTooltipStyle = (): React.CSSProperties => {
     const base: React.CSSProperties = {
-      position: "fixed",
-      width: 320,
-      background: "#0a0f0c",
-      borderRadius: 20,
-      padding: 24,
-      border: "1px solid rgba(16,185,129,0.2)",
-      boxShadow: "0 24px 80px rgba(0,0,0,0.8)",
-      zIndex: 300,
+      position: "fixed", width: 300,
+      background: "#0d0d0d", borderRadius: 16, padding: "20px",
+      border: "1px solid rgba(255,255,255,0.1)",
+      boxShadow: "0 24px 80px rgba(0,0,0,0.9), 0 0 0 1px rgba(255,255,255,0.04)",
+      zIndex: 320, fontFamily: "Inter, sans-serif",
       transition: "opacity 0.25s ease, transform 0.25s ease",
       opacity: visible ? 1 : 0,
+      transform: visible ? "translateY(0)" : "translateY(8px)",
     };
-    switch (current.position) {
-      case "center": return { ...base, top: "50%", left: "50%", transform: visible ? "translate(-50%,-50%)" : "translate(-50%,-48%)" };
-      case "sidebar": return { ...base, top: 200, left: 310, transform: visible ? "translateY(0)" : "translateY(8px)" };
-      case "top-right": return { ...base, top: 80, right: 24, transform: visible ? "translateY(0)" : "translateY(8px)" };
-      case "right": return { ...base, top: "40%", right: 24, transform: visible ? "translateY(-50%)" : "translateY(-48%)" };
-      case "bottom-left": return { ...base, bottom: 100, left: 310, transform: visible ? "translateY(0)" : "translateY(8px)" };
+    if (!highlightRect) return { ...base, top: "50%", left: "50%", transform: visible ? "translate(-50%,-50%)" : "translate(-50%,-48%)" };
+    const pad = 18, W = window.innerWidth, H = window.innerHeight, tw = 300, th = 230;
+    const elCy = highlightRect.top + highlightRect.height / 2;
+    const elCx = highlightRect.left + highlightRect.width / 2;
+    switch (current.tooltipSide) {
+      case "right": return { ...base, top: Math.max(12, Math.min(elCy - th / 2, H - th - 12)), left: Math.min(highlightRect.right + pad, W - tw - 12) };
+      case "left":  return { ...base, top: Math.max(12, Math.min(elCy - th / 2, H - th - 12)), right: W - Math.max(highlightRect.left - pad, 12) };
+      case "bottom": return { ...base, top: Math.min(highlightRect.bottom + pad, H - th - 12), left: Math.max(12, Math.min(elCx - tw / 2, W - tw - 12)) };
       default: return { ...base, top: "50%", left: "50%", transform: "translate(-50%,-50%)" };
     }
   };
 
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 200, pointerEvents: "none" }}>
-      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(1.5px)", pointerEvents: "auto" }} onClick={onSkip} />
-      <div style={{ ...getBubblePosition(), pointerEvents: "auto" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 11, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-            {current.icon}
+  // ── Step 0 : Hero modal ──────────────────────────────────────────────────
+  if (step === 0) {
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(4px)" }} />
+        <div style={{
+          position: "relative", zIndex: 1, width: "100%", maxWidth: 500, margin: "0 24px",
+          background: "#0d0d0d", borderRadius: 24, padding: "48px 40px",
+          border: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 40px 120px rgba(0,0,0,0.9), 0 0 80px rgba(16,185,129,0.05)",
+          opacity: visible ? 1 : 0, transform: visible ? "scale(1)" : "scale(0.97)",
+          transition: "opacity 0.35s ease, transform 0.35s ease",
+          fontFamily: "Inter, sans-serif",
+        }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
+            <div style={{ position: "relative" }}>
+              <div style={{ position: "absolute", inset: -10, borderRadius: "50%", background: "rgba(16,185,129,0.12)", filter: "blur(14px)" }} />
+              <div style={{ position: "relative", width: 64, height: 64, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.45)", background: "rgba(16,185,129,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+            </div>
           </div>
-          <div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "white" }}>{current.title}</p>
-            {step === 0 && <p style={{ margin: 0, fontSize: 11, color: emerald }}>Bonjour {firstName} 👋</p>}
+          <p style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 600, color: "#10b981", textAlign: "center", letterSpacing: "0.01em" }}>
+            Bonjour {firstName}
+          </p>
+          <h1 style={{ margin: "0 0 16px", fontSize: 30, fontWeight: 800, color: "white", textAlign: "center", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
+            Bienvenue sur votre<br />dashboard
+          </h1>
+          <p style={{ margin: "0 0 40px", fontSize: 15, color: "#6b7280", textAlign: "center", lineHeight: 1.7 }}>
+            Votre jumeau numérique est désormais prêt à prendre le relais entre vos séances. Découvrez les différentes fonctionnalités disponibles au sein de votre cabinet numérique.
+          </p>
+          <div style={{ display: "flex", gap: 12 }}>
+            <button onClick={onSkip}
+              style={{ flex: 1, height: 46, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 14, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#94a3b8"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#6b7280"; }}>
+              Quitter
+            </button>
+            <button onClick={onNext}
+              style={{ flex: 2, height: 46, borderRadius: 12, background: "#10b981", border: "none", color: "black", fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.45)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; }}>
+              Démarrer la démo
+            </button>
           </div>
         </div>
-        <p style={{ margin: "0 0 18px", fontSize: 13, color: "#94a3b8", lineHeight: 1.7 }}>{current.text}</p>
-        <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-          {ONBOARDING_STEPS.map((_, i) => (
-            <div key={i} style={{ flex: 1, height: 2, borderRadius: 1, background: i <= step ? emerald : "rgba(255,255,255,0.1)", transition: "background 0.3s" }} />
+      </div>
+    );
+  }
+
+  // ── Steps 1–5 : Spotlight + tooltip ─────────────────────────────────────
+  const featureStep = step - 1;
+  const totalFeature = ONBOARDING_STEPS.length - 1;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 300, pointerEvents: "none" }}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", pointerEvents: "auto" }} />
+      {highlightRect && (
+        <div style={{
+          position: "fixed",
+          top: highlightRect.top - 8, left: highlightRect.left - 8,
+          width: highlightRect.width + 16, height: highlightRect.height + 16,
+          borderRadius: 14, background: "transparent",
+          boxShadow: `0 0 0 9999px rgba(0,0,0,0.72), 0 0 0 1.5px ${accentColor}99, 0 0 20px 4px ${accentColor}33`,
+          pointerEvents: "none", zIndex: 305,
+          transition: "top 0.3s ease, left 0.3s ease, width 0.3s ease, height 0.3s ease",
+          animation: "tourSpotlight 2.2s ease-in-out infinite",
+        }} />
+      )}
+      <div style={{ ...getTooltipStyle(), pointerEvents: "auto" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: `rgba(${accentRgb},0.1)`, border: `1px solid rgba(${accentRgb},0.2)`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {current.highlight ? TOUR_ICONS[current.highlight] : null}
+          </div>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "white", lineHeight: 1.3 }}>{current.title}</p>
+        </div>
+        <p style={{ margin: "0 0 20px", fontSize: 13, color: "#94a3b8", lineHeight: 1.75 }}>{current.text}</p>
+        <div style={{ display: "flex", gap: 4, marginBottom: 18 }}>
+          {Array.from({ length: totalFeature }).map((_, i) => (
+            <div key={i} style={{ flex: 1, height: 2, borderRadius: 1, background: i <= featureStep ? accentColor : "rgba(255,255,255,0.07)", transition: "background 0.3s" }} />
           ))}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
+          {step > 1 && (
+            <button onClick={onBack}
+              style={{ height: 36, padding: "0 12px", borderRadius: 9, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif", flexShrink: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#94a3b8"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#6b7280"; }}>
+              ← Retour
+            </button>
+          )}
           <button onClick={onSkip}
-            style={{ flex: 1, height: 36, borderRadius: 9, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 12, cursor: "pointer", transition: "all 0.2s" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = "#94a3b8"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#64748b"; }}>
+            style={{ flex: 1, height: 36, borderRadius: 9, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 12, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#94a3b8"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#6b7280"; }}>
             Passer
           </button>
           <button onClick={onNext}
-            style={{ flex: 2, height: 36, borderRadius: 9, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.22)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>
-            {isLast ? "C'est parti 🌿" : "Suivant →"}
+            style={{ flex: 2, height: 36, borderRadius: 9, background: `rgba(${accentRgb},0.12)`, border: `1px solid rgba(${accentRgb},0.3)`, color: accentColor, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
+            onMouseEnter={e => { e.currentTarget.style.background = `rgba(${accentRgb},0.22)`; }}
+            onMouseLeave={e => { e.currentTarget.style.background = `rgba(${accentRgb},0.12)`; }}>
+            {isLast ? "Terminer" : "Suivant →"}
           </button>
         </div>
-        <p style={{ margin: "10px 0 0", fontSize: 11, color: "#374151", textAlign: "center" }}>{step + 1} / {ONBOARDING_STEPS.length}</p>
+        <p style={{ margin: "12px 0 0", fontSize: 11, color: "#374151", textAlign: "center" }}>{step} / {totalFeature}</p>
       </div>
-      {current.highlight === "patients" && (
-        <div style={{ position: "fixed", top: 120, left: 24, width: 268, height: "calc(100vh - 200px)", borderRadius: 16, boxShadow: `0 0 0 2px ${emerald}, 0 0 24px rgba(16,185,129,0.3)`, pointerEvents: "none", animation: "onboardingPulse 2s ease-in-out infinite" }} />
-      )}
-      {current.highlight === "radar" && (
-        <div style={{ position: "fixed", top: 68, right: 180, height: 36, width: 80, borderRadius: 8, boxShadow: `0 0 0 2px ${coral}, 0 0 16px rgba(244,63,94,0.5)`, pointerEvents: "none", animation: "onboardingPulse 2s ease-in-out infinite" }} />
-      )}
-      {current.highlight === "murmure" && (
-        <div style={{ position: "fixed", top: "calc(40% + 60px)", right: 24, width: 268, height: 80, borderRadius: 10, boxShadow: `0 0 0 2px ${emerald}, 0 0 16px rgba(16,185,129,0.4)`, pointerEvents: "none", animation: "onboardingPulse 2s ease-in-out infinite" }} />
-      )}
-      {current.highlight === "rapport" && (
-        <div style={{ position: "fixed", top: 132, right: 36, height: 32, width: 110, borderRadius: 8, boxShadow: "0 0 0 2px #6366f1, 0 0 16px rgba(99,102,241,0.5)", pointerEvents: "none", animation: "onboardingPulse 2s ease-in-out infinite" }} />
-      )}
-      {current.highlight === "invite" && (
-        <div style={{ position: "fixed", bottom: 24, left: 24, width: 268, height: 54, borderRadius: 12, boxShadow: `0 0 0 2px ${emerald}, 0 0 16px rgba(16,185,129,0.4)`, pointerEvents: "none", animation: "onboardingPulse 2s ease-in-out infinite" }} />
-      )}
+      <style>{`@keyframes tourSpotlight { 0%,100% { opacity:1; } 50% { opacity:0.75; } }`}</style>
     </div>
   );
 };
@@ -364,6 +474,23 @@ export default function DashboardPage() {
     if (practitionerId) void completeOnboarding(practitionerId);
     else { setShowOnboarding(false); setOnboardingDemoMode(false); }
   }, [practitionerId, completeOnboarding]);
+
+  const handleOnboardingBack = useCallback(() => {
+    setOnboardingStep(s => Math.max(0, s - 1));
+  }, []);
+
+  // Switch tabs & select demo patient based on tour step
+  useEffect(() => {
+    if (!showOnboarding || !onboardingDemoMode) return;
+    if (onboardingStep === 2) {
+      setActiveTab("vue_ensemble");
+    } else {
+      setActiveTab("patients");
+    }
+    if (onboardingStep === 3 || onboardingStep === 4) {
+      setSelectedPatientId("demo-1");
+    }
+  }, [onboardingStep, showOnboarding, onboardingDemoMode]);
 
   const [loading, setLoading] = useState(true);
   const [practitionerName, setPractitionerName] = useState("");
@@ -1131,7 +1258,7 @@ export default function DashboardPage() {
     <div style={{ minHeight: "100vh", background: "#070B09", color: "white", fontFamily: "Inter, sans-serif" }}>
 
       {showOnboarding && (
-        <OnboardingTour step={onboardingStep} practitionerName={practitionerName} onNext={handleOnboardingNext} onSkip={handleOnboardingSkip} />
+        <OnboardingTour step={onboardingStep} practitionerName={practitionerName} onNext={handleOnboardingNext} onSkip={handleOnboardingSkip} onBack={handleOnboardingBack} />
       )}
 
       {/* ═══ HEADER ═══ */}
@@ -1306,7 +1433,7 @@ export default function DashboardPage() {
           <div style={{ display: "grid", gridTemplateColumns: "280px minmax(0,1fr) 300px", gap: 16, height: "calc(100vh - 160px)" }}>
 
             {/* Sidebar patients */}
-            <div style={{ display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
+            <div data-tour="patients" style={{ display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
               <div style={{ padding: "16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 <input type="text" placeholder="Rechercher..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                   style={{ width: "100%", height: 36, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
@@ -1344,7 +1471,7 @@ export default function DashboardPage() {
                   );
                 })}
               </div>
-              <div style={{ padding: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <div data-tour="invite" style={{ padding: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                 <button onClick={() => { setShowInviteModal(true); setInviteSuccess(false); setInviteStep(1); }}
                   style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
@@ -1487,7 +1614,7 @@ export default function DashboardPage() {
                   )}
 
                   {/* Murmures */}
-                  <div style={{ marginBottom: 10 }}>
+                  <div data-tour="murmure" style={{ marginBottom: 10 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: emerald }}>Murmures</span>
                     <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px", marginTop: 6 }}>
                     {(() => {
@@ -1630,7 +1757,7 @@ export default function DashboardPage() {
 
 
                   {/* Analyses IA */}
-                  <div>
+                  <div data-tour="rapport">
                   <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#818cf8" }}>Analyses IA</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     <button onClick={() => { if (!onboardingDemoMode) { setBilanContent(""); setShowBilanModal(true); } }}
@@ -1788,7 +1915,7 @@ export default function DashboardPage() {
             {displayedPatients.length === 0 ? (
               <p style={{ textAlign: "center", color: "#64748b", marginTop: 60 }}>Aucun patient</p>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+              <div data-tour="radar" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
                 {[...displayedPatients].sort((a, b) => {
                   const order = { red_critical: 0, red: 1, orange: 2, green: 3 };
                   return (order[a.emotional_status as keyof typeof order] ?? 3) - (order[b.emotional_status as keyof typeof order] ?? 3);
