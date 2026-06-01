@@ -13,7 +13,8 @@ const DEMO_PATIENTS_INITIAL = [
   {
     id: "demo-1", firstName: "Sophie", lastName: "M.", initials: "SM",
     avatarColor: "#f43f5e", emotional_status: "red", emotional_insight: "Rechute alimentaire ce soir",
-    totalMessages: 34, latest_victory: "A résisté à la cantine",
+    admin_alerts: [{ type: "alert", date: "2026-05-16T21:03:00", seen: false, murmure: "Sois plus doux cette semaine, elle traverse une période difficile au travail." }],
+    totalMessages: 34, latest_victory: "A résisté à la cantine le 13 mai",
     age: 32, sexe: "F", taille: 165, poids: 68,
     objective: "Retrouver une relation apaisée avec la nourriture et perdre 5 kg durablement.",
     pathologies: "Hyperphagie émotionnelle",
@@ -28,6 +29,7 @@ const DEMO_PATIENTS_INITIAL = [
   {
     id: "demo-2", firstName: "Julie", lastName: "P.", initials: "JP",
     avatarColor: "#8b5cf6", emotional_status: "orange", emotional_insight: "Fatigue professionnelle",
+    admin_alerts: [{ type: "alert", date: "2026-05-17T12:30:00", seen: false, murmure: "Rappelle-lui de prendre soin d'elle malgré la charge de travail." }],
     totalMessages: 18, latest_victory: "3 repas complets cette semaine",
     age: 28, sexe: "F", taille: 162, poids: 58,
     objective: "Maintenir son poids et améliorer son énergie au quotidien.",
@@ -43,7 +45,7 @@ const DEMO_PATIENTS_INITIAL = [
   {
     id: "demo-3", firstName: "Thomas", lastName: "R.", initials: "TR",
     avatarColor: "#3b82f6", emotional_status: "green", emotional_insight: "Progression constante",
-    totalMessages: 52, latest_victory: "Poids stable depuis 3 semaines",
+    totalMessages: 40, latest_victory: "Poids stable depuis 3 semaines",
     age: 41, sexe: "M", taille: 178, poids: 82,
     objective: "Maintenir le poids atteint et développer une alimentation intuitive.",
     pathologies: "Hypertension légère (traitée)",
@@ -58,27 +60,124 @@ const DEMO_PATIENTS_INITIAL = [
 ];
 
 const DEMO_CONVERSATIONS: { id: string; role: "user" | "assistant"; content: string; created_at: string }[] = [
-  { id: "d1", role: "user", content: "Bonsoir, j'ai encore eu une fringale ce soir. Je me sens vraiment nulle 😔", created_at: "2026-05-16T21:03:00" },
-  { id: "d2", role: "assistant", content: "Bonsoir Sophie. Un écart ça arrive, et ça ne définit pas votre parcours. Vous aviez mangé quoi ce midi ?", created_at: "2026-05-16T21:03:30" },
-  { id: "d3", role: "user", content: "Pas grand chose... un sandwich en vitesse entre deux réunions.", created_at: "2026-05-16T21:04:10" },
-  { id: "d4", role: "assistant", content: "Voilà tout s'explique. Ce n'est pas de la faiblesse, c'est de la biologie. Demain on vise un vrai déjeuner avec des protéines. D'accord ?", created_at: "2026-05-16T21:04:45" },
-  { id: "d5", role: "user", content: "Oui. Merci, ça me soulage d'avoir quelqu'un à qui écrire 💚", created_at: "2026-05-16T21:05:20" },
+  // Semaine 1 — premiers échanges
+  { id: "d1", role: "user", content: "Bonjour ! Je viens de commencer le programme. Je voulais vous dire que j'ai réussi à petit-déjeuner ce matin 🙂", created_at: "2026-05-02T08:14:00" },
+  { id: "d2", role: "assistant", content: "Bonjour Sophie ! C'est un très bon départ. Un petit-déjeuner complet le matin, c'est la base d'une journée sans fringale. Qu'est-ce que vous avez mangé ?", created_at: "2026-05-02T08:15:10" },
+  { id: "d3", role: "user", content: "Des œufs brouillés et une tranche de pain complet avec du café. Pas d'autres sucres.", created_at: "2026-05-02T08:16:30" },
+  { id: "d4", role: "assistant", content: "Parfait — des protéines, des glucides complexes, pas de pic glycémique. Continuez sur cette lancée cette semaine.", created_at: "2026-05-02T08:17:00" },
+  // Semaine 1 — fin de journée difficile
+  { id: "d5", role: "user", content: "Ce soir c'était dur. Réunion jusqu'à 20h, je n'ai pas déjeuné et j'ai craqué sur des chips en rentrant.", created_at: "2026-05-05T20:42:00" },
+  { id: "d6", role: "assistant", content: "Je comprends, Sophie. Une réunion aussi longue sans repas, c'est une situation impossible à tenir. Ce n'est pas de la faiblesse, c'est de la biologie. Qu'est-ce que vous avez pu faire après ?", created_at: "2026-05-05T20:43:20" },
+  { id: "d7", role: "user", content: "J'ai fini par manger une omelette. Mais je me sens coupable quand même.", created_at: "2026-05-05T20:44:10" },
+  { id: "d8", role: "assistant", content: "Vous avez bien fait de manger quelque chose de nourrissant après. La culpabilité n'aide pas — ce qui compte, c'est que vous ayez rattrapé la situation. Demain, essayons d'anticiper : est-ce qu'il y a une plage pour déjeuner dans votre agenda ?", created_at: "2026-05-05T20:45:00" },
+  { id: "d9", role: "user", content: "Oui, demain j'ai une heure libre à 12h30. Je vais en profiter.", created_at: "2026-05-05T20:45:40" },
+  { id: "d10", role: "assistant", content: "Parfait. Bloquez ce créneau comme un rendez-vous médical — on ne l'annule pas. Bonne nuit Sophie 🌙", created_at: "2026-05-05T20:46:00" },
+  // Semaine 2 — progrès
+  { id: "d11", role: "user", content: "J'ai réussi à déjeuner deux jours de suite ! Avec une vraie pause, assise, sans téléphone.", created_at: "2026-05-08T13:02:00" },
+  { id: "d12", role: "assistant", content: "C'est exactement ça l'objectif, Sophie. Deux pauses repas en pleine conscience cette semaine — vous avez ancré une habitude. Comment vous êtes-vous sentie après ?", created_at: "2026-05-08T13:03:00" },
+  { id: "d13", role: "user", content: "Moins de fringale le soir. C'est étonnant comme c'est efficace.", created_at: "2026-05-08T13:03:45" },
+  { id: "d14", role: "assistant", content: "Ce n'est pas étonnant — c'est de la physiologie. Un déjeuner complet évite le pic de cortisol et la faim émotionnelle du soir. Continuez, vous êtes sur la bonne voie.", created_at: "2026-05-08T13:04:30" },
+  // Semaine 2 — situation sociale difficile
+  { id: "d15", role: "user", content: "Repas d'entreprise demain midi. Je stresse un peu, c'est souvent un buffet avec beaucoup de tentations.", created_at: "2026-05-12T19:15:00" },
+  { id: "d16", role: "assistant", content: "Anticipons ensemble. Dans un buffet, commencez par le tour complet avant de prendre quoi que ce soit — ça permet de faire un choix conscient plutôt que réactif. Que savez-vous du menu ?", created_at: "2026-05-12T19:16:10" },
+  { id: "d17", role: "user", content: "Des charcuteries, des salades, des quiches, des desserts. Et du vin bien sûr.", created_at: "2026-05-12T19:16:50" },
+  { id: "d18", role: "assistant", content: "Stratégie : commencez par une salade et des protéines (quiche, charcuterie en petite quantité). Laissez la place pour les desserts si vous en avez vraiment envie, mais décidez-le au moment, pas par automatisme. Pour l'alcool, alternez avec de l'eau.", created_at: "2026-05-12T19:17:45" },
+  { id: "d19", role: "user", content: "J'ai suivi votre conseil ce midi ! Je n'ai pris qu'une assiette, j'ai résisté au plateau de fromages.", created_at: "2026-05-13T14:22:00" },
+  { id: "d20", role: "assistant", content: "Sophie, c'est une vraie victoire. Résister en contexte social, c'est la compétence la plus difficile. Vous avez fait un choix conscient sous pression sociale — c'est exactement ce qu'on travaille. 🌟", created_at: "2026-05-13T14:23:00" },
+  // Semaine 3 — rechute
+  { id: "d21", role: "user", content: "Mauvaise semaine. Conflit avec mon manager, j'ai mangé n'importe quoi pendant 3 jours.", created_at: "2026-05-16T18:30:00" },
+  { id: "d22", role: "assistant", content: "Je suis désolé d'entendre ça, Sophie. Le stress professionnel est un déclencheur puissant. Vous avez quand même pris la peine de m'écrire — c'est déjà bien. Qu'est-ce qui s'est passé exactement ?", created_at: "2026-05-16T18:31:00" },
+  { id: "d23", role: "user", content: "Il a remis en cause mon travail devant toute l'équipe. J'étais tellement mal que je n'arrivais plus à penser à manger sainement.", created_at: "2026-05-16T18:32:20" },
+  { id: "d24", role: "assistant", content: "Ce que vous décrivez est une réaction émotionnelle tout à fait normale. La nourriture devient un régulateur quand on est blessé. Ce n'est pas de la faiblesse — c'est un mécanisme ancien. L'important, c'est d'identifier ce schéma pour mieux y répondre.", created_at: "2026-05-16T18:33:15" },
+  { id: "d25", role: "user", content: "Je comprends mais ça me frustre de régresser après avoir si bien avancé.", created_at: "2026-05-16T18:34:00" },
+  { id: "d26", role: "assistant", content: "Le parcours n'est jamais linéaire. Trois semaines de progrès suivies d'une semaine difficile, c'est encore largement positif. La semaine prochaine est une nouvelle page.", created_at: "2026-05-16T18:34:50" },
+  // Soir — fringale critique
+  { id: "d27", role: "user", content: "Bonsoir, j'ai encore eu une fringale ce soir. Je me sens vraiment nulle 😔", created_at: "2026-05-16T21:03:00" },
+  { id: "d28", role: "assistant", content: "Bonsoir Sophie. Un écart ça arrive, et ça ne définit pas votre parcours. Vous aviez mangé quoi ce midi ?", created_at: "2026-05-16T21:03:30" },
+  { id: "d29", role: "user", content: "Pas grand chose... un sandwich en vitesse entre deux réunions.", created_at: "2026-05-16T21:04:10" },
+  { id: "d30", role: "assistant", content: "Voilà tout s'explique. Ce n'est pas de la faiblesse, c'est de la biologie. Demain on vise un vrai déjeuner avec des protéines. D'accord ?", created_at: "2026-05-16T21:04:45" },
+  { id: "d31", role: "user", content: "Oui. Merci, ça me soulage d'avoir quelqu'un à qui écrire 💚", created_at: "2026-05-16T21:05:20" },
+  // Lendemain — rebond
+  { id: "d32", role: "user", content: "J'ai fait ce qu'on avait dit : vrai déjeuner, assis, 30 minutes. Et ce soir pas de fringale.", created_at: "2026-05-17T20:10:00" },
+  { id: "d33", role: "assistant", content: "Sophie ! Voilà — preuve par neuf. Un vrai déjeuner = une soirée apaisée. Vous venez de relier cause et effet. Gardez ça en mémoire pour la prochaine fois que le stress vous fait sauter un repas.", created_at: "2026-05-17T20:11:00" },
+  { id: "d34", role: "user", content: "Oui, c'est clair maintenant. Merci. On continue !", created_at: "2026-05-17T20:11:45" },
 ];
 
 const DEMO_CONVERSATIONS_JULIE: { id: string; role: "user" | "assistant"; content: string; created_at: string }[] = [
-  { id: "j1", role: "user", content: "Je suis épuisée. Cette semaine c'était trop, pas le temps de manger correctement.", created_at: "2026-05-17T12:30:00" },
-  { id: "j2", role: "assistant", content: "Je vous entends Julie. Quand la charge est forte, l'alimentation est souvent la première sacrifiée. Qu'est-ce que vous avez pu manger aujourd'hui ?", created_at: "2026-05-17T12:30:30" },
-  { id: "j3", role: "user", content: "Un café le matin et un croissant... et une salade à 15h.", created_at: "2026-05-17T12:31:00" },
-  { id: "j4", role: "assistant", content: "C'est insuffisant pour une journée intense. Ce soir, visez quelque chose de nourrissant mais simple — des œufs, du pain complet, des légumes. Pas besoin de faire de grands efforts.", created_at: "2026-05-17T12:31:40" },
-  { id: "j5", role: "user", content: "D'accord, je vais essayer. Merci d'être là.", created_at: "2026-05-17T12:32:10" },
+  // Semaine 1
+  { id: "j1", role: "user", content: "Bonjour ! Mon nutritionniste m'a dit de commencer à noter ce que je mange. Je ne sais pas trop par où commencer.", created_at: "2026-05-05T09:10:00" },
+  { id: "j2", role: "assistant", content: "Bonjour Julie ! Pas besoin de tout noter en détail — commencez juste par noter les repas principaux et votre niveau d'énergie à midi et en fin de journée. C'est suffisant pour identifier des tendances.", created_at: "2026-05-05T09:11:00" },
+  { id: "j3", role: "user", content: "D'accord, je vais essayer. Hier j'ai mangé une salade à midi et une pizza le soir. Pas idéal je sais.", created_at: "2026-05-05T09:12:00" },
+  { id: "j4", role: "assistant", content: "Ce n'est pas si mal — la salade couvre le midi, la pizza le soir apporte des calories et des glucides. Ce qui manque : des protéines et des légumes le soir. Vous ajouteriez quoi à cette pizza pour l'équilibrer ?", created_at: "2026-05-05T09:13:00" },
+  // Semaine 2 — période difficile
+  { id: "j5", role: "user", content: "Je suis épuisée. Cette semaine c'était trop, pas le temps de manger correctement.", created_at: "2026-05-12T12:30:00" },
+  { id: "j6", role: "assistant", content: "Je vous entends Julie. Quand la charge est forte, l'alimentation est souvent la première sacrifiée. Qu'est-ce que vous avez pu manger aujourd'hui ?", created_at: "2026-05-12T12:30:30" },
+  { id: "j7", role: "user", content: "Un café le matin et un croissant... et une salade à 15h.", created_at: "2026-05-12T12:31:00" },
+  { id: "j8", role: "assistant", content: "C'est insuffisant pour une journée intense. Ce soir, visez quelque chose de nourrissant mais simple — des œufs, du pain complet, des légumes. Pas besoin de faire de grands efforts.", created_at: "2026-05-12T12:31:40" },
+  { id: "j9", role: "user", content: "D'accord, je vais essayer. Merci d'être là.", created_at: "2026-05-12T12:32:10" },
+  // Semaine 2 suite — retour positif
+  { id: "j10", role: "assistant", content: "Comment s'est passée votre soirée hier ? Avez-vous pu manger quelque chose ?", created_at: "2026-05-13T09:00:00" },
+  { id: "j11", role: "user", content: "Oui ! J'ai fait des œufs avec des épinards. Simple mais ça m'a bien recentrée.", created_at: "2026-05-13T09:05:00" },
+  { id: "j12", role: "assistant", content: "Excellent — œufs + épinards, c'est fer, protéines, vitamines. Vous avez fait le bon choix sans y penser longtemps. C'est ça l'alimentation intuitive.", created_at: "2026-05-13T09:06:00" },
+  // Semaine 3 — victoire
+  { id: "j13", role: "user", content: "Bonne semaine ! J'ai fait 3 repas complets par jour. J'ai même pris le temps de cuisiner samedi.", created_at: "2026-05-17T10:15:00" },
+  { id: "j14", role: "assistant", content: "Julie, c'est une vraie victoire — 3 repas complets toute la semaine et du temps dédié à la cuisine le week-end. Vous commencez à vous mettre en priorité.", created_at: "2026-05-17T10:16:00" },
+  { id: "j15", role: "user", content: "Oui, j'ai fait un batch cooking : des lentilles, du riz, des légumes rôtis. J'ai mangé des trucs bons toute la semaine.", created_at: "2026-05-17T10:17:00" },
+  { id: "j16", role: "assistant", content: "Le batch cooking, c'est exactement la solution pour quelqu'un avec votre rythme. Vous avez trouvé votre format. Est-ce que vous avez ressenti une différence d'énergie ?", created_at: "2026-05-17T10:17:45" },
+  { id: "j17", role: "user", content: "Oui, clairement. Moins de coups de pompe à 15h. Et je dors mieux aussi.", created_at: "2026-05-17T10:18:30" },
+  { id: "j18", role: "assistant", content: "Le lien alimentation-sommeil est réel — les glucides complexes et le magnésium dans les légumes jouent un rôle. Continuez sur cette lancée, Julie. Vous avez trouvé un rythme qui vous correspond.", created_at: "2026-05-17T10:19:00" },
 ];
 
 const DEMO_CONVERSATIONS_THOMAS: { id: string; role: "user" | "assistant"; content: string; created_at: string }[] = [
-  { id: "t1", role: "user", content: "Bonne nouvelle : je me suis pesé ce matin, stable depuis 3 semaines !", created_at: "2026-05-18T08:15:00" },
-  { id: "t2", role: "assistant", content: "Excellent Thomas ! La stabilité est souvent plus difficile à maintenir que la perte initiale. C'est une vraie victoire.", created_at: "2026-05-18T08:15:30" },
-  { id: "t3", role: "user", content: "Oui, je mange mieux sans me priver. J'ai arrêté de compter les calories.", created_at: "2026-05-18T08:16:10" },
-  { id: "t4", role: "assistant", content: "C'est exactement l'objectif : une relation apaisée avec la nourriture. Comment vous sentez-vous globalement ?", created_at: "2026-05-18T08:16:50" },
-  { id: "t5", role: "user", content: "Bien, vraiment bien. Plus d'énergie, meilleur sommeil. Je recommande à mes collègues.", created_at: "2026-05-18T08:17:20" },
+  // Mois 1 — début du suivi
+  { id: "t1", role: "user", content: "Bonjour ! Mon médecin m'a recommandé de suivre un programme nutritionnel pour mon hypertension.", created_at: "2026-04-01T08:00:00" },
+  { id: "t2", role: "assistant", content: "Bonjour Thomas ! Vous êtes au bon endroit. L'alimentation a un impact direct sur la tension artérielle, notamment la réduction du sel et l'augmentation des potassium. On va travailler ça ensemble progressivement.", created_at: "2026-04-01T08:01:00" },
+  { id: "t3", role: "user", content: "J'avoue que je mange beaucoup de plats préparés le midi. Et du fromage le soir.", created_at: "2026-04-01T08:02:00" },
+  { id: "t4", role: "assistant", content: "Ce sont deux sources importantes de sel caché. Pas besoin de tout supprimer — commençons par réduire d'un côté : midi ou soir, pas les deux en même temps. Lequel vous semble le plus facile à changer ?", created_at: "2026-04-01T08:03:00" },
+  { id: "t5", role: "user", content: "Le midi peut-être. Je pourrais apporter ma gamelle.", created_at: "2026-04-01T08:04:00" },
+  { id: "t6", role: "assistant", content: "Parfait. On vise 3 midis par semaine avec un repas fait maison. C'est déjà un changement significatif sur le sel et les calories.", created_at: "2026-04-01T08:05:00" },
+  // Mois 1 suite
+  { id: "t7", role: "user", content: "J'ai apporté ma gamelle lundi et mercredi. Mardi j'ai craqué sur un kebab.", created_at: "2026-04-07T12:00:00" },
+  { id: "t8", role: "assistant", content: "Deux sur trois, c'est une réussite Thomas. Le kebab de mardi n'efface pas les deux autres jours. Comment vous sentiez-vous après le kebab vs après votre gamelle ?", created_at: "2026-04-07T12:01:00" },
+  { id: "t9", role: "user", content: "Lourd après le kebab. La gamelle c'était plus léger et j'avais plus d'énergie l'après-midi.", created_at: "2026-04-07T12:02:00" },
+  { id: "t10", role: "assistant", content: "Voilà — votre corps vous donne un signal clair. Gardez cette observation en mémoire, elle sera plus efficace que n'importe quelle règle que je pourrais vous donner.", created_at: "2026-04-07T12:03:00" },
+  // Mois 2 — progrès poids
+  { id: "t11", role: "user", content: "Je me suis pesé : moins 2 kg en un mois. Sans me restreindre vraiment.", created_at: "2026-04-14T07:30:00" },
+  { id: "t12", role: "assistant", content: "Thomas, c'est excellent. 2 kg en un mois sans restriction, c'est le signe qu'on a changé de qualité et non de quantité — c'est ce qui tient sur le long terme.", created_at: "2026-04-14T07:31:00" },
+  { id: "t13", role: "user", content: "Et ma tension a un peu baissé selon mon médecin. 140/90 contre 148/95 avant.", created_at: "2026-04-14T07:32:00" },
+  { id: "t14", role: "assistant", content: "C'est significatif en un mois. La réduction du sel y contribue beaucoup. Continuez — l'objectif de votre médecin est probablement 130/80. On est sur la bonne trajectoire.", created_at: "2026-04-14T07:33:00" },
+  // Mois 2 — week-end difficile
+  { id: "t15", role: "user", content: "Week-end compliqué. Anniversaire de mariage, beaucoup de vin et de nourriture grasse. Je me sens coupable.", created_at: "2026-04-22T10:00:00" },
+  { id: "t16", role: "assistant", content: "Un anniversaire de mariage mérite d'être célébré pleinement. Ce n'est pas un écart alimentaire, c'est de la vie. Un week-end festif sur deux mois de progrès constants, ça ne change rien à la trajectoire.", created_at: "2026-04-22T10:01:00" },
+  { id: "t17", role: "user", content: "Merci de le formuler ainsi. Je reprends normalement aujourd'hui.", created_at: "2026-04-22T10:02:00" },
+  { id: "t18", role: "assistant", content: "C'est tout ce qu'il faut faire — reprendre sans drama. La flexibilité fait partie d'une alimentation saine.", created_at: "2026-04-22T10:03:00" },
+  // Mois 3 — alimentation intuitive
+  { id: "t19", role: "user", content: "J'ai arrêté de compter les calories la semaine dernière. Je mange quand j'ai faim, je m'arrête quand je suis rassasié.", created_at: "2026-05-01T11:00:00" },
+  { id: "t20", role: "assistant", content: "Thomas, c'est une étape majeure. L'alimentation intuitive, c'est l'objectif final — quand le corps reprend le pilotage naturel. Comment ça se passe concrètement ?", created_at: "2026-05-01T11:01:00" },
+  { id: "t21", role: "user", content: "Bien. Je mange plus lentement. Je reconnais mieux quand je suis vraiment rassasié.", created_at: "2026-05-01T11:02:00" },
+  { id: "t22", role: "assistant", content: "Manger lentement est l'une des interventions les plus efficaces — le signal de satiété met 20 minutes à arriver. Vous avez trouvé la clé tout seul. C'est votre victoire.", created_at: "2026-05-01T11:03:00" },
+  // Mois 3 — activité physique
+  { id: "t23", role: "user", content: "J'ai commencé à marcher 30 minutes chaque matin avant le travail. Ça me change vraiment.", created_at: "2026-05-06T07:45:00" },
+  { id: "t24", role: "assistant", content: "Excellent ajout Thomas. La marche matinale régule la glycémie, réduit le cortisol et améliore l'humeur pour toute la journée. En combien de temps avez-vous pris cette habitude ?", created_at: "2026-05-06T07:46:00" },
+  { id: "t25", role: "user", content: "Deux semaines. Les premiers jours c'était dur de se lever plus tôt mais maintenant j'ai hâte.", created_at: "2026-05-06T07:47:00" },
+  { id: "t26", role: "assistant", content: "Deux semaines, c'est exactement le temps qu'il faut pour ancrer une habitude. Et quand on commence à « avoir hâte », c'est gagné.", created_at: "2026-05-06T07:48:00" },
+  // Mois 3 — semaine de maintien
+  { id: "t27", role: "user", content: "Deuxième semaine stable. Poids identique à lundi dernier à 200g près.", created_at: "2026-05-10T08:20:00" },
+  { id: "t28", role: "assistant", content: "La stabilité, c'est exactement l'objectif en phase de maintien. Pas de yo-yo, pas de fluctuation. Votre corps est en équilibre.", created_at: "2026-05-10T08:21:00" },
+  { id: "t29", role: "user", content: "J'ai mangé au restaurant deux fois cette semaine et le poids n'a pas bougé. Avant, ça m'aurait fait prendre 1 kg facilement.", created_at: "2026-05-10T08:22:00" },
+  { id: "t30", role: "assistant", content: "Ce que vous décrivez, c'est de la flexibilité métabolique — votre corps sait désormais absorber les variations sans s'emballer. Vous avez développé une vraie résilience alimentaire.", created_at: "2026-05-10T08:23:00" },
+  // Semaine récente — résultats
+  { id: "t31", role: "user", content: "Consultation avec mon médecin hier : tension à 128/82. Il est très content.", created_at: "2026-05-15T09:00:00" },
+  { id: "t32", role: "assistant", content: "Thomas, c'est fantastique. 128/82 depuis 148/95 en deux mois et demi — sans médicament supplémentaire, juste par l'alimentation et l'activité physique. Vous pouvez en être fier.", created_at: "2026-05-15T09:01:00" },
+  { id: "t33", role: "user", content: "Il a dit qu'on peut envisager de réduire le Ramipril si ça continue. Ça m'aurait semblé impossible il y a 3 mois.", created_at: "2026-05-15T09:02:00" },
+  { id: "t34", role: "assistant", content: "C'est la preuve que les changements d'hygiène de vie ont un impact réel, mesurable, clinique. Vous avez fait ce travail — je n'ai fait que vous accompagner.", created_at: "2026-05-15T09:03:00" },
+  // Victoire finale
+  { id: "t35", role: "user", content: "Bonne nouvelle : je me suis pesé ce matin, stable depuis 3 semaines !", created_at: "2026-05-18T08:15:00" },
+  { id: "t36", role: "assistant", content: "Excellent Thomas ! La stabilité est souvent plus difficile à maintenir que la perte initiale. C'est une vraie victoire.", created_at: "2026-05-18T08:15:30" },
+  { id: "t37", role: "user", content: "Oui, je mange mieux sans me priver. J'ai arrêté de compter les calories.", created_at: "2026-05-18T08:16:10" },
+  { id: "t38", role: "assistant", content: "C'est exactement l'objectif : une relation apaisée avec la nourriture. Comment vous sentez-vous globalement ?", created_at: "2026-05-18T08:16:50" },
+  { id: "t39", role: "user", content: "Bien, vraiment bien. Plus d'énergie, meilleur sommeil. Je recommande à mes collègues.", created_at: "2026-05-18T08:17:20" },
+  { id: "t40", role: "assistant", content: "C'est la meilleure preuve que le programme a fonctionné. Et si vos collègues viennent, on s'en occupera aussi bien 😊", created_at: "2026-05-18T08:18:00" },
 ];
 
 const DEMO_CONVERSATIONS_BY_PATIENT: Record<string, { id: string; role: "user" | "assistant"; content: string; created_at: string }[]> = {
@@ -473,6 +572,12 @@ export default function DashboardPage() {
   const [savingNote, setSavingNote] = useState(false);
   const [sendingVictory, setSendingVictory] = useState<string | null>(null);
   const [victorySent, setVictorySent] = useState<string | null>(null);
+  const [alertBannerDismissed, setAlertBannerDismissed] = useState<Record<string, boolean>>({});
+  const [showInterventionBubble, setShowInterventionBubble] = useState(false);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  const [vueEnsembleFilter, setVueEnsembleFilter] = useState<"tous" | "urgences" | "bravos" | "ras">("tous");
+  const [bravoState, setBravoState] = useState<Record<string, { expanded: boolean; text: string; editing: boolean; loading: boolean; sent: boolean }>>({});
+  const conversationContainerRef = useRef<HTMLDivElement>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
   const [inviteSuccess, setInviteSuccess] = useState(false);
@@ -922,6 +1027,73 @@ export default function DashboardPage() {
     }
   };
 
+  const dismissAlertFromHeader = async (patientId: string) => {
+    setAlertBannerDismissed(prev => ({ ...prev, [patientId]: true }));
+    if (!onboardingDemoMode) {
+      await supabase.from("patients").update({ emotional_status: "green", admin_alerts: [] }).eq("user_id", patientId);
+      await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId }) });
+    }
+    setPatients(prev => prev.map(p => p.id === patientId ? { ...p, emotional_status: "green", admin_alerts: [] } : p));
+    setDemoPatients(prev => prev.map(p => p.id === patientId ? { ...p, emotional_status: "green", admin_alerts: [] } as typeof p : p));
+    setShowInterventionBubble(false);
+  };
+
+  const scrollToAlertMessage = (alert: { date?: string }) => {
+    const conversations = displayedConversations;
+    if (!conversations.length) return;
+    const alertDate = alert.date ? new Date(alert.date).getTime() : Date.now();
+    let closestMsg = conversations[conversations.length - 1];
+    let closestDiff = Infinity;
+    for (const msg of conversations) {
+      if (msg.role === "user") {
+        const diff = Math.abs(new Date(msg.created_at).getTime() - alertDate);
+        if (diff < closestDiff) { closestDiff = diff; closestMsg = msg; }
+      }
+    }
+    if (closestMsg) {
+      setTimeout(() => {
+        const el = document.querySelector(`[data-message-id="${closestMsg.id}"]`);
+        if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); }
+        setHighlightedMessageId(closestMsg.id);
+        setTimeout(() => setHighlightedMessageId(null), 2000);
+      }, 50);
+    }
+    setShowInterventionBubble(true);
+  };
+
+  const generateBravo = async (patientId: string, victoryText: string) => {
+    setBravoState(prev => ({ ...prev, [patientId]: { expanded: true, text: "", editing: false, loading: true, sent: false } }));
+    try {
+      const res = await fetch("/api/generate-bravo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId, practitionerId, victoryText }),
+      });
+      const data = await res.json() as { message?: string };
+      setBravoState(prev => ({ ...prev, [patientId]: { expanded: true, text: data.message ?? "", editing: false, loading: false, sent: false } }));
+    } catch {
+      setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], loading: false } }));
+    }
+  };
+
+  const sendBravoMessage = async (patientId: string, text: string) => {
+    if (onboardingDemoMode) {
+      setBravoState(prev => ({ ...prev, [patientId]: { expanded: false, text: "", editing: false, loading: false, sent: true } }));
+      setDemoPatients(prev => prev.map(p => p.id === patientId ? { ...p, latest_victory: "" } : p));
+      setTimeout(() => setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], sent: false } })), 3000);
+      return;
+    }
+    setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], loading: true } }));
+    try {
+      await fetch("/api/send-bravo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId, practitionerId, messageText: text }) });
+      setBravoState(prev => ({ ...prev, [patientId]: { expanded: false, text: "", editing: false, loading: false, sent: true } }));
+      setPatients(prev => prev.map(p => p.id === patientId ? { ...p, latest_victory: undefined } : p));
+      setTimeout(() => setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], sent: false } })), 3000);
+    } catch {
+      setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], loading: false } }));
+    }
+  };
+
   const sendVictory = async (patientId: string, victoryText: string) => {
     setSendingVictory(patientId);
     if (onboardingDemoMode) {
@@ -1347,6 +1519,14 @@ export default function DashboardPage() {
               </div>
             </button>
 
+            {onboardingDemoMode && (
+              <div style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 20, padding: "4px 12px", marginLeft: 4 }}>
+                <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8", animation: "breathe 2s ease-in-out infinite", flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", whiteSpace: "nowrap" }}>Mode Démo</span>
+                <span style={{ fontSize: 11, color: "#4b5563", whiteSpace: "nowrap" }}>· 3 patients fictifs, toutes les fonctionnalités actives</span>
+              </div>
+            )}
+
             {showAccountMenu && (
               <>
                 <div onClick={() => setShowAccountMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
@@ -1424,93 +1604,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Bandeau Mode Démo */}
-      {onboardingDemoMode && !loading && (
-        <div style={{ background: "rgba(99,102,241,0.08)", borderBottom: "1px solid rgba(99,102,241,0.2)", padding: "8px 24px", position: "sticky", top: 64, zIndex: 44 }}>
-          <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#818cf8", animation: "breathe 2s ease-in-out infinite" }} />
-              <span style={{ fontSize: 12, fontWeight: 600, color: "#818cf8" }}>Mode Démo</span>
-              <span style={{ fontSize: 12, color: "#64748b" }}>· Vous explorez avec 3 patients fictifs. Toutes les fonctionnalités sont actives.</span>
-            </div>
-            <button
-              data-tour="invite"
-              onClick={() => setShowInviteModal(true)}
-              style={{ height: 28, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(99,102,241,0.35)", background: "rgba(99,102,241,0.12)", color: "#818cf8", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(99,102,241,0.22)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.5)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(99,102,241,0.12)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.35)"; }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-              Inviter mon premier patient
-            </button>
-          </div>
-        </div>
-      )}
 
-      {/* Bandeau critique global */}
-      {patients.some(p => p.emotional_status === "red_critical") && (
-        <div style={{ background: "rgba(244,63,94,0.12)", borderBottom: "1px solid rgba(244,63,94,0.4)", padding: "10px 24px", animation: "criticalPulse 2s ease-in-out infinite", position: "sticky", top: 64, zIndex: 45 }}>
-          <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", alignItems: "center", gap: 12 }}>
-            <AlertIcon size={18} color={coral} />
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: coral }}>Alerte critique - Intervention immédiate requise</p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginLeft: 8 }}>
-              {patients.filter(p => p.emotional_status === "red_critical").map(p => (
-                <button key={p.id} onClick={() => { setSelectedPatientId(p.id); setActiveTab("patients"); }}
-                  style={{ background: "rgba(244,63,94,0.15)", border: "1px solid rgba(244,63,94,0.4)", borderRadius: 20, padding: "3px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: coral, filter: discretMode ? "blur(4px)" : "none" }}>
-                  {p.firstName} {p.lastName}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bandeau victoires */}
-      {victoryPatients.length > 0 && (
-        <div style={{ background: "rgba(16,185,129,0.08)", borderBottom: "1px solid rgba(16,185,129,0.2)", padding: "10px 24px" }}>
-          <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: emerald, letterSpacing: "0.1em", textTransform: "uppercase" }}><TrophyIcon size={13} color={emerald} />Victoires détectées</span>
-            {victoryPatients.map((p) => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 20, padding: "4px 12px" }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: emerald, filter: discretMode ? "blur(4px)" : "none" }}>{p.firstName}</span>
-                <span style={{ fontSize: 11, color: "#94a3b8", filter: discretMode ? "blur(4px)" : "none" }}>- {p.latest_victory}</span>
-                {victorySent === p.id ? (
-                  <CheckCircleSent />
-                ) : (
-                  <button onClick={() => void sendVictory(p.id, p.latest_victory ?? "")} disabled={sendingVictory === p.id}
-                    style={{ height: 22, borderRadius: 11, padding: "0 10px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "none", background: emerald, color: "black" }}>
-                    {sendingVictory === p.id ? <span className="flex items-center justify-center gap-2"><span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white" />Envoi</span> : "Envoyer un bravo"}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Bandeau alertes */}
-      {(redPatients.length > 0 || orangePatients.length > 0) && (
-        <div style={{ background: "rgba(244,63,94,0.08)", borderBottom: "1px solid rgba(244,63,94,0.2)", padding: "10px 24px" }}>
-          <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: coral, letterSpacing: "0.1em", textTransform: "uppercase" }}><ZapIcon size={13} color={coral} />Attention requise</span>
-            {redPatients.map((p) => (
-              <button key={p.id} onClick={() => { setSelectedPatientId(p.id); setActiveTab("patients"); }}
-                style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 20, padding: "4px 12px", cursor: "pointer" }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: coral, display: "inline-block", flexShrink: 0 }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: coral, filter: discretMode ? "blur(4px)" : "none" }}>{p.firstName}</span>
-                {p.emotional_insight && <span style={{ fontSize: 11, color: "#94a3b8", filter: discretMode ? "blur(4px)" : "none" }}>- {p.emotional_insight}</span>}
-              </button>
-            ))}
-            {orangePatients.map((p) => (
-              <button key={p.id} onClick={() => { setSelectedPatientId(p.id); setActiveTab("patients"); }}
-                style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 20, padding: "4px 12px", cursor: "pointer" }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: amber, display: "inline-block", flexShrink: 0 }} />
-                <span style={{ fontSize: 12, fontWeight: 600, color: amber, filter: discretMode ? "blur(4px)" : "none" }}>{p.firstName}</span>
-                {p.emotional_insight && <span style={{ fontSize: 11, color: "#94a3b8", filter: discretMode ? "blur(4px)" : "none" }}>- {p.emotional_insight}</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       <main style={{ maxWidth: 1600, margin: "0 auto", padding: "24px" }}>
 
@@ -1531,25 +1625,34 @@ export default function DashboardPage() {
                   <p style={{ textAlign: "center", fontSize: 13, color: "#64748b", marginTop: 20 }}>Aucun patient</p>
                 ) : filteredPatients.map((patient) => {
                   const isSelected = patient.id === (selectedPatientId ?? (onboardingDemoMode ? "demo-1" : null));
-                  const statusColor = getStatusColor(patient.emotional_status);
-                  const isRed = patient.emotional_status === "red";
+                  const isCritical = patient.emotional_status === "red_critical";
+                  const isRed = patient.emotional_status === "red" || isCritical;
+                  const isOrange = patient.emotional_status === "orange";
+                  const hasAlert = isRed || isOrange;
+                  // Couleur de bordure selon statut — neutre si aucune alerte
+                  const borderColor = isSelected
+                    ? (hasAlert ? (isRed ? "rgba(244,63,94,0.7)" : "rgba(245,158,11,0.7)") : "rgba(16,185,129,0.4)")
+                    : (isRed ? "rgba(244,63,94,0.35)" : isOrange ? "rgba(245,158,11,0.3)" : "rgba(255,255,255,0.06)");
+                  const bgColor = isSelected
+                    ? (hasAlert ? (isRed ? "rgba(244,63,94,0.08)" : "rgba(245,158,11,0.06)") : "rgba(16,185,129,0.06)")
+                    : (isRed ? "rgba(244,63,94,0.04)" : isOrange ? "rgba(245,158,11,0.03)" : "transparent");
+                  const nameColor = isSelected ? (hasAlert ? (isRed ? coral : amber) : emerald) : "white";
+                  // Sous-texte : motif d'alerte > dernier message
+                  const subText = hasAlert && patient.emotional_insight
+                    ? patient.emotional_insight
+                    : patient.lastMessage;
+                  const subColor = isRed ? "rgba(244,63,94,0.7)" : isOrange ? "rgba(245,158,11,0.7)" : "#64748b";
                   return (
-                    <button key={patient.id} onClick={() => setSelectedPatientId(patient.id)}
-                      style={{ width: "100%", borderRadius: 10, padding: "10px 12px", textAlign: "left", cursor: "pointer", marginBottom: 4, background: isSelected ? "rgba(16,185,129,0.08)" : "transparent", border: isSelected ? "1px solid rgba(16,185,129,0.2)" : "1px solid transparent", boxShadow: isRed && !isSelected ? "0 0 0 1px rgba(244,63,94,0.2)" : "none", transition: "all 0.2s" }}>
+                    <button key={patient.id} onClick={() => { setSelectedPatientId(patient.id); setShowInterventionBubble(false); }}
+                      style={{ width: "100%", borderRadius: 10, padding: "10px 12px", textAlign: "left", cursor: "pointer", marginBottom: 4, background: bgColor, border: `1px solid ${borderColor}`, transition: "all 0.2s" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div style={{ width: 32, height: 32, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "white", flexShrink: 0 }}>
                           {patient.initials}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: isSelected ? emerald : "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{patient.firstName}</span>
-                            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                              {patient.latest_victory && <TrophyIcon size={11} color="#f59e0b" />}
-                              <span style={{ fontSize: 10 }}>{getStatusEmoji(patient.emotional_status)}</span>
-                            </div>
-                          </div>
-                          <p style={{ margin: 0, fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
-                            {patient.emotional_insight || patient.lastMessage}
+                          <span style={{ fontSize: 13, fontWeight: 600, color: nameColor, filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{patient.firstName}</span>
+                          <p style={{ margin: "2px 0 0", fontSize: 11, color: subColor, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
+                            {subText}
                           </p>
                         </div>
                       </div>
@@ -1563,7 +1666,7 @@ export default function DashboardPage() {
                   onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
                   <div style={{ width: 32, height: 32, borderRadius: 10, background: emerald, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5V19M5 12H19" stroke="black" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
                   </div>
                   <div style={{ textAlign: "left" }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: emerald }}>Inviter un patient</p>
@@ -1577,26 +1680,68 @@ export default function DashboardPage() {
             <div style={{ display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
               {selectedPatient ? (
                 <>
-                  <div style={{ padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: selectedPatient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "white" }}>
+                  <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: selectedPatient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "white", flexShrink: 0 }}>
                         {selectedPatient.initials}
                       </div>
-                      <div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{selectedPatient.firstName} {selectedPatient.lastName}</p>
                         <p style={{ margin: 0, fontSize: 12, color: "#64748b", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{onboardingDemoMode ? "patient@email.fr" : (selectedPatient as RealPatient).email}</p>
                       </div>
                     </div>
+                    {/* Bandeau alerte contextuel */}
+                    {(() => {
+                      const alerts = selectedPatient.admin_alerts?.filter(a => !a.seen) ?? [];
+                      const isCritical = selectedPatient.emotional_status === "red_critical";
+                      const isRed = selectedPatient.emotional_status === "red" || isCritical;
+                      const isOrange = selectedPatient.emotional_status === "orange";
+                      const hasAlert = isRed || isOrange;
+                      if (!hasAlert || alertBannerDismissed[selectedPatient.id]) return null;
+                      const alertText = alerts.length > 0 ? (
+                        alerts[0].type === "crisis" ? (
+                          alerts[0].alert_type === "suicide" ? "Idéation suicidaire exprimée" :
+                          alerts[0].alert_type === "medical" ? "Urgence médicale signalée" :
+                          alerts[0].alert_type === "threat" ? "Menace envers autrui" : "Crise détectée"
+                        ) : selectedPatient.emotional_insight || "Comportement sensible détecté"
+                      ) : selectedPatient.emotional_insight || "Comportement sensible détecté";
+                      const alertColor = isRed ? coral : amber;
+                      const alertBg = isRed ? "rgba(244,63,94,0.08)" : "rgba(245,158,11,0.06)";
+                      const alertBorder = isRed ? "rgba(244,63,94,0.25)" : "rgba(245,158,11,0.2)";
+                      return (
+                        <div style={{ background: alertBg, borderTop: `1px solid ${alertBorder}`, padding: "8px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                          <AlertIcon size={13} color={alertColor} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: alertColor, flex: 1, minWidth: 0 }}>
+                            {selectedPatient.firstName} · {alertText}
+                          </span>
+                          {alerts.length > 0 && (
+                          <button onClick={() => scrollToAlertMessage(alerts[0])}
+                            style={{ fontSize: 11, fontWeight: 600, color: alertColor, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, whiteSpace: "nowrap" }}>
+                            Aller au message
+                          </button>
+                          )}
+                          {alerts.length > 0 && <span style={{ color: "#4b5563", fontSize: 11 }}>·</span>}
+                          <button onClick={() => void dismissAlertFromHeader(selectedPatient.id)}
+                            style={{ fontSize: 11, color: "#64748b", background: "none", border: "none", cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+                            onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                            Ignorer
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
-                  <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", background: "#070707", display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div ref={conversationContainerRef} style={{ flex: 1, overflowY: "auto", padding: "16px 20px", background: "#070707", display: "flex", flexDirection: "column", gap: 12 }}>
                     {displayedConversations.length === 0 ? (
                       <p style={{ textAlign: "center", fontSize: 13, color: "#64748b", marginTop: 40 }}>Aucune conversation</p>
                     ) : displayedConversations.map((message) => {
                       const isPatient = message.role === "user";
+                      const isHighlighted = message.id === highlightedMessageId;
                       return (
-                        <div key={message.id} style={{ display: "flex", justifyContent: isPatient ? "flex-start" : "flex-end" }}>
+                        <div key={message.id} data-message-id={message.id} data-message-date={message.created_at}
+                          style={{ display: "flex", justifyContent: isPatient ? "flex-start" : "flex-end", transition: "all 0.3s" }}>
                           <div style={{ maxWidth: "78%" }}>
-                            <div style={{ borderRadius: 14, borderBottomRightRadius: isPatient ? 14 : 4, borderBottomLeftRadius: isPatient ? 4 : 14, padding: "10px 14px", fontSize: 14, lineHeight: 1.6, background: isPatient ? "rgba(255,255,255,0.06)" : emerald, color: isPatient ? "#e2e8f0" : "black", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
+                            <div style={{ borderRadius: 14, borderBottomRightRadius: isPatient ? 14 : 4, borderBottomLeftRadius: isPatient ? 4 : 14, padding: "10px 14px", fontSize: 14, lineHeight: 1.6, background: isHighlighted ? "rgba(245,158,11,0.18)" : isPatient ? "rgba(255,255,255,0.06)" : emerald, color: isPatient ? "#e2e8f0" : "black", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: isHighlighted ? `2px solid rgba(245,158,11,0.4)` : "none" }}>
                               {message.content}
                             </div>
                             <p style={{ margin: "4px 0 0", fontSize: 10, color: "#4b5563", textAlign: isPatient ? "left" : "right" }}>
@@ -1606,6 +1751,24 @@ export default function DashboardPage() {
                         </div>
                       );
                     })}
+                    {/* Bulle d'intervention */}
+                    {showInterventionBubble && (
+                      <div style={{ position: "sticky", bottom: 0, background: "rgba(13,13,13,0.95)", backdropFilter: "blur(12px)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 12, color: "#94a3b8", flex: 1, minWidth: 140 }}>Souhaitez-vous envoyer un mot de soutien ?</span>
+                        <button onClick={() => { setShowInterventionBubble(false); }}
+                          style={{ height: 28, borderRadius: 8, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", color: amber, transition: "all 0.2s" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(245,158,11,0.2)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "rgba(245,158,11,0.1)"; }}>
+                          Répondre manuellement
+                        </button>
+                        <button onClick={() => setShowInterventionBubble(false)}
+                          style={{ height: 28, padding: "0 10px", background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#4b5563" }}
+                          onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+                          onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
+                          ✕
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </>
               ) : (
@@ -1657,7 +1820,7 @@ export default function DashboardPage() {
                       const sos = p.sosResolved ?? 0;
                       return [
                         { label: "Dernière connexion", value: lastActiveStr },
-                        { label: "Assiduité", value: streak > 0 ? `🔥 ${streak} jours actifs` : "Aucune activité" },
+                        { label: "Assiduité", value: streak > 0 ? `${streak} jours actifs` : "Aucune activité" },
                         { label: "Crises désamorcées", value: sos > 0 ? `🛡️ ${sos}` : "Aucune" },
                       ].map((item) => (
                         <div key={item.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
@@ -1743,12 +1906,10 @@ export default function DashboardPage() {
                                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                     </button>
                                     <button onClick={() => void deleteMurmure(m.id)}
-                                      style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2, transition: "color 0.2s" }}
+                                      style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: "0 2px", transition: "color 0.2s", fontSize: 18, lineHeight: 1 }}
                                       onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
                                       onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
-                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                                      </svg>
+                                      ×
                                     </button>
                                   </div>
                                 )}
@@ -1810,12 +1971,10 @@ export default function DashboardPage() {
                                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                       </button>
                                       <button onClick={() => void deleteNote(n.id)}
-                                        style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2, transition: "color 0.2s" }}
+                                        style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: "0 2px", transition: "color 0.2s", fontSize: 18, lineHeight: 1 }}
                                         onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
                                         onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
-                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                                        </svg>
+                                        ×
                                       </button>
                                     </div>
                                   </div>
@@ -1835,25 +1994,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                  {/* Documents patient */}
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#60a5fa" }}>Documents</span>
-                      <button
-                        onClick={() => { setPatientDocFiles([]); setPatientDocErrors([]); setPatientDocSuccess([]); setShowPatientDocModal(true); }}
-                        style={{ display: "flex", alignItems: "center", gap: 4, height: 22, padding: "0 8px", borderRadius: 6, background: "rgba(96,165,250,0.08)", border: "1px solid rgba(96,165,250,0.25)", color: "#60a5fa", fontSize: 10, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(96,165,250,0.15)"; e.currentTarget.style.borderColor = "rgba(96,165,250,0.45)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(96,165,250,0.08)"; e.currentTarget.style.borderColor = "rgba(96,165,250,0.25)"; }}>
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        Ajouter un document
-                      </button>
-                    </div>
-                    <div style={{ background: "rgba(96,165,250,0.03)", borderRadius: 10, border: "1px solid rgba(96,165,250,0.12)", padding: "10px 12px" }}>
-                      <p style={{ margin: 0, fontSize: 11, color: "#4b5563" }}>Aucun document ajouté</p>
-                    </div>
-                  </div>
-
-                  {/* Analyses IA */}
+                  {/* Analyses IA + Documents */}
                   <div data-tour="rapport">
                   <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#818cf8" }}>Analyses IA</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -1870,6 +2011,13 @@ export default function DashboardPage() {
                         onMouseLeave={e => { e.currentTarget.style.background = "rgba(99,102,241,0.04)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                         Rapport IA
+                      </button>
+                      <button onClick={() => { setPatientDocFiles([]); setPatientDocErrors([]); setPatientDocSuccess([]); setShowPatientDocModal(true); }}
+                        style={{ height: 36, borderRadius: 8, background: "rgba(96,165,250,0.04)", border: "1px solid rgba(96,165,250,0.18)", color: "#60a5fa", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(96,165,250,0.1)"; e.currentTarget.style.borderColor = "rgba(96,165,250,0.35)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(96,165,250,0.04)"; e.currentTarget.style.borderColor = "rgba(96,165,250,0.18)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                        Gérer mes documents
                       </button>
                       </div>
                   </div>
@@ -1930,27 +2078,11 @@ export default function DashboardPage() {
 
         {activeTab === "vue_ensemble" && (
           <div>
-            {displayedPatients.some(p => p.emotional_status === "red_critical") && (
-              <div style={{ background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.4)", borderRadius: 16, padding: "16px 20px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12, animation: "criticalPulse 2s ease-in-out infinite" }}>
-                <AlertIcon size={20} color={coral} />
-                <div style={{ flex: 1 }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 700, color: coral }}>Alerte critique - Intervention immédiate requise</p>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {displayedPatients.filter(p => p.emotional_status === "red_critical").map(p => (
-                      <button key={p.id} onClick={() => { setSelectedPatientId(p.id); setActiveTab("patients"); }}
-                        style={{ background: "rgba(244,63,94,0.15)", border: "1px solid rgba(244,63,94,0.4)", borderRadius: 20, padding: "3px 12px", cursor: "pointer", fontSize: 12, fontWeight: 600, color: coral, filter: discretMode ? "blur(4px)" : "none" }}>
-                        {p.firstName} {p.lastName}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
             <div style={{ marginBottom: 28 }}>
               <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Vue d'ensemble</h2>
               <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Suivi en cours · Statut IA mis à jour à chaque message</p>
 
+              {/* KPI blocks */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
                 <div style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 16, padding: 20 }}>
                   <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Delta de stress moyen</p>
@@ -1980,7 +2112,6 @@ export default function DashboardPage() {
                     </span>
                   </div>
                 </div>
-
                 <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: 20 }}>
                   <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Crises apaisées</p>
                   <p style={{ margin: "0 0 4px", fontSize: 48, fontWeight: 900, color: "#818cf8", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
@@ -1992,12 +2123,9 @@ export default function DashboardPage() {
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#818cf8" }}>Sans votre intervention</span>
                   </div>
                 </div>
-
                 <div style={{ background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 16, padding: 20 }}>
                   <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Interventions hors-cabinet</p>
-                  <p style={{ margin: "0 0 4px", fontSize: 48, fontWeight: 900, color: amber, lineHeight: 1 }}>
-                    {monthlyStats?.messages_geres ?? 0}
-                  </p>
+                  <p style={{ margin: "0 0 4px", fontSize: 48, fontWeight: 900, color: amber, lineHeight: 1 }}>{monthlyStats?.messages_geres ?? 0}</p>
                   <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>messages gérés</p>
                   <div style={{ background: "rgba(245,158,11,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
                     <ClockIcon size={13} color={amber} />
@@ -2005,54 +2133,191 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
+              <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 20 }} />
 
-              <div style={{ height: 1, background: "rgba(255,255,255,0.06)", marginBottom: 24 }} />
+              {/* Barre de filtres */}
+              <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 11, color: "#64748b", alignSelf: "center", marginRight: 4 }}>Filtrer par :</span>
+                {([
+                  { key: "tous", label: "Tous" },
+                  { key: "urgences", label: "Urgences" },
+                  { key: "bravos", label: "Bravos à envoyer" },
+                  { key: "ras", label: "RAS" },
+                ] as { key: "tous" | "urgences" | "bravos" | "ras"; label: string }[]).map(f => (
+                  <button key={f.key} onClick={() => setVueEnsembleFilter(f.key)}
+                    style={{ height: 28, borderRadius: 20, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: vueEnsembleFilter === f.key ? "1px solid rgba(255,255,255,0.2)" : "1px solid rgba(255,255,255,0.06)", background: vueEnsembleFilter === f.key ? "rgba(255,255,255,0.08)" : "transparent", color: vueEnsembleFilter === f.key ? "white" : "#64748b", transition: "all 0.2s" }}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {displayedPatients.length === 0 ? (
               <p style={{ textAlign: "center", color: "#64748b", marginTop: 60 }}>Aucun patient</p>
-            ) : (
-              <div data-tour="radar" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-                {[...displayedPatients].sort((a, b) => {
-                  const order = { red_critical: 0, red: 1, orange: 2, green: 3 };
-                  return (order[a.emotional_status as keyof typeof order] ?? 3) - (order[b.emotional_status as keyof typeof order] ?? 3);
-                }).map((patient) => {
-                  const isCritical = patient.emotional_status === "red_critical";
-                  const isRed = patient.emotional_status === "red" || isCritical;
-                  const statusColor = isCritical ? coral : getStatusColor(patient.emotional_status);
-                  return (
-                    <div key={patient.id} style={{ borderRadius: 16, padding: "20px", background: isCritical ? "rgba(244,63,94,0.08)" : isRed ? "rgba(244,63,94,0.05)" : "rgba(255,255,255,0.02)", border: `1px solid ${isCritical ? "rgba(244,63,94,0.5)" : isRed ? "rgba(244,63,94,0.25)" : "rgba(255,255,255,0.06)"}`, boxShadow: isCritical ? "0 0 32px rgba(244,63,94,0.25)" : isRed ? "0 0 24px rgba(244,63,94,0.12)" : "none", transition: "all 0.3s", animation: isCritical ? "criticalPulse 2s ease-in-out infinite" : "none" }}>
-                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
-                        <button onClick={() => { setSelectedPatientId(patient.id); setActiveTab("patients"); }} style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                          <div style={{ width: 40, height: 40, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "white" }}>{patient.initials}</div>
-                          <div style={{ textAlign: "left" }}>
-                            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: isCritical ? coral : "white", filter: discretMode ? "blur(4px)" : "none" }}>{patient.firstName} {patient.lastName}</p>
+            ) : (() => {
+              // Tri strict : red_critical > red > orange > green+victory > green/neutre
+              const sorted = [...displayedPatients].sort((a, b) => {
+                const order = { red_critical: 0, red: 1, orange: 2, green: 3 };
+                const ao = order[a.emotional_status as keyof typeof order] ?? 3;
+                const bo = order[b.emotional_status as keyof typeof order] ?? 3;
+                if (ao !== bo) return ao - bo;
+                // À égalité de statut, ceux avec victoire avant ceux sans
+                if (a.latest_victory && !b.latest_victory) return -1;
+                if (!a.latest_victory && b.latest_victory) return 1;
+                return 0;
+              });
+
+              // Filtre
+              const filtered = sorted.filter(p => {
+                if (vueEnsembleFilter === "tous") return true;
+                if (vueEnsembleFilter === "urgences") return p.emotional_status === "red_critical" || p.emotional_status === "red" || p.emotional_status === "orange";
+                if (vueEnsembleFilter === "bravos") return !!p.latest_victory && p.emotional_status === "green";
+                if (vueEnsembleFilter === "ras") return p.emotional_status === "green" && !p.latest_victory;
+                return true;
+              });
+
+              if (filtered.length === 0) return <p style={{ textAlign: "center", color: "#64748b", marginTop: 40 }}>Aucun patient dans cette catégorie</p>;
+
+              return (
+                <div data-tour="radar" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
+                  {filtered.map((patient) => {
+                    const isCritical = patient.emotional_status === "red_critical";
+                    const isRed = patient.emotional_status === "red" || isCritical;
+                    const isOrange = patient.emotional_status === "orange";
+                    const hasAlert = isRed || isOrange;
+                    const hasVictory = !!patient.latest_victory && !hasAlert;
+                    const bState = bravoState[patient.id];
+
+                    // Couleurs de la carte
+                    let cardBg = "rgba(255,255,255,0.02)";
+                    let cardBorder = "rgba(255,255,255,0.06)";
+                    let cardShadow = "none";
+                    if (isCritical) { cardBg = "rgba(244,63,94,0.08)"; cardBorder = "rgba(244,63,94,0.45)"; cardShadow = "0 0 28px rgba(244,63,94,0.2)"; }
+                    else if (isRed) { cardBg = "rgba(244,63,94,0.05)"; cardBorder = "rgba(244,63,94,0.28)"; cardShadow = "0 0 18px rgba(244,63,94,0.1)"; }
+                    else if (isOrange) { cardBg = "rgba(245,158,11,0.04)"; cardBorder = "rgba(245,158,11,0.28)"; }
+                    else if (hasVictory) { cardBg = "rgba(16,185,129,0.04)"; cardBorder = "rgba(16,185,129,0.28)"; }
+
+                    const alertColor = isRed ? coral : amber;
+
+                    return (
+                      <div key={patient.id}
+                        style={{ borderRadius: 16, padding: "18px 20px", background: cardBg, border: `1px solid ${cardBorder}`, boxShadow: cardShadow, transition: "all 0.3s", animation: isCritical ? "criticalPulse 2s ease-in-out infinite" : "none", cursor: "pointer" }}
+                        onClick={(e) => {
+                          // Clic sur la carte → aller au patient dans Suivi (sauf si clic sur un bouton enfant)
+                          if ((e.target as HTMLElement).closest("button") || (e.target as HTMLElement).closest("textarea")) return;
+                          setSelectedPatientId(patient.id); setActiveTab("patients"); setShowInterventionBubble(false);
+                        }}>
+                        {/* Header carte */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: hasAlert || hasVictory ? 12 : 0 }}>
+                          <div style={{ width: 38, height: 38, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "white", flexShrink: 0 }}>{patient.initials}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: hasAlert ? alertColor : "white", filter: discretMode ? "blur(4px)" : "none" }}>{patient.firstName} {patient.lastName}</p>
                             <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{patient.totalMessages} messages</p>
                           </div>
-                        </button>
-                        <span style={{ fontSize: 14, flexShrink: 0 }}>{getStatusEmoji(patient.emotional_status)}</span>
-                      </div>
-                      {patient.emotional_insight && (
-                        <p style={{ margin: "0 0 10px", fontSize: 12, color: statusColor, lineHeight: 1.5, fontStyle: "italic", filter: discretMode ? "blur(4px)" : "none" }}>
-                          "{patient.emotional_insight}"
-                        </p>
-                      )}
-                      {isCritical && (
-                        <div style={{ background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                          <ZapIcon size={11} color={coral} />
-                          <span style={{ fontSize: 11, fontWeight: 700, color: coral }}>Intervention immédiate</span>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+
+                        {/* Contenu selon statut */}
+                        {hasAlert && (
+                          <>
+                            <p style={{ margin: "0 0 10px", fontSize: 12, color: alertColor, lineHeight: 1.5, filter: discretMode ? "blur(4px)" : "none" }}>
+                              {patient.emotional_insight || (isCritical ? "Intervention immédiate requise" : "Point de vigilance détecté")}
+                            </p>
+                            <button onClick={(e) => { e.stopPropagation(); setSelectedPatientId(patient.id); setActiveTab("patients"); setShowInterventionBubble(false); }}
+                              style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: `1px solid ${isRed ? "rgba(244,63,94,0.4)" : "rgba(245,158,11,0.4)"}`, background: isRed ? "rgba(244,63,94,0.12)" : "rgba(245,158,11,0.1)", color: alertColor, transition: "all 0.2s" }}
+                              onMouseEnter={e => { e.currentTarget.style.background = isRed ? "rgba(244,63,94,0.22)" : "rgba(245,158,11,0.2)"; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = isRed ? "rgba(244,63,94,0.12)" : "rgba(245,158,11,0.1)"; }}>
+                              {isCritical ? "Traiter l'urgence →" : "Prendre des nouvelles →"}
+                            </button>
+                          </>
+                        )}
+
+                        {hasVictory && (
+                          <>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                              <TrophyIcon size={12} color={emerald} />
+                              <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.5, filter: discretMode ? "blur(4px)" : "none" }}>{patient.latest_victory}</p>
+                            </div>
+
+                            {bState?.sent ? (
+                              <CheckCircleSent />
+                            ) : bState?.expanded ? (
+                              /* Zone bravo inline */
+                              <div onClick={e => e.stopPropagation()} style={{ marginTop: 8 }}>
+                                {bState.loading ? (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", color: "#64748b", fontSize: 12 }}>
+                                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400" style={{ flexShrink: 0 }} />
+                                    Génération en cours...
+                                  </div>
+                                ) : bState.editing ? (
+                                  <textarea
+                                    value={bState.text}
+                                    onChange={e => setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], text: e.target.value } }))}
+                                    rows={3}
+                                    autoFocus
+                                    style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.05)", color: "white", padding: "8px 10px", fontSize: 12, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", lineHeight: 1.5, marginBottom: 6 }}
+                                  />
+                                ) : (
+                                  <p style={{ margin: "0 0 8px", fontSize: 12, color: "#d4d4d8", lineHeight: 1.6, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 8, padding: "8px 10px" }}>{bState.text}</p>
+                                )}
+                                {!bState.loading && (
+                                  <div style={{ display: "flex", gap: 6 }}>
+                                    <button onClick={() => void sendBravoMessage(patient.id, bState.text)}
+                                      style={{ flex: 2, height: 28, borderRadius: 8, background: emerald, border: "none", color: "black", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                                      Valider et envoyer
+                                    </button>
+                                    {!bState.editing ? (
+                                      <button onClick={() => setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], editing: true } }))}
+                                        style={{ flex: 1, height: 28, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 11, cursor: "pointer" }}>
+                                        Modifier
+                                      </button>
+                                    ) : (
+                                      <button onClick={() => setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], editing: false } }))}
+                                        style={{ flex: 1, height: 28, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 11, cursor: "pointer" }}>
+                                        OK
+                                      </button>
+                                    )}
+                                    <button onClick={() => setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], expanded: false } }))}
+                                      style={{ width: 28, height: 28, borderRadius: 8, background: "transparent", border: "none", color: "#4b5563", fontSize: 13, cursor: "pointer" }}>✕</button>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <button onClick={(e) => { e.stopPropagation(); void generateBravo(patient.id, patient.latest_victory ?? ""); }}
+                                style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: "1px solid rgba(16,185,129,0.35)", background: "rgba(16,185,129,0.1)", color: emerald, transition: "all 0.2s" }}
+                                onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}>
+                                Envoyer un bravo ✦
+                              </button>
+                            )}
+                          </>
+                        )}
+
+                        {/* RAS — métriques légères uniquement */}
+                        {!hasAlert && !hasVictory && (
+                          <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
+                            <div>
+                              <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Messages cette semaine</p>
+                              <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#94a3b8" }}>{patient.totalMessages}</p>
+                            </div>
+                            {(patient as RealPatient).objectif_clinique && (
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Objectif clinique</p>
+                                <p style={{ margin: 0, fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(patient as RealPatient).objectif_clinique}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             <style>{`
               @keyframes criticalPulse {
-                0%, 100% { box-shadow: 0 0 32px rgba(244,63,94,0.25); }
-                50% { box-shadow: 0 0 48px rgba(244,63,94,0.5); }
+                0%, 100% { box-shadow: 0 0 28px rgba(244,63,94,0.2); }
+                50% { box-shadow: 0 0 44px rgba(244,63,94,0.45); }
               }
             `}</style>
           </div>
@@ -2313,94 +2578,74 @@ export default function DashboardPage() {
               <button onClick={() => setShowJumeauModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
             </div>
 
-            {/* MA VISION — inline edit */}
+            {/* MA VISION ET MA SIGNATURE */}
             <div style={{ marginBottom: 20 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Ma Vision</p>
-                {!editingVision && (
-                  <button onClick={() => { setVisionDraft(visionText); setEditingVision(true); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, color: emerald, padding: 0 }}
-                    onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
-                    onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
-                    Modifier
-                  </button>
-                )}
-              </div>
-              {editingVision ? (
-                <>
-                  <textarea value={visionDraft} onChange={e => setVisionDraft(e.target.value)} autoFocus
-                    placeholder="Exemple : Je crois que la santé commence dans l'intestin et que l'alimentation doit être un levier de vitalité, jamais une source d'anxiété..."
-                    rows={5} style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(16,185,129,0.4)", background: "#1a1a1a", color: "white", padding: "12px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", boxShadow: "0 0 0 3px rgba(16,185,129,0.1)" }} />
-                  <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
-                    <button onClick={() => setEditingVision(false)}
-                      style={{ height: 34, padding: "0 14px", borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
-                      Annuler
-                    </button>
-                    <button onClick={() => { void saveVisionOrSignature("vision", visionDraft); setVisionText(visionDraft); setEditingVision(false); }}
-                      disabled={savingVision || !visionDraft.trim()}
-                      style={{ height: 34, padding: "0 16px", borderRadius: 8, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 12, fontWeight: 600, cursor: !visionDraft.trim() ? "not-allowed" : "pointer", opacity: !visionDraft.trim() ? 0.5 : 1 }}>
-                      Mettre à jour
+              <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>Ma Vision et Ma Signature</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {/* Vision card */}
+                {editingVision ? (
+                  <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(16,185,129,0.3)" }}>
+                    <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em" }}>Ma Vision</p>
+                    <textarea value={visionDraft} onChange={e => setVisionDraft(e.target.value)} autoFocus
+                      placeholder="Exemple : Je crois que la santé commence dans l'intestin et que l'alimentation doit être un levier de vitalité, jamais une source d'anxiété..."
+                      rows={4} style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(16,185,129,0.4)", background: "#1a1a1a", color: "white", padding: "10px 12px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }} />
+                    <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+                      <button onClick={() => setEditingVision(false)} style={{ height: 32, padding: "0 12px", borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>Annuler</button>
+                      <button onClick={() => { void saveVisionOrSignature("vision", visionDraft); setVisionText(visionDraft); setEditingVision(false); }} disabled={savingVision || !visionDraft.trim()}
+                        style={{ height: 32, padding: "0 14px", borderRadius: 8, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 12, fontWeight: 600, cursor: !visionDraft.trim() ? "not-allowed" : "pointer", opacity: !visionDraft.trim() ? 0.5 : 1 }}>
+                        Mettre à jour
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <span style={{ fontSize: 12, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 260 }}>
+                        {visionText ? "Ma Vision" : <span style={{ color: "#4b5563" }}>Ma Vision — non renseignée</span>}
+                      </span>
+                    </div>
+                    <button onClick={() => { setVisionDraft(visionText); setEditingVision(true); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, color: emerald, padding: "0 0 0 8px", flexShrink: 0 }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
+                      onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+                      Modifier
                     </button>
                   </div>
-                </>
-              ) : visionText ? (
-                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "14px 16px" }}>
-                  <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{visionText}</p>
-                </div>
-              ) : (
-                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", padding: "16px", textAlign: "center" }}>
-                  <p style={{ margin: "0 0 8px", fontSize: 13, color: "#4b5563" }}>Non renseignée</p>
-                  <button onClick={() => { setVisionDraft(""); setEditingVision(true); }}
-                    style={{ fontSize: 12, color: emerald, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
-                    + Ajouter votre vision
-                  </button>
-                </div>
-              )}
-            </div>
+                )}
 
-            {/* MA SIGNATURE — inline edit */}
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Ma Signature</p>
-                {!editingSignature && (
-                  <button onClick={() => { setSignatureDraft(signatureText); setEditingSignature(true); }}
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, color: emerald, padding: 0 }}
-                    onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
-                    onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
-                    Modifier
-                  </button>
-                )}
-              </div>
-              {editingSignature ? (
-                <>
-                  <textarea value={signatureDraft} onChange={e => setSignatureDraft(e.target.value)} autoFocus
-                    placeholder={'Exemple : Je compare souvent le métabolisme à un feu de camp. Mon expression fétiche : "Un repas ne fait pas le moine, on tourne la page"...'}
-                    rows={5} style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(16,185,129,0.4)", background: "#1a1a1a", color: "white", padding: "12px 14px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box", boxShadow: "0 0 0 3px rgba(16,185,129,0.1)" }} />
-                  <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
-                    <button onClick={() => setEditingSignature(false)}
-                      style={{ height: 34, padding: "0 14px", borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>
-                      Annuler
-                    </button>
-                    <button onClick={() => { void saveVisionOrSignature("signature", signatureDraft); setSignatureText(signatureDraft); setEditingSignature(false); }}
-                      disabled={savingSignature || !signatureDraft.trim()}
-                      style={{ height: 34, padding: "0 16px", borderRadius: 8, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 12, fontWeight: 600, cursor: !signatureDraft.trim() ? "not-allowed" : "pointer", opacity: !signatureDraft.trim() ? 0.5 : 1 }}>
-                      Mettre à jour
+                {/* Signature card */}
+                {editingSignature ? (
+                  <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(16,185,129,0.3)" }}>
+                    <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em" }}>Ma Signature</p>
+                    <textarea value={signatureDraft} onChange={e => setSignatureDraft(e.target.value)} autoFocus
+                      placeholder={'Exemple : Je compare souvent le métabolisme à un feu de camp. Mon expression fétiche : "Un repas ne fait pas le moine, on tourne la page"...'}
+                      rows={4} style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(16,185,129,0.4)", background: "#1a1a1a", color: "white", padding: "10px 12px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }} />
+                    <div style={{ display: "flex", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+                      <button onClick={() => setEditingSignature(false)} style={{ height: 32, padding: "0 12px", borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7280", fontSize: 12, cursor: "pointer" }}>Annuler</button>
+                      <button onClick={() => { void saveVisionOrSignature("signature", signatureDraft); setSignatureText(signatureDraft); setEditingSignature(false); }} disabled={savingSignature || !signatureDraft.trim()}
+                        style={{ height: 32, padding: "0 14px", borderRadius: 8, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 12, fontWeight: 600, cursor: !signatureDraft.trim() ? "not-allowed" : "pointer", opacity: !signatureDraft.trim() ? 0.5 : 1 }}>
+                        Mettre à jour
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                      <span style={{ fontSize: 12, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 260 }}>
+                        {signatureText ? "Ma Signature" : <span style={{ color: "#4b5563" }}>Ma Signature — non renseignée</span>}
+                      </span>
+                    </div>
+                    <button onClick={() => { setSignatureDraft(signatureText); setEditingSignature(true); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, color: emerald, padding: "0 0 0 8px", flexShrink: 0 }}
+                      onMouseEnter={e => e.currentTarget.style.opacity = "0.7"}
+                      onMouseLeave={e => e.currentTarget.style.opacity = "1"}>
+                      Modifier
                     </button>
                   </div>
-                </>
-              ) : signatureText ? (
-                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", padding: "14px 16px" }}>
-                  <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{signatureText}</p>
-                </div>
-              ) : (
-                <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px dashed rgba(255,255,255,0.08)", padding: "16px", textAlign: "center" }}>
-                  <p style={{ margin: "0 0 8px", fontSize: 13, color: "#4b5563" }}>Non renseignée</p>
-                  <button onClick={() => { setSignatureDraft(""); setEditingSignature(true); }}
-                    style={{ fontSize: 12, color: emerald, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>
-                    + Ajouter votre signature
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* AJOUTER DES DOCUMENTS */}
@@ -2435,12 +2680,10 @@ export default function DashboardPage() {
                         <span style={{ fontSize: 13, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
                       </div>
                       <button onClick={() => setUploadedFiles(prev => prev.filter((_, j) => j !== i))}
-                        style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: 4, flexShrink: 0 }}
+                        style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", padding: "0 4px", flexShrink: 0, fontSize: 18, lineHeight: 1 }}
                         onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
                         onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                        </svg>
+                        ×
                       </button>
                     </div>
                   ))}
@@ -2509,12 +2752,10 @@ export default function DashboardPage() {
                             await supabase.from("documents").delete().eq("id", doc.id);
                             if (practitionerId) await loadDocuments(practitionerId);
                           }}
-                          style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", padding: 4, flexShrink: 0, transition: "color 0.2s" }}
+                          style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", padding: "0 4px", flexShrink: 0, transition: "color 0.2s", fontSize: 18, lineHeight: 1 }}
                           onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
                           onMouseLeave={e => e.currentTarget.style.color = "#475569"}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                          </svg>
+                          ×
                         </button>
                       </div>
                     );
@@ -2533,7 +2774,7 @@ export default function DashboardPage() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
                 <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.1em" }}>Fiche patient</p>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Ajouter un document</h2>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Gérer mes documents</h2>
               </div>
               <button onClick={() => setShowPatientDocModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
             </div>

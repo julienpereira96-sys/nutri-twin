@@ -74,11 +74,7 @@ const NoteIcon = () => (
   </svg>
 );
 
-const TrashIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-  </svg>
-);
+
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -732,7 +728,7 @@ export default function OnboardingPage() {
                             style={{ color: "#64748b" }}
                             onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
                             onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                            <TrashIcon />
+                            <span style={{ fontSize: 18, lineHeight: 1 }}>×</span>
                           </button>
                         </div>
                       </div>
@@ -825,7 +821,7 @@ export default function OnboardingPage() {
                             style={{ color: "#64748b" }}
                             onMouseEnter={e => e.currentTarget.style.color = "#f87171"}
                             onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                            <TrashIcon />
+                            <span style={{ fontSize: 18, lineHeight: 1 }}>×</span>
                           </button>
                         </div>
                       </div>
