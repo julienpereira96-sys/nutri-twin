@@ -17,10 +17,10 @@ const DEMO_PATIENTS_INITIAL = [
     totalMessages: 34, latest_victory: "A résisté à la cantine le 13 mai",
     age: 32, sexe: "F", taille: 165, poids: 68,
     objective: "Retrouver une relation apaisée avec la nourriture et perdre 5 kg durablement.",
-    pathologies: "Hyperphagie émotionnelle",
+    pathologies: "TCA",
     objectif_clinique: "Réduire les compulsions nocturnes à moins d'une par semaine.",
-    niveau_activite: "modéré", regime_specifique: "Aucun",
-    allergies: "Intolérance lactose (légère)", traitements: "Aucun",
+    niveau_activite: "Modérée", regime_specifique: "Aucun",
+    allergies: "Lactose", traitements: "Aucun",
     email: "sophie.m@demo.fr",
     practitioner_instruction: [{ id: "d-m1", text: "Sois plus doux cette semaine, elle traverse une période difficile au travail.", expires_at: null, created_at: new Date().toISOString() }],
     private_notes: [{ id: "n1", text: "Tendances émotionnelles fortes le soir. Suggérer un journal alimentaire.", created_at: new Date().toISOString() }],
@@ -36,8 +36,8 @@ const DEMO_PATIENTS_INITIAL = [
     objective: "Maintenir son poids et améliorer son énergie au quotidien.",
     pathologies: "Aucune",
     objectif_clinique: "Stabiliser 3 repas par jour malgré la charge professionnelle.",
-    niveau_activite: "faible", regime_specifique: "Végétarienne",
-    allergies: "Aucune", traitements: "Contraception orale",
+    niveau_activite: "Légère", regime_specifique: "Végétarienne",
+    allergies: "Aucune", traitements: "Pilule contraceptive",
     email: "julie.p@demo.fr",
     practitioner_instruction: [{ id: "d-m2", text: "Rappelle-lui de prendre soin d'elle malgré la charge de travail.", expires_at: null, created_at: new Date().toISOString() }],
     private_notes: [],
@@ -50,10 +50,10 @@ const DEMO_PATIENTS_INITIAL = [
     totalMessages: 40, latest_victory: "Poids stable depuis 3 semaines",
     age: 41, sexe: "M", taille: 178, poids: 82,
     objective: "Maintenir le poids atteint et développer une alimentation intuitive.",
-    pathologies: "Hypertension légère (traitée)",
+    pathologies: "Hypertension",
     objectif_clinique: "Consolider les habitudes et prévenir les rechutes.",
-    niveau_activite: "élevé", regime_specifique: "Aucun",
-    allergies: "Arachides", traitements: "Ramipril 5mg",
+    niveau_activite: "Intense", regime_specifique: "Aucun",
+    allergies: "Fruits à coque", traitements: "Aucun",
     email: "thomas.r@demo.fr",
     practitioner_instruction: [],
     private_notes: [{ id: "n3", text: "Très assidu. Envisager de passer à une consultation mensuelle.", created_at: new Date().toISOString() }],
@@ -578,6 +578,8 @@ export default function DashboardPage() {
   const [alertBannerDismissed, setAlertBannerDismissed] = useState<Record<string, boolean>>({});
   const [showInterventionBubble, setShowInterventionBubble] = useState(false);
   const [docsCollapsed, setDocsCollapsed] = useState(false);
+  const [murmuresCollapsed, setMurmuresCollapsed] = useState(false);
+  const [notesCollapsed, setNotesCollapsed] = useState(false);
   const [replyMode, setReplyMode] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [replyIsFromJumeau, setReplyIsFromJumeau] = useState(false);
@@ -2025,8 +2027,11 @@ export default function DashboardPage() {
 
                   {/* Murmures */}
                   <div data-tour="murmure" style={{ marginBottom: 16 }}>
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: emerald }}>Murmures</span>
-                    <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px", marginTop: 6 }}>
+                  <button onClick={() => setMurmuresCollapsed(p => !p)} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: 6 }}>
+                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: emerald }}>Murmures</span>
+                    <span style={{ fontSize: 10, color: emerald, opacity: 0.6, transition: "transform 0.2s", display: "inline-block", transform: murmuresCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}>▾</span>
+                  </button>
+                  {!murmuresCollapsed && <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px" }}>
                     {(() => {
                       const p = selectedPatient as RealPatient;
                       const murmures = (p.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[]) ?? [];
@@ -2087,13 +2092,16 @@ export default function DashboardPage() {
                         +
                       </button>
                     </div>
-                    </div>
+                    </div>}
                   </div>
 
                   {/* Notes privées */}
                   <div style={{ marginBottom: 16 }}>
+                  <button onClick={() => setNotesCollapsed(p => !p)} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: 6 }}>
                     <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#94a3b8" }}>Notes privées</span>
-                    <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", padding: "10px 12px", marginTop: 6 }}>
+                    <span style={{ fontSize: 10, color: "#94a3b8", opacity: 0.6, transition: "transform 0.2s", display: "inline-block", transform: notesCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}>▾</span>
+                  </button>
+                  {!notesCollapsed && <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", padding: "10px 12px" }}>
                         {(() => {
                           const p = selectedPatient as RealPatient;
                           const notes = (p.private_notes as { id: string; text: string; created_at: string }[]) ?? [];
@@ -2151,24 +2159,19 @@ export default function DashboardPage() {
                             +
                           </button>
                         </div>
-                      </div>
-                    </div>
+                      </div>}
+                  </div>
 
                   {/* Documents */}
                   <div style={{ marginBottom: 16 }}>
-                    <button onClick={() => setDocsCollapsed(p => !p)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: "0 0 8px", marginBottom: 0 }}>
-                      <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#60a5fa" }}>Documents</p>
-                      <span style={{ fontSize: 12, color: "#4b5563", transition: "transform 0.2s", display: "inline-block", transform: docsCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}>▾</span>
-                    </button>
-                    {!docsCollapsed && (
-                      <button onClick={() => { setPatientDocFiles([]); setPatientDocErrors([]); setPatientDocSuccess([]); setShowPatientDocModal(true); }}
+                    <p style={{ margin: "0 0 6px", fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#60a5fa" }}>Documents</p>
+                    <button onClick={() => { setPatientDocFiles([]); setPatientDocErrors([]); setPatientDocSuccess([]); setShowPatientDocModal(true); }}
                         style={{ width: "100%", height: 36, borderRadius: 8, background: "rgba(96,165,250,0.04)", border: "1px solid rgba(96,165,250,0.18)", color: "#60a5fa", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
                         onMouseEnter={e => { e.currentTarget.style.background = "rgba(96,165,250,0.1)"; e.currentTarget.style.borderColor = "rgba(96,165,250,0.35)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                         onMouseLeave={e => { e.currentTarget.style.background = "rgba(96,165,250,0.04)"; e.currentTarget.style.borderColor = "rgba(96,165,250,0.18)"; e.currentTarget.style.transform = "translateY(0)"; }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
                         Gérer mes documents
                       </button>
-                    )}
                   </div>
 
                   {/* Analyses IA */}
@@ -2747,7 +2750,7 @@ export default function DashboardPage() {
           <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 560, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
-                <p style={{ margin: "0 0 2px", fontSize: 9, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.14em" }}>Votre expertise</p>
+                <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>Votre expertise</p>
                 <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>Mon Jumeau</h2>
               </div>
               <button onClick={() => setShowJumeauModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
@@ -3135,11 +3138,11 @@ export default function DashboardPage() {
                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
                 Annuler
               </button>
-              <button onClick={() => void saveProfile()} disabled={savingProfile}
-                style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: savingProfile ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: savingProfile ? 0.7 : 1, transition: "all 0.2s" }}
-                onMouseEnter={e => { if (!savingProfile) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
-                onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                {savingProfile ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Sauvegarde</span> : "Mettre à jour les informations"}
+              <button onClick={() => { if (!onboardingDemoMode) void saveProfile(); }} disabled={savingProfile || onboardingDemoMode}
+                style={{ flex: 2, height: 44, borderRadius: 10, background: onboardingDemoMode ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${onboardingDemoMode ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: onboardingDemoMode ? "#374151" : emerald, cursor: savingProfile || onboardingDemoMode ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: savingProfile ? 0.7 : 1, transition: "all 0.2s" }}
+                onMouseEnter={e => { if (!savingProfile && !onboardingDemoMode) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                onMouseLeave={e => { if (!onboardingDemoMode) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
+                {onboardingDemoMode ? "Indisponible en mode démo" : savingProfile ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Sauvegarde</span> : "Mettre à jour les informations"}
               </button>
             </div>
           </div>
