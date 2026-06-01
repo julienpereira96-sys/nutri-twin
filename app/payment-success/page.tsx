@@ -134,13 +134,13 @@ function PaymentSuccessContent() {
                     desc: "suffisent pour calibrer votre jumeau.",
                   },
                   {
-                    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
-                    label: "Répondez naturellement",
+                    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+                    label: "Répondez naturellement,",
                     desc: "comme si vous parliez à un confrère.",
                   },
                   {
-                    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>,
-                    label: "Plus vous êtes précis",
+                    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
+                    label: "Plus vous êtes précis,",
                     desc: "meilleur sera le résultat final.",
                   },
                 ].map((item, i) => (

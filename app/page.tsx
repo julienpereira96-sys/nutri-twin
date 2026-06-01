@@ -665,9 +665,16 @@ export default function Home() {
                   </svg>
                 )},
                 { num: "02", title: "L'apprentissage", desc: "Ajustez le ton, le style, les valeurs de votre double. Pour qu'il réponde exactement comme vous le feriez.", icon: (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2a5 5 0 0 1 5 5c0 2.5-1.5 4.5-3.5 5.4V14h-3v-1.6C8.5 11.5 7 9.5 7 7a5 5 0 0 1 5-5z"/>
-                    <path d="M9 14h6"/><path d="M10 17h4"/><path d="M11 20h2"/>
+                  <svg width="22" height="20" viewBox="0 0 44 38" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 34 C22 34 8 31 5 21 C2 11 9 3 16 3 C19 3 21 5 22 7"/>
+                    <path d="M22 7 C21 5 19 3 16 3 C9 3 2 11 5 21 C8 31 22 34 22 34"/>
+                    <path d="M22 34 C22 34 36 31 39 21 C42 11 35 3 28 3 C25 3 23 5 22 7"/>
+                    <path d="M22 7 C23 5 25 3 28 3 C35 3 42 11 39 21 C36 31 22 34 22 34"/>
+                    <line x1="22" y1="7" x2="22" y2="34"/>
+                    <path d="M12 11 Q15 9 14 14"/>
+                    <path d="M9 19 Q13 17 12 22"/>
+                    <path d="M32 11 Q29 9 30 14"/>
+                    <path d="M35 19 Q31 17 32 22"/>
                   </svg>
                 )},
                 { num: "03", title: "Le relais", desc: "Donnez le lien à vos patients. Ils sont désormais épaulés 24h/24, toujours sous votre contrôle.", icon: (
@@ -740,7 +747,10 @@ export default function Home() {
               {[
                 { icon: (
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    <rect x="3" y="11" width="18" height="12" rx="3"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    <circle cx="12" cy="16" r="1.5" fill="#10b981" stroke="none"/>
+                    <line x1="12" y1="17.5" x2="12" y2="20"/>
                   </svg>
                 ), title: "Propriété Exclusive", desc: "Votre jumeau est privé. Votre savoir, vos protocoles et vos méthodes ne servent jamais à entraîner d'autres modèles." },
                 { icon: (
@@ -752,7 +762,18 @@ export default function Home() {
                   ), title: "Souveraineté & RGPD", desc: "Vos données et celles de vos patients sont stockées sur des serveurs basés à Paris, conformément au RGPD." },
                 { icon: (
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 3v18M3 9l9-6 9 6"/><path d="M5 9l-2 6h4L5 9z"/><path d="M19 9l-2 6h4L19 9z"/><path d="M3 21h18"/>
+                    {/* Pole */}
+                    <line x1="12" y1="3" x2="12" y2="21"/>
+                    {/* Base */}
+                    <path d="M8 21h8"/>
+                    {/* Crossbar */}
+                    <line x1="3" y1="7" x2="21" y2="7"/>
+                    {/* Left chain and pan */}
+                    <line x1="5" y1="7" x2="5" y2="11"/>
+                    <path d="M3 11 Q5 13 7 11"/>
+                    {/* Right chain and pan */}
+                    <line x1="19" y1="7" x2="19" y2="13"/>
+                    <path d="M17 13 Q19 15 21 13"/>
                   </svg>
                 ), title: "Cadre Éthique", desc: "NutriTwin est un assistant de suivi, pas de diagnostic. Pour toute question médicale, vous serez systématiquement consulté." },
               ].map((item, i) => (

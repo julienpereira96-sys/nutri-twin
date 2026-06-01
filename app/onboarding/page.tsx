@@ -26,14 +26,15 @@ const questions: Question[] = [
   { id: "emojis", block: "Identité & Caractère", label: "Votre jumeau doit-il utiliser des émojis ?", type: "single", options: ["Jamais, ça fait peu professionnel", "Avec modération, un ou deux maximum", "Souvent, ça humanise les échanges"] },
 
   // BLOC 2 — PHILOSOPHIE NUTRITIONNELLE
-  { id: "approche_generale", block: "Philosophie Nutritionnelle", label: "Quelle est votre philosophie principale ?", type: "single", options: ["Rééquilibrage alimentaire progressif", "Alimentation intuitive et anti-régime strict", "Micronutrition fonctionnelle", "Contrôle des macros (déficit calorique mesuré)"] },
-  { id: "pathologies", block: "Philosophie Nutritionnelle", label: "Quel est votre cœur de métier ?", sublabel: "Vous pouvez en sélectionner plusieurs", type: "multiple", options: ["Perte de poids / obésité", "TCA (troubles du comportement alimentaire)", "Diabète / glycémie / métabolisme", "Performance sportive", "Inconfort digestif / FODMAP", "Fatigue / micronutrition", "Femme enceinte / post-partum", "Enfants / adolescents"] },
+  { id: "approche_generale", block: "Philosophie Nutritionnelle", label: "Quelle est votre philosophie principale ?", type: "single_with_free", options: ["Rééquilibrage alimentaire progressif", "Alimentation intuitive et anti-régime strict", "Micronutrition fonctionnelle", "Contrôle des macros (déficit calorique mesuré)", "Autre (Précisez...)"] },
+  { id: "pathologies", block: "Philosophie Nutritionnelle", label: "Quel est votre cœur de métier ?", sublabel: "Vous pouvez en sélectionner plusieurs", type: "multiple_with_free", options: ["Perte de poids / obésité", "TCA (troubles du comportement alimentaire)", "Diabète / glycémie / métabolisme", "Performance sportive", "Inconfort digestif / FODMAP", "Fatigue / micronutrition", "Femme enceinte / post-partum", "Enfants / adolescents", "Autre (Précisez...)"] },
   { id: "position_regimes", block: "Philosophie Nutritionnelle", label: "Votre avis sur les régimes restrictifs ?", type: "single", options: ["Je les déconseille systématiquement", "Je les étudie cas par cas", "Certains sont utiles dans mon protocole", "Je reste neutre et m'adapte"] },
   { id: "position_glucides", block: "Philosophie Nutritionnelle", label: "Votre position sur les glucides ?", type: "single", options: ["Indispensables à chaque repas", "À moduler selon l'objectif et le profil", "Je les limite en général", "Dépend du patient et du moment"] },
   { id: "position_jeune", block: "Philosophie Nutritionnelle", label: "Votre position sur le jeûne intermittent ?", type: "single", options: ["Je le déconseille", "Utile dans des cas précis, sur indication", "Outil intéressant si bien adapté à la personne", "Je le pratique moi-même et l'intègre souvent"] },
   { id: "position_complements", block: "Philosophie Nutritionnelle", label: "Votre position sur les compléments alimentaires ?", type: "single", options: ["Inutiles en général, une bonne alimentation suffit", "Utiles ponctuellement selon les carences identifiées", "Partie intégrante de mon protocole régulier", "Systématiquement prescrits selon bilan biologique"] },
   { id: "position_petit_dejeuner", block: "Philosophie Nutritionnelle", label: "Votre position sur le petit-déjeuner ?", type: "single", options: ["Obligatoire pour bien démarrer la journée", "Optionnel, certains fonctionnent très bien sans", "Recommandé mais adapté au patient", "Je ne l'impose jamais, liberté totale"] },
-  { id: "lifestyle_budget", block: "Philosophie Nutritionnelle", label: "Votre approche sur le budget et les choix alimentaires ?", type: "single", options: ["Je prône le moins transformé possible, le bio et le local", "Je m'adapte avant tout au budget du patient", "Végétal / flexitarien", "Pas de restriction d'ingrédients, tout est question de portions"] },
+  { id: "sensibilite_budget", block: "Philosophie Nutritionnelle", label: "Quelle est votre approche face au budget alimentaire de vos patients ?", type: "single", options: ["Priorité absolue à l'accessibilité : je m'adapte toujours au budget et valide les marques distributeurs ou le surgelé.", "Équilibre souple : je propose des alternatives économiques tout en encourageant la qualité quand c'est possible.", "Priorité à la qualité brute : je pousse vers le moins transformé, quitte à ce que le panier d'achat soit plus sélectif."] },
+  { id: "orientation_produits", block: "Philosophie Nutritionnelle", label: "Quels types de produits encouragez-vous en priorité ?", sublabel: "Vous pouvez en sélectionner plusieurs", type: "multiple", options: ["Le bio, le local et les circuits courts", "Le fait-maison et les produits bruts / non transformés", "La flexibilité totale : l'important c'est l'équilibre et les portions, peu importe la provenance", "L'alimentation à dominante végétale (végétarien / flexitarien)"] },
   { id: "jamais_dire", block: "Philosophie Nutritionnelle", label: "Y a-t-il des pratiques que vous refusez catégoriquement ?", sublabel: "Exemple : régimes très hypocaloriques, détox, jeûne prolongé de plus de 24h...", type: "free", placeholder: "Décrivez ce que votre jumeau ne doit jamais recommander..." },
   { id: "conviction", block: "Philosophie Nutritionnelle", label: "Quelle est votre règle d'or ?", sublabel: "Votre conviction la plus forte en tant que praticien, celle qui guide tout le reste", type: "free", placeholder: "Exemple : Pas d'aliment interdit, le plaisir avant tout. Ou : la régularité prime toujours sur la perfection..." },
 
@@ -138,6 +139,8 @@ export default function OnboardingPage() {
   const [signatureEditing, setSignatureEditing] = useState(false);
   const [savingVision, setSavingVision] = useState(false);
   const [savingSignature, setSavingSignature] = useState(false);
+  const [visionError, setVisionError] = useState("");
+  const [signatureError, setSignatureError] = useState("");
 
   // Computed values
   const total = questions.length;
@@ -295,6 +298,8 @@ export default function OnboardingPage() {
   // Save vision to Supabase
   const saveVision = async () => {
     if (!visionText.trim() || savingVision) return;
+    if (visionText.trim().length < 100) { setVisionError("Ce texte est trop court (minimum 100 caractères)."); return; }
+    setVisionError("");
     setSavingVision(true);
     try {
       const supabase = createSupabaseBrowserClient();
@@ -311,6 +316,8 @@ export default function OnboardingPage() {
   // Save signature to Supabase
   const saveSignature = async () => {
     if (!signatureText.trim() || savingSignature) return;
+    if (signatureText.trim().length < 100) { setSignatureError("Ce texte est trop court (minimum 100 caractères)."); return; }
+    setSignatureError("");
     setSavingSignature(true);
     try {
       const supabase = createSupabaseBrowserClient();
@@ -673,10 +680,10 @@ export default function OnboardingPage() {
                       style={{ width: `${identityScore}%`, backgroundColor: identityColor }} />
                   </div>
                   <p className="mt-3 text-sm leading-relaxed" style={{ color: identityColor }}>
-                    {identityFilled === 0 && "Complétez votre Vision et votre Signature pour finaliser votre jumeau. Ces deux éléments seront injectés directement dans son identité pour lui donner votre ton unique et votre philosophie profonde."}
-                    {identityFilled === 1 && visionSaved && "Votre Jumeau possède désormais votre philosophie. Il ne lui reste plus qu'à capturer votre ton pour atteindre une fidélité à 100%."}
-                    {identityFilled === 1 && signatureSaved && "Votre Jumeau possède désormais votre ton. Il ne lui reste plus qu'à capturer votre vision pour atteindre une fidélité à 100%."}
-                    {identityFilled === 2 && "Votre jumeau possède votre vision et votre signature. Il est désormais prêt à prendre le relais auprès de vos patients."}
+                    {identityFilled === 0 && "La structure de votre Jumeau est prête ! Vos réponses lui ont transmis votre logique clinique complète : positions scientifiques, règles de sécurité et réflexes face aux situations difficiles. Il sait désormais quoi répondre sur le fond. Il ne lui manque plus que votre style unique : complétez votre Vision et votre Signature pour que l'IA s'approprie votre identité professionnelle et devienne votre véritable double virtuel."}
+                    {identityFilled === 1 && visionSaved && "Votre Jumeau possède désormais votre philosophie profonde ! Il ne lui reste plus qu'à capturer votre Signature pour analyser votre style d'écriture, vos expressions fétiches et le rythme de vos phrases. C'est la dernière étape pour atteindre une fidélité à 100 %."}
+                    {identityFilled === 1 && signatureSaved && "Votre Jumeau possède désormais votre ton et votre style d'écriture ! Il ne lui reste plus qu'à prendre en compte votre Vision pour que ses conseils reflètent fidèlement votre positionnement et vos valeurs de praticien. C'est la dernière étape pour atteindre une fidélité à 100 %."}
+                    {identityFilled === 2 && "Configuration réussie. Votre Jumeau possède toute votre identité. Il est désormais prêt à vous épauler et à interagir de manière ultra-sécurisée avec vos patients. Rendez-vous sur votre tableau de bord pour inviter vos premiers patients et laisser votre Jumeau prolonger votre accompagnement."}
                   </p>
                 </div>
 
@@ -689,8 +696,8 @@ export default function OnboardingPage() {
                         color: visionColor,
                         borderColor: visionSaved ? `${visionColor}60` : "rgba(255,255,255,0.1)",
                       }}>1</div>
-                    <p className="text-base font-bold transition-colors duration-500" style={{ color: visionSaved ? visionColor : "white" }}>
-                      Ma Vision
+                    <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>
+                      MA VISION
                     </p>
                     {visionSaved && (
                       <span className="text-xs font-semibold transition-colors duration-500" style={{ color: visionColor }}>
@@ -700,7 +707,7 @@ export default function OnboardingPage() {
                   </div>
 
                   <div className="ml-10">
-                    <p className="text-xs font-semibold text-white mb-1">L'ancrage de votre philosophie</p>
+                    <p className="text-sm font-bold text-white mb-1">L'ancrage de votre philosophie</p>
                     <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
                       Ce texte définit ce en quoi vous croyez profondément et dicte la ligne directrice de votre Jumeau. C'est votre &quot;pourquoi&quot; : vos convictions nutritionnelles qui guideront chacune de ses recommandations.
                     </p>
@@ -734,14 +741,15 @@ export default function OnboardingPage() {
                       <>
                         <textarea
                           value={visionText}
-                          onChange={e => setVisionText(e.target.value)}
+                          onChange={e => { setVisionText(e.target.value); if (visionError) setVisionError(""); }}
                           placeholder="Je crois que la santé commence dans l'intestin et que l'alimentation doit être un levier de vitalité, jamais une source d'anxiété. Pour moi, aucun aliment n'est à diaboliser..."
                           rows={6}
                           className="w-full rounded-2xl bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition-all placeholder:text-zinc-600"
-                          style={{ border: `1px solid ${visionText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"}` }}
-                          onFocus={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(16,185,129,0.12)"; }}
-                          onBlur={e => { e.currentTarget.style.borderColor = visionText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+                          style={{ border: `1px solid ${visionEditing ? "rgba(96,165,250,0.5)" : visionText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"}` }}
+                          onFocus={e => { e.currentTarget.style.borderColor = visionEditing ? "rgba(96,165,250,0.7)" : "rgba(16,185,129,0.5)"; e.currentTarget.style.boxShadow = visionEditing ? "0 0 0 2px rgba(96,165,250,0.12)" : "0 0 0 2px rgba(16,185,129,0.12)"; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = visionEditing ? "rgba(96,165,250,0.5)" : visionText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
                         />
+                        {visionError && <p className="mt-1 text-xs" style={{ color: "#f87171" }}>{visionError}</p>}
                         <div className="mt-3 flex items-center justify-end gap-3">
                           {visionEditing && (
                             <button type="button" onClick={() => setVisionEditing(false)}
@@ -750,9 +758,11 @@ export default function OnboardingPage() {
                             </button>
                           )}
                           <button type="button" onClick={() => void saveVision()} disabled={!visionText.trim() || savingVision}
-                            style={saveBtnStyle(!!visionText.trim(), savingVision)}
-                            onMouseEnter={e => { if (visionText.trim() && !savingVision) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
-                            onMouseLeave={e => { if (visionText.trim()) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
+                            style={visionEditing
+                              ? { background: visionText.trim() && !savingVision ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.03)", border: visionText.trim() && !savingVision ? "1px solid rgba(96,165,250,0.3)" : "1px solid rgba(255,255,255,0.06)", color: visionText.trim() && !savingVision ? "#60a5fa" : "#3f3f46", borderRadius: 10, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: visionText.trim() && !savingVision ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }
+                              : saveBtnStyle(!!visionText.trim(), savingVision)}
+                            onMouseEnter={e => { if (visionText.trim() && !savingVision) { e.currentTarget.style.background = visionEditing ? "rgba(96,165,250,0.2)" : "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = visionEditing ? "rgba(96,165,250,0.5)" : "rgba(16,185,129,0.5)"; } }}
+                            onMouseLeave={e => { if (visionText.trim()) { e.currentTarget.style.background = visionEditing ? "rgba(96,165,250,0.12)" : "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = visionEditing ? "rgba(96,165,250,0.3)" : "rgba(16,185,129,0.3)"; } }}>
                             {savingVision
                               ? <><span style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block", flexShrink: 0 }} />Enregistrement...</>
                               : visionEditing ? "Mettre à jour ma vision" : "Enregistrer ma vision"}
@@ -779,8 +789,8 @@ export default function OnboardingPage() {
                         color: signatureColor,
                         borderColor: signatureSaved ? `${signatureColor}60` : "rgba(255,255,255,0.1)",
                       }}>2</div>
-                    <p className="text-base font-bold transition-colors duration-500" style={{ color: signatureSaved ? signatureColor : "white" }}>
-                      Ma Signature
+                    <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>
+                      MA SIGNATURE
                     </p>
                     {signatureSaved && (
                       <span className="text-xs font-semibold transition-colors duration-500" style={{ color: signatureColor }}>
@@ -790,7 +800,7 @@ export default function OnboardingPage() {
                   </div>
 
                   <div className="ml-10">
-                    <p className="text-xs font-semibold text-white mb-1">L'étape finale pour passer de l'intelligence artificielle à votre intelligence émotionnelle</p>
+                    <p className="text-sm font-bold text-white mb-1">L'étape finale pour passer de l'intelligence artificielle à votre intelligence émotionnelle</p>
                     <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
                       Partagez ici vos métaphores favorites, vos expressions fétiches pour dédramatiser un écart et vos mantras de motivation. C'est ici que votre Jumeau capture votre intuition et ces nuances uniques qui font votre voix.
                     </p>
@@ -824,14 +834,15 @@ export default function OnboardingPage() {
                       <>
                         <textarea
                           value={signatureText}
-                          onChange={e => setSignatureText(e.target.value)}
+                          onChange={e => { setSignatureText(e.target.value); if (signatureError) setSignatureError(""); }}
                           placeholder={"Je compare souvent le métabolisme à un feu de camp. Mon expression fétiche pour relancer la machine c'est : \"Un repas ne fait pas le moine, on tourne la page\". Mon mantra : \"La régularité bat la perfection\"..."}
                           rows={6}
                           className="w-full rounded-2xl bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition-all placeholder:text-zinc-600"
-                          style={{ border: `1px solid ${signatureText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"}` }}
-                          onFocus={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(16,185,129,0.12)"; }}
-                          onBlur={e => { e.currentTarget.style.borderColor = signatureText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+                          style={{ border: `1px solid ${signatureEditing ? "rgba(96,165,250,0.5)" : signatureText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"}` }}
+                          onFocus={e => { e.currentTarget.style.borderColor = signatureEditing ? "rgba(96,165,250,0.7)" : "rgba(16,185,129,0.5)"; e.currentTarget.style.boxShadow = signatureEditing ? "0 0 0 2px rgba(96,165,250,0.12)" : "0 0 0 2px rgba(16,185,129,0.12)"; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = signatureEditing ? "rgba(96,165,250,0.5)" : signatureText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
                         />
+                        {signatureError && <p className="mt-1 text-xs" style={{ color: "#f87171" }}>{signatureError}</p>}
                         <div className="mt-3 flex items-center justify-end gap-3">
                           {signatureEditing && (
                             <button type="button" onClick={() => setSignatureEditing(false)}
@@ -840,9 +851,11 @@ export default function OnboardingPage() {
                             </button>
                           )}
                           <button type="button" onClick={() => void saveSignature()} disabled={!signatureText.trim() || savingSignature}
-                            style={saveBtnStyle(!!signatureText.trim(), savingSignature)}
-                            onMouseEnter={e => { if (signatureText.trim() && !savingSignature) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
-                            onMouseLeave={e => { if (signatureText.trim()) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
+                            style={signatureEditing
+                              ? { background: signatureText.trim() && !savingSignature ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.03)", border: signatureText.trim() && !savingSignature ? "1px solid rgba(96,165,250,0.3)" : "1px solid rgba(255,255,255,0.06)", color: signatureText.trim() && !savingSignature ? "#60a5fa" : "#3f3f46", borderRadius: 10, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: signatureText.trim() && !savingSignature ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }
+                              : saveBtnStyle(!!signatureText.trim(), savingSignature)}
+                            onMouseEnter={e => { if (signatureText.trim() && !savingSignature) { e.currentTarget.style.background = signatureEditing ? "rgba(96,165,250,0.2)" : "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = signatureEditing ? "rgba(96,165,250,0.5)" : "rgba(16,185,129,0.5)"; } }}
+                            onMouseLeave={e => { if (signatureText.trim()) { e.currentTarget.style.background = signatureEditing ? "rgba(96,165,250,0.12)" : "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = signatureEditing ? "rgba(96,165,250,0.3)" : "rgba(16,185,129,0.3)"; } }}>
                             {savingSignature
                               ? <><span style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block", flexShrink: 0 }} />Enregistrement...</>
                               : signatureEditing ? "Mettre à jour ma signature" : "Enregistrer ma signature"}

@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     // Bloc 2 — Philosophie Nutritionnelle
     "approche_generale","pathologies","position_regimes","position_glucides",
     "position_jeune","position_complements","position_petit_dejeuner",
-    "lifestyle_budget","jamais_dire","conviction",
+    "sensibilite_budget","orientation_produits","jamais_dire","conviction",
     // Bloc 3 — Gestion Humaine & Émotions
     "alimentation_emotionnelle","non_suivi","fetes_vacances",
     "levier_motivation","profil_perfectionniste","adaptation_profil",
@@ -60,10 +60,6 @@ export async function POST(request: Request) {
     "situation_craquage","situation_stagnation","situation_abandon",
     "situation_prediabete","situation_alcool","situation_marketing","situation_drastique",
     "situation_flemme","situation_coup_dur",
-    // Anciens champs (rétrocompat pour praticiens existants)
-    "sujets_clivants","gestion_ecarts","emotions","motivation_berne","approche_libre",
-    "situation1","situation2","situation3","situation4","situation5",
-    "situation6","situation7","situation8","situation9",
   ];
 
   // Vision et Signature peuvent être des textes longs

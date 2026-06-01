@@ -194,33 +194,36 @@ const OnboardingTour = ({ practitionerName, onSkip }: Omit<OnboardingProps, "ste
       <div style={{
         position: "relative", zIndex: 1, width: "100%", maxWidth: 480, margin: "0 24px",
         background: "#0d0d0d", borderRadius: 24, padding: "44px 40px",
-        border: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "0 40px 120px rgba(0,0,0,0.9), 0 0 80px rgba(16,185,129,0.04)",
+        border: "1px solid rgba(16,185,129,0.18)",
+        boxShadow: "0 40px 120px rgba(0,0,0,0.9), 0 0 80px rgba(16,185,129,0.12), 0 0 200px rgba(16,185,129,0.06)",
         opacity: visible ? 1 : 0, transform: visible ? "scale(1) translateY(0)" : "scale(0.97) translateY(8px)",
         transition: "opacity 0.35s ease, transform 0.35s ease",
         fontFamily: "Inter, sans-serif",
       }}>
-        <h1 style={{ margin: "0 0 14px", fontSize: 28, fontWeight: 800, color: "white", textAlign: "center", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
-          Bienvenue sur votre<br />Dashboard, {firstName}
+        {/* Green glow top accent */}
+        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 200, height: 2, background: "linear-gradient(90deg, transparent, rgba(16,185,129,0.6), transparent)", borderRadius: 2 }} />
+        <div style={{ textAlign: "center", fontSize: 40, marginBottom: 16, lineHeight: 1 }}>🌿</div>
+        <h1 style={{ margin: "0 0 16px", fontSize: 28, fontWeight: 800, color: "white", textAlign: "center", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
+          Bienvenue sur votre<br />Dashboard, {firstName}&nbsp;!
         </h1>
-        <p style={{ margin: "0 0 12px", fontSize: 14, color: "#6b7280", textAlign: "center", lineHeight: 1.7 }}>
-          Votre cabinet numérique est prêt. Pour l'instant, votre dashboard est en <strong style={{ color: "#94a3b8" }}>mode démo</strong> avec 3 patients fictifs — explorez toutes les fonctionnalités librement.
+        <p style={{ margin: "0 0 12px", fontSize: 14, color: "#a1a1aa", textAlign: "center", lineHeight: 1.7 }}>
+          Votre cabinet numérique est prêt. Pour l'instant, votre dashboard est en <strong style={{ color: "#d4d4d8" }}>mode démo</strong> avec 3 patients fictifs — explorez toutes les fonctionnalités librement.
         </p>
-        <p style={{ margin: "0 0 36px", fontSize: 13, color: "#4b5563", textAlign: "center", lineHeight: 1.6 }}>
+        <p style={{ margin: "0 0 36px", fontSize: 13, color: "#71717a", textAlign: "center", lineHeight: 1.6 }}>
           Le mode démo disparaîtra automatiquement dès que vous aurez invité votre premier patient.
         </p>
         <div style={{ display: "flex", gap: 12 }}>
           <button onClick={onSkip}
-            style={{ flex: 1, height: 46, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#6b7280", fontSize: 14, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#94a3b8"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#6b7280"; }}>
+            style={{ flex: 1, height: 48, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#71717a", fontSize: 14, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#a1a1aa"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#71717a"; }}>
             Fermer
           </button>
           <button onClick={onSkip}
-            style={{ flex: 2, height: 46, borderRadius: 12, background: "#10b981", border: "none", color: "black", fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
-            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.45)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; }}>
-            Explorer le dashboard
+            style={{ flex: 2, height: 48, borderRadius: 12, background: "linear-gradient(135deg, #10b981, #059669)", border: "none", color: "white", fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif", boxShadow: "0 4px 20px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.15)", letterSpacing: "0.01em" }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.5), inset 0 1px 0 rgba(255,255,255,0.15)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+            Explorer le dashboard →
           </button>
         </div>
       </div>
