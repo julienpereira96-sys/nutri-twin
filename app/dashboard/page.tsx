@@ -578,6 +578,12 @@ export default function DashboardPage() {
   const [alertBannerDismissed, setAlertBannerDismissed] = useState<Record<string, boolean>>({});
   const [showInterventionBubble, setShowInterventionBubble] = useState(false);
   const [docsCollapsed, setDocsCollapsed] = useState(false);
+  const [replyMode, setReplyMode] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [replyIsFromJumeau, setReplyIsFromJumeau] = useState(false);
+  const [replyGenerating, setReplyGenerating] = useState(false);
+  const [replySending, setReplySending] = useState(false);
+  const replyInputRef = useRef<HTMLTextAreaElement>(null);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [vueEnsembleFilter, setVueEnsembleFilter] = useState<"tous" | "urgences" | "bravos" | "ras">("tous");
   const [bravoState, setBravoState] = useState<Record<string, { expanded: boolean; text: string; editing: boolean; loading: boolean; sent: boolean }>>({});
@@ -1381,6 +1387,81 @@ export default function DashboardPage() {
     return days;
   };
 
+  const generateSoutien = async () => {
+    if (!selectedPatientId || !practitionerId) return;
+    setShowInterventionBubble(false);
+    setReplyMode(true);
+    setReplyText("");
+    setReplyIsFromJumeau(true);
+    setReplyGenerating(true);
+    // Mode démo : texte simulé
+    if (onboardingDemoMode) {
+      await new Promise(r => setTimeout(r, 1800));
+      const demoMsg = displayedSelectedPatient?.firstName === "Sophie"
+        ? "Sophie, je voulais juste vous dire que je pense à vous en ce moment. Ce que vous traversez au travail est épuisant, et c'est tout à fait normal que ça déborde sur le reste. N'hésitez pas à m'écrire, je suis là."
+        : displayedSelectedPatient?.firstName === "Julie"
+        ? "Julie, je sais que cette semaine a été lourde. Prenez soin de vous, même à petites doses — un vrai repas, une vraie pause. Vous comptez."
+        : "Je voulais prendre un instant pour vous dire que votre parcours est remarquable. Continuez à vous faire confiance.";
+      setReplyText(demoMsg);
+      setReplyGenerating(false);
+      setTimeout(() => replyInputRef.current?.focus(), 50);
+      return;
+    }
+    try {
+      const p = displayedSelectedPatient as RealPatient | null;
+      const murmures = (p?.practitioner_instruction as { text: string }[] | undefined)?.map(m => m.text) ?? [];
+      const res = await fetch("/api/generate-soutien", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId: selectedPatientId,
+          practitionerId,
+          emotionalInsight: p?.emotional_insight ?? "",
+          lastMessages: displayedConversations.slice(-8).map(m => ({ role: m.role, content: m.content })),
+          murmures,
+        }),
+      });
+      const data = await res.json() as { message?: string };
+      setReplyText(data.message ?? "");
+    } catch { setReplyText(""); }
+    setReplyGenerating(false);
+    setTimeout(() => replyInputRef.current?.focus(), 50);
+  };
+
+  const sendSoutien = async () => {
+    if (!replyText.trim() || !selectedPatientId || !practitionerId || replySending) return;
+    setReplySending(true);
+    const msgContent = replyText.trim();
+    const newMsg = { id: `local-${Date.now()}`, role: "assistant" as const, content: msgContent, created_at: new Date().toISOString() };
+    // Mise à jour locale immédiate
+    if (onboardingDemoMode) {
+      setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, emotional_status: "green", admin_alerts: [] } : p));
+      setAlertBannerDismissed(prev => ({ ...prev, [selectedPatientId]: true }));
+    } else {
+      try {
+        await fetch("/api/send-soutien", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ patientId: selectedPatientId, practitionerId, messageText: msgContent }),
+        });
+        setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, emotional_status: "green", admin_alerts: [] } : p));
+        setAlertBannerDismissed(prev => ({ ...prev, [selectedPatientId]: true }));
+      } catch { /* silencieux */ }
+    }
+    // Ajouter le message à la conversation locale
+    setConversations(prev => [...prev, newMsg]);
+    setReplyMode(false);
+    setReplyText("");
+    setReplyIsFromJumeau(false);
+    setReplySending(false);
+    // Scroller en bas
+    setTimeout(() => {
+      if (conversationContainerRef.current) {
+        conversationContainerRef.current.scrollTop = conversationContainerRef.current.scrollHeight;
+      }
+    }, 50);
+  };
+
   const generateReport = async () => {
     if (!selectedPatientId || !practitionerId) return;
     setReportLoading(true); setReportContent(""); setReportError("");
@@ -1519,7 +1600,7 @@ export default function DashboardPage() {
                   <span style={{ fontSize: 11, color: "#64748b", marginLeft: 6 }}>▾</span>
                 </p>
                 <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
-                  {onboardingDemoMode ? "3 patients · 92 messages" : `${patients.length} patient${patients.length > 1 ? "s" : ""} · ${totalMessages} messages`}
+                  {onboardingDemoMode ? "3 patients" : `${patients.length} patient${patients.length > 1 ? "s" : ""}`}
                 </p>
               </div>
             </button>
@@ -1636,39 +1717,40 @@ export default function DashboardPage() {
                   const hasAlert = isRed || isOrange;
                   const alertDismissed = alertBannerDismissed[patient.id];
                   const activeAlert = hasAlert && !alertDismissed;
-                  // Couleurs des cartes — gradient doux si sélectionné, quasi-invisible sinon
-                  const alertRgb = isRed ? "244,63,94" : "245,158,11";
-                  const cardBg = isSelected
-                    ? activeAlert
-                      ? `linear-gradient(135deg, rgba(${alertRgb},0.11), rgba(${alertRgb},0.03))`
-                      : "linear-gradient(135deg, rgba(16,185,129,0.1), rgba(16,185,129,0.02))"
-                    : "transparent";
-                  const cardBorder = isSelected
-                    ? activeAlert ? `rgba(${alertRgb},0.45)` : "rgba(16,185,129,0.28)"
-                    : "rgba(255,255,255,0.06)";
-                  // Sous-texte : alerte uniquement si non ignorée, sinon dernier message
+                  // Couleurs des cartes — même logique que vue d'ensemble
+                  const alertColor2 = isRed ? coral : amber;
+                  let cardBg = "rgba(255,255,255,0.02)";
+                  let cardBorder = "rgba(255,255,255,0.07)";
+                  let cardShadow = "none";
+                  if (isSelected) {
+                    if (isCritical) { cardBg = "rgba(244,63,94,0.07)"; cardBorder = "rgba(244,63,94,0.4)"; cardShadow = "0 0 16px rgba(244,63,94,0.1)"; }
+                    else if (isRed) { cardBg = "rgba(244,63,94,0.05)"; cardBorder = "rgba(244,63,94,0.3)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
+                    else if (isOrange) { cardBg = "rgba(245,158,11,0.04)"; cardBorder = "rgba(245,158,11,0.28)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
+                    else { cardBg = "rgba(16,185,129,0.04)"; cardBorder = "rgba(16,185,129,0.22)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
+                  } else {
+                    if (isCritical) { cardBg = "rgba(244,63,94,0.04)"; cardBorder = "rgba(244,63,94,0.2)"; }
+                    else if (isRed) { cardBg = "rgba(244,63,94,0.02)"; cardBorder = "rgba(244,63,94,0.14)"; }
+                    else if (isOrange) { cardBg = "rgba(245,158,11,0.02)"; cardBorder = "rgba(245,158,11,0.12)"; }
+                  }
+                  // Sous-texte : alerte si non ignorée, sinon dernier message
                   const subText = (activeAlert && patient.emotional_insight)
                     ? patient.emotional_insight
                     : (patient.lastMessage || "Aucun message");
-                  const subColor = activeAlert ? (isRed ? "rgba(244,63,94,0.85)" : "rgba(245,158,11,0.85)") : "#475569";
-                  // Point de statut
-                  const dotColor = isRed ? coral : isOrange ? amber : emerald;
+                  const subColor = activeAlert ? (isRed ? "rgba(244,63,94,0.9)" : "rgba(245,158,11,0.9)") : "#475569";
                   return (
-                    <button key={patient.id} onClick={() => { setSelectedPatientId(patient.id); setShowInterventionBubble(false); }}
-                      style={{ width: "100%", borderRadius: 10, padding: "10px 12px", textAlign: "left", cursor: "pointer", marginBottom: 4, background: cardBg, border: `1px solid ${cardBorder}`, transition: "all 0.18s", boxShadow: isSelected ? "0 4px 16px rgba(0,0,0,0.4)" : "none" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                        <div style={{ position: "relative", flexShrink: 0 }}>
-                          <div style={{ width: 34, height: 34, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "white" }}>
-                            {patient.initials}
-                          </div>
-                          <div style={{ position: "absolute", bottom: 0, right: 0, width: 8, height: 8, borderRadius: "50%", background: dotColor, border: "1.5px solid #070B09" }} />
+                    <button key={patient.id} onClick={() => { setSelectedPatientId(patient.id); setShowInterventionBubble(false); setReplyMode(false); setReplyText(""); setReplyIsFromJumeau(false); }}
+                      style={{ width: "100%", borderRadius: 12, padding: "10px 12px", textAlign: "left", cursor: "pointer", marginBottom: 6, background: cardBg, border: `1px solid ${cardBorder}`, transition: "all 0.2s", boxShadow: cardShadow }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "white", flexShrink: 0 }}>
+                          {patient.initials}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: 13, fontWeight: isSelected ? 600 : 500, color: "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{patient.firstName} <span style={{ fontWeight: 400, color: "#475569", fontSize: 12 }}>{patient.lastName}</span></span>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{patient.firstName} {patient.lastName}</p>
                           <p style={{ margin: "2px 0 0", fontSize: 11, color: subColor, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
                             {subText}
                           </p>
                         </div>
+                        {activeAlert && <div style={{ width: 7, height: 7, borderRadius: "50%", background: alertColor2, flexShrink: 0 }} />}
                       </div>
                     </button>
                   );
@@ -1769,27 +1851,29 @@ export default function DashboardPage() {
                       );
                     })}
                   </div>
-                  {/* Bloc Action — fixé en bas du chat, pleine largeur */}
-                  {showInterventionBubble && (() => {
+                  {/* Bloc Action — intervention bubble */}
+                  {showInterventionBubble && !replyMode && (() => {
                     const patIsRed = selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical";
                     const actionColor = patIsRed ? coral : amber;
                     const actionBorder = patIsRed ? "rgba(244,63,94,0.2)" : "rgba(245,158,11,0.18)";
-                    const actionBtnBg = patIsRed ? "rgba(244,63,94,0.12)" : "rgba(245,158,11,0.1)";
                     const actionBtnBorder = patIsRed ? "rgba(244,63,94,0.35)" : "rgba(245,158,11,0.3)";
                     const actionBtnHover = patIsRed ? "rgba(244,63,94,0.22)" : "rgba(245,158,11,0.2)";
+                    const actionBtnSolidBg = patIsRed ? "rgba(244,63,94,0.18)" : "rgba(245,158,11,0.14)";
                     return (
                       <div style={{ borderTop: `1px solid ${actionBorder}`, background: "rgba(10,10,12,0.97)", backdropFilter: "blur(12px)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 12, color: "#64748b", flex: 1, minWidth: 140 }}>Souhaitez-vous envoyer un mot de soutien ?</span>
-                        <button onClick={() => { setShowInterventionBubble(false); void openMurmureModal(); }}
-                          style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: actionBtnBg, border: `1px solid ${actionBtnBorder}`, color: actionColor, transition: "all 0.2s", whiteSpace: "nowrap" }}
-                          onMouseEnter={e => { e.currentTarget.style.background = actionBtnHover; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = actionBtnBg; }}>
+                        {/* Bouton principal — solid */}
+                        <button onClick={() => void generateSoutien()}
+                          style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: "rgba(16,185,129,0.14)", border: "1px solid rgba(16,185,129,0.4)", color: emerald, transition: "all 0.2s", whiteSpace: "nowrap" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.26)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.14)"; }}>
                           Générer avec mon Jumeau
                         </button>
-                        <button onClick={() => { setShowInterventionBubble(false); }}
-                          style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: actionBtnBg, border: `1px solid ${actionBtnBorder}`, color: actionColor, transition: "all 0.2s", whiteSpace: "nowrap" }}
+                        {/* Bouton secondaire — ghost */}
+                        <button onClick={() => { setShowInterventionBubble(false); setReplyMode(true); setReplyText(""); setReplyIsFromJumeau(false); setTimeout(() => replyInputRef.current?.focus(), 50); }}
+                          style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: "transparent", border: `1px solid ${actionBtnBorder}`, color: actionColor, transition: "all 0.2s", whiteSpace: "nowrap" }}
                           onMouseEnter={e => { e.currentTarget.style.background = actionBtnHover; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = actionBtnBg; }}>
+                          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
                           Répondre manuellement
                         </button>
                         <button onClick={() => setShowInterventionBubble(false)}
@@ -1798,6 +1882,57 @@ export default function DashboardPage() {
                           onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
                           ×
                         </button>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Zone de réponse praticien */}
+                  {replyMode && (() => {
+                    const patIsRed = selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical";
+                    const accentColor = patIsRed ? coral : amber;
+                    const accentBorder = patIsRed ? "rgba(244,63,94,0.2)" : "rgba(245,158,11,0.18)";
+                    return (
+                      <div style={{ borderTop: `1px solid ${accentBorder}`, background: "rgba(10,10,12,0.97)", backdropFilter: "blur(12px)", padding: "12px 20px" }}>
+                        {replyIsFromJumeau && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                            <div style={{ width: 6, height: 6, borderRadius: "50%", background: emerald, animation: "breathe 2s ease-in-out infinite" }} />
+                            <span style={{ fontSize: 10, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>Rédigé par le Jumeau · À relire avant envoi</span>
+                          </div>
+                        )}
+                        {replyGenerating ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 0", color: "#64748b", fontSize: 12 }}>
+                            <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400" style={{ flexShrink: 0 }} />
+                            Le Jumeau rédige un message de soutien…
+                          </div>
+                        ) : (
+                          <textarea
+                            ref={replyInputRef}
+                            value={replyText}
+                            onChange={e => setReplyText(e.target.value)}
+                            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendSoutien(); } }}
+                            placeholder="Écrivez votre message de soutien…"
+                            rows={3}
+                            style={{ width: "100%", borderRadius: 10, border: `1px solid ${replyIsFromJumeau ? "rgba(16,185,129,0.25)" : "rgba(255,255,255,0.1)"}`, background: replyIsFromJumeau ? "rgba(16,185,129,0.04)" : "rgba(255,255,255,0.03)", color: "white", padding: "10px 14px", fontSize: 13, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", lineHeight: 1.6, marginBottom: 8 }}
+                            onFocus={e => { e.target.style.borderColor = replyIsFromJumeau ? "rgba(16,185,129,0.45)" : "rgba(255,255,255,0.2)"; }}
+                            onBlur={e => { e.target.style.borderColor = replyIsFromJumeau ? "rgba(16,185,129,0.25)" : "rgba(255,255,255,0.1)"; }}
+                          />
+                        )}
+                        {!replyGenerating && (
+                          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                            <button onClick={() => { setReplyMode(false); setReplyText(""); setReplyIsFromJumeau(false); }}
+                              style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#64748b", transition: "all 0.2s" }}
+                              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = "#94a3b8"; }}
+                              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#64748b"; }}>
+                              Annuler
+                            </button>
+                            <button onClick={() => void sendSoutien()} disabled={!replyText.trim() || replySending}
+                              style={{ height: 30, borderRadius: 8, padding: "0 16px", fontSize: 11, fontWeight: 700, cursor: replyText.trim() && !replySending ? "pointer" : "not-allowed", background: replyText.trim() && !replySending ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.03)", border: `1px solid ${replyText.trim() && !replySending ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.06)"}`, color: replyText.trim() && !replySending ? emerald : "#374151", transition: "all 0.2s" }}
+                              onMouseEnter={e => { if (replyText.trim() && !replySending) e.currentTarget.style.background = "rgba(16,185,129,0.25)"; }}
+                              onMouseLeave={e => { if (replyText.trim() && !replySending) e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}>
+                              {replySending ? "Envoi…" : "Envoyer →"}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
@@ -1894,7 +2029,7 @@ export default function DashboardPage() {
 
                   {/* Murmures */}
                   <div data-tour="murmure" style={{ marginBottom: 10 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: emerald }}>Murmures</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: emerald }}>Murmures</span>
                     <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px", marginTop: 6 }}>
                     {(() => {
                       const p = selectedPatient as RealPatient;
@@ -1928,7 +2063,6 @@ export default function DashboardPage() {
                                 <p style={{ margin: 0, fontSize: 10, color: isExpired ? "#f59e0b" : "#4b5563" }}>
                                   {isExpired ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><AlertIcon size={11} color="#f59e0b" />Expiré</span> : m.expires_at ? `Expire le ${new Date(m.expires_at).toLocaleDateString("fr-FR")}` : "Permanent"}
                                 </p>
-                                {!onboardingDemoMode && (
                                   <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
                                     <button onClick={() => { setEditingMurmureId(m.id); setEditingMurmureText(m.text); }}
                                       style={{ background: "none", border: "none", cursor: "pointer", color: "#4b5563", padding: 2, transition: "color 0.2s" }}
@@ -1943,7 +2077,6 @@ export default function DashboardPage() {
                                       ×
                                     </button>
                                   </div>
-                                )}
                               </div>
                             )}
                           </div>
@@ -1963,7 +2096,7 @@ export default function DashboardPage() {
 
                   {/* Notes privées */}
                   <div style={{ marginBottom: 10 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#94a3b8" }}>Notes privées</span>
+                    <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#94a3b8" }}>Notes privées</span>
                     <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", padding: "10px 12px", marginTop: 6 }}>
                         {(() => {
                           const p = selectedPatient as RealPatient;
@@ -2028,7 +2161,7 @@ export default function DashboardPage() {
                   {/* Documents */}
                   <div style={{ marginBottom: 10 }}>
                     <button onClick={() => setDocsCollapsed(p => !p)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", background: "none", border: "none", cursor: "pointer", padding: "0 0 8px", marginBottom: 0 }}>
-                      <p style={{ margin: 0, fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#60a5fa" }}>Documents</p>
+                      <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#60a5fa" }}>Documents</p>
                       <span style={{ fontSize: 12, color: "#4b5563", transition: "transform 0.2s", display: "inline-block", transform: docsCollapsed ? "rotate(-90deg)" : "rotate(0deg)" }}>▾</span>
                     </button>
                     {!docsCollapsed && (
@@ -2044,7 +2177,7 @@ export default function DashboardPage() {
 
                   {/* Analyses IA */}
                   <div data-tour="rapport" style={{ marginBottom: 10 }}>
-                    <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#818cf8" }}>Analyses IA</p>
+                    <p style={{ margin: "0 0 8px", fontSize: 9, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#818cf8" }}>Analyses IA</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       <button onClick={() => { setBilanContent(""); setShowBilanModal(true); }}
                         style={{ height: 36, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -2551,9 +2684,9 @@ export default function DashboardPage() {
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 480, border: "1px solid rgba(16,185,129,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
               <div>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.12em" }}>Murmure</p>
-                <h2 style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 700, color: "white" }}>Dictez des consignes qui seront<br/>traitées en priorité absolue</h2>
-                <p style={{ margin: 0, fontSize: 12, color: "#4b5563", lineHeight: 1.6 }}>pour ce patient. Choisissez la durée appropriée pour cette consigne.</p>
+                <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.12em" }}>Murmure</p>
+                <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white", lineHeight: 1.4 }}>Dictez des consignes qui seront traitées en priorité absolue pour ce patient</h2>
+                <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Choisissez la durée appropriée pour cette consigne.</p>
               </div>
               <button onClick={() => setShowMurmureModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#64748b", marginTop: 2, flexShrink: 0 }}>×</button>
             </div>
@@ -2819,9 +2952,9 @@ export default function DashboardPage() {
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 24, width: "100%", maxWidth: 460, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
               <div>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.12em" }}>Mes documents</p>
-                <h2 style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 700, color: "white" }}>Enrichissez la base de connaissances<br/>de votre Jumeau</h2>
-                <p style={{ margin: 0, fontSize: 12, color: "#4b5563", lineHeight: 1.6 }}>Importez comptes-rendus, bilans ou documents de référence pour ce patient.</p>
+                <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: "#60a5fa", textTransform: "uppercase", letterSpacing: "0.12em" }}>Mes documents</p>
+                <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Enrichissez la base de connaissances de votre Jumeau</h2>
+                <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Importez comptes-rendus, bilans ou documents de référence pour ce patient.</p>
               </div>
               <button onClick={() => setShowPatientDocModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#64748b", marginTop: 2, flexShrink: 0 }}>×</button>
             </div>
@@ -2891,9 +3024,9 @@ export default function DashboardPage() {
                   setHasDocuments(true);
                   if (practitionerId) await loadDocuments(practitionerId);
                 }}
-                disabled={patientDocUploading || patientDocFiles.length === 0}
-                style={{ flex: 2, height: 44, borderRadius: 10, background: patientDocUploading || patientDocFiles.length === 0 ? "rgba(96,165,250,0.05)" : "rgba(96,165,250,0.15)", border: `1px solid ${patientDocUploading || patientDocFiles.length === 0 ? "rgba(96,165,250,0.1)" : "rgba(96,165,250,0.35)"}`, color: patientDocUploading || patientDocFiles.length === 0 ? "#4b5563" : "#60a5fa", fontSize: 13, fontWeight: 600, cursor: patientDocUploading || patientDocFiles.length === 0 ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
-                {patientDocUploading ? "Anonymisation & indexation..." : `Indexer ${patientDocFiles.length > 0 ? patientDocFiles.length + " fichier" + (patientDocFiles.length > 1 ? "s" : "") : ""}`}
+                disabled={patientDocUploading || patientDocFiles.length === 0 || onboardingDemoMode}
+                style={{ flex: 2, height: 44, borderRadius: 10, background: patientDocUploading || patientDocFiles.length === 0 || onboardingDemoMode ? "rgba(96,165,250,0.05)" : "rgba(96,165,250,0.15)", border: `1px solid ${patientDocUploading || patientDocFiles.length === 0 || onboardingDemoMode ? "rgba(96,165,250,0.1)" : "rgba(96,165,250,0.35)"}`, color: patientDocUploading || patientDocFiles.length === 0 || onboardingDemoMode ? "#4b5563" : "#60a5fa", fontSize: 13, fontWeight: 600, cursor: patientDocUploading || patientDocFiles.length === 0 || onboardingDemoMode ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
+                {onboardingDemoMode ? "Indisponible en mode démo" : patientDocUploading ? "Anonymisation & indexation..." : `Indexer ${patientDocFiles.length > 0 ? patientDocFiles.length + " fichier" + (patientDocFiles.length > 1 ? "s" : "") : ""}`}
               </button>
             </div>
           </div>
@@ -3440,9 +3573,9 @@ export default function DashboardPage() {
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 440, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
               <div>
-                <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.12em" }}>Notes privées</p>
-                <h2 style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 700, color: "white" }}>Ajoutez une note pour ce patient</h2>
-                <p style={{ margin: 0, fontSize: 12, color: "#4b5563", lineHeight: 1.6 }}>Ces annotations restent strictement confidentielles et ne sont visibles que par vous.</p>
+                <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.12em" }}>Notes privées</p>
+                <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Ajoutez une note pour ce patient</h2>
+                <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Ces annotations restent strictement confidentielles et ne sont visibles que par vous.</p>
               </div>
               <button onClick={() => setShowNoteModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#64748b", marginTop: 2, flexShrink: 0 }}>×</button>
             </div>
