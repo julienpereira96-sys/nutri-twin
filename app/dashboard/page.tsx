@@ -1514,18 +1514,10 @@ export default function DashboardPage() {
                   <span style={{ fontSize: 11, color: "#64748b", marginLeft: 6 }}>▾</span>
                 </p>
                 <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
-                  {onboardingDemoMode ? "4 patients · 131 messages" : `${patients.length} patient${patients.length > 1 ? "s" : ""} · ${totalMessages} messages`}
+                  {onboardingDemoMode ? "3 patients · 92 messages" : `${patients.length} patient${patients.length > 1 ? "s" : ""} · ${totalMessages} messages`}
                 </p>
               </div>
             </button>
-
-            {onboardingDemoMode && (
-              <div style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 20, padding: "4px 12px", marginLeft: 4 }}>
-                <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8", animation: "breathe 2s ease-in-out infinite", flexShrink: 0 }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", whiteSpace: "nowrap" }}>Mode Démo</span>
-                <span style={{ fontSize: 11, color: "#4b5563", whiteSpace: "nowrap" }}>· 3 patients fictifs, toutes les fonctionnalités actives</span>
-              </div>
-            )}
 
             {showAccountMenu && (
               <>
@@ -1576,6 +1568,13 @@ export default function DashboardPage() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {onboardingDemoMode && (
+              <div style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 20, padding: "4px 12px", marginRight: 4 }}>
+                <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8", animation: "breathe 2s ease-in-out infinite", flexShrink: 0 }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", whiteSpace: "nowrap" }}>Mode Démo</span>
+                <span style={{ fontSize: 11, color: "#4b5563", whiteSpace: "nowrap" }}>· 3 patients fictifs, toutes les fonctionnalités actives</span>
+              </div>
+            )}
             {(["patients", "vue_ensemble"] as ActiveTab[]).map((tab) => {
               const labels: Record<ActiveTab, string> = { patients: "Suivi", vue_ensemble: "Vue d'ensemble" };
               const isActive = activeTab === tab;
@@ -1631,17 +1630,18 @@ export default function DashboardPage() {
                   const hasAlert = isRed || isOrange;
                   // Couleur de bordure selon statut — neutre si aucune alerte
                   const borderColor = isSelected
-                    ? (hasAlert ? (isRed ? "rgba(244,63,94,0.7)" : "rgba(245,158,11,0.7)") : "rgba(16,185,129,0.4)")
-                    : (isRed ? "rgba(244,63,94,0.35)" : isOrange ? "rgba(245,158,11,0.3)" : "rgba(255,255,255,0.06)");
+                    ? (hasAlert ? (isRed ? "rgba(244,63,94,0.8)" : "rgba(245,158,11,0.8)") : "rgba(16,185,129,0.6)")
+                    : (isRed ? "rgba(244,63,94,0.18)" : isOrange ? "rgba(245,158,11,0.15)" : "rgba(255,255,255,0.08)");
                   const bgColor = isSelected
-                    ? (hasAlert ? (isRed ? "rgba(244,63,94,0.08)" : "rgba(245,158,11,0.06)") : "rgba(16,185,129,0.06)")
-                    : (isRed ? "rgba(244,63,94,0.04)" : isOrange ? "rgba(245,158,11,0.03)" : "transparent");
+                    ? (hasAlert ? (isRed ? "rgba(244,63,94,0.12)" : "rgba(245,158,11,0.10)") : "rgba(16,185,129,0.10)")
+                    : "transparent";
                   const nameColor = isSelected ? (hasAlert ? (isRed ? coral : amber) : emerald) : "white";
-                  // Sous-texte : motif d'alerte > dernier message
-                  const subText = hasAlert && patient.emotional_insight
+                  // Sous-texte : alerte uniquement si non ignorée, sinon dernier message
+                  const alertDismissed = alertBannerDismissed[patient.id];
+                  const subText = (hasAlert && patient.emotional_insight && !alertDismissed)
                     ? patient.emotional_insight
                     : patient.lastMessage;
-                  const subColor = isRed ? "rgba(244,63,94,0.7)" : isOrange ? "rgba(245,158,11,0.7)" : "#64748b";
+                  const subColor = (!alertDismissed && isRed) ? "rgba(244,63,94,0.7)" : (!alertDismissed && isOrange) ? "rgba(245,158,11,0.7)" : "#64748b";
                   return (
                     <button key={patient.id} onClick={() => { setSelectedPatientId(patient.id); setShowInterventionBubble(false); }}
                       style={{ width: "100%", borderRadius: 10, padding: "10px 12px", textAlign: "left", cursor: "pointer", marginBottom: 4, background: bgColor, border: `1px solid ${borderColor}`, transition: "all 0.2s" }}>
@@ -1737,11 +1737,14 @@ export default function DashboardPage() {
                     ) : displayedConversations.map((message) => {
                       const isPatient = message.role === "user";
                       const isHighlighted = message.id === highlightedMessageId;
+                      const selIsRed = selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical";
+                      const highlightColor = selIsRed ? "rgba(244,63,94,0.22)" : "rgba(245,158,11,0.18)";
+                      const highlightOutline = selIsRed ? "rgba(244,63,94,0.5)" : "rgba(245,158,11,0.4)";
                       return (
                         <div key={message.id} data-message-id={message.id} data-message-date={message.created_at}
                           style={{ display: "flex", justifyContent: isPatient ? "flex-start" : "flex-end", transition: "all 0.3s" }}>
                           <div style={{ maxWidth: "78%" }}>
-                            <div style={{ borderRadius: 14, borderBottomRightRadius: isPatient ? 14 : 4, borderBottomLeftRadius: isPatient ? 4 : 14, padding: "10px 14px", fontSize: 14, lineHeight: 1.6, background: isHighlighted ? "rgba(245,158,11,0.18)" : isPatient ? "rgba(255,255,255,0.06)" : emerald, color: isPatient ? "#e2e8f0" : "black", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: isHighlighted ? `2px solid rgba(245,158,11,0.4)` : "none" }}>
+                            <div style={{ borderRadius: 14, borderBottomRightRadius: isPatient ? 14 : 4, borderBottomLeftRadius: isPatient ? 4 : 14, padding: "10px 14px", fontSize: 14, lineHeight: 1.6, background: isHighlighted ? highlightColor : isPatient ? "rgba(255,255,255,0.06)" : emerald, color: isPatient ? "#e2e8f0" : "black", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: isHighlighted ? `2px solid ${highlightOutline}` : "none" }}>
                               {message.content}
                             </div>
                             <p style={{ margin: "4px 0 0", fontSize: 10, color: "#4b5563", textAlign: isPatient ? "left" : "right" }}>
@@ -1751,25 +1754,40 @@ export default function DashboardPage() {
                         </div>
                       );
                     })}
-                    {/* Bulle d'intervention */}
-                    {showInterventionBubble && (
-                      <div style={{ position: "sticky", bottom: 0, background: "rgba(13,13,13,0.95)", backdropFilter: "blur(12px)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  </div>
+                  {/* Bloc Action — fixé en bas du chat, pleine largeur */}
+                  {showInterventionBubble && (() => {
+                    const patIsRed = selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical";
+                    const actionColor = patIsRed ? coral : amber;
+                    const actionBg = patIsRed ? "rgba(244,63,94,0.08)" : "rgba(245,158,11,0.07)";
+                    const actionBorder = patIsRed ? "rgba(244,63,94,0.25)" : "rgba(245,158,11,0.22)";
+                    const actionBtnBg = patIsRed ? "rgba(244,63,94,0.12)" : "rgba(245,158,11,0.1)";
+                    const actionBtnBorder = patIsRed ? "rgba(244,63,94,0.35)" : "rgba(245,158,11,0.3)";
+                    const actionBtnHover = patIsRed ? "rgba(244,63,94,0.22)" : "rgba(245,158,11,0.2)";
+                    return (
+                      <div style={{ borderTop: `1px solid ${actionBorder}`, background: actionBg, backdropFilter: "blur(12px)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 12, color: "#94a3b8", flex: 1, minWidth: 140 }}>Souhaitez-vous envoyer un mot de soutien ?</span>
+                        <button onClick={() => { setShowInterventionBubble(false); void openMurmureModal(); }}
+                          style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, transition: "all 0.2s", whiteSpace: "nowrap" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}>
+                          Générer avec mon Jumeau
+                        </button>
                         <button onClick={() => { setShowInterventionBubble(false); }}
-                          style={{ height: 28, borderRadius: 8, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", color: amber, transition: "all 0.2s" }}
-                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(245,158,11,0.2)"; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = "rgba(245,158,11,0.1)"; }}>
+                          style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: actionBtnBg, border: `1px solid ${actionBtnBorder}`, color: actionColor, transition: "all 0.2s", whiteSpace: "nowrap" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = actionBtnHover; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = actionBtnBg; }}>
                           Répondre manuellement
                         </button>
                         <button onClick={() => setShowInterventionBubble(false)}
-                          style={{ height: 28, padding: "0 10px", background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#4b5563" }}
+                          style={{ height: 30, padding: "0 8px", background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#4b5563", lineHeight: 1 }}
                           onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
                           onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
-                          ✕
+                          ×
                         </button>
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
                 </>
               ) : (
                 <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1821,7 +1839,7 @@ export default function DashboardPage() {
                       return [
                         { label: "Dernière connexion", value: lastActiveStr },
                         { label: "Assiduité", value: streak > 0 ? `${streak} jours actifs` : "Aucune activité" },
-                        { label: "Crises désamorcées", value: sos > 0 ? `🛡️ ${sos}` : "Aucune" },
+                        { label: "Crises désamorcées", value: sos > 0 ? `${sos}` : "Aucune" },
                       ].map((item) => (
                         <div key={item.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                           <span style={{ fontSize: 11, color: "#64748b" }}>{item.label}</span>
@@ -1983,22 +2001,22 @@ export default function DashboardPage() {
                             );
                           });
                         })()}
-                        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+                        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
                           <button onClick={() => { setNewNoteText(""); setShowNoteModal(true); }}
-                            style={{ width: 22, height: 22, borderRadius: 6, fontSize: 14, fontWeight: 400, cursor: "pointer", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.04)", color: "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}>
-                            +
+                            style={{ height: 26, padding: "0 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", cursor: "pointer", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.04)", color: "#94a3b8", transition: "all 0.2s" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"; e.currentTarget.style.color = "white"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                            Nouvelle Note
                           </button>
                         </div>
                       </div>
                     </div>
 
-                  {/* Analyses IA + Documents */}
-                  <div data-tour="rapport">
-                  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#818cf8" }}>Analyses IA</p>
+                  {/* Analyses IA */}
+                  <div data-tour="rapport" style={{ marginBottom: 10 }}>
+                    <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#818cf8" }}>Analyses IA</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <button onClick={() => { setBilanContent(""); setShowBilanModal(true); }}
+                      <button onClick={() => { setBilanContent(""); setShowBilanModal(true); }}
                         style={{ height: 36, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", color: "#818cf8", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
                         onMouseEnter={e => { e.currentTarget.style.background = "rgba(99,102,241,0.15)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                         onMouseLeave={e => { e.currentTarget.style.background = "rgba(99,102,241,0.08)"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>
@@ -2012,14 +2030,19 @@ export default function DashboardPage() {
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                         Rapport IA
                       </button>
-                      <button onClick={() => { setPatientDocFiles([]); setPatientDocErrors([]); setPatientDocSuccess([]); setShowPatientDocModal(true); }}
-                        style={{ height: 36, borderRadius: 8, background: "rgba(96,165,250,0.04)", border: "1px solid rgba(96,165,250,0.18)", color: "#60a5fa", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(96,165,250,0.1)"; e.currentTarget.style.borderColor = "rgba(96,165,250,0.35)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(96,165,250,0.04)"; e.currentTarget.style.borderColor = "rgba(96,165,250,0.18)"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                        Gérer mes documents
-                      </button>
-                      </div>
+                    </div>
+                  </div>
+
+                  {/* Documents */}
+                  <div style={{ marginBottom: 10 }}>
+                    <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#60a5fa" }}>Documents</p>
+                    <button onClick={() => { setPatientDocFiles([]); setPatientDocErrors([]); setPatientDocSuccess([]); setShowPatientDocModal(true); }}
+                      style={{ width: "100%", height: 36, borderRadius: 8, background: "rgba(96,165,250,0.04)", border: "1px solid rgba(96,165,250,0.18)", color: "#60a5fa", fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(96,165,250,0.1)"; e.currentTarget.style.borderColor = "rgba(96,165,250,0.35)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(96,165,250,0.04)"; e.currentTarget.style.borderColor = "rgba(96,165,250,0.18)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                      Gérer mes documents
+                    </button>
                   </div>
 
                   {/* Renvoyer invitation */}
@@ -2190,12 +2213,12 @@ export default function DashboardPage() {
 
                     // Couleurs de la carte
                     let cardBg = "rgba(255,255,255,0.02)";
-                    let cardBorder = "rgba(255,255,255,0.06)";
+                    let cardBorder = "rgba(255,255,255,0.07)";
                     let cardShadow = "none";
-                    if (isCritical) { cardBg = "rgba(244,63,94,0.08)"; cardBorder = "rgba(244,63,94,0.45)"; cardShadow = "0 0 28px rgba(244,63,94,0.2)"; }
-                    else if (isRed) { cardBg = "rgba(244,63,94,0.05)"; cardBorder = "rgba(244,63,94,0.28)"; cardShadow = "0 0 18px rgba(244,63,94,0.1)"; }
-                    else if (isOrange) { cardBg = "rgba(245,158,11,0.04)"; cardBorder = "rgba(245,158,11,0.28)"; }
-                    else if (hasVictory) { cardBg = "rgba(16,185,129,0.04)"; cardBorder = "rgba(16,185,129,0.28)"; }
+                    if (isCritical) { cardBg = "rgba(244,63,94,0.04)"; cardBorder = "rgba(244,63,94,0.25)"; cardShadow = "0 0 16px rgba(244,63,94,0.08)"; }
+                    else if (isRed) { cardBg = "rgba(244,63,94,0.03)"; cardBorder = "rgba(244,63,94,0.18)"; }
+                    else if (isOrange) { cardBg = "rgba(245,158,11,0.02)"; cardBorder = "rgba(245,158,11,0.15)"; }
+                    else if (hasVictory) { cardBg = "rgba(16,185,129,0.02)"; cardBorder = "rgba(16,185,129,0.15)"; }
 
                     const alertColor = isRed ? coral : amber;
 
@@ -2211,7 +2234,7 @@ export default function DashboardPage() {
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: hasAlert || hasVictory ? 12 : 0 }}>
                           <div style={{ width: 38, height: 38, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "white", flexShrink: 0 }}>{patient.initials}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: hasAlert ? alertColor : "white", filter: discretMode ? "blur(4px)" : "none" }}>{patient.firstName} {patient.lastName}</p>
+                            <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "white", filter: discretMode ? "blur(4px)" : "none" }}>{patient.firstName} {patient.lastName}</p>
                             <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{patient.totalMessages} messages</p>
                           </div>
                         </div>
@@ -2226,7 +2249,7 @@ export default function DashboardPage() {
                               style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: `1px solid ${isRed ? "rgba(244,63,94,0.4)" : "rgba(245,158,11,0.4)"}`, background: isRed ? "rgba(244,63,94,0.12)" : "rgba(245,158,11,0.1)", color: alertColor, transition: "all 0.2s" }}
                               onMouseEnter={e => { e.currentTarget.style.background = isRed ? "rgba(244,63,94,0.22)" : "rgba(245,158,11,0.2)"; }}
                               onMouseLeave={e => { e.currentTarget.style.background = isRed ? "rgba(244,63,94,0.12)" : "rgba(245,158,11,0.1)"; }}>
-                              {isCritical ? "Traiter l'urgence →" : "Prendre des nouvelles →"}
+                              {isRed ? "Traiter l'urgence →" : "Prendre des nouvelles →"}
                             </button>
                           </>
                         )}
@@ -2503,7 +2526,7 @@ export default function DashboardPage() {
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 480, border: "1px solid rgba(16,185,129,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Murmure du praticien</h2>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: emerald, textTransform: "uppercase", letterSpacing: "0.06em" }}>Murmure</h2>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>Consigne prioritaire pour {selectedPatient?.firstName} · Choisissez la durée appropriée</p>
               </div>
               <button onClick={() => setShowMurmureModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>×</button>
@@ -3400,7 +3423,7 @@ export default function DashboardPage() {
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 440, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "94a3b8" }}>Nouvelle note</h2>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em" }}>Nouvelle Note</h2>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>Notes visibles uniquement par vous</p>
               </div>
               <button onClick={() => setShowNoteModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8" }}>×</button>
