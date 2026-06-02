@@ -14,19 +14,19 @@ const OBJECTIFS = [
 ];
 
 const MOODS = [
-  { id: "abloc", label: "À bloc !", emoji: "🔥" },
+  { id: "abloc", label: "Très motivé(e)", emoji: "🔥" },
   { id: "optimiste", label: "Optimiste", emoji: "😊" },
-  { id: "anxieux", label: "Un peu anxieux", emoji: "😰" },
-  { id: "perdu", label: "Complètement perdu", emoji: "😕" },
-  { id: "fatigue", label: "Fatigué mais motivé", emoji: "😴" },
+  { id: "anxieux", label: "Un peu anxieux(se)", emoji: "😰" },
+  { id: "perdu", label: "Complètement perdu(e)", emoji: "😕" },
+  { id: "fatigue", label: "Volontaire, mais fatigué(e)", emoji: "😴" },
 ];
 
 const DEFIS = [
   { id: "temps", label: "Manque de temps", emoji: "⏰" },
-  { id: "sucre", label: "Fringales de sucre", emoji: "🍫" },
+  { id: "sucre", label: "Pulsions sucrées", emoji: "🍫" },
   { id: "restaurant", label: "Repas au restaurant", emoji: "🍽️" },
   { id: "motivation", label: "Manque de motivation", emoji: "😔" },
-  { id: "cuisine", label: "Je ne sais pas cuisiner", emoji: "👨‍🍳" },
+  { id: "cuisine", label: "Manque d'organisation en cuisine", emoji: "👨‍🍳" },
   { id: "stress", label: "Manger sous le stress", emoji: "😤" },
 ];
 
@@ -63,6 +63,38 @@ const DIGESTIF = [
 ];
 
 const LS_KEY = "patient_onboarding";
+
+const ObjSVG = ({ id }: { id: string }) => {
+  const s = { fill: "none" as const, stroke: "#10b981", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (id === "scale") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M16 16h6"/><path d="M2 16h6"/><path d="M12 4v16"/><circle cx="5" cy="16" r="3"/><circle cx="19" cy="16" r="3"/></svg>;
+  if (id === "zap") return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="rgba(16,185,129,0.25)"/></svg>;
+  if (id === "leaf") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>;
+  if (id === "dumbbell") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M6 5v14M18 5v14"/><path d="M2 9h4M18 9h4M2 15h4M18 15h4"/><path d="M6 9v6M18 9v6"/></svg>;
+  if (id === "heartpulse") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
+  if (id === "bowl") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M4 11a8 8 0 0 0 16 0z"/><path d="M2 11h20"/><path d="M12 3v4M9 5l1 4M15 5l-1 4"/></svg>;
+  return null;
+};
+
+const MoodSVG = ({ id, color }: { id: string; color: string }) => {
+  const s = { fill: "none" as const, stroke: color, strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (id === "flame") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>;
+  if (id === "sun") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>;
+  if (id === "cloud") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>;
+  if (id === "compass") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>;
+  if (id === "moon") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
+  return null;
+};
+
+const DefiSVG = ({ id }: { id: string }) => {
+  const s = { fill: "none" as const, stroke: "#f59e0b", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (id === "clock") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+  if (id === "heart") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>;
+  if (id === "utensils") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>;
+  if (id === "battery") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><rect x="2" y="7" width="16" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/><line x1="6" y1="11" x2="6" y2="13"/></svg>;
+  if (id === "chefhat") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>;
+  if (id === "zap2") return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="rgba(245,158,11,0.2)"/></svg>;
+  return null;
+};
 
 export default function PatientOnboardingPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
@@ -103,6 +135,7 @@ export default function PatientOnboardingPage() {
   const [alimentsAimes, setAlimentsAimes] = useState<string[]>([]);
   const [alimentsDetestes, setAlimentsDetestes] = useState<string[]>([]);
   const [alimentCustom, setAlimentCustom] = useState("");
+  const [customAliments, setCustomAliments] = useState<string[]>([]);
 
   const totalSteps = 4;
 
@@ -140,6 +173,7 @@ export default function PatientOnboardingPage() {
           if (Array.isArray(p.digestif)) setDigestif(p.digestif as string[]);
           if (Array.isArray(p.alimentsAimes)) setAlimentsAimes(p.alimentsAimes as string[]);
           if (Array.isArray(p.alimentsDetestes)) setAlimentsDetestes(p.alimentsDetestes as string[]);
+          if (Array.isArray(p.customAliments)) setCustomAliments(p.customAliments as string[]);
           return; // localStorage prime sur les données Supabase
         }
       } catch { /* ignore */ }
@@ -173,7 +207,7 @@ export default function PatientOnboardingPage() {
         confirmNiveauActivite, confirmRegime,
         objectif, objectifCustom, mood, moodCustom, defi, defiCustom,
         equipement, tempsCuisine, budget, repasSautes, sommeil, digestif,
-        alimentsAimes, alimentsDetestes,
+        alimentsAimes, alimentsDetestes, customAliments,
       }));
     } catch { /* ignore quota errors */ }
   }, [
@@ -182,26 +216,32 @@ export default function PatientOnboardingPage() {
     confirmNiveauActivite, confirmRegime,
     objectif, objectifCustom, mood, moodCustom, defi, defiCustom,
     equipement, tempsCuisine, budget, repasSautes, sommeil, digestif,
-    alimentsAimes, alimentsDetestes,
+    alimentsAimes, alimentsDetestes, customAliments,
   ]);
 
   const toggleMultiple = (value: string, list: string[], setList: (v: string[]) => void) => {
     setList(list.includes(value) ? list.filter(x => x !== value) : [...list, value]);
   };
 
-  const toggleAliment = (aliment: string, type: "aime" | "deteste") => {
-    if (type === "aime") {
-      setAlimentsDetestes(prev => prev.filter(a => a !== aliment));
-      setAlimentsAimes(prev => prev.includes(aliment) ? prev.filter(a => a !== aliment) : [...prev, aliment]);
-    } else {
+  const toggleAliment = (aliment: string) => {
+    const aime = alimentsAimes.includes(aliment);
+    const deteste = alimentsDetestes.includes(aliment);
+    if (!aime && !deteste) {
+      setAlimentsAimes(prev => [...prev, aliment]);
+    } else if (aime) {
       setAlimentsAimes(prev => prev.filter(a => a !== aliment));
-      setAlimentsDetestes(prev => prev.includes(aliment) ? prev.filter(a => a !== aliment) : [...prev, aliment]);
+      setAlimentsDetestes(prev => [...prev, aliment]);
+    } else {
+      setAlimentsDetestes(prev => prev.filter(a => a !== aliment));
     }
   };
 
   const addAlimentCustom = () => {
-    if (!alimentCustom.trim()) return;
-    setAlimentsAimes(prev => [...prev, alimentCustom.trim()]);
+    const val = alimentCustom.trim();
+    if (!val) return;
+    if (!ALIMENTS.includes(val) && !customAliments.includes(val)) {
+      setCustomAliments(prev => [...prev, val]);
+    }
     setAlimentCustom("");
   };
 
@@ -430,30 +470,41 @@ export default function PatientOnboardingPage() {
               </>
             )}
 
-            <button onClick={() => setStep(2)}
-              style={{ width: "100%", height: 48, borderRadius: 12, background: "#10b981", border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer", transition: "opacity 0.2s, transform 0.15s" }}
-              onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}>
-              Confirmer et continuer →
-            </button>
+            {!editMode && (
+              <button onClick={() => setStep(2)}
+                style={{ width: "100%", height: 48, borderRadius: 12, background: "#10b981", border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer", transition: "opacity 0.2s, transform 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                Confirmer et continuer →
+              </button>
+            )}
           </div>
         )}
 
-        {/* ═══ ÉTAPE 2 - Objectif + Mood + Défi ═══ */}
+        {/* ═══ ÉTAPE 2 - Votre profil ═══ */}
         {step === 2 && (
           <div style={{ background: "#111111", borderRadius: 20, padding: 24, border: "1px solid rgba(255,255,255,0.08)" }}>
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 2 - Direction</p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 2 - Votre profil</p>
             <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "white" }}>Parlez-nous de vous</h2>
-            <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Ces infos aident votre jumeau à adapter ses conseils.</p>
+            <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b" }}>Ces infos aident votre compagnon de suivi à adapter ses conseils.</p>
 
             {/* Objectif */}
-            <div style={{ marginBottom: 22 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 600, color: "white" }}>Quel est votre objectif principal ?</p>
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Quel est votre objectif principal ?</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {OBJECTIFS.map(o => (
+                {[
+                  { id: "poids", label: "Perdre du poids", svg: "scale" },
+                  { id: "energie", label: "Avoir plus d'énergie", svg: "zap" },
+                  { id: "digestion", label: "Améliorer ma digestion", svg: "leaf" },
+                  { id: "muscle", label: "Prendre du muscle", svg: "dumbbell" },
+                  { id: "pathologie", label: "Gérer une pathologie", svg: "heartpulse" },
+                  { id: "equilibre", label: "Manger plus équilibré", svg: "bowl" },
+                ].map(o => (
                   <button key={o.id} onClick={() => setObjectif(o.id)} style={cardBtn(objectif === o.id)}>
-                    <span style={{ fontSize: 20 }}>{o.emoji}</span>
-                    <p style={{ margin: "6px 0 0", fontSize: 13, fontWeight: 600, color: "white" }}>{o.label}</p>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: objectif === o.id ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.08)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+                      <ObjSVG id={o.svg} />
+                    </div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>{o.label}</p>
                   </button>
                 ))}
                 <button onClick={() => setObjectif("autre")} style={cardBtn(objectif === "autre")}>
@@ -469,13 +520,21 @@ export default function PatientOnboardingPage() {
             </div>
 
             {/* Mood */}
-            <div style={{ marginBottom: 22 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 600, color: "white" }}>Comment vous sentez-vous face au changement ?</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {MOODS.map(m => (
-                  <button key={m.id} onClick={() => setMood(m.id)} style={{ ...cardBtn(mood === m.id), display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: 22 }}>{m.emoji}</span>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "white" }}>{m.label}</p>
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Comment vous sentez-vous face au changement ?</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {[
+                  { id: "abloc", label: "Très motivé(e)", color: "#f97316", svg: "flame" },
+                  { id: "optimiste", label: "Optimiste", color: "#eab308", svg: "sun" },
+                  { id: "anxieux", label: "Un peu anxieux(se)", color: "#a78bfa", svg: "cloud" },
+                  { id: "perdu", label: "Complètement perdu(e)", color: "#60a5fa", svg: "compass" },
+                  { id: "fatigue", label: "Volontaire, mais fatigué(e)", color: "#94a3b8", svg: "moon" },
+                ].map(m => (
+                  <button key={m.id} onClick={() => setMood(m.id)} style={cardBtn(mood === m.id)}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: mood === m.id ? `${m.color}28` : `${m.color}14`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+                      <MoodSVG id={m.svg} color={m.color} />
+                    </div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>{m.label}</p>
                   </button>
                 ))}
                 <button onClick={() => setMood("autre")} style={cardBtn(mood === "autre")}>
@@ -491,13 +550,22 @@ export default function PatientOnboardingPage() {
             </div>
 
             {/* Défi */}
-            <div style={{ marginBottom: 22 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 600, color: "white" }}>Quel est votre plus gros défi ?</p>
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Quel est votre plus gros défi ?</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {DEFIS.map(d => (
+                {[
+                  { id: "temps", label: "Manque de temps", svg: "clock" },
+                  { id: "sucre", label: "Pulsions sucrées", svg: "heart" },
+                  { id: "restaurant", label: "Repas au restaurant", svg: "utensils" },
+                  { id: "motivation", label: "Manque de motivation", svg: "battery" },
+                  { id: "cuisine", label: "Manque d'organisation en cuisine", svg: "chefhat" },
+                  { id: "stress", label: "Manger sous le stress", svg: "zap2" },
+                ].map(d => (
                   <button key={d.id} onClick={() => setDefi(d.id)} style={cardBtn(defi === d.id)}>
-                    <span style={{ fontSize: 20 }}>{d.emoji}</span>
-                    <p style={{ margin: "6px 0 0", fontSize: 13, fontWeight: 600, color: "white" }}>{d.label}</p>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: defi === d.id ? "rgba(245,158,11,0.2)" : "rgba(245,158,11,0.08)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+                      <DefiSVG id={d.svg} />
+                    </div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>{d.label}</p>
                   </button>
                 ))}
                 <button onClick={() => setDefi("autre")} style={cardBtn(defi === "autre")}>
@@ -527,7 +595,7 @@ export default function PatientOnboardingPage() {
         {/* ═══ ÉTAPE 3 - Quotidien ═══ */}
         {step === 3 && (
           <div style={{ background: "#111111", borderRadius: 20, padding: 24, border: "1px solid rgba(255,255,255,0.08)" }}>
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 3 - Quotidien</p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 3 - Votre quotidien</p>
             <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "white" }}>Votre mode de vie</h2>
             <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Pour des conseils vraiment adaptés à votre réalité.</p>
 
@@ -559,7 +627,7 @@ export default function PatientOnboardingPage() {
             <div style={{ marginBottom: 20 }}>
               <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 600, color: "white" }}>Votre rapport au budget courses</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                {[{ id: "eco", label: "Économique" }, { id: "standard", label: "Standard" }, { id: "premium", label: "Premium" }].map(b => (
+                {[{ id: "eco", label: "Petit budget" }, { id: "standard", label: "Budget moyen" }, { id: "premium", label: "Budget flexible" }].map(b => (
                   <button key={b.id} onClick={() => setBudget(b.id)} style={cardBtn(budget === b.id)}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white", textAlign: "center" }}>{b.label}</p>
                   </button>
@@ -595,7 +663,7 @@ export default function PatientOnboardingPage() {
             <div style={{ marginBottom: 20 }}>
               <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 600, color: "white" }}>Inconforts digestifs</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {DIGESTIF.map(d => (
+                {[...DIGESTIF, { id: "autre", label: "Autre ?" }].map(d => (
                   <button key={d.id} onClick={() => toggleMultiple(d.id, digestif, setDigestif)} style={cardBtn(digestif.includes(d.id))}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>{d.label}</p>
                   </button>
@@ -617,20 +685,16 @@ export default function PatientOnboardingPage() {
         {/* ═══ ÉTAPE 4 - Aliments ═══ */}
         {step === 4 && (
           <div style={{ background: "#111111", borderRadius: 20, padding: 24, border: "1px solid rgba(255,255,255,0.08)" }}>
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 4 - Plaisir</p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 4 - Vos goûts</p>
             <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "white" }}>Vos préférences alimentaires</h2>
             <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Cliquez une fois pour ❤️ aimer, deux fois pour ❌ ne pas aimer.</p>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-              {ALIMENTS.map(aliment => {
+              {[...ALIMENTS, ...customAliments].map(aliment => {
                 const aime = alimentsAimes.includes(aliment);
                 const deteste = alimentsDetestes.includes(aliment);
                 return (
-                  <button key={aliment} onClick={() => {
-                    if (!aime && !deteste) toggleAliment(aliment, "aime");
-                    else if (aime) toggleAliment(aliment, "deteste");
-                    else toggleAliment(aliment, "aime");
-                  }} style={{ borderRadius: 20, padding: "8px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", border: `1px solid ${aime ? "rgba(16,185,129,0.4)" : deteste ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)"}`, background: aime ? "rgba(16,185,129,0.1)" : deteste ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.03)", color: aime ? "#10b981" : deteste ? "#f87171" : "#94a3b8", transition: "all 0.15s" }}>
+                  <button key={aliment} onClick={() => toggleAliment(aliment)} style={{ borderRadius: 20, padding: "8px 14px", fontSize: 13, fontWeight: 500, cursor: "pointer", border: `1px solid ${aime ? "rgba(16,185,129,0.4)" : deteste ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)"}`, background: aime ? "rgba(16,185,129,0.1)" : deteste ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.03)", color: aime ? "#10b981" : deteste ? "#f87171" : "#94a3b8", transition: "all 0.15s" }}>
                     {aime ? "❤️ " : deteste ? "❌ " : ""}{aliment}
                   </button>
                 );
@@ -676,7 +740,7 @@ export default function PatientOnboardingPage() {
                 style={{ flex: 2, height: 48, borderRadius: 12, background: saving ? "rgba(255,255,255,0.05)" : "#10b981", border: "none", color: saving ? "#64748b" : "black", fontSize: 15, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", transition: "opacity 0.2s, transform 0.15s" }}
                 onMouseEnter={e => { if (!saving) { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
                 onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                {saving ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "black", animation: "spin 0.7s linear infinite", display: "inline-block" }} />Sauvegarde...</span> : "Accéder à mon espace →"}
+                {saving ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "black", animation: "spin 0.7s linear infinite", display: "inline-block" }} />Sauvegarde</span> : "Accéder à mon espace →"}
               </button>
             </div>
           </div>
