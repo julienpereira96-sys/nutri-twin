@@ -719,13 +719,13 @@ export default function DashboardPage() {
     });
   };
 
-  const loadPatients = async (pid: string) => {
+  const loadPatients = async (pid: string): Promise<boolean> => {
     const { data: relations } = await supabase.from("patient_practitioner").select("patient_id").eq("practitioner_id", pid);
-    if (!relations || relations.length === 0) { setLoading(false); setOnboardingDemoMode(true); return; }
+    if (!relations || relations.length === 0) { setLoading(false); setOnboardingDemoMode(true); return true; }
     const patientIds = relations.map((r) => r.patient_id as string);
 
     const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status").in("user_id", patientIds);
-    if (!patientsData) { setLoading(false); return; }
+    if (!patientsData) { setLoading(false); return false; }
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -800,10 +800,12 @@ export default function DashboardPage() {
       };
     });
     setPatients(patientsWithStats);
-    setOnboardingDemoMode(patientsWithStats.length === 0);
+    const isDemo = patientsWithStats.length === 0;
+    setOnboardingDemoMode(isDemo);
     if (patientsWithStats.length > 0) setSelectedPatientId(patientsWithStats[0].id);
     else setSelectedPatientId("demo-1");
     setLoading(false);
+    return isDemo;
   };
   useEffect(() => {
     // Écouter l'expiration de session en cours d'utilisation
@@ -840,7 +842,8 @@ export default function DashboardPage() {
       const { count } = await supabase.from("documents").select("*", { count: "exact", head: true }).eq("practitioner_id", pid);
       setHasDocuments((count ?? 0) > 0);
       if ((count ?? 0) > 0) { const hidden = localStorage.getItem("fidelity_hidden"); if (hidden === "true") setShowFidelity(false); }
-      await Promise.all([loadPatients(pid), loadMonthlyStats(pid), loadDocuments(pid)]);
+      const isDemo = await loadPatients(pid);
+      if (!isDemo) await Promise.all([loadMonthlyStats(pid), loadDocuments(pid)]);
     });
 
     return () => { subscription.unsubscribe(); };
@@ -3498,15 +3501,13 @@ export default function DashboardPage() {
               </>
             ) : (
               <>
-                <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 14, border: "1px solid rgba(16,185,129,0.15)", padding: "14px 16px", marginBottom: 20 }}>
-                  <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.6 }}>C'est ici que vous glissez vos consignes spécifiques pour ce patient. Points de vigilance, blessures à éviter, passions pour le motiver...<br/>Le Jumeau s'adaptera instantanément à ces nuances.</p>
-                </div>
+                <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>C'est ici que vous glissez vos consignes spécifiques pour ce patient. Le Jumeau s'adaptera instantanément à ces nuances.</p>
                 <textarea value={inviteBriefJumeau} onChange={e => setInviteBriefJumeau(e.target.value)}
                   placeholder="Exemple : Sophie est anxieuse autour de la balance - évite ce sujet. Elle se culpabilise facilement, reste bienveillant avant d'être technique. Elle adore cuisiner, utilise ça pour l'engager."
                   rows={5}
-                  style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(16,185,129,0.2)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 12 }}
-                  onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.2)"} />
-                  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Définir la durée</p>
+                  style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 14 }}
+                  onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Durée du murmure</p>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 16 }}>
                 {[
                     { label: "Permanent", value: "permanent" },
