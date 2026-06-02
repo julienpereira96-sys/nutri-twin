@@ -53,7 +53,23 @@ export default function SetPasswordPage() {
       setError("__expired__");
     }, 20000);
 
-    // Vérifier immédiatement si une session existe déjà
+    // createBrowserClient (@supabase/ssr) ne traite pas automatiquement les
+    // tokens dans le hash URL. On les extrait manuellement et on appelle
+    // setSession() pour initialiser la session côté cookie.
+    const params = new URLSearchParams(hash.slice(1));
+    const accessToken = params.get("access_token");
+    const refreshToken = params.get("refresh_token");
+
+    if (accessToken && refreshToken) {
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(({ data: { session }, error }) => {
+          if (session && !error) { clearTimeout(timeout); setReady(true); }
+        })
+        .catch(() => {});
+      return () => clearTimeout(timeout);
+    }
+
+    // Fallback : vérifier si une session cookie existe déjà
     // (INITIAL_SESSION peut firer avant que onAuthStateChange soit enregistré)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) { clearTimeout(timeout); setReady(true); }
