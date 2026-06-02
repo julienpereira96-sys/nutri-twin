@@ -65,39 +65,60 @@ const DIGESTIF = [
 const LS_KEY = "patient_onboarding";
 
 const LevierSVG = ({ id }: { id: string }) => {
+  const g = "#10b981"; const g2 = "#34d399"; const g3 = "#6ee7b7";
   if (id === "progres") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <rect x="2" y="15" width="5" height="7" rx="1.5" fill="#10b981" opacity="0.55"/>
-      <rect x="9.5" y="10" width="5" height="12" rx="1.5" fill="#10b981" opacity="0.75"/>
-      <rect x="17" y="4" width="5" height="18" rx="1.5" fill="#10b981"/>
-      <path d="M4 12L10 7.5l5 3.5 5-6" stroke="#34d399" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <rect x="2" y="15" width="5" height="7" rx="1.5" fill={g} opacity="0.45"/>
+      <rect x="9.5" y="10" width="5" height="12" rx="1.5" fill={g} opacity="0.65"/>
+      <rect x="17" y="4" width="5" height="18" rx="1.5" fill={g}/>
+      <path d="M4.5 13.5L10 8.5l4.5 3 5-6.5" stroke={g2} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="4.5" cy="13.5" r="1.5" fill={g2}/>
+      <circle cx="10" cy="8.5" r="1.5" fill={g2}/>
+      <circle cx="14.5" cy="11.5" r="1.5" fill={g2}/>
+      <circle cx="19.5" cy="5" r="1.5" fill={g2}/>
     </svg>
   );
   if (id === "encourage") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z" fill="#f97316"/>
-      <path d="M8.5 9.5c.5-1.5 2-2 3-1.5" stroke="#fed7aa" strokeWidth="1.5" strokeLinecap="round"/>
-      <circle cx="17" cy="6" r="2" fill="#fbbf24" opacity="0.75"/>
-      <circle cx="20.5" cy="10" r="1.5" fill="#fbbf24" opacity="0.5"/>
-      <circle cx="19" cy="3.5" r="1" fill="#fbbf24" opacity="0.4"/>
+      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z" fill={g}/>
+      <path d="M8.5 9.5c.5-1.5 2-2 3-1.5" stroke={g3} strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="17" cy="6" r="2" fill={g2} opacity="0.7"/>
+      <circle cx="20.5" cy="10" r="1.5" fill={g2} opacity="0.45"/>
+      <circle cx="19" cy="3.5" r="1" fill={g2} opacity="0.35"/>
     </svg>
   );
   if (id === "comprendre") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M9 21h6M12 21v-3" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round"/>
-      <path d="M6.8 17A7 7 0 1117.2 17H6.8z" fill="#a78bfa"/>
-      <path d="M12 7v4M10 9h4" stroke="#ede9fe" strokeWidth="1.8" strokeLinecap="round"/>
-      <circle cx="18.5" cy="4.5" r="1.5" fill="#c4b5fd" opacity="0.7"/>
-      <circle cx="21" cy="8" r="1" fill="#c4b5fd" opacity="0.5"/>
-      <circle cx="20" cy="2" r="0.8" fill="#c4b5fd" opacity="0.4"/>
+      <path d="M9 21h6M12 21v-3" stroke={g} strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M6.8 17A7 7 0 1117.2 17H6.8z" fill={g}/>
+      <path d="M12 8v3.5" stroke={g3} strokeWidth="2" strokeLinecap="round"/>
+      <circle cx="12" cy="7" r="1" fill={g3}/>
+      <circle cx="18.5" cy="4.5" r="1.5" fill={g2} opacity="0.6"/>
+      <circle cx="21" cy="8" r="1" fill={g2} opacity="0.4"/>
+      <circle cx="20" cy="2" r="0.8" fill={g2} opacity="0.3"/>
     </svg>
   );
   if (id === "routine") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <rect x="3" y="4" width="18" height="17" rx="2.5" fill="rgba(96,165,250,0.18)" stroke="#60a5fa" strokeWidth="1.5"/>
-      <path d="M3 10h18" stroke="#60a5fa" strokeWidth="1.5"/>
-      <path d="M8 2v4M16 2v4" stroke="#60a5fa" strokeWidth="1.8" strokeLinecap="round"/>
-      <path d="M7.5 15.5l2.5 2.5 5-5" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <rect x="3" y="4" width="18" height="17" rx="2.5" fill={`${g}18`} stroke={g} strokeWidth="1.5"/>
+      <path d="M3 10h18" stroke={g} strokeWidth="1.5"/>
+      <path d="M8 2v4M16 2v4" stroke={g} strokeWidth="1.8" strokeLinecap="round"/>
+      <path d="M7.5 15.5l2.5 2.5 5-5" stroke={g2} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+  if (id === "supervise") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <ellipse cx="12" cy="12" rx="10" ry="6.5" fill={`${g}18`} stroke={g} strokeWidth="1.5"/>
+      <circle cx="12" cy="12" r="3.5" fill={g}/>
+      <circle cx="12" cy="12" r="1.5" fill={g3}/>
+      <circle cx="12" cy="12" r="0.6" fill="white"/>
+      <path d="M2 12c2.5-5 5.5-7.5 10-7.5s7.5 2.5 10 7.5" stroke={g} strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+    </svg>
+  );
+  if (id === "simplicite") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="9" fill={`${g}15`} stroke={g} strokeWidth="1.5"/>
+      <path d="M8 12l3 3 5-6" stroke={g2} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
   return null;
@@ -435,7 +456,7 @@ export default function PatientOnboardingPage() {
     borderRadius: 12,
     border: `2px solid ${active ? "#10b981" : "rgba(255,255,255,0.08)"}`,
     background: active ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)",
-    padding: "12px",
+    padding: "8px 10px",
     textAlign: "left",
     cursor: "pointer",
     transition: "all 0.15s",
@@ -522,14 +543,14 @@ export default function PatientOnboardingPage() {
               {!editMode ? (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
                   {[
-                    { label: "Âge", display: confirmAge ? `${confirmAge} ans` : "—" },
-                    { label: "Taille", display: confirmTaille ? `${confirmTaille} cm` : "—" },
-                    { label: "Poids", display: confirmPoids ? `${confirmPoids} kg` : "—" },
-                    { label: "Sexe", display: confirmSexe || "—" },
+                    { label: "Âge", display: confirmAge ? `${confirmAge} ans` : "Aucun" },
+                    { label: "Taille", display: confirmTaille ? `${confirmTaille} cm` : "Aucune" },
+                    { label: "Poids", display: confirmPoids ? `${confirmPoids} kg` : "Aucun" },
+                    { label: "Sexe", display: confirmSexe || "Aucun" },
                   ].map(f => (
                     <div key={f.label} style={fieldBox}>
                       <p style={fieldLabel}>{f.label}</p>
-                      <p style={fieldValue(f.display !== "—" ? f.display : "")}>{f.display}</p>
+                      <p style={fieldValue(!["Aucun", "Aucune"].includes(f.display) ? f.display : "")}>{f.display}</p>
                     </div>
                   ))}
                 </div>
@@ -567,7 +588,7 @@ export default function PatientOnboardingPage() {
                   {medicalFields.map(f => (
                     <div key={f.label} style={fieldBox}>
                       <p style={fieldLabel}>{f.label}</p>
-                      <p style={fieldValue(f.value)}>{f.value || "—"}</p>
+                      <p style={fieldValue(f.value)}>{f.value || f.none}</p>
                     </div>
                   ))}
                 </div>
@@ -652,16 +673,21 @@ export default function PatientOnboardingPage() {
                   { id: "encourage", label: "Me sentir encouragé(e)" },
                   { id: "comprendre", label: "Comprendre le fonctionnement" },
                   { id: "routine", label: "Avoir une routine stricte" },
+                  { id: "supervise", label: "Savoir que je suis supervisé(e)" },
+                  { id: "simplicite", label: "La simplicité des actions" },
                 ].map(o => (
                   <button key={o.id} onClick={() => setObjectif(o.id)} style={cardBtn(objectif === o.id)}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: objectif === o.id ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.08)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: objectif === o.id ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.07)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6 }}>
                       <LevierSVG id={o.id} />
                     </div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>{o.label}</p>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>{o.label}</p>
                   </button>
                 ))}
+                <button onClick={() => setObjectif("autre")} style={cardBtn(objectif === "autre")}>
+                  <p style={{ margin: "16px 0 0", fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>Autre...</p>
+                </button>
               </div>
-              {false && (
+              {objectif === "autre" && (
                 <input type="text" value={objectifCustom} onChange={e => setObjectifCustom(e.target.value)}
                   placeholder="Décrivez votre levier..." style={{ ...inputStyle, marginTop: 8 }}
                   onFocus={e => e.target.style.borderColor = "#10b981"}
@@ -681,14 +707,14 @@ export default function PatientOnboardingPage() {
                   { id: "fatigue", label: "Volontaire, mais fatigué(e)", color: "#94a3b8", svg: "moon" },
                 ].map(m => (
                   <button key={m.id} onClick={() => setMood(m.id)} style={cardBtn(mood === m.id)}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: mood === m.id ? `${m.color}28` : `${m.color}14`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: mood === m.id ? `${m.color}28` : `${m.color}10`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6 }}>
                       <MoodSVG id={m.svg} color={m.color} />
                     </div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>{m.label}</p>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>{m.label}</p>
                   </button>
                 ))}
                 <button onClick={() => setMood("autre")} style={cardBtn(mood === "autre")}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>Autre...</p>
+                  <p style={{ margin: "16px 0 0", fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>Autre...</p>
                 </button>
               </div>
               {mood === "autre" && (
@@ -712,14 +738,14 @@ export default function PatientOnboardingPage() {
                   { id: "stress", label: "Manger sous le stress", svg: "zap2" },
                 ].map(d => (
                   <button key={d.id} onClick={() => setDefi(d.id)} style={cardBtn(defi === d.id)}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: defi === d.id ? "rgba(245,158,11,0.2)" : "rgba(245,158,11,0.08)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: defi === d.id ? "rgba(245,158,11,0.2)" : "rgba(245,158,11,0.07)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6 }}>
                       <DefiSVG id={d.svg} />
                     </div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>{d.label}</p>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>{d.label}</p>
                   </button>
                 ))}
                 <button onClick={() => setDefi("autre")} style={cardBtn(defi === "autre")}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>Autre...</p>
+                  <p style={{ margin: "16px 0 0", fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>Autre...</p>
                 </button>
               </div>
               {defi === "autre" && (
@@ -762,7 +788,7 @@ export default function PatientOnboardingPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {EQUIPEMENT.map(e => (
                   <button key={e.id} onClick={() => toggleMultiple(e.id, equipement, setEquipement)} style={cardBtn(equipement.includes(e.id))}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>{e.label}</p>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>{e.label}</p>
                   </button>
                 ))}
               </div>
@@ -770,11 +796,11 @@ export default function PatientOnboardingPage() {
 
             {/* Temps cuisine */}
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Temps disponible pour cuisiner le soir *</p>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Temps disponible pour cuisiner le soir</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
                 {["< 15 min", "15-30 min", "30-45 min", "45+ min"].map(t => (
                   <button key={t} onClick={() => setTempsCuisine(t)} style={cardBtn(tempsCuisine === t)}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "white", textAlign: "center" }}>{t}</p>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8", textAlign: "center" }}>{t}</p>
                   </button>
                 ))}
               </div>
@@ -782,11 +808,11 @@ export default function PatientOnboardingPage() {
 
             {/* Budget */}
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Votre rapport au budget courses *</p>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Votre rapport au budget courses</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
                 {[{ id: "eco", label: "Petit budget" }, { id: "standard", label: "Budget moyen" }, { id: "premium", label: "Budget flexible" }].map(b => (
                   <button key={b.id} onClick={() => setBudget(b.id)} style={cardBtn(budget === b.id)}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white", textAlign: "center" }}>{b.label}</p>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8", textAlign: "center" }}>{b.label}</p>
                   </button>
                 ))}
               </div>
@@ -798,7 +824,7 @@ export default function PatientOnboardingPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
                 {["Petit-déjeuner", "Déjeuner", "Dîner", "Jamais"].map(r => (
                   <button key={r} onClick={() => toggleMultiple(r, repasSautes, setRepasSautes)} style={cardBtn(repasSautes.includes(r))}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "white", textAlign: "center" }}>{r}</p>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8", textAlign: "center" }}>{r}</p>
                   </button>
                 ))}
               </div>
@@ -806,29 +832,16 @@ export default function PatientOnboardingPage() {
 
             {/* Sommeil */}
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Combien d'heures dormez-vous en moyenne ? *</p>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Combien d&apos;heures dormez-vous en moyenne ?</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
                 {SOMMEIL.map(s => (
                   <button key={s.id} onClick={() => setSommeil(s.id)} style={cardBtn(sommeil === s.id)}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "white", textAlign: "center" }}>{s.label}</p>
+                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8", textAlign: "center" }}>{s.label}</p>
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Digestif */}
-            <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Inconforts digestifs</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {[...DIGESTIF, { id: "autre", label: "Autre ?" }].map(d => (
-                  <button key={d.id} onClick={() => toggleMultiple(d.id, digestif, setDigestif)} style={cardBtn(digestif.includes(d.id))}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>{d.label}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <p style={{ margin: "0 0 16px", fontSize: 11, color: "#4b5563" }}>* Champs requis pour continuer</p>
             {(() => {
               const step3Disabled = !tempsCuisine || !budget || !sommeil;
               return (
