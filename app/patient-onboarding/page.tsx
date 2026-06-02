@@ -473,6 +473,8 @@ export default function PatientOnboardingPage() {
     setSaving(true);
     setSaveError("");
     try {
+      // Rafraîchir la session avant la sauvegarde (évite les JWT expirés)
+      await supabase.auth.refreshSession();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/patient-login"); return; }
 
@@ -506,6 +508,7 @@ export default function PatientOnboardingPage() {
         ].filter(Boolean).join(" | ") || null,
         onboarding_completed: true,
         onboarding_status: "completed",
+        onboarding_done: true,
       }).eq("user_id", user.id);
 
       if (error) throw new Error(error.message);
@@ -513,7 +516,8 @@ export default function PatientOnboardingPage() {
       // Succès - nettoyer le localStorage et rediriger
       try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
       router.push("/chat");
-    } catch {
+    } catch (err) {
+      console.error("[onboarding] saveAndContinue error:", err);
       setSaveError("Une erreur est survenue lors de la sauvegarde. Veuillez réessayer.");
     } finally {
       setSaving(false);
