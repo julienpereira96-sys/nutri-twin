@@ -64,35 +64,150 @@ const DIGESTIF = [
 
 const LS_KEY = "patient_onboarding";
 
-const ObjSVG = ({ id }: { id: string }) => {
-  const s = { fill: "none" as const, stroke: "#10b981", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  if (id === "scale") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M16 16h6"/><path d="M2 16h6"/><path d="M12 4v16"/><circle cx="5" cy="16" r="3"/><circle cx="19" cy="16" r="3"/></svg>;
-  if (id === "zap") return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="rgba(16,185,129,0.25)"/></svg>;
-  if (id === "leaf") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>;
-  if (id === "dumbbell") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M6 5v14M18 5v14"/><path d="M2 9h4M18 9h4M2 15h4M18 15h4"/><path d="M6 9v6M18 9v6"/></svg>;
-  if (id === "heartpulse") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
-  if (id === "bowl") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M4 11a8 8 0 0 0 16 0z"/><path d="M2 11h20"/><path d="M12 3v4M9 5l1 4M15 5l-1 4"/></svg>;
+const LevierSVG = ({ id }: { id: string }) => {
+  if (id === "progres") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <rect x="2" y="15" width="5" height="7" rx="1.5" fill="#10b981" opacity="0.55"/>
+      <rect x="9.5" y="10" width="5" height="12" rx="1.5" fill="#10b981" opacity="0.75"/>
+      <rect x="17" y="4" width="5" height="18" rx="1.5" fill="#10b981"/>
+      <path d="M4 12L10 7.5l5 3.5 5-6" stroke="#34d399" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+  if (id === "encourage") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z" fill="#f97316"/>
+      <path d="M8.5 9.5c.5-1.5 2-2 3-1.5" stroke="#fed7aa" strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="17" cy="6" r="2" fill="#fbbf24" opacity="0.75"/>
+      <circle cx="20.5" cy="10" r="1.5" fill="#fbbf24" opacity="0.5"/>
+      <circle cx="19" cy="3.5" r="1" fill="#fbbf24" opacity="0.4"/>
+    </svg>
+  );
+  if (id === "comprendre") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M9 21h6M12 21v-3" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M6.8 17A7 7 0 1117.2 17H6.8z" fill="#a78bfa"/>
+      <path d="M12 7v4M10 9h4" stroke="#ede9fe" strokeWidth="1.8" strokeLinecap="round"/>
+      <circle cx="18.5" cy="4.5" r="1.5" fill="#c4b5fd" opacity="0.7"/>
+      <circle cx="21" cy="8" r="1" fill="#c4b5fd" opacity="0.5"/>
+      <circle cx="20" cy="2" r="0.8" fill="#c4b5fd" opacity="0.4"/>
+    </svg>
+  );
+  if (id === "routine") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <rect x="3" y="4" width="18" height="17" rx="2.5" fill="rgba(96,165,250,0.18)" stroke="#60a5fa" strokeWidth="1.5"/>
+      <path d="M3 10h18" stroke="#60a5fa" strokeWidth="1.5"/>
+      <path d="M8 2v4M16 2v4" stroke="#60a5fa" strokeWidth="1.8" strokeLinecap="round"/>
+      <path d="M7.5 15.5l2.5 2.5 5-5" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
   return null;
 };
 
 const MoodSVG = ({ id, color }: { id: string; color: string }) => {
-  const s = { fill: "none" as const, stroke: color, strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  if (id === "flame") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>;
-  if (id === "sun") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>;
-  if (id === "cloud") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>;
-  if (id === "compass") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>;
-  if (id === "moon") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
+  if (id === "flame") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M12 23c5 0 9-4 9-9 0-4-2.8-7.5-5-9.5 0 2.5-1.5 4-3 4.5C14 7 13 4.5 11 2c-4.5 3.5-7 7-7 12 0 5 4 9 8 9z" fill={color}/>
+      <path d="M12 19c2 0 4-1.5 4-4 0-1.5-1-3-2-3.5 0 1-1 2-2 2-1.2 0-2-1.5-1.5-3C9 11.5 8 13 8 15c0 2.5 1.5 4 4 4z" fill="#fbbf24"/>
+    </svg>
+  );
+  if (id === "sun") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="5.5" fill={color}/>
+      <circle cx="12" cy="12" r="3" fill="#fef08a" opacity="0.5"/>
+      <g stroke={color} strokeWidth="2" strokeLinecap="round">
+        <line x1="12" y1="2" x2="12" y2="4.5"/>
+        <line x1="12" y1="19.5" x2="12" y2="22"/>
+        <line x1="2" y1="12" x2="4.5" y2="12"/>
+        <line x1="19.5" y1="12" x2="22" y2="12"/>
+        <line x1="5.64" y1="5.64" x2="7.41" y2="7.41"/>
+        <line x1="16.59" y1="16.59" x2="18.36" y2="18.36"/>
+        <line x1="5.64" y1="18.36" x2="7.41" y2="16.59"/>
+        <line x1="16.59" y1="7.41" x2="18.36" y2="5.64"/>
+      </g>
+    </svg>
+  );
+  if (id === "cloud") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M18.5 9.5C18.2 6.3 15.4 4 12.1 4 9.9 4 7.7 5.3 6.6 7.3 4.6 7.5 3 9.1 3 11c0 2.2 1.8 4 4 4h11.5c1.9 0 3.5-1.5 3.5-3.5 0-1.8-1.4-3.3-3.5-3.5z" fill={color}/>
+      <polyline points="13,13 10,18 13.5,18 10.5,23" stroke="#fef3c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+  if (id === "compass") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" fill="rgba(96,165,250,0.15)" stroke={color} strokeWidth="1.5"/>
+      <circle cx="12" cy="12" r="1.8" fill={color}/>
+      <polygon points="12,4.5 13.8,11.2 12,10 10.2,11.2" fill="#f43f5e"/>
+      <polygon points="12,19.5 10.2,12.8 12,14 13.8,12.8" fill={color} opacity="0.6"/>
+      <line x1="5" y1="12" x2="6.5" y2="12" stroke={color} strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+      <line x1="17.5" y1="12" x2="19" y2="12" stroke={color} strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+    </svg>
+  );
+  if (id === "moon") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill={color}/>
+      <circle cx="17" cy="7" r="1.5" fill="#e2e8f0" opacity="0.7"/>
+      <circle cx="20" cy="11" r="1" fill="#e2e8f0" opacity="0.5"/>
+      <circle cx="19" cy="4.5" r="0.8" fill="#e2e8f0" opacity="0.4"/>
+    </svg>
+  );
   return null;
 };
 
 const DefiSVG = ({ id }: { id: string }) => {
-  const s = { fill: "none" as const, stroke: "#f59e0b", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  if (id === "clock") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
-  if (id === "heart") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>;
-  if (id === "utensils") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>;
-  if (id === "battery") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><rect x="2" y="7" width="16" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/><line x1="6" y1="11" x2="6" y2="13"/></svg>;
-  if (id === "chefhat") return <svg width="18" height="18" viewBox="0 0 24 24" {...s}><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>;
-  if (id === "zap2") return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="rgba(245,158,11,0.2)"/></svg>;
+  const c = "#f59e0b";
+  if (id === "clock") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" fill="rgba(245,158,11,0.15)" stroke={c} strokeWidth="1.5"/>
+      <line x1="12" y1="7" x2="12" y2="12.5" stroke={c} strokeWidth="2.2" strokeLinecap="round"/>
+      <line x1="12" y1="12.5" x2="15.5" y2="15" stroke={c} strokeWidth="2" strokeLinecap="round"/>
+      <circle cx="12" cy="12" r="1.5" fill={c}/>
+      <line x1="12" y1="3" x2="12" y2="4.5" stroke={c} strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
+      <line x1="21" y1="12" x2="19.5" y2="12" stroke={c} strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
+    </svg>
+  );
+  if (id === "heart") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z" fill={c}/>
+      <path d="M8.5 9.5c.5-1.5 2-2 3-1.5" stroke="#fef3c7" strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="15.5" cy="8.5" r="1.2" fill="#fde68a" opacity="0.8"/>
+    </svg>
+  );
+  if (id === "utensils") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="14" r="7" fill="rgba(245,158,11,0.15)" stroke={c} strokeWidth="1.5"/>
+      <line x1="12" y1="7" x2="12" y2="21" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M8 3v5c0 1.1.9 2 2 2" stroke={c} strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+      <line x1="8" y1="3" x2="8" y2="8" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
+      <line x1="10" y1="3" x2="10" y2="7" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M16 3v5a2 2 0 002 2v11" stroke={c} strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+    </svg>
+  );
+  if (id === "battery") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <rect x="1" y="7" width="18" height="10" rx="2.5" fill="rgba(245,158,11,0.12)" stroke={c} strokeWidth="1.5"/>
+      <path d="M23 11v2" stroke={c} strokeWidth="2" strokeLinecap="round"/>
+      <rect x="2.5" y="8.5" width="4.5" height="7" rx="1" fill="#f43f5e"/>
+      <line x1="10.5" y1="10.5" x2="10.5" y2="13.5" stroke={c} strokeWidth="1" opacity="0.3"/>
+      <line x1="14" y1="10.5" x2="14" y2="13.5" stroke={c} strokeWidth="1" opacity="0.2"/>
+    </svg>
+  );
+  if (id === "chefhat") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <rect x="7" y="17" width="10" height="5" rx="1" fill={c} opacity="0.8"/>
+      <line x1="7" y1="19.5" x2="17" y2="19.5" stroke="#fef3c7" strokeWidth="1" opacity="0.5"/>
+      <circle cx="8" cy="11.5" r="4.5" fill={c}/>
+      <circle cx="16" cy="11.5" r="4.5" fill={c}/>
+      <ellipse cx="12" cy="8" rx="4" ry="5" fill={c}/>
+      <ellipse cx="12" cy="9.5" rx="3" ry="2.5" fill="#fbbf24" opacity="0.45"/>
+      <rect x="7" y="14.5" width="10" height="3" rx="0" fill={c}/>
+    </svg>
+  );
+  if (id === "zap2") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill={c}/>
+      <line x1="10.5" y1="10" x2="13.5" y2="6" stroke="#fef3c7" strokeWidth="1" opacity="0.5" strokeLinecap="round"/>
+    </svg>
+  );
   return null;
 };
 
@@ -112,8 +227,10 @@ export default function PatientOnboardingPage() {
   const [confirmPathologies, setConfirmPathologies] = useState("");
   const [confirmAllergies, setConfirmAllergies] = useState("");
   const [confirmTraitements, setConfirmTraitements] = useState("");
+  const [confirmObjectifClinique, setConfirmObjectifClinique] = useState("");
   const [confirmNiveauActivite, setConfirmNiveauActivite] = useState("");
   const [confirmRegime, setConfirmRegime] = useState("");
+  const [editOriginal, setEditOriginal] = useState<Record<string, string> | null>(null);
 
   // Étape 2
   const [objectif, setObjectif] = useState("");
@@ -157,6 +274,7 @@ export default function PatientOnboardingPage() {
           if (typeof p.confirmPathologies === "string") setConfirmPathologies(p.confirmPathologies);
           if (typeof p.confirmAllergies === "string") setConfirmAllergies(p.confirmAllergies);
           if (typeof p.confirmTraitements === "string") setConfirmTraitements(p.confirmTraitements);
+          if (typeof p.confirmObjectifClinique === "string") setConfirmObjectifClinique(p.confirmObjectifClinique);
           if (typeof p.confirmNiveauActivite === "string") setConfirmNiveauActivite(p.confirmNiveauActivite);
           if (typeof p.confirmRegime === "string") setConfirmRegime(p.confirmRegime);
           if (typeof p.objectif === "string") setObjectif(p.objectif);
@@ -181,7 +299,7 @@ export default function PatientOnboardingPage() {
       // 2. Pas de localStorage - charger les données pré-remplies par le praticien via API
       const res = await fetch("/api/get-patient-profile");
       if (res.ok) {
-        const { patient } = await res.json() as { patient: { age?: number; sexe?: string; taille?: number; poids?: number; pathologies?: string; allergies?: string; traitements?: string; niveau_activite?: string; regime_specifique?: string } | null };
+        const { patient } = await res.json() as { patient: { age?: number; sexe?: string; taille?: number; poids?: number; pathologies?: string; allergies?: string; traitements?: string; objectif_clinique?: string; niveau_activite?: string; regime_specifique?: string } | null };
         if (patient) {
           setConfirmAge(patient.age ? String(patient.age) : "");
           setConfirmSexe(patient.sexe ?? "");
@@ -190,6 +308,7 @@ export default function PatientOnboardingPage() {
           setConfirmPathologies(patient.pathologies ?? "");
           setConfirmAllergies(patient.allergies ?? "");
           setConfirmTraitements(patient.traitements ?? "");
+          setConfirmObjectifClinique(patient.objectif_clinique ?? "");
           setConfirmNiveauActivite(patient.niveau_activite ?? "");
           setConfirmRegime(patient.regime_specifique ?? "");
         }
@@ -204,7 +323,7 @@ export default function PatientOnboardingPage() {
         step,
         confirmAge, confirmSexe, confirmTaille, confirmPoids,
         confirmPathologies, confirmAllergies, confirmTraitements,
-        confirmNiveauActivite, confirmRegime,
+        confirmObjectifClinique, confirmNiveauActivite, confirmRegime,
         objectif, objectifCustom, mood, moodCustom, defi, defiCustom,
         equipement, tempsCuisine, budget, repasSautes, sommeil, digestif,
         alimentsAimes, alimentsDetestes, customAliments,
@@ -213,7 +332,7 @@ export default function PatientOnboardingPage() {
   }, [
     step, confirmAge, confirmSexe, confirmTaille, confirmPoids,
     confirmPathologies, confirmAllergies, confirmTraitements,
-    confirmNiveauActivite, confirmRegime,
+    confirmObjectifClinique, confirmNiveauActivite, confirmRegime,
     objectif, objectifCustom, mood, moodCustom, defi, defiCustom,
     equipement, tempsCuisine, budget, repasSautes, sommeil, digestif,
     alimentsAimes, alimentsDetestes, customAliments,
@@ -264,6 +383,7 @@ export default function PatientOnboardingPage() {
         pathologies: confirmPathologies || null,
         allergies: confirmAllergies || null,
         traitements: confirmTraitements || null,
+        objectif_clinique: confirmObjectifClinique || null,
         niveau_activite: confirmNiveauActivite || null,
         regime_specifique: confirmRegime || null,
         objective: finalObjectif || null,
@@ -322,17 +442,33 @@ export default function PatientOnboardingPage() {
     width: "100%",
   });
 
-  const badges = [
-    { label: "Âge", value: confirmAge ? `${confirmAge} ans` : null },
-    { label: "Sexe", value: confirmSexe || null },
-    { label: "Taille", value: confirmTaille ? `${confirmTaille} cm` : null },
-    { label: "Poids", value: confirmPoids ? `${confirmPoids} kg` : null },
-    { label: "Activité", value: confirmNiveauActivite || null },
-    { label: "Régime", value: confirmRegime || null },
-    { label: "Pathologies", value: confirmPathologies || null },
-    { label: "Allergies", value: confirmAllergies || null },
-    { label: "Traitements", value: confirmTraitements || null },
-  ].filter(b => b.value);
+  const isDirty = useMemo(() => {
+    if (!editOriginal) return false;
+    return confirmAge !== editOriginal.age || confirmSexe !== editOriginal.sexe ||
+      confirmTaille !== editOriginal.taille || confirmPoids !== editOriginal.poids ||
+      confirmPathologies !== editOriginal.pathologies || confirmAllergies !== editOriginal.allergies ||
+      confirmTraitements !== editOriginal.traitements || confirmObjectifClinique !== editOriginal.objectifClinique ||
+      confirmNiveauActivite !== editOriginal.niveauActivite || confirmRegime !== editOriginal.regime;
+  }, [editOriginal, confirmAge, confirmSexe, confirmTaille, confirmPoids, confirmPathologies, confirmAllergies, confirmTraitements, confirmObjectifClinique, confirmNiveauActivite, confirmRegime]);
+
+  const enterEditMode = () => {
+    setEditOriginal({ age: confirmAge, sexe: confirmSexe, taille: confirmTaille, poids: confirmPoids, pathologies: confirmPathologies, allergies: confirmAllergies, traitements: confirmTraitements, objectifClinique: confirmObjectifClinique, niveauActivite: confirmNiveauActivite, regime: confirmRegime });
+    setEditMode(true);
+  };
+
+  const cancelEdit = () => {
+    if (editOriginal) {
+      setConfirmAge(editOriginal.age); setConfirmSexe(editOriginal.sexe);
+      setConfirmTaille(editOriginal.taille); setConfirmPoids(editOriginal.poids);
+      setConfirmPathologies(editOriginal.pathologies); setConfirmAllergies(editOriginal.allergies);
+      setConfirmTraitements(editOriginal.traitements); setConfirmObjectifClinique(editOriginal.objectifClinique);
+      setConfirmNiveauActivite(editOriginal.niveauActivite); setConfirmRegime(editOriginal.regime);
+    }
+    setEditMode(false); setEditOriginal(null);
+  };
+
+  const isAutre = (value: string, options: string[]) =>
+    value !== "" && value !== "__autre__" && !options.includes(value) && value !== "Aucune" && value !== "Aucun" && value !== "Choisir";
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", fontFamily: "'Inter', -apple-system, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
@@ -360,126 +496,145 @@ export default function PatientOnboardingPage() {
         </div>
         <p style={{ textAlign: "right", margin: "0 0 20px", fontSize: 12, color: "#4b5563" }}>Étape {step} sur {totalSteps}</p>
 
-        {/* ═══ ÉTAPE 1 - Confirmation ═══ */}
-        {step === 1 && (
-          <div style={{ background: "#111111", borderRadius: 20, padding: 24, border: "1px solid rgba(255,255,255,0.08)" }}>
-            <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 1 - Santé</p>
-            <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "white" }}>Vos informations de santé</h2>
-            <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Votre praticien a pré-rempli ces données. Vérifiez qu'elles sont correctes.</p>
+        {/* ═══ ÉTAPE 1 - Informations ═══ */}
+        {step === 1 && (() => {
+          const fieldBox: React.CSSProperties = { background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "10px 14px" };
+          const fieldLabel: React.CSSProperties = { margin: "0 0 2px", fontSize: 11, fontWeight: 600, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" };
+          const fieldValue = (v: string): React.CSSProperties => ({ margin: 0, fontSize: 14, fontWeight: 600, color: v ? "white" : "#374151" });
 
-            {!editMode ? (
-              <>
-                {badges.length > 0 ? (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-                    {badges.map(badge => (
-                      <div key={badge.label} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 20, padding: "6px 14px", display: "flex", gap: 6, alignItems: "center" }}>
-                        <span style={{ fontSize: 11, color: "#64748b" }}>{badge.label}</span>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "white" }}>{badge.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.18)", borderRadius: 12, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                    <p style={{ margin: 0, fontSize: 13, color: "#fbbf24", lineHeight: 1.5 }}>Aucune donnée pré-remplie. Cliquez sur "Modifier mes données" pour les renseigner.</p>
-                  </div>
-                )}
+          const medicalFields = [
+            { label: "Pathologies", value: confirmPathologies, setter: setConfirmPathologies, options: ["Diabète type 2", "Hypertension", "Hypothyroïdie", "SOPK", "Cholestérol", "TCA", "Surpoids"], none: "Aucune" },
+            { label: "Allergies", value: confirmAllergies, setter: setConfirmAllergies, options: ["Gluten", "Lactose", "Fruits à coque", "Œufs", "Fruits de mer"], none: "Aucune" },
+            { label: "Traitements", value: confirmTraitements, setter: setConfirmTraitements, options: ["Metformine", "Lévothyrox", "Pilule contraceptive", "Antidépresseurs", "Insuline"], none: "Aucun" },
+            { label: "Objectif", value: confirmObjectifClinique, setter: setConfirmObjectifClinique, options: ["Perte de poids", "Prise de masse", "Équilibre glycémique", "Bien-être général", "Grossesse"], none: "Aucun" },
+            { label: "Activité physique", value: confirmNiveauActivite, setter: setConfirmNiveauActivite, options: ["Sédentaire", "Légère", "Modérée", "Intense", "Athlète"], none: "Aucune" },
+            { label: "Régime alimentaire", value: confirmRegime, setter: setConfirmRegime, options: ["Végétarien", "Vegan", "Sans gluten", "Halal", "Méditerranéen"], none: "Aucun" },
+          ];
 
-                <button onClick={() => setEditMode(true)}
-                  style={{ width: "100%", height: 40, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 13, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  Modifier mes données
-                </button>
-              </>
-            ) : (
-              <>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
+          return (
+            <div style={{ background: "#111111", borderRadius: 20, padding: 24, border: "1px solid rgba(255,255,255,0.08)" }}>
+              <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#10b981", letterSpacing: "0.1em", textTransform: "uppercase" }}>Étape 1 - Votre profil</p>
+              <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "white" }}>Vérifiez vos informations</h2>
+              <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Votre praticien a pré-rempli ces données. Modifiez-les si nécessaire.</p>
+
+              {/* Section 1 */}
+              <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Vos informations personnelles</p>
+              {!editMode ? (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
                   {[
-                    { label: "Âge", value: confirmAge, onChange: setConfirmAge, placeholder: "Ex: 34" },
-                    { label: "Taille (cm)", value: confirmTaille, onChange: setConfirmTaille, placeholder: "Ex: 168" },
-                    { label: "Poids (kg)", value: confirmPoids, onChange: setConfirmPoids, placeholder: "Ex: 72" },
+                    { label: "Âge", display: confirmAge ? `${confirmAge} ans` : "—" },
+                    { label: "Taille", display: confirmTaille ? `${confirmTaille} cm` : "—" },
+                    { label: "Poids", display: confirmPoids ? `${confirmPoids} kg` : "—" },
+                    { label: "Sexe", display: confirmSexe || "—" },
+                  ].map(f => (
+                    <div key={f.label} style={fieldBox}>
+                      <p style={fieldLabel}>{f.label}</p>
+                      <p style={fieldValue(f.display !== "—" ? f.display : "")}>{f.display}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
+                  {[
+                    { label: "Âge", value: confirmAge, onChange: setConfirmAge, placeholder: "34", type: "number" },
+                    { label: "Taille (cm)", value: confirmTaille, onChange: setConfirmTaille, placeholder: "168", type: "number" },
+                    { label: "Poids (kg)", value: confirmPoids, onChange: setConfirmPoids, placeholder: "72", type: "number" },
                   ].map(f => (
                     <div key={f.label}>
                       <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{f.label}</p>
                       <input type="number" value={f.value} onChange={e => f.onChange(e.target.value)} placeholder={f.placeholder}
-                        style={inputStyle}
+                        style={{ ...inputStyle, height: 40 }}
                         onFocus={e => e.target.style.borderColor = "#10b981"}
                         onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
                     </div>
                   ))}
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
                   <div>
                     <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
-                    <select value={confirmSexe} onChange={e => setConfirmSexe(e.target.value)} style={{ ...selectStyle, color: confirmSexe ? "white" : "#64748b" }}>
-                      <option value="">-</option>
+                    <select value={confirmSexe} onChange={e => setConfirmSexe(e.target.value)} style={{ ...selectStyle, height: 40 }}>
+                      <option value="">Choisir</option>
                       <option value="Femme">Femme</option>
                       <option value="Homme">Homme</option>
                       <option value="Autre">Autre</option>
                     </select>
                   </div>
-                  <div>
-                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Activité</p>
-                    <select value={confirmNiveauActivite} onChange={e => setConfirmNiveauActivite(e.target.value)} style={{ ...selectStyle, color: confirmNiveauActivite ? "white" : "#64748b" }}>
-                      <option value="">-</option>
-                      <option value="Sédentaire">Sédentaire</option>
-                      <option value="Légère">Légère</option>
-                      <option value="Modérée">Modérée</option>
-                      <option value="Intense">Intense</option>
-                      <option value="Athlète">Athlète</option>
-                    </select>
-                  </div>
-                  <div>
-                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Régime</p>
-                    <select value={confirmRegime} onChange={e => setConfirmRegime(e.target.value)} style={{ ...selectStyle, color: confirmRegime ? "white" : "#64748b" }}>
-                      <option value="">-</option>
-                      <option value="Omnivore">Omnivore</option>
-                      <option value="Végétarien">Végétarien</option>
-                      <option value="Végétalien">Végétalien</option>
-                      <option value="Vegan">Vegan</option>
-                      <option value="Sans gluten">Sans gluten</option>
-                      <option value="Sans lactose">Sans lactose</option>
-                      <option value="Halal">Halal</option>
-                      <option value="Casher">Casher</option>
-                      <option value="Cétogène">Cétogène</option>
-                      <option value="Méditerranéen">Méditerranéen</option>
-                    </select>
-                  </div>
                 </div>
+              )}
 
-                {[
-                  { label: "Pathologies", value: confirmPathologies, onChange: setConfirmPathologies, placeholder: "Ex: Diabète type 2" },
-                  { label: "Allergies & intolérances", value: confirmAllergies, onChange: setConfirmAllergies, placeholder: "Ex: Gluten, lactose" },
-                  { label: "Traitements en cours", value: confirmTraitements, onChange: setConfirmTraitements, placeholder: "Ex: Metformine 500mg" },
-                ].map(f => (
-                  <div key={f.label} style={{ marginBottom: 10 }}>
-                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{f.label}</p>
-                    <input type="text" value={f.value} onChange={e => f.onChange(e.target.value)} placeholder={f.placeholder}
-                      style={inputStyle}
-                      onFocus={e => e.target.style.borderColor = "#10b981"}
-                      onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-                  </div>
-                ))}
+              {/* Section 2 */}
+              <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Votre contexte médical</p>
+              {!editMode ? (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
+                  {medicalFields.map(f => (
+                    <div key={f.label} style={fieldBox}>
+                      <p style={fieldLabel}>{f.label}</p>
+                      <p style={fieldValue(f.value)}>{f.value || "—"}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
+                  {medicalFields.map(f => {
+                    const other = isAutre(f.value, f.options);
+                    return (
+                      <div key={f.label}>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{f.label}</p>
+                        <select value={other ? "Autre" : f.value} onChange={e => { if (e.target.value === "Autre") f.setter("__autre__"); else f.setter(e.target.value); }}
+                          style={{ ...selectStyle, height: 40 }}>
+                          <option value="">—</option>
+                          <option value={f.none}>{f.none}</option>
+                          {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+                          <option value="Autre">Autre...</option>
+                        </select>
+                        {(f.value === "__autre__" || other) && (
+                          <input type="text" value={f.value === "__autre__" ? "" : f.value} onChange={e => f.setter(e.target.value)} placeholder="Précisez..."
+                            style={{ ...inputStyle, height: 36, marginTop: 6 }}
+                            onFocus={e => e.target.style.borderColor = "#10b981"}
+                            onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
 
-                <button onClick={() => setEditMode(false)}
-                  style={{ width: "100%", height: 40, borderRadius: 12, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", cursor: "pointer", fontSize: 13, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  Valider mes modifications
-                </button>
-              </>
-            )}
-
-            {!editMode && (
-              <button onClick={() => setStep(2)}
-                style={{ width: "100%", height: 48, borderRadius: 12, background: "#10b981", border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer", transition: "opacity 0.2s, transform 0.15s" }}
-                onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                Confirmer et continuer →
-              </button>
-            )}
-          </div>
-        )}
+              {/* Buttons */}
+              {!editMode ? (
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={enterEditMode}
+                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Modifier mes informations
+                  </button>
+                  <button onClick={() => setStep(2)}
+                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
+                    Confirmer et continuer →
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={cancelEdit}
+                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                    ← Retour
+                  </button>
+                  {isDirty && (
+                    <button onClick={() => setEditMode(false)}
+                      style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", cursor: "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
+                      Valider mes modifications
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ═══ ÉTAPE 2 - Votre profil ═══ */}
         {step === 2 && (
@@ -488,32 +643,27 @@ export default function PatientOnboardingPage() {
             <h2 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "white" }}>Parlez-nous de vous</h2>
             <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b" }}>Ces infos aident votre compagnon de suivi à adapter ses conseils.</p>
 
-            {/* Objectif */}
+            {/* Levier de motivation */}
             <div style={{ marginBottom: 24 }}>
-              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Quel est votre objectif principal ?</p>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Qu&apos;est-ce qui vous motive le plus au quotidien ?</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {[
-                  { id: "poids", label: "Perdre du poids", svg: "scale" },
-                  { id: "energie", label: "Avoir plus d'énergie", svg: "zap" },
-                  { id: "digestion", label: "Améliorer ma digestion", svg: "leaf" },
-                  { id: "muscle", label: "Prendre du muscle", svg: "dumbbell" },
-                  { id: "pathologie", label: "Gérer une pathologie", svg: "heartpulse" },
-                  { id: "equilibre", label: "Manger plus équilibré", svg: "bowl" },
+                  { id: "progres", label: "Voir des progrès concrets" },
+                  { id: "encourage", label: "Me sentir encouragé(e)" },
+                  { id: "comprendre", label: "Comprendre le fonctionnement" },
+                  { id: "routine", label: "Avoir une routine stricte" },
                 ].map(o => (
                   <button key={o.id} onClick={() => setObjectif(o.id)} style={cardBtn(objectif === o.id)}>
                     <div style={{ width: 36, height: 36, borderRadius: 10, background: objectif === o.id ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.08)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 8 }}>
-                      <ObjSVG id={o.svg} />
+                      <LevierSVG id={o.id} />
                     </div>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>{o.label}</p>
                   </button>
                 ))}
-                <button onClick={() => setObjectif("autre")} style={cardBtn(objectif === "autre")}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>Autre...</p>
-                </button>
               </div>
-              {objectif === "autre" && (
+              {false && (
                 <input type="text" value={objectifCustom} onChange={e => setObjectifCustom(e.target.value)}
-                  placeholder="Décrivez votre objectif..." style={{ ...inputStyle, marginTop: 8 }}
+                  placeholder="Décrivez votre levier..." style={{ ...inputStyle, marginTop: 8 }}
                   onFocus={e => e.target.style.borderColor = "#10b981"}
                   onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
               )}
@@ -581,13 +731,20 @@ export default function PatientOnboardingPage() {
             </div>
 
             <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setStep(1)} style={{ flex: 1, height: 48, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>← Retour</button>
-              <button onClick={() => setStep(3)} disabled={!objectif || !mood || !defi || (objectif === "autre" && !objectifCustom.trim()) || (mood === "autre" && !moodCustom.trim()) || (defi === "autre" && !defiCustom.trim())}
-                style={{ flex: 2, height: 48, borderRadius: 12, background: (!objectif || !mood || !defi) ? "rgba(255,255,255,0.05)" : "#10b981", border: "none", color: (!objectif || !mood || !defi) ? "#64748b" : "black", fontSize: 15, fontWeight: 600, cursor: (!objectif || !mood || !defi) ? "not-allowed" : "pointer", transition: "opacity 0.2s, transform 0.15s" }}
-                onMouseEnter={e => { if (!e.currentTarget.disabled) { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
-                onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                Continuer →
-              </button>
+              <button onClick={() => setStep(1)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, transition: "all 0.2s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>← Retour</button>
+              {(() => {
+                const step2Disabled = !objectif || !mood || !defi || (objectif === "autre" && !objectifCustom.trim()) || (mood === "autre" && !moodCustom.trim()) || (defi === "autre" && !defiCustom.trim());
+                return (
+                  <button onClick={() => setStep(3)} disabled={step2Disabled}
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: step2Disabled ? "rgba(255,255,255,0.05)" : "rgba(16,185,129,0.12)", border: `1px solid ${step2Disabled ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: step2Disabled ? "#374151" : "#10b981", fontSize: 14, fontWeight: 600, cursor: step2Disabled ? "not-allowed" : "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => { if (!step2Disabled) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                    onMouseLeave={e => { if (!step2Disabled) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
+                    Continuer →
+                  </button>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -601,7 +758,7 @@ export default function PatientOnboardingPage() {
 
             {/* Équipement */}
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 600, color: "white" }}>Votre équipement cuisine</p>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Votre équipement cuisine</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {EQUIPEMENT.map(e => (
                   <button key={e.id} onClick={() => toggleMultiple(e.id, equipement, setEquipement)} style={cardBtn(equipement.includes(e.id))}>
@@ -613,7 +770,7 @@ export default function PatientOnboardingPage() {
 
             {/* Temps cuisine */}
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 600, color: "white" }}>Temps disponible pour cuisiner le soir</p>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Temps disponible pour cuisiner le soir *</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
                 {["< 15 min", "15-30 min", "30-45 min", "45+ min"].map(t => (
                   <button key={t} onClick={() => setTempsCuisine(t)} style={cardBtn(tempsCuisine === t)}>
@@ -625,7 +782,7 @@ export default function PatientOnboardingPage() {
 
             {/* Budget */}
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 600, color: "white" }}>Votre rapport au budget courses</p>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Votre rapport au budget courses *</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
                 {[{ id: "eco", label: "Petit budget" }, { id: "standard", label: "Budget moyen" }, { id: "premium", label: "Budget flexible" }].map(b => (
                   <button key={b.id} onClick={() => setBudget(b.id)} style={cardBtn(budget === b.id)}>
@@ -637,7 +794,7 @@ export default function PatientOnboardingPage() {
 
             {/* Repas sautés */}
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 600, color: "white" }}>Sautez-vous souvent des repas ?</p>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Sautez-vous souvent des repas ?</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
                 {["Petit-déjeuner", "Déjeuner", "Dîner", "Jamais"].map(r => (
                   <button key={r} onClick={() => toggleMultiple(r, repasSautes, setRepasSautes)} style={cardBtn(repasSautes.includes(r))}>
@@ -649,7 +806,7 @@ export default function PatientOnboardingPage() {
 
             {/* Sommeil */}
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 600, color: "white" }}>Combien d'heures dormez-vous en moyenne ?</p>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Combien d'heures dormez-vous en moyenne ? *</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
                 {SOMMEIL.map(s => (
                   <button key={s.id} onClick={() => setSommeil(s.id)} style={cardBtn(sommeil === s.id)}>
@@ -661,7 +818,7 @@ export default function PatientOnboardingPage() {
 
             {/* Digestif */}
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 600, color: "white" }}>Inconforts digestifs</p>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Inconforts digestifs</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {[...DIGESTIF, { id: "autre", label: "Autre ?" }].map(d => (
                   <button key={d.id} onClick={() => toggleMultiple(d.id, digestif, setDigestif)} style={cardBtn(digestif.includes(d.id))}>
@@ -671,14 +828,23 @@ export default function PatientOnboardingPage() {
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setStep(2)} style={{ flex: 1, height: 48, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>← Retour</button>
-              <button onClick={() => setStep(4)} style={{ flex: 2, height: 48, borderRadius: 12, background: "#10b981", border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer", transition: "opacity 0.2s, transform 0.15s" }}
-                onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                Continuer →
-              </button>
-            </div>
+            <p style={{ margin: "0 0 16px", fontSize: 11, color: "#4b5563" }}>* Champs requis pour continuer</p>
+            {(() => {
+              const step3Disabled = !tempsCuisine || !budget || !sommeil;
+              return (
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => setStep(2)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>← Retour</button>
+                  <button onClick={() => setStep(4)} disabled={step3Disabled}
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: step3Disabled ? "rgba(255,255,255,0.05)" : "rgba(16,185,129,0.12)", border: `1px solid ${step3Disabled ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: step3Disabled ? "#374151" : "#10b981", fontSize: 14, fontWeight: 600, cursor: step3Disabled ? "not-allowed" : "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => { if (!step3Disabled) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                    onMouseLeave={e => { if (!step3Disabled) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
+                    Continuer →
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -734,15 +900,22 @@ export default function PatientOnboardingPage() {
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => setStep(3)} style={{ flex: 1, height: 48, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>← Retour</button>
-              <button onClick={() => void saveAndContinue()} disabled={saving}
-                style={{ flex: 2, height: 48, borderRadius: 12, background: saving ? "rgba(255,255,255,0.05)" : "#10b981", border: "none", color: saving ? "#64748b" : "black", fontSize: 15, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", transition: "opacity 0.2s, transform 0.15s" }}
-                onMouseEnter={e => { if (!saving) { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
-                onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                {saving ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "black", animation: "spin 0.7s linear infinite", display: "inline-block" }} />Sauvegarde</span> : "Accéder à mon espace →"}
-              </button>
-            </div>
+            {(() => {
+              const step4Disabled = saving || (alimentsAimes.length + alimentsDetestes.length + customAliments.length === 0);
+              return (
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button onClick={() => setStep(3)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>← Retour</button>
+                  <button onClick={() => void saveAndContinue()} disabled={step4Disabled}
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: step4Disabled ? "rgba(255,255,255,0.05)" : "rgba(16,185,129,0.12)", border: `1px solid ${step4Disabled ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: step4Disabled ? "#374151" : "#10b981", fontSize: 14, fontWeight: 600, cursor: step4Disabled ? "not-allowed" : "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => { if (!step4Disabled) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                    onMouseLeave={e => { if (!step4Disabled) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
+                    {saving ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTopColor: "#10b981", animation: "spin 0.7s linear infinite", display: "inline-block" }} />Sauvegarde</span> : "Accéder à mon espace →"}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
