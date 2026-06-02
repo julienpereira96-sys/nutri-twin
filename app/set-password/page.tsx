@@ -121,11 +121,7 @@ export default function SetPasswordPage() {
           <div className="relative mx-auto mb-3 w-fit">
             <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
             <div style={{ position: "relative", width: 75, height: 75, margin: "0 auto" }}>
-              <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center", animation: "pulse-ring 2s ease-in-out infinite", overflow: "hidden" }}>
-                <img src="/logo.svg" alt="NutriTwin" style={{ height: 44, width: "auto", filter: "brightness(0) invert(1)" }}
-                  onError={e => { const t = e.target as HTMLImageElement; t.style.display = "none"; const n = t.nextElementSibling as HTMLElement; if (n) n.style.display = "flex"; }} />
-                <div style={{ display: "none", alignItems: "center", justifyContent: "center", fontSize: 26 }}>🌿</div>
-              </div>
+              <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, animation: "pulse-ring 2s ease-in-out infinite" }}>🌿</div>
             </div>
           </div>
           <h1 className="text-[22px] tracking-tight text-white mt-3">Bienvenue sur Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
@@ -136,7 +132,7 @@ export default function SetPasswordPage() {
           {error === "__expired__" ? (
             <div className="py-8 text-center">
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="12" cy="13" r="8"/>
                   <path d="M12 9v4l2.5 2.5"/>
                   <path d="M9.5 2.5h5"/>
