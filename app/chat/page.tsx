@@ -1,7 +1,7 @@
 "use client";
 
 import { KeyboardEvent, useState, useEffect, useRef, useCallback } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 import JournalModal from "./JournalModal";
 
 type ChatMessage = {
@@ -427,13 +427,13 @@ export default function ChatPage() {
   }, [searchQuery, sessions]);
 
   const loadSessions = useCallback(async (pid: string) => {
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     const { data } = await supabase.from("conversations_sessions").select("id, title, last_message_at").eq("patient_id", pid).order("last_message_at", { ascending: false }).limit(20);
     if (data) { setSessions(data as Session[]); setFilteredSessions(data as Session[]); }
   }, []);
 
   const completeOnboarding = useCallback(async (pid: string) => {
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     await supabase.from("patients").update({ onboarding_done: true }).eq("user_id", pid);
     setShowOnboarding(false);
     // Message de clôture dans le chat
@@ -456,7 +456,7 @@ export default function ChatPage() {
   }, [patientId, completeOnboarding]);
 
   useEffect(() => {
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
     // Écouter l'expiration de session en cours d'utilisation
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -569,20 +569,20 @@ export default function ChatPage() {
 
   const createSession = async (firstMessage: string) => {
     if (!patientId || !practitionerIdFromDb) return null;
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     const { data } = await supabase.from("conversations_sessions").insert({ patient_id: patientId, practitioner_id: practitionerIdFromDb, title: firstMessage.slice(0, 40) + (firstMessage.length > 40 ? "..." : ""), last_message: firstMessage, last_message_at: new Date().toISOString() }).select().single();
     return (data as { id: string } | null)?.id ?? null;
   };
 
   const loadSession = async (sessionId: string) => {
     if (!patientId || !practitionerIdFromDb) return;
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     const { data } = await supabase.from("conversations").select("role, content").eq("patient_id", patientId).eq("practitioner_id", practitionerIdFromDb).eq("session_id", sessionId).order("created_at", { ascending: true });
     if (data) { setMessages(data as ChatMessage[]); setCurrentSessionId(sessionId); if (isMobile) setSidebarOpen(false); }
   };
 
   const deleteSession = async (sessionId: string) => {
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     await supabase.from("conversations_sessions").delete().eq("id", sessionId);
     if (currentSessionId === sessionId) { setMessages([]); setCurrentSessionId(null); }
     if (patientId) await loadSessions(patientId);
@@ -1041,7 +1041,7 @@ export default function ChatPage() {
           <input ref={patientAvatarRef} type="file" accept="image/*" style={{ display: "none" }} onChange={async e => {
             const file = e.target.files?.[0]; if (!file || !patientId) return;
             setUploadingPhoto(true);
-            const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+            const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
             const compressed = await compressImage(file);
             const byteString = atob(compressed.base64);
             const ab = new ArrayBuffer(byteString.length);
@@ -1066,7 +1066,7 @@ export default function ChatPage() {
         <div style={{ marginTop: 6 }}>
         <button onClick={async () => {
         try {
-          const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+          const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
           const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
           const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
           await supabase.from("patients").update({
@@ -1164,7 +1164,7 @@ export default function ChatPage() {
           Annuler
         </button>
         <button onClick={async () => {
-          const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+          const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
           await supabase.auth.signOut();
           window.location.href = "/patient-login";
         }}
