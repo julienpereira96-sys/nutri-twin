@@ -43,7 +43,13 @@ export default function SetPasswordPage() {
     const timeout = setTimeout(() => {
       setReady(false);
       setError("__expired__");
-    }, 15000); // 15s - couvre les connexions lentes
+    }, 20000);
+
+    // Vérifier immédiatement si une session existe déjà
+    // (INITIAL_SESSION peut firer avant que onAuthStateChange soit enregistré)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) { clearTimeout(timeout); setReady(true); }
+    }).catch(() => {});
 
     supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN" || event === "INITIAL_SESSION") {
@@ -115,7 +121,11 @@ export default function SetPasswordPage() {
           <div className="relative mx-auto mb-3 w-fit">
             <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
             <div style={{ position: "relative", width: 75, height: 75, margin: "0 auto" }}>
-              <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, animation: "pulse-ring 2s ease-in-out infinite" }}>🌿</div>
+              <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center", animation: "pulse-ring 2s ease-in-out infinite", overflow: "hidden" }}>
+                <img src="/logo.svg" alt="NutriTwin" style={{ height: 44, width: "auto", filter: "brightness(0) invert(1)" }}
+                  onError={e => { const t = e.target as HTMLImageElement; t.style.display = "none"; const n = t.nextElementSibling as HTMLElement; if (n) n.style.display = "flex"; }} />
+                <div style={{ display: "none", alignItems: "center", justifyContent: "center", fontSize: 26 }}>🌿</div>
+              </div>
             </div>
           </div>
           <h1 className="text-[22px] tracking-tight text-white mt-3">Bienvenue sur Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
