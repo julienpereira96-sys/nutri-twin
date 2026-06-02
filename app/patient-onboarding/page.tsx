@@ -473,8 +473,6 @@ export default function PatientOnboardingPage() {
     setSaving(true);
     setSaveError("");
     try {
-      // Rafraîchir la session avant la sauvegarde (évite les JWT expirés)
-      await supabase.auth.refreshSession();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/patient-login"); return; }
 
