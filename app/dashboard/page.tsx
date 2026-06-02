@@ -2223,7 +2223,7 @@ export default function DashboardPage() {
                           onMouseEnter={e => { if (!resentInviteLoading) e.currentTarget.style.color = "#94a3b8"; }}
                           onMouseLeave={e => { if (!resentInviteLoading) e.currentTarget.style.color = "#4b5563"; }}>
                           {resentInviteLoading && <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-white" style={{ flexShrink: 0 }} />}
-                          {resentInviteLoading ? "Envoi en cours..." : "Renvoyer le lien d'invitation"}
+                          {resentInviteLoading ? "Envoi en cours" : "Renvoyer le lien d'invitation"}
                         </button>
                       );
                     })()
