@@ -32,6 +32,14 @@ export default function SetPasswordPage() {
   const [acceptData, setAcceptData] = useState(false);
 
   useEffect(() => {
+    // Détecter immédiatement un token expiré/invalide via le hash Supabase
+    const hash = window.location.hash;
+    if (hash.includes("error=access_denied") || hash.includes("otp_expired") || hash.includes("error_code=")) {
+      setReady(false);
+      setError("__expired__");
+      return;
+    }
+
     // Client SSR (createBrowserClient) : stocke la session dans les cookies
     // afin que le middleware Next.js puisse lire la session après navigation.
     const supabase = createBrowserClient(
@@ -131,14 +139,7 @@ export default function SetPasswordPage() {
         <div className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
           {error === "__expired__" ? (
             <div className="py-8 text-center">
-              <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="13" r="8"/>
-                  <path d="M12 9v4l2.5 2.5"/>
-                  <path d="M9.5 2.5h5"/>
-                  <path d="M12 2.5v2"/>
-                </svg>
-              </div>
+              <p style={{ fontSize: 32, marginBottom: 12 }}>⏱</p>
               <p className="text-sm font-semibold text-white mb-2">Lien expiré</p>
               <p className="text-sm text-zinc-400 mb-6">Ce lien d'invitation n'est plus valide. Contactez votre praticien pour en recevoir un nouveau.</p>
             </div>
