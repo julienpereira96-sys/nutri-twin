@@ -101,7 +101,7 @@ export async function POST(request: Request) {
     // On génère un lien magique (type "magiclink") qui déclenche SIGNED_IN côté client,
     // identique au flux d'invitation initial — plus robuste que "recovery" pour ce cas.
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-      type: "invite",
+      type: "magiclink",
       email,
       options: { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/set-password` },
     });
