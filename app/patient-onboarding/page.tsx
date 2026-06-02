@@ -144,18 +144,21 @@ export default function PatientOnboardingPage() {
         }
       } catch { /* ignore */ }
 
-      // 2. Pas de localStorage - charger les données pré-remplies par le praticien
-      const { data: patient } = await supabase.from("patients").select("age, sexe, taille, poids, pathologies, allergies, traitements, niveau_activite, regime_specifique").eq("user_id", data.user.id).single();
-      if (patient) {
-        setConfirmAge(patient.age ? String(patient.age) : "");
-        setConfirmSexe(patient.sexe ?? "");
-        setConfirmTaille(patient.taille ? String(patient.taille) : "");
-        setConfirmPoids(patient.poids ? String(patient.poids) : "");
-        setConfirmPathologies(patient.pathologies ?? "");
-        setConfirmAllergies(patient.allergies ?? "");
-        setConfirmTraitements(patient.traitements ?? "");
-        setConfirmNiveauActivite(patient.niveau_activite ?? "");
-        setConfirmRegime(patient.regime_specifique ?? "");
+      // 2. Pas de localStorage - charger les données pré-remplies par le praticien via API
+      const res = await fetch("/api/get-patient-profile");
+      if (res.ok) {
+        const { patient } = await res.json() as { patient: { age?: number; sexe?: string; taille?: number; poids?: number; pathologies?: string; allergies?: string; traitements?: string; niveau_activite?: string; regime_specifique?: string } | null };
+        if (patient) {
+          setConfirmAge(patient.age ? String(patient.age) : "");
+          setConfirmSexe(patient.sexe ?? "");
+          setConfirmTaille(patient.taille ? String(patient.taille) : "");
+          setConfirmPoids(patient.poids ? String(patient.poids) : "");
+          setConfirmPathologies(patient.pathologies ?? "");
+          setConfirmAllergies(patient.allergies ?? "");
+          setConfirmTraitements(patient.traitements ?? "");
+          setConfirmNiveauActivite(patient.niveau_activite ?? "");
+          setConfirmRegime(patient.regime_specifique ?? "");
+        }
       }
     });
   }, []);
@@ -297,7 +300,10 @@ export default function PatientOnboardingPage() {
 
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ width: 56, height: 56, margin: "0 auto 14px", borderRadius: "50%", background: "linear-gradient(135deg, #6ee7b7, #10b981)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }}>🌿</div>
+          <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 16px" }}>
+            <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.15)", filter: "blur(12px)" }} />
+            <div style={{ position: "relative", width: 72, height: 72, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.5)", boxShadow: "0 0 20px rgba(16,185,129,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>🌿</div>
+          </div>
           <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 700, color: "white" }}>
             Configurons votre <strong style={{ color: "#10b981" }}>espace</strong>
           </h1>
@@ -307,11 +313,12 @@ export default function PatientOnboardingPage() {
         </div>
 
         {/* Progress */}
-        <div style={{ display: "flex", gap: 6, marginBottom: 24 }}>
+        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
           {Array.from({ length: totalSteps }).map((_, i) => (
-            <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < step ? "#10b981" : "rgba(255,255,255,0.08)", transition: "background 0.3s" }} />
+            <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i < step ? "#10b981" : "rgba(255,255,255,0.08)", transition: "background 0.4s" }} />
           ))}
         </div>
+        <p style={{ textAlign: "right", margin: "0 0 20px", fontSize: 12, color: "#4b5563" }}>Étape {step} sur {totalSteps}</p>
 
         {/* ═══ ÉTAPE 1 - Confirmation ═══ */}
         {step === 1 && (
@@ -332,14 +339,16 @@ export default function PatientOnboardingPage() {
                     ))}
                   </div>
                 ) : (
-                  <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 12, padding: "12px 16px", marginBottom: 20 }}>
-                    <p style={{ margin: 0, fontSize: 13, color: "#fbbf24" }}>⚠️ Aucune donnée pré-remplie. Cliquez sur "Modifier mes données" pour les renseigner.</p>
+                  <div style={{ background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.18)", borderRadius: 12, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    <p style={{ margin: 0, fontSize: 13, color: "#fbbf24", lineHeight: 1.5 }}>Aucune donnée pré-remplie. Cliquez sur "Modifier mes données" pour les renseigner.</p>
                   </div>
                 )}
 
                 <button onClick={() => setEditMode(true)}
-                  style={{ width: "100%", height: 40, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 13, marginBottom: 12 }}>
-                  ✏️ Modifier mes données
+                  style={{ width: "100%", height: 40, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 13, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Modifier mes données
                 </button>
               </>
             ) : (
@@ -414,14 +423,17 @@ export default function PatientOnboardingPage() {
                 ))}
 
                 <button onClick={() => setEditMode(false)}
-                  style={{ width: "100%", height: 40, borderRadius: 12, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", cursor: "pointer", fontSize: 13, marginBottom: 12 }}>
-                  ✓ Valider mes modifications
+                  style={{ width: "100%", height: 40, borderRadius: 12, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", cursor: "pointer", fontSize: 13, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Valider mes modifications
                 </button>
               </>
             )}
 
             <button onClick={() => setStep(2)}
-              style={{ width: "100%", height: 48, borderRadius: 12, background: "#10b981", border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+              style={{ width: "100%", height: 48, borderRadius: 12, background: "#10b981", border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer", transition: "opacity 0.2s, transform 0.15s" }}
+              onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}>
               Confirmer et continuer →
             </button>
           </div>
@@ -503,7 +515,9 @@ export default function PatientOnboardingPage() {
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setStep(1)} style={{ flex: 1, height: 48, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>← Retour</button>
               <button onClick={() => setStep(3)} disabled={!objectif || !mood || !defi || (objectif === "autre" && !objectifCustom.trim()) || (mood === "autre" && !moodCustom.trim()) || (defi === "autre" && !defiCustom.trim())}
-                style={{ flex: 2, height: 48, borderRadius: 12, background: (!objectif || !mood || !defi) ? "rgba(255,255,255,0.05)" : "#10b981", border: "none", color: (!objectif || !mood || !defi) ? "#64748b" : "black", fontSize: 15, fontWeight: 600, cursor: (!objectif || !mood || !defi) ? "not-allowed" : "pointer" }}>
+                style={{ flex: 2, height: 48, borderRadius: 12, background: (!objectif || !mood || !defi) ? "rgba(255,255,255,0.05)" : "#10b981", border: "none", color: (!objectif || !mood || !defi) ? "#64748b" : "black", fontSize: 15, fontWeight: 600, cursor: (!objectif || !mood || !defi) ? "not-allowed" : "pointer", transition: "opacity 0.2s, transform 0.15s" }}
+                onMouseEnter={e => { if (!e.currentTarget.disabled) { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}>
                 Continuer →
               </button>
             </div>
@@ -591,7 +605,9 @@ export default function PatientOnboardingPage() {
 
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setStep(2)} style={{ flex: 1, height: 48, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>← Retour</button>
-              <button onClick={() => setStep(4)} style={{ flex: 2, height: 48, borderRadius: 12, background: "#10b981", border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+              <button onClick={() => setStep(4)} style={{ flex: 2, height: 48, borderRadius: 12, background: "#10b981", border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer", transition: "opacity 0.2s, transform 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}>
                 Continuer →
               </button>
             </div>
@@ -657,8 +673,10 @@ export default function PatientOnboardingPage() {
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setStep(3)} style={{ flex: 1, height: 48, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>← Retour</button>
               <button onClick={() => void saveAndContinue()} disabled={saving}
-                style={{ flex: 2, height: 48, borderRadius: 12, background: saving ? "rgba(255,255,255,0.05)" : "#10b981", border: "none", color: saving ? "#64748b" : "black", fontSize: 15, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer" }}>
-                {saving ? "Sauvegarde..." : "Accéder à mon espace →"}
+                style={{ flex: 2, height: 48, borderRadius: 12, background: saving ? "rgba(255,255,255,0.05)" : "#10b981", border: "none", color: saving ? "#64748b" : "black", fontSize: 15, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", transition: "opacity 0.2s, transform 0.15s" }}
+                onMouseEnter={e => { if (!saving) { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                {saving ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTopColor: "black", animation: "spin 0.7s linear infinite", display: "inline-block" }} />Sauvegarde...</span> : "Accéder à mon espace →"}
               </button>
             </div>
           </div>

@@ -133,7 +133,7 @@ export default function SetPasswordPage() {
       window.location.href = "/patient-login?reason=set_password_done";
       return;
     }
-    window.location.href = "/patient-onboarding";
+    window.location.replace("/patient-onboarding");
   };
 
   const isDisabled = loading || !password || !confirm || !acceptCGU || !acceptData;

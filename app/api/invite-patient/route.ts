@@ -116,7 +116,7 @@ export async function POST(request: Request) {
       from: "NutriTwin <noreply@nutritwin.fr>",
       to: email,
       subject: "Votre invitation NutriTwin",
-      html: `<p>Bonjour,</p><p>Votre praticien vous a envoyé une nouvelle invitation pour accéder à votre espace NutriTwin.</p><p><a href="${linkData.properties.action_link}">Accéder à mon espace →</a></p><p>L'équipe NutriTwin</p>`,
+      html: `<p>Bonjour,</p><p>Votre praticien vous a envoyé une nouvelle invitation pour accéder à votre espace NutriTwin.</p><p><a href="${linkData.properties.action_link}">Accéder à mon espace →</a></p><p style="color:#6b7280;font-size:13px;">Ce lien est à usage unique. Pour vous reconnecter à tout moment, rendez-vous sur : <a href="${process.env.NEXT_PUBLIC_APP_URL}/patient-login">${process.env.NEXT_PUBLIC_APP_URL}/patient-login</a></p><p>L'équipe NutriTwin</p>`,
     });
 
     if (!existingRelation) {
