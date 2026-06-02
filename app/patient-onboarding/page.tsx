@@ -65,60 +65,86 @@ const DIGESTIF = [
 const LS_KEY = "patient_onboarding";
 
 const LevierSVG = ({ id }: { id: string }) => {
-  const g = "#10b981"; const g2 = "#34d399"; const g3 = "#6ee7b7";
   if (id === "progres") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <rect x="2" y="15" width="5" height="7" rx="1.5" fill={g} opacity="0.45"/>
-      <rect x="9.5" y="10" width="5" height="12" rx="1.5" fill={g} opacity="0.65"/>
-      <rect x="17" y="4" width="5" height="18" rx="1.5" fill={g}/>
-      <path d="M4.5 13.5L10 8.5l4.5 3 5-6.5" stroke={g2} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="4.5" cy="13.5" r="1.5" fill={g2}/>
-      <circle cx="10" cy="8.5" r="1.5" fill={g2}/>
-      <circle cx="14.5" cy="11.5" r="1.5" fill={g2}/>
-      <circle cx="19.5" cy="5" r="1.5" fill={g2}/>
+      <defs>
+        <linearGradient id="lp1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#6ee7b7"/><stop offset="100%" stopColor="#065f46"/></linearGradient>
+        <linearGradient id="lp2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#34d399"/><stop offset="100%" stopColor="#064e3b"/></linearGradient>
+        <linearGradient id="lp3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981"/><stop offset="100%" stopColor="#022c22"/></linearGradient>
+      </defs>
+      <rect x="2" y="15" width="4.5" height="7" rx="1.2" fill="url(#lp1)"/>
+      <rect x="9.75" y="10" width="4.5" height="12" rx="1.2" fill="url(#lp2)"/>
+      <rect x="17.5" y="4" width="4.5" height="18" rx="1.2" fill="url(#lp3)"/>
+      <path d="M4.5 14L10 9l4.5 3 5-6" stroke="#6ee7b7" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx="4.5" cy="14" r="1.4" fill="white" opacity="0.95"/>
+      <circle cx="10" cy="9" r="1.4" fill="white" opacity="0.95"/>
+      <circle cx="14.5" cy="12" r="1.4" fill="white" opacity="0.95"/>
+      <circle cx="19.5" cy="6" r="1.4" fill="white" opacity="0.95"/>
     </svg>
   );
   if (id === "encourage") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z" fill={g}/>
-      <path d="M8.5 9.5c.5-1.5 2-2 3-1.5" stroke={g3} strokeWidth="1.5" strokeLinecap="round"/>
-      <circle cx="17" cy="6" r="2" fill={g2} opacity="0.7"/>
-      <circle cx="20.5" cy="10" r="1.5" fill={g2} opacity="0.45"/>
-      <circle cx="19" cy="3.5" r="1" fill={g2} opacity="0.35"/>
+      <defs>
+        <radialGradient id="le1" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#6ee7b7"/><stop offset="100%" stopColor="#064e3b"/></radialGradient>
+      </defs>
+      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z" fill="url(#le1)"/>
+      <ellipse cx="9" cy="8" rx="3.5" ry="2" fill="white" opacity="0.18" transform="rotate(-35 9 8)"/>
+      <path d="M8 10c.5-1.5 2-2.2 3.5-1.5" stroke="white" strokeWidth="1.3" strokeLinecap="round" opacity="0.65"/>
+      <circle cx="17.5" cy="5.5" r="1.5" fill="#34d399" opacity="0.7"/>
+      <circle cx="20.5" cy="9.5" r="1" fill="#6ee7b7" opacity="0.5"/>
+      <circle cx="19.5" cy="3" r="0.7" fill="#a7f3d0" opacity="0.5"/>
     </svg>
   );
   if (id === "comprendre") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M9 21h6M12 21v-3" stroke={g} strokeWidth="1.5" strokeLinecap="round"/>
-      <path d="M6.8 17A7 7 0 1117.2 17H6.8z" fill={g}/>
-      <path d="M12 8v3.5" stroke={g3} strokeWidth="2" strokeLinecap="round"/>
-      <circle cx="12" cy="7" r="1" fill={g3}/>
-      <circle cx="18.5" cy="4.5" r="1.5" fill={g2} opacity="0.6"/>
-      <circle cx="21" cy="8" r="1" fill={g2} opacity="0.4"/>
-      <circle cx="20" cy="2" r="0.8" fill={g2} opacity="0.3"/>
+      <defs>
+        <radialGradient id="lc1" cx="40%" cy="30%" r="65%"><stop offset="0%" stopColor="#6ee7b7"/><stop offset="100%" stopColor="#065f46"/></radialGradient>
+      </defs>
+      <path d="M6.8 17A7 7 0 1117.2 17H6.8z" fill="url(#lc1)"/>
+      <ellipse cx="9.5" cy="9" rx="2.5" ry="1.5" fill="white" opacity="0.2"/>
+      <path d="M9 21h6M12 21v-3" stroke="#34d399" strokeWidth="1.5" strokeLinecap="round"/>
+      <rect x="7" y="16.5" width="10" height="1.5" rx="0.75" fill="#065f46"/>
+      <path d="M12 8.5v3" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+      <circle cx="12" cy="13" r="0.8" fill="white"/>
+      <circle cx="18.5" cy="4.5" r="1.5" fill="#34d399" opacity="0.6"/>
+      <circle cx="21" cy="8" r="1" fill="#6ee7b7" opacity="0.4"/>
     </svg>
   );
   if (id === "routine") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <rect x="3" y="4" width="18" height="17" rx="2.5" fill={`${g}18`} stroke={g} strokeWidth="1.5"/>
-      <path d="M3 10h18" stroke={g} strokeWidth="1.5"/>
-      <path d="M8 2v4M16 2v4" stroke={g} strokeWidth="1.8" strokeLinecap="round"/>
-      <path d="M7.5 15.5l2.5 2.5 5-5" stroke={g2} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <defs>
+        <linearGradient id="lr1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#064e3b"/><stop offset="100%" stopColor="#022c22"/></linearGradient>
+        <linearGradient id="lr2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#059669"/><stop offset="100%" stopColor="#047857"/></linearGradient>
+      </defs>
+      <rect x="3" y="4" width="18" height="17" rx="2.5" fill="url(#lr1)" stroke="#10b981" strokeWidth="1.5"/>
+      <rect x="3" y="4" width="18" height="6.5" rx="2.5" fill="url(#lr2)"/>
+      <rect x="3" y="8" width="18" height="2.5" fill="#047857"/>
+      <path d="M8 2v4M16 2v4" stroke="#34d399" strokeWidth="1.8" strokeLinecap="round"/>
+      <path d="M7.5 15.5l2.5 2.5 5-5" stroke="#34d399" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <ellipse cx="8.5" cy="6" rx="1.5" ry="0.8" fill="white" opacity="0.15"/>
     </svg>
   );
   if (id === "supervise") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <ellipse cx="12" cy="12" rx="10" ry="6.5" fill={`${g}18`} stroke={g} strokeWidth="1.5"/>
-      <circle cx="12" cy="12" r="3.5" fill={g}/>
-      <circle cx="12" cy="12" r="1.5" fill={g3}/>
-      <circle cx="12" cy="12" r="0.6" fill="white"/>
-      <path d="M2 12c2.5-5 5.5-7.5 10-7.5s7.5 2.5 10 7.5" stroke={g} strokeWidth="1.2" strokeLinecap="round" opacity="0.4"/>
+      <defs>
+        <radialGradient id="ls1" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#6ee7b7"/><stop offset="100%" stopColor="#065f46"/></radialGradient>
+        <radialGradient id="ls2" cx="35%" cy="30%" r="70%"><stop offset="0%" stopColor="#34d399"/><stop offset="100%" stopColor="#047857"/></radialGradient>
+      </defs>
+      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" fill="url(#ls1)"/>
+      <ellipse cx="9" cy="10" rx="3" ry="1.5" fill="white" opacity="0.2"/>
+      <circle cx="12" cy="12" r="4" fill="url(#ls2)"/>
+      <circle cx="12" cy="12" r="2" fill="#022c22"/>
+      <circle cx="11" cy="11" r="0.9" fill="white" opacity="0.9"/>
     </svg>
   );
   if (id === "simplicite") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="9" fill={`${g}15`} stroke={g} strokeWidth="1.5"/>
-      <path d="M8 12l3 3 5-6" stroke={g2} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+      <defs>
+        <radialGradient id="lsi1" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#6ee7b7"/><stop offset="100%" stopColor="#065f46"/></radialGradient>
+      </defs>
+      <circle cx="12" cy="12" r="10" fill="url(#lsi1)"/>
+      <ellipse cx="9" cy="8.5" rx="3" ry="1.8" fill="white" opacity="0.2"/>
+      <path d="M7.5 12l3.5 3.5 6-7" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
   return null;
@@ -127,15 +153,21 @@ const LevierSVG = ({ id }: { id: string }) => {
 const MoodSVG = ({ id, color }: { id: string; color: string }) => {
   if (id === "flame") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M12 23c5 0 9-4 9-9 0-4-2.8-7.5-5-9.5 0 2.5-1.5 4-3 4.5C14 7 13 4.5 11 2c-4.5 3.5-7 7-7 12 0 5 4 9 8 9z" fill={color}/>
-      <path d="M12 19c2 0 4-1.5 4-4 0-1.5-1-3-2-3.5 0 1-1 2-2 2-1.2 0-2-1.5-1.5-3C9 11.5 8 13 8 15c0 2.5 1.5 4 4 4z" fill="#fbbf24"/>
+      <defs>
+        <radialGradient id="mf1" cx="50%" cy="70%" r="60%"><stop offset="0%" stopColor="#fcd34d"/><stop offset="50%" stopColor="#f97316"/><stop offset="100%" stopColor="#b91c1c"/></radialGradient>
+        <radialGradient id="mf2" cx="50%" cy="65%" r="55%"><stop offset="0%" stopColor="#fef9c3"/><stop offset="100%" stopColor="#fbbf24"/></radialGradient>
+      </defs>
+      <path d="M12 23c5 0 9-4 9-9 0-4-2.8-7.5-5-9.5 0 2.5-1.5 4-3 4.5C14 7 13 4.5 11 2c-4.5 3.5-7 7-7 12 0 5 4 9 8 9z" fill="url(#mf1)"/>
+      <path d="M12 19c2 0 4-1.5 4-4 0-1.5-1-3-2-3.5 0 1-1 2-2 2-1.2 0-2-1.5-1.5-3C9 11.5 8 13 8 15c0 2.5 1.5 4 4 4z" fill="url(#mf2)"/>
+      <ellipse cx="10" cy="8" rx="1.5" ry="2.5" fill="white" opacity="0.12"/>
     </svg>
   );
   if (id === "sun") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="5.5" fill={color}/>
-      <circle cx="12" cy="12" r="3" fill="#fef08a" opacity="0.5"/>
-      <g stroke={color} strokeWidth="2" strokeLinecap="round">
+      <defs>
+        <radialGradient id="ms1" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#fef9c3"/><stop offset="60%" stopColor="#fde047"/><stop offset="100%" stopColor="#a16207"/></radialGradient>
+      </defs>
+      <g stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.6">
         <line x1="12" y1="2" x2="12" y2="4.5"/>
         <line x1="12" y1="19.5" x2="12" y2="22"/>
         <line x1="2" y1="12" x2="4.5" y2="12"/>
@@ -145,88 +177,140 @@ const MoodSVG = ({ id, color }: { id: string; color: string }) => {
         <line x1="5.64" y1="18.36" x2="7.41" y2="16.59"/>
         <line x1="16.59" y1="7.41" x2="18.36" y2="5.64"/>
       </g>
+      <circle cx="12" cy="12" r="5.5" fill="url(#ms1)"/>
+      <ellipse cx="10" cy="9.5" rx="2" ry="1.2" fill="white" opacity="0.3"/>
     </svg>
   );
   if (id === "cloud") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M18.5 9.5C18.2 6.3 15.4 4 12.1 4 9.9 4 7.7 5.3 6.6 7.3 4.6 7.5 3 9.1 3 11c0 2.2 1.8 4 4 4h11.5c1.9 0 3.5-1.5 3.5-3.5 0-1.8-1.4-3.3-3.5-3.5z" fill={color}/>
-      <polyline points="13,13 10,18 13.5,18 10.5,23" stroke="#fef3c7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <defs>
+        <linearGradient id="mc1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#ddd6fe"/><stop offset="100%" stopColor="#6d28d9"/></linearGradient>
+      </defs>
+      <path d="M18.5 9.5C18.2 6.3 15.4 4 12.1 4 9.9 4 7.7 5.3 6.6 7.3 4.6 7.5 3 9.1 3 11c0 2.2 1.8 4 4 4h11.5c1.9 0 3.5-1.5 3.5-3.5 0-1.8-1.4-3.3-3.5-3.5z" fill="url(#mc1)"/>
+      <ellipse cx="9" cy="8" rx="2.5" ry="1.2" fill="white" opacity="0.25"/>
+      <polyline points="13,13 10,18 13.5,18 10.5,23" stroke="#fef3c7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+  if (id === "sceptique") return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <defs>
+        <radialGradient id="msk1" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#fb7185"/><stop offset="100%" stopColor="#9f1239"/></radialGradient>
+      </defs>
+      <circle cx="12" cy="12" r="10" fill="url(#msk1)"/>
+      <ellipse cx="9" cy="8" rx="3.5" ry="2" fill="white" opacity="0.2"/>
+      <path d="M7 8.5c.5-1 1.5-1.5 2.5-1" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+      <path d="M14.5 7.5h3" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+      <circle cx="9" cy="11.5" r="1.3" fill="white"/>
+      <circle cx="15" cy="11.5" r="1.3" fill="white"/>
+      <path d="M8.5 16.5q1.5-1.5 3.5-.5t3.5-.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
     </svg>
   );
   if (id === "compass") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="10" fill="rgba(96,165,250,0.15)" stroke={color} strokeWidth="1.5"/>
-      <circle cx="12" cy="12" r="1.8" fill={color}/>
-      <polygon points="12,4.5 13.8,11.2 12,10 10.2,11.2" fill="#f43f5e"/>
-      <polygon points="12,19.5 10.2,12.8 12,14 13.8,12.8" fill={color} opacity="0.6"/>
-      <line x1="5" y1="12" x2="6.5" y2="12" stroke={color} strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
-      <line x1="17.5" y1="12" x2="19" y2="12" stroke={color} strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+      <defs>
+        <radialGradient id="mco1" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#93c5fd"/><stop offset="100%" stopColor="#1e40af"/></radialGradient>
+      </defs>
+      <circle cx="12" cy="12" r="10" fill="url(#mco1)"/>
+      <ellipse cx="9" cy="8" rx="3.5" ry="2" fill="white" opacity="0.2"/>
+      <circle cx="12" cy="12" r="1.8" fill="white"/>
+      <polygon points="12,4.5 13.5,11 12,10 10.5,11" fill="#ef4444"/>
+      <polygon points="12,19.5 10.5,13 12,14 13.5,13" fill="white" opacity="0.7"/>
+      <line x1="5.5" y1="12" x2="7" y2="12" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+      <line x1="17" y1="12" x2="18.5" y2="12" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
     </svg>
   );
   if (id === "moon") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill={color}/>
-      <circle cx="17" cy="7" r="1.5" fill="#e2e8f0" opacity="0.7"/>
-      <circle cx="20" cy="11" r="1" fill="#e2e8f0" opacity="0.5"/>
-      <circle cx="19" cy="4.5" r="0.8" fill="#e2e8f0" opacity="0.4"/>
+      <defs>
+        <radialGradient id="mm1" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#cbd5e1"/><stop offset="100%" stopColor="#334155"/></radialGradient>
+      </defs>
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="url(#mm1)"/>
+      <ellipse cx="10" cy="7" rx="2.5" ry="1.5" fill="white" opacity="0.25"/>
+      <circle cx="16.5" cy="7" r="1.5" fill="white" opacity="0.7"/>
+      <circle cx="19.5" cy="11" r="1" fill="white" opacity="0.5"/>
+      <circle cx="18.5" cy="4.5" r="0.7" fill="white" opacity="0.4"/>
     </svg>
   );
   return null;
 };
 
 const DefiSVG = ({ id }: { id: string }) => {
-  const c = "#f59e0b";
   if (id === "clock") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="10" fill="rgba(245,158,11,0.15)" stroke={c} strokeWidth="1.5"/>
-      <line x1="12" y1="7" x2="12" y2="12.5" stroke={c} strokeWidth="2.2" strokeLinecap="round"/>
-      <line x1="12" y1="12.5" x2="15.5" y2="15" stroke={c} strokeWidth="2" strokeLinecap="round"/>
-      <circle cx="12" cy="12" r="1.5" fill={c}/>
-      <line x1="12" y1="3" x2="12" y2="4.5" stroke={c} strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
-      <line x1="21" y1="12" x2="19.5" y2="12" stroke={c} strokeWidth="2" strokeLinecap="round" opacity="0.5"/>
+      <defs>
+        <radialGradient id="dc1" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#fcd34d"/><stop offset="100%" stopColor="#92400e"/></radialGradient>
+      </defs>
+      <circle cx="12" cy="12" r="10" fill="url(#dc1)"/>
+      <ellipse cx="9" cy="8" rx="3.5" ry="2" fill="white" opacity="0.2"/>
+      <circle cx="12" cy="3" r="0.8" fill="#451a03" opacity="0.6"/>
+      <circle cx="21" cy="12" r="0.8" fill="#451a03" opacity="0.6"/>
+      <circle cx="12" cy="21" r="0.8" fill="#451a03" opacity="0.6"/>
+      <circle cx="3" cy="12" r="0.8" fill="#451a03" opacity="0.6"/>
+      <line x1="12" y1="7" x2="12" y2="12.5" stroke="#451a03" strokeWidth="2.2" strokeLinecap="round"/>
+      <line x1="12" y1="12.5" x2="15.5" y2="15" stroke="#451a03" strokeWidth="2" strokeLinecap="round"/>
+      <circle cx="12" cy="12" r="1.5" fill="#78350f"/>
     </svg>
   );
   if (id === "heart") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z" fill={c}/>
-      <path d="M8.5 9.5c.5-1.5 2-2 3-1.5" stroke="#fef3c7" strokeWidth="1.5" strokeLinecap="round"/>
-      <circle cx="15.5" cy="8.5" r="1.2" fill="#fde68a" opacity="0.8"/>
+      <defs>
+        <radialGradient id="dh1" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#fcd34d"/><stop offset="100%" stopColor="#78350f"/></radialGradient>
+      </defs>
+      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z" fill="url(#dh1)"/>
+      <ellipse cx="9" cy="8" rx="3.5" ry="2" fill="white" opacity="0.2" transform="rotate(-30 9 8)"/>
+      <path d="M8.5 9.5c.5-1.5 2-2 3-1.5" stroke="white" strokeWidth="1.3" strokeLinecap="round" opacity="0.6"/>
+      <circle cx="15.5" cy="8.5" r="1.2" fill="#fef3c7" opacity="0.7"/>
     </svg>
   );
   if (id === "utensils") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="14" r="7" fill="rgba(245,158,11,0.15)" stroke={c} strokeWidth="1.5"/>
-      <line x1="12" y1="7" x2="12" y2="21" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
-      <path d="M8 3v5c0 1.1.9 2 2 2" stroke={c} strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-      <line x1="8" y1="3" x2="8" y2="8" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
-      <line x1="10" y1="3" x2="10" y2="7" stroke={c} strokeWidth="1.5" strokeLinecap="round"/>
-      <path d="M16 3v5a2 2 0 002 2v11" stroke={c} strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+      <defs>
+        <radialGradient id="du1" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#fcd34d"/><stop offset="100%" stopColor="#78350f"/></radialGradient>
+      </defs>
+      <circle cx="12" cy="14" r="8" fill="url(#du1)"/>
+      <ellipse cx="10" cy="10" rx="3" ry="1.8" fill="white" opacity="0.2"/>
+      <line x1="12" y1="6.5" x2="12" y2="22" stroke="#451a03" strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M8 3v4.5c0 1.1.9 2 2 2" stroke="#fef3c7" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
+      <line x1="8" y1="3" x2="8" y2="7.5" stroke="#fef3c7" strokeWidth="1.4" strokeLinecap="round"/>
+      <line x1="10" y1="3" x2="10" y2="6.5" stroke="#fef3c7" strokeWidth="1.4" strokeLinecap="round"/>
+      <path d="M16 3v5a2 2 0 002 2v12" stroke="#fef3c7" strokeWidth="1.4" strokeLinecap="round" fill="none"/>
     </svg>
   );
   if (id === "battery") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <rect x="1" y="7" width="18" height="10" rx="2.5" fill="rgba(245,158,11,0.12)" stroke={c} strokeWidth="1.5"/>
-      <path d="M23 11v2" stroke={c} strokeWidth="2" strokeLinecap="round"/>
-      <rect x="2.5" y="8.5" width="4.5" height="7" rx="1" fill="#f43f5e"/>
-      <line x1="10.5" y1="10.5" x2="10.5" y2="13.5" stroke={c} strokeWidth="1" opacity="0.3"/>
-      <line x1="14" y1="10.5" x2="14" y2="13.5" stroke={c} strokeWidth="1" opacity="0.2"/>
+      <defs>
+        <linearGradient id="db1" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#fcd34d"/><stop offset="100%" stopColor="#b45309"/></linearGradient>
+      </defs>
+      <rect x="1" y="7" width="18" height="10" rx="2.5" fill="url(#db1)"/>
+      <ellipse cx="6" cy="9.5" rx="4" ry="1.5" fill="white" opacity="0.15"/>
+      <path d="M23 11v2" stroke="#d97706" strokeWidth="2" strokeLinecap="round"/>
+      <rect x="2.5" y="8.5" width="4.5" height="7" rx="1" fill="#ef4444"/>
+      <ellipse cx="4.5" cy="9.5" rx="1.5" ry="0.8" fill="white" opacity="0.2"/>
     </svg>
   );
   if (id === "chefhat") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <rect x="7" y="17" width="10" height="5" rx="1" fill={c} opacity="0.8"/>
-      <line x1="7" y1="19.5" x2="17" y2="19.5" stroke="#fef3c7" strokeWidth="1" opacity="0.5"/>
-      <circle cx="8" cy="11.5" r="4.5" fill={c}/>
-      <circle cx="16" cy="11.5" r="4.5" fill={c}/>
-      <ellipse cx="12" cy="8" rx="4" ry="5" fill={c}/>
-      <ellipse cx="12" cy="9.5" rx="3" ry="2.5" fill="#fbbf24" opacity="0.45"/>
-      <rect x="7" y="14.5" width="10" height="3" rx="0" fill={c}/>
+      <defs>
+        <radialGradient id="dch1" cx="40%" cy="30%" r="65%"><stop offset="0%" stopColor="#fef3c7"/><stop offset="100%" stopColor="#b45309"/></radialGradient>
+        <linearGradient id="dch2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fcd34d"/><stop offset="100%" stopColor="#92400e"/></linearGradient>
+      </defs>
+      <rect x="7" y="17" width="10" height="5" rx="1" fill="url(#dch2)"/>
+      <line x1="7" y1="19.5" x2="17" y2="19.5" stroke="#fef3c7" strokeWidth="1" opacity="0.4"/>
+      <circle cx="8" cy="11.5" r="4.5" fill="url(#dch1)"/>
+      <circle cx="16" cy="11.5" r="4.5" fill="url(#dch1)"/>
+      <ellipse cx="12" cy="8" rx="4" ry="5" fill="url(#dch1)"/>
+      <ellipse cx="10.5" cy="7" rx="2.5" ry="1.5" fill="white" opacity="0.28"/>
+      <rect x="7" y="14.5" width="10" height="3" fill="#b45309"/>
     </svg>
   );
   if (id === "zap2") return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill={c}/>
-      <line x1="10.5" y1="10" x2="13.5" y2="6" stroke="#fef3c7" strokeWidth="1" opacity="0.5" strokeLinecap="round"/>
+      <defs>
+        <linearGradient id="dz1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#fef08a"/><stop offset="100%" stopColor="#b45309"/></linearGradient>
+      </defs>
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="url(#dz1)"/>
+      <polygon points="13 2 9 10 12 10 13 2" fill="white" opacity="0.18"/>
+      <line x1="10" y1="10" x2="13" y2="6" stroke="white" strokeWidth="1" opacity="0.35" strokeLinecap="round"/>
     </svg>
   );
   return null;
@@ -521,7 +605,7 @@ export default function PatientOnboardingPage() {
         {step === 1 && (() => {
           const fieldBox: React.CSSProperties = { background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, padding: "10px 14px" };
           const fieldLabel: React.CSSProperties = { margin: "0 0 2px", fontSize: 11, fontWeight: 600, color: "#4b5563", textTransform: "uppercase", letterSpacing: "0.06em" };
-          const fieldValue = (v: string): React.CSSProperties => ({ margin: 0, fontSize: 14, fontWeight: 600, color: v ? "white" : "#374151" });
+          const fieldValue = (): React.CSSProperties => ({ margin: 0, fontSize: 13, fontWeight: 500, color: "white" });
 
           const medicalFields = [
             { label: "Pathologies", value: confirmPathologies, setter: setConfirmPathologies, options: ["Diabète type 2", "Hypertension", "Hypothyroïdie", "SOPK", "Cholestérol", "TCA", "Surpoids"], none: "Aucune" },
@@ -550,7 +634,7 @@ export default function PatientOnboardingPage() {
                   ].map(f => (
                     <div key={f.label} style={fieldBox}>
                       <p style={fieldLabel}>{f.label}</p>
-                      <p style={fieldValue(!["Aucun", "Aucune"].includes(f.display) ? f.display : "")}>{f.display}</p>
+                      <p style={fieldValue()}>{f.display}</p>
                     </div>
                   ))}
                 </div>
@@ -588,7 +672,7 @@ export default function PatientOnboardingPage() {
                   {medicalFields.map(f => (
                     <div key={f.label} style={fieldBox}>
                       <p style={fieldLabel}>{f.label}</p>
-                      <p style={fieldValue(f.value)}>{f.value || f.none}</p>
+                      <p style={fieldValue()}>{f.value || f.none}</p>
                     </div>
                   ))}
                 </div>
@@ -703,6 +787,7 @@ export default function PatientOnboardingPage() {
                   { id: "abloc", label: "Très motivé(e)", color: "#f97316", svg: "flame" },
                   { id: "optimiste", label: "Optimiste", color: "#eab308", svg: "sun" },
                   { id: "anxieux", label: "Un peu anxieux(se)", color: "#a78bfa", svg: "cloud" },
+                  { id: "sceptique", label: "Un peu sceptique", color: "#f43f5e", svg: "sceptique" },
                   { id: "perdu", label: "Complètement perdu(e)", color: "#60a5fa", svg: "compass" },
                   { id: "fatigue", label: "Volontaire, mais fatigué(e)", color: "#94a3b8", svg: "moon" },
                 ].map(m => (
