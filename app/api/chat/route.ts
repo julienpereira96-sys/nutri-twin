@@ -12,7 +12,7 @@ const redis = new Redis({
 const PLAN_CONFIG = {
   essentiel: {
     model: "gemini-3.1-flash-lite",
-    maxOutputTokens: 250,
+    maxOutputTokens: 420,
     historyLimit: 20,
     ragChunks: 5,
     dailyMessageLimit: 30,
@@ -20,7 +20,7 @@ const PLAN_CONFIG = {
   },
   pro: {
     model: "gemini-3-flash-preview",
-    maxOutputTokens: 450,
+    maxOutputTokens: 650,
     historyLimit: 100,
     ragChunks: 8,
     dailyMessageLimit: 100,
@@ -28,7 +28,7 @@ const PLAN_CONFIG = {
   },
   cabinet: {
     model: "gemini-3-flash-preview",
-    maxOutputTokens: 450,
+    maxOutputTokens: 650,
     historyLimit: 100,
     ragChunks: 8,
     dailyMessageLimit: 100,
@@ -36,7 +36,7 @@ const PLAN_CONFIG = {
   },
   fondateur: {
     model: "gemini-3-flash-preview",
-    maxOutputTokens: 450,
+    maxOutputTokens: 650,
     historyLimit: 100,
     ragChunks: 8,
     dailyMessageLimit: 100,
