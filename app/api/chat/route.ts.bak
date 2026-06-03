@@ -55,7 +55,6 @@ type ChatRequest = {
   imageBase64?: string;
   imageMimeType?: string;
   isSOS?: boolean;
-  sosContext?: string; // contexte de triage SOS (fringale / stress / culpabilité / coup de mou)
 };
 
 const COMPLEX_KEYWORDS = [
@@ -71,32 +70,53 @@ const COMPLEX_KEYWORDS = [
   "échec", "culpabilité", "désespoir", "craquer", "pleurer",
 ];
 
-// ═══ GARDE-FOU BRUT — urgences vitales absolues uniquement ═══
-// Ces mots-clés déclenchent un bypass immédiat AVANT tout appel LLM.
-// Pour tout le reste (TCA, comportemental, implicite), c'est Gemini qui analyse.
+
+
+// ═══ DÉTECTION DE CRISE ═══
 const CRISIS_CRITICAL_KEYWORDS = [
+  // Suicide
   "suicide", "suicider", "me suicider", "suicidaire", "veux mourir", "envie de mourir",
   "je veux mourir", "en finir", "plus envie de vivre", "disparaître", "disparaitre",
   "me tuer", "me faire du mal", "mettre fin à ma vie", "fin à ma vie",
+  // Urgences vitales
   "gorge qui serre", "gorge enfle", "lèvres gonflent", "lèvres gonflées", "allergie grave",
   "anaphylaxie", "epipen", "je suffoque", "je peux plus respirer",
   "douleur poitrine", "douleur thoracique", "bras gauche engourdi", "bras qui engourdit",
   "je perds connaissance", "je vais perdre connaissance", "vision floue soudaine",
   "paralysie", "je parle plus", "bouche tordue",
-  "je tremble plus je peux", "sueurs froides et confus",
+  // Hypoglycémie sévère  
+  "je tremble plus je peux", "sueurs froides et confus", "je comprends plus rien",
+  // Menaces
   "je vais le tuer", "je vais la tuer", "je vais faire du mal", "envie de frapper",
 ];
+
+const CRISIS_ALERT_KEYWORDS = [
+  // TCA graves
+  "je me suis fait vomir", "j'ai vomi exprès", "je prends des laxatifs", "laxatifs après manger",
+  "je mange rien depuis", "j'ai rien mangé depuis", "moins de 500 calories", "moins de 600 calories",
+  "j'ai tout mangé d'un coup", "j'ai tout englouti", "crise de boulimie", "hyperphagie",
+  // Arrêt traitement
+  "arrêter mon traitement", "arrêter mes médicaments", "stop mes cachets", "plus prendre mes médicaments",
+  // Grossesse
+  "je suis enceinte", "j'attends un bébé", "grossesse", "je suis tombée enceinte",
+  // Interactions médicamenteuses
+  "nouveau médicament", "on m'a prescrit", "ordonnance nouvelle",
+  // Décompensation
+  "on empoisonne", "ils me surveillent", "je suis suivie", "complot", "on veut me faire du mal",
+];
+
+function detectCrisisLevel(message: string): "critical" | "alert" | "none" {
+  const lower = message.toLowerCase();
+  if (CRISIS_CRITICAL_KEYWORDS.some(kw => lower.includes(kw))) return "critical";
+  if (CRISIS_ALERT_KEYWORDS.some(kw => lower.includes(kw))) return "alert";
+  return "none";
+}
 
 const CRISIS_CRITICAL_RESPONSES: Record<string, string> = {
   suicide: "Je t'entends, et ce que tu ressens est réel. Tu n'es pas seul(e). Appelle maintenant le 3114 - c'est le numéro national de prévention du suicide, disponible 24h/24, gratuit et confidentiel. Ton praticien sera également informé immédiatement. 🌿",
   medical: "Ce que tu décris nécessite une attention médicale immédiate. Appelle le 15 (SAMU) ou le 112 maintenant. Ne reste pas seul(e). Ton praticien sera informé.",
   threat: "Je prends note de ce que tu exprimes. Si tu te sens en danger ou si tu risques de faire du mal à quelqu'un, appelle le 17 (Police) ou le 112 immédiatement.",
 };
-
-function isCriticalKeyword(message: string): boolean {
-  const lower = message.toLowerCase();
-  return CRISIS_CRITICAL_KEYWORDS.some(kw => lower.includes(kw));
-}
 
 function getCriticalResponseType(message: string): string {
   const lower = message.toLowerCase();
@@ -106,39 +126,25 @@ function getCriticalResponseType(message: string): string {
   return "suicide";
 }
 
-// ═══ ANALYSE CRISE LLM (garde-fou principal) ═══
-// Appelé en parallèle du build de prompt principal pour chaque message non-vital.
-type CrisisAnalysis = {
-  level: "red_critical" | "red_behavioral" | "none";
-  murmure: string;
-};
-
-async function analyzeCrisisWithLLM(message: string, patientContext: string): Promise<CrisisAnalysis> {
-  try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-3.1-flash-lite",
-      generationConfig: { maxOutputTokens: 100, temperature: 0 },
-    });
-    const prompt = `Tu es un détecteur de crise pour un suivi nutritionnel. Analyse ce message d'un patient.
-
-CONTEXTE PATIENT :
-${patientContext.slice(0, 500)}
-
-MESSAGE : "${message}"
-
-Réponds UNIQUEMENT en JSON sans markdown :
-- level : "red_critical" si intention suicidaire/urgence vitale explicite ou fortement implicite, "red_behavioral" si TCA actif/grossesse/arrêt traitement/décompensation/détresse psychologique sévère, "none" sinon
-- murmure : phrase courte (max 15 mots) pour le praticien si level != none, "" sinon
-
-{"level":"none","murmure":""}`;
-
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text().trim().replace(/```json|```/g, "").trim();
-    return JSON.parse(raw) as CrisisAnalysis;
-  } catch {
-    return { level: "none", murmure: "" };
-  }
+function getTCAResponse(firstName: string): string {
+  return `Je sens que c'est un moment très difficile pour toi, ${firstName}. On va mettre de côté les conseils alimentaires pour l'instant. Je vais en toucher deux mots à ton praticien pour qu'on puisse t'épauler au mieux. Respire, je suis là. 🌿`;
 }
+
+function getAlertMurmure(message: string): string {
+  const lower = message.toLowerCase();
+  if (["enceinte", "grossesse", "bébé"].some(kw => lower.includes(kw)))
+    return "Le patient a confirmé une grossesse. Priorité à la nutrition prénatale et à l'équilibre micronutritionnel. Suspendre tout objectif de perte de poids ou de restriction.";
+  if (["vomi", "laxatif", "boulimie", "hyperphagie"].some(kw => lower.includes(kw)))
+    return "Comportement TCA détecté. Passer en mode soutien uniquement. Ne pas donner de conseils nutritionnels jusqu'à la prochaine consultation.";
+  if (["arrêter mon traitement", "stop mes cachets", "plus prendre mes médicaments"].some(kw => lower.includes(kw)))
+    return "Le patient envisage d'arrêter son traitement médical. Rediriger systématiquement vers le médecin traitant sur ce sujet.";
+  if (["nouveau médicament", "on m'a prescrit", "ordonnance"].some(kw => lower.includes(kw)))
+    return "Nouveau médicament signalé. Vérifier les interactions possibles avec le protocole nutritionnel en cours.";
+  if (["complot", "empoisonne", "surveillent"].some(kw => lower.includes(kw)))
+    return "Signes de décompensation psychologique détectés. Reprendre la main manuellement et contacter le patient directement.";
+  return "Alerte comportementale détectée. Vérifier la conversation et contacter le patient si nécessaire.";
+}
+
 
 function isComplexMessage(message: string): boolean {
   const lower = message.toLowerCase();
@@ -208,19 +214,17 @@ async function getPractitionerData(practitionerId: string): Promise<CachedPracti
   return data;
 }
 
-// ═══ RAG ÉTENDU ═══
-// Tuyau systématique : consignes praticien injectées via getPatientProfile (déjà géré).
-// Tuyau vectoriel : documents praticien + patient, filtre 4 mots désactivé si mot-clé médical.
-async function hasDocuments(practitionerId: string, patientId?: string): Promise<boolean> {
+async function hasDocuments(practitionerId: string): Promise<boolean> {
   try {
-    const cacheKey = `has_docs:${practitionerId}:${patientId ?? "global"}`;
+    const cacheKey = `has_docs:${practitionerId}`;
     const cached = await redis.get<boolean>(cacheKey);
     if (cached !== null) return cached;
 
     const supabase = createSupabaseClient();
-    let query = supabase.from("documents").select("*", { count: "exact", head: true }).eq("practitioner_id", practitionerId);
-    if (patientId) query = query.or(`patient_id.eq.${patientId},patient_id.is.null`);
-    const { count } = await query;
+    const { count } = await supabase
+      .from("documents")
+      .select("*", { count: "exact", head: true })
+      .eq("practitioner_id", practitionerId);
 
     const result = (count ?? 0) > 0;
     await redis.set(cacheKey, result, { ex: 3600 });
@@ -230,88 +234,89 @@ async function hasDocuments(practitionerId: string, patientId?: string): Promise
   }
 }
 
-function messageNeedsRAG(message: string, patientPathologies?: string): boolean {
-  // Toujours appeler le RAG si le message est complexe
-  if (isComplexMessage(message)) return true;
-  if (message.split(" ").length >= 4) return true;
-
-  // Court mais contient un terme médical du dossier patient → RAG quand même
-  if (patientPathologies) {
-    const lower = message.toLowerCase();
-    const pathoTerms = patientPathologies.toLowerCase().split(/[,;\s]+/).filter(t => t.length > 3);
-    if (pathoTerms.some(term => lower.includes(term))) return true;
-  }
-
-  return false;
-}
-
-async function getRelevantDocuments(
-  question: string,
-  practitionerId: string,
-  ragChunks: number,
-  patientId?: string,
-  patientPathologies?: string
-): Promise<string> {
+async function getRelevantDocuments(question: string, practitionerId: string, ragChunks: number): Promise<string> {
   try {
-    const hasDocs = await hasDocuments(practitionerId, patientId);
+    const hasDocs = await hasDocuments(practitionerId);
     if (!hasDocs) return "";
 
-    if (!messageNeedsRAG(question, patientPathologies)) return "";
+    // N'appelle l'embedding que si le message est suffisamment complexe
+    if (question.split(" ").length < 4 && !isComplexMessage(question)) return "";
 
     const supabase = createSupabaseClient();
     const queryEmbedding = await getGeminiEmbedding(question);
-
-    // Recherche dans docs praticien + docs patient si patient_id existe
-    const { data: globalDocs } = await supabase.rpc("match_documents", {
+    const { data } = await supabase.rpc("match_documents", {
       query_embedding: queryEmbedding,
       practitioner_id: practitionerId,
       match_count: ragChunks,
     });
 
-    let patientDocs: { content: string; similarity: number }[] = [];
-    if (patientId) {
-      try {
-        const { data } = await supabase.rpc("match_patient_documents", {
-          query_embedding: queryEmbedding,
-          patient_id_param: patientId,
-          match_count: Math.ceil(ragChunks / 2),
-        });
-        if (data) patientDocs = data as { content: string; similarity: number }[];
-      } catch {
-        // match_patient_documents n'existe peut-être pas encore — silencieux
-      }
-    }
+    const results = data as { content: string; similarity: number }[] | null;
+    if (!results || results.length === 0) return "";
 
-    const allResults = [
-      ...((globalDocs as { content: string; similarity: number }[] | null) ?? []),
-      ...patientDocs,
-    ];
-
-    if (allResults.length === 0) return "";
-
-    const relevant = allResults
-      .filter(d => d.similarity > 0.5)
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, ragChunks)
-      .map(d => d.content)
-      .join("\n\n");
-
-    return relevant ? `\nDOCUMENTS DE RÉFÉRENCE :\n${relevant}\n` : "";
+    const relevant = results.filter((d) => d.similarity > 0.5).map((d) => d.content).join("\n\n");
+    return relevant ? `\nDOCUMENTS DE RÉFÉRENCE DU PRATICIEN :\n${relevant}\n` : "";
   } catch {
     return "";
   }
 }
 
-async function getPatientProfile(patientId: string): Promise<{ context: string; pathologies?: string }> {
+async function getFreshJournal(patientId: string): Promise<string> {
   try {
-    const cacheKey = `patient_profile_v2:${patientId}`;
-    const cached = await redis.get<{ context: string; pathologies?: string }>(cacheKey);
-    if (cached) return cached;
+    const supabase = createSupabaseClient();
+
+    const { data: recentEntries } = await supabase
+      .from("journal_entries")
+      .select("date, mood, food_rating, emotions, content")
+      .eq("patient_id", patientId)
+      .order("date", { ascending: false })
+      .limit(3);
+
+    const { data: weekEntries } = await supabase
+      .from("journal_entries")
+      .select("mood, food_rating")
+      .eq("patient_id", patientId)
+      .order("date", { ascending: false })
+      .limit(7);
+
+    if (!recentEntries?.length) return "";
+
+    let weekSummary = "";
+    if (weekEntries && weekEntries.length >= 3) {
+      const avgMood = (weekEntries.reduce((sum, e) => sum + e.mood, 0) / weekEntries.length).toFixed(1);
+      const avgFood = (weekEntries.reduce((sum, e) => sum + e.food_rating, 0) / weekEntries.length).toFixed(1);
+      const firstMood = weekEntries[weekEntries.length - 1].mood;
+      const lastMood = weekEntries[0].mood;
+      const trend = lastMood > firstMood ? "en hausse" : lastMood < firstMood ? "en baisse" : "stable";
+      weekSummary = `Synthèse 7 jours : humeur moyenne ${avgMood}/10 (${trend}), alimentation moyenne ${avgFood}/3.`;
+    }
+
+    const detailedEntries = recentEntries.map((e) => {
+      const moodLabel = e.mood <= 3 ? "difficile" : e.mood <= 6 ? "moyen" : e.mood <= 8 ? "bien" : "excellent";
+      const foodLabel = e.food_rating === 1 ? "difficile" : e.food_rating === 2 ? "bien" : "excellent";
+      const emotions = (e.emotions as string[])?.join(", ") || "non renseignées";
+      const note = e.content ? ` - "${e.content}"` : "";
+      return `  • ${e.date} : humeur ${moodLabel} (${e.mood}/10), alimentation ${foodLabel}, émotions : ${emotions}${note}`;
+    }).join("\n");
+
+    return `\nJOURNAL DU PATIENT :\n${weekSummary}\nDernières entrées :\n${detailedEntries}\nUtilise ces données subtilement pour adapter ton ton et tes conseils, sans jamais citer explicitement le journal.`;
+  } catch {
+    return "";
+  }
+}
+
+async function getPatientProfile(patientId: string): Promise<string> {
+  try {
+    const cacheKey = `patient_profile:${patientId}`;
+    const cached = await redis.get<string>(cacheKey);
+    if (cached) {
+      const journalContext = await getFreshJournal(patientId);
+      return cached + journalContext;
+    }
 
     const supabase = createSupabaseClient();
     const { data } = await supabase
       .from("patients")
-      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, practitioner_instruction, motivation, defi, aliments_aimes, aliments_detestes, niveau_activite, regime_specifique")
+      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, practitioner_instruction, motivation, defi, aliments_aimes, aliments_detestes, niveau_activite, regime_specifique, notes")
       .eq("user_id", patientId)
       .single();
 
@@ -319,13 +324,14 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
       first_name?: string; last_name?: string; age?: number; sexe?: string;
       taille?: number; poids?: number; objective?: string; pathologies?: string;
       allergies?: string; traitements?: string; objectif_clinique?: string;
-      motivation?: string; defi?: string;
+      motivation?: string; defi?: string; notes?: string;
       aliments_aimes?: string; aliments_detestes?: string; niveau_activite?: string;
-      regime_specifique?: string; practitioner_instruction?: unknown;
+      regime_specifique?: string; practitioner_instruction?: string;
     } | null;
 
-    if (!patient) return { context: "" };
+    if (!patient) return "";
 
+    // Mapping des IDs techniques vers des libellés lisibles
     const levierLabels: Record<string, string> = {
       progres: "Voir des progrès concrets",
       encourage: "Se sentir encouragé(e)",
@@ -344,7 +350,7 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
       fatigue: "Volontaire mais fatigué(e)",
     };
 
-    const parts: string[] = [];
+    const parts = [];
     if (patient.first_name) parts.push(`Prénom : ${patient.first_name}`);
     if (patient.age) parts.push(`Âge : ${patient.age} ans`);
     if (patient.sexe) parts.push(`Sexe : ${patient.sexe}`);
@@ -354,44 +360,47 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
     if (patient.allergies) parts.push(`Allergies : ${patient.allergies}`);
     if (patient.traitements) parts.push(`Traitements : ${patient.traitements}`);
     if (patient.objectif_clinique) parts.push(`Objectif clinique : ${patient.objectif_clinique}`);
-    if (patient.objective) parts.push(`Levier de motivation : ${levierLabels[patient.objective] ?? patient.objective}`);
+    if (patient.objective) parts.push(`Levier de motivation principal : ${levierLabels[patient.objective] ?? patient.objective}`);
     if (patient.niveau_activite) parts.push(`Niveau d'activité : ${patient.niveau_activite}`);
     if (patient.regime_specifique) parts.push(`Régime : ${patient.regime_specifique}`);
     if (patient.motivation) parts.push(`État d'esprit face au changement : ${moodLabels[patient.motivation] ?? patient.motivation}`);
-    if (patient.defi) parts.push(`Plus gros défi déclaré : ${patient.defi}`);
+    if (patient.defi) parts.push(`Plus gros défi : ${patient.defi}`);
     if (patient.aliments_aimes) parts.push(`Aliments aimés : ${patient.aliments_aimes}`);
     if (patient.aliments_detestes) parts.push(`Aliments détestés : ${patient.aliments_detestes}`);
+    if (patient.notes) parts.push(`Informations complémentaires du patient : ${patient.notes}`);
 
-    // Murmures / consignes praticien (tuyau systématique)
     const instructionDate = (patient as { instruction_updated_at?: string }).instruction_updated_at
       ? `(mis à jour le ${new Date((patient as { instruction_updated_at?: string }).instruction_updated_at!).toLocaleDateString("fr-FR")})`
       : "";
 
-    const murmureSection = (() => {
-      const instr = patient.practitioner_instruction;
-      if (!instr) return "";
-      // Format tableau de murmures
-      if (Array.isArray(instr)) {
-        const active = (instr as { text: string; expires_at?: string | null }[])
-          .filter(m => !m.expires_at || new Date(m.expires_at) > new Date());
-        if (active.length === 0) return "";
-        return `\n🔴 MURMURES DU PRATICIEN - PRIORITÉ ABSOLUE ${instructionDate}\nCes consignes écrasent TOUT. Applique-les immédiatement et dans chaque réponse :\n${active.map(m => `• "${m.text}"`).join("\n")}\n`;
-      }
-      // Format texte simple
-      const expires = (patient as { practitioner_instruction_expires_at?: string }).practitioner_instruction_expires_at;
-      if (expires && new Date(expires) < new Date()) return "";
-      return `\n🔴 MURMURE DU PRATICIEN - PRIORITÉ ABSOLUE ${instructionDate}\nCette consigne écrase TOUT autre instruction. Tu DOIS l'appliquer immédiatement et dans chaque réponse :\n"${instr as string}"\n`;
-    })();
+    const briefSection = [
+      Array.isArray(patient.practitioner_instruction) && (patient.practitioner_instruction as { text: string; expires_at?: string | null }[]).filter(m => !m.expires_at || new Date(m.expires_at) > new Date()).length > 0
+        ? `CONSIGNES PRATICIEN : ${(patient.practitioner_instruction as { text: string; expires_at?: string | null }[]).filter(m => !m.expires_at || new Date(m.expires_at) > new Date()).map(m => m.text).join(" | ")}`
+        : "",
+      (() => {
+        if (!patient.practitioner_instruction) return "";
+        const expires = (patient as { practitioner_instruction_expires_at?: string }).practitioner_instruction_expires_at;
+        if (expires && new Date(expires) < new Date()) return "";
+        return `\n\n🔴 MURMURE DU PRATICIEN - PRIORITÉ ABSOLUE ${instructionDate}\nCette consigne écrase TOUT autre instruction. Tu DOIS l'appliquer immédiatement et dans chaque réponse :\n"${patient.practitioner_instruction}"\n`;
+      })(),      
+    ].filter(Boolean).join("\n");
 
-    const staticProfile = parts.length > 0
-      ? `\nPROFIL DU PATIENT :\n${parts.join("\n")}\n${murmureSection ? `\nINSTRUCTIONS SPÉCIFIQUES DU PRATICIEN POUR CE PATIENT :${murmureSection}` : ""}`
+    const briefFinal = briefSection
+      ? `\nINSTRUCTIONS SPÉCIFIQUES DU PRATICIEN POUR CE PATIENT :\n${briefSection}\n`
       : "";
 
-    const result = { context: staticProfile, pathologies: patient.pathologies };
-    if (staticProfile) await redis.set(cacheKey, result, { ex: 3600 });
-    return result;
+    const staticProfile = parts.length > 0
+      ? `\nPROFIL DU PATIENT :\n${parts.join("\n")}\n${briefFinal}`
+      : "";
+
+    if (staticProfile) {
+      await redis.set(cacheKey, staticProfile, { ex: 3600 });
+    }
+
+    const journalContext = await getFreshJournal(patientId);
+    return staticProfile + journalContext;
   } catch {
-    return { context: "" };
+    return "";
   }
 }
 
@@ -400,7 +409,7 @@ async function summarizeOldMessages(messages: { role: string; content: string }[
     const patientMessages = messages.filter((m) => m.role === "user").map((m) => m.content.slice(0, 400)).join(" | ");
     const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
     const result = await model.generateContent(
-      `Résume en 5 lignes maximum les points clés de ces échanges patient-nutritionniste.
+      `Résume en 5 lignes maximum les points clés de ces échanges patient-nutritionniste. 
       Garde uniquement les faits importants : objectifs, écarts, progrès, préoccupations.
       Échanges : ${patientMessages}`
     );
@@ -458,23 +467,12 @@ async function getConversationHistory(
 function buildSystemPrompt(
   profile: Record<string, string> | null,
   patientContext: string,
-  documentsContext: string,
-  forceAncrage = false
+  documentsContext: string
 ): string {
   if (!profile) return getDefaultPrompt();
 
-  const ancrageBlock = forceAncrage ? `
-⚠️ MODE ANCRAGE BIENVEILLANT ACTIF ⚠️
-Le patient traverse une période de vulnérabilité comportementale ou émotionnelle.
-RÈGLES STRICTES pour ce mode :
-- ZÉRO conseil nutritionnel, ZÉRO objectif, ZÉRO programme.
-- 100% écoute active, validation émotionnelle, ancrage TCC.
-- Si le patient demande un conseil alimentaire, dis doucement que vous y reviendrez quand il se sentira prêt.
-- Ton praticien est informé et prendra le relais à la prochaine séance.
-` : "";
-
   return `Tu ES le Jumeau Numérique de ce nutritionniste expert. Le patient ne doit jamais sentir qu'il parle à une machine, mais à une extension directe de l'esprit et de la méthode de son praticien.
-${ancrageBlock}
+
 IDENTITÉ & POSTURE :
 - Ton de communication : ${profile.tone_of_voice || "bienveillant et professionnel"}
 - Mode d'adresse : ${profile.tutoiement || "vouvoiement"}
@@ -530,21 +528,24 @@ EXEMPLES DE RÉPONSES ATTENDUES :
 Tu dois respecter cet ordre de priorité strict, du plus important au moins important :
 1. MURMURE DU PRATICIEN (consigne temps réel) - priorité ABSOLUE, écrase tout le reste
 2. DOCUMENTS RAG (protocoles et expertise indexés) - ta base de connaissance métier
-3. PERSONNALITÉ (les paramètres ci-dessus) - ton style et ta posture
+3. PERSONNALITÉ (les 34 paramètres ci-dessus) - ton style et ta posture
 
 ${patientContext}${documentsContext}
 
 RÈGLES ABSOLUES :
-- PRIORITÉ EMPATHIQUE : Si le patient exprime une vulnérabilité, privilégie la chaleur AVANT tout conseil.
+- PRIORITÉ EMPATHIQUE :
+Si le patient exprime une vulnérabilité (détresse, découragement, honte), privilégie la chaleur et l'ancrage émotionnel AVANT tout conseil, même si ta posture de base est médicale ou directive.
 - INTERDICTION de Markdown (gras, listes, titres). Texte brut uniquement.
 - Maximum 150 mots par réponse.
 - Commencer par une validation empathique avant tout conseil.
 - Utiliser le prénom du patient pour créer du lien.
-- Ne JAMAIS dire "En tant qu'IA", "En tant que modèle de langue" ou similaire.
+- Ne JAMAIS dire "En tant qu'IA", "En tant que modèle de langue" ou similaire. Tu ES ce praticien.
 - Ne jamais inventer des informations médicales non confirmées.
-- Grossesse : félicite, redirige vers gynécologue/sage-femme, praticien adaptera le suivi.
-- TCA grave : stop conseils alimentaires, valide l'émotion, annonce relais praticien.
-- Arrêt de traitement : "Seul votre médecin traitant peut modifier votre traitement."
+- Si le patient mentionne une grossesse, un TCA grave, un arrêt de traitement médical ou une décompensation : passe immédiatement en mode "Ancrage Bienveillant". Arrête tout conseil nutritionnel. Valide l'émotion, annonce le relais humain au praticien. Ne donne aucun conseil technique.
+- Pour une grossesse : félicite chaleureusement, redirige vers le gynécologue/sage-femme, informe que le praticien adaptera le suivi.
+- Pour un TCA grave : "Je sens que c'est un moment très difficile. On met de côté les conseils alimentaires, je préviens [praticien] pour vous épauler."
+- Pour un arrêt de traitement : "Seul votre médecin traitant peut modifier votre traitement. Je ne peux pas intervenir sur ce terrain médical."
+
 
 COMMANDE ADMINISTRATIVE :
 Si le message commence par [ADMIN:identity_correction] :
@@ -553,9 +554,9 @@ Si le message commence par [ADMIN:identity_correction] :
 
 JSON TECHNIQUE OBLIGATOIRE - À ajouter en toute fin de réponse, invisible pour le patient :
 |||{"status":"green","reason":"résumé état en 8 mots max","victory":""}|||
-- status : "red_critical" si urgence vitale implicite détectée, "red_behavioral" si détresse comportementale/TCA/psychologique sévère, "orange" si difficulté modérée, "green" si tout va bien
+- status : "red" si détresse/découragement sévère, "orange" si difficulté modérée, "green" si tout va bien
 - reason : phrase courte décrivant l'état émotionnel du patient
-- victory : UNE phrase UNIQUEMENT si le patient rapporte un changement de comportement MAJEUR ou une réussite difficile. Vide "" sinon.`;
+- victory : UNE phrase UNIQUEMENT si le patient rapporte un changement de comportement MAJEUR ou une réussite sur un défi difficile. Laisser vide "" dans tous les autres cas.`;
 }
 
 function getDefaultPrompt(): string {
@@ -593,76 +594,46 @@ export async function POST(request: Request) {
       imageBase64,
       imageMimeType,
       isSOS,
-      sosContext,
     } = await request.json() as ChatRequest;
 
-    // Auth
+    // Si un patientId est fourni, vérifier que l'appelant est bien ce patient
     if (patientId) {
       const user = await getSessionUser();
       if (!user) return Response.json({ error: "Non autorisé." }, { status: 401 });
       if (user.id !== patientId) return Response.json({ error: "Accès refusé." }, { status: 403 });
     }
 
-    // ═══ BYPASS IMMÉDIAT — mots-clés urgences vitales ═══
-    if (message && isCriticalKeyword(message) && patientId && practitionerId) {
-      const supabase = createSupabaseClient();
-      const responseType = getCriticalResponseType(message);
-      const criticalResponse = CRISIS_CRITICAL_RESPONSES[responseType];
-
-      // Vérification Gemini avant alerte (évite faux positifs)
-      const verifyModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: { maxOutputTokens: 10, temperature: 0 } });
-      const verifyResult = await verifyModel.generateContent(`Ce message exprime-t-il un danger de mort immédiat pour le patient ou pour autrui ? Réponds uniquement par "oui" ou "non". Message : "${message}"`);
-      const verifyText = verifyResult.response.text().trim().toLowerCase();
-
-      if (verifyText.includes("oui")) {
-        await supabase.from("patients").update({ emotional_status: "red_critical", emotional_insight: "Urgence vitale détectée" }).eq("user_id", patientId);
-        const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
-        const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
-        await supabase.from("patients").update({
-          admin_alerts: [...alerts, { type: "admin_alert", alert_type: "critical", date: new Date().toISOString(), seen: false, message: message.slice(0, 200) }]
-        }).eq("user_id", patientId);
-
-        try {
-          await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "" },
-            body: JSON.stringify({ patientId, practitionerId, alertType: responseType, message }),
-          });
-        } catch { /* silencieux */ }
-
-        return new Response(criticalResponse, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
-      }
-    }
-
-    // ═══ SOS avec triage ═══
     if (isSOS && patientId && practitionerId) {
       const supabase = createSupabaseClient();
-      const { context: patientContext } = await getPatientProfile(patientId);
-
+    
+      // Profil patient depuis cache Redis
+      const patientContext = await getPatientProfile(patientId);
+    
+      // Données spécifiques pour la personnalisation miroir
       const { data: patientRaw } = await supabase
         .from("patients")
-        .select("first_name, practitioner_instruction, pathologies, defi, motivation")
+        .select("first_name, practitioner_instruction, notes, pathologies, defi, motivation")
         .eq("user_id", patientId)
         .single();
-
+    
       const patient = patientRaw as {
-        first_name?: string; practitioner_instruction?: string;
-        pathologies?: string; defi?: string; motivation?: string;
+        first_name?: string;
+        practitioner_instruction?: string;
+        notes?: string;
+        pathologies?: string;
+        defi?: string;
+        motivation?: string;
       } | null;
-
-      const moodLabels: Record<string, string> = {
-        abloc: "Très motivé(e)", optimiste: "Optimiste", anxieux: "Un peu anxieux(se)",
-        sceptique: "Un peu sceptique", perdu: "Complètement perdu(e)", fatigue: "Volontaire mais fatigué(e)",
-      };
-
+    
       const mirrorContext = [
-        patient?.practitioner_instruction ? `Consigne praticien : "${patient.practitioner_instruction}"` : "",
-        patient?.defi ? `Plus gros défi : "${patient.defi}"` : "",
-        patient?.motivation ? `État d'esprit habituel : "${moodLabels[patient.motivation] ?? patient.motivation}"` : "",
+        patient?.practitioner_instruction ? `Consigne actuelle du praticien : "${patient.practitioner_instruction}"` : "",
+        "",
+        patient?.defi ? `Plus gros défi du patient : "${patient.defi}"` : "",
+        patient?.motivation ? `État d'esprit actuel : "${patient.motivation}"` : "",
         patient?.pathologies ? `Pathologies : "${patient.pathologies}"` : "",
-        sosContext ? `TYPE DE CRISE DÉCLARÉ PAR LE PATIENT : "${sosContext}"` : "",
       ].filter(Boolean).join("\n");
-
+    
+      // 3 derniers messages
       const { data: recentMessages } = await supabase
         .from("conversations")
         .select("role, content")
@@ -671,84 +642,181 @@ export async function POST(request: Request) {
         .order("created_at", { ascending: false })
         .limit(3);
 
-      const { data: recentSOS } = await supabase
+        // Derniers outils SOS utilisés
+        const { data: recentSOS } = await supabase
         .from("sos_events")
         .select("raw_response, triggered_at")
         .eq("patient_id", patientId)
         .order("triggered_at", { ascending: false })
         .limit(3);
 
-      const recentTools = (recentSOS ?? [])
-        .map(e => { try { return (JSON.parse(e.raw_response as string) as { tool_id?: string }).tool_id ?? null; } catch { return null; } })
-        .filter(Boolean).join(", ");
+        const recentTools = (recentSOS ?? [])
+        .map(e => {
+          try {
+            const parsed = JSON.parse(e.raw_response as string) as { tool_id?: string };
+            return parsed.tool_id ?? null;
+          } catch { return null; }
+        })
+        .filter(Boolean)
+        .join(", ");
 
-      const context = (recentMessages ?? []).reverse()
+    
+      const context = (recentMessages ?? [])
+        .reverse()
         .map((m: { role: string; content: string }) => `${m.role === "user" ? "Patient" : "Jumeau"}: ${m.content}`)
         .join("\n");
-
+    
       const firstName = patient?.first_name ?? "le patient";
-
-      // Mapping sosContext → outils prioritaires
-      const sosToolHints: Record<string, string> = {
-        "fringale": "manger ou body_scan",
-        "stress": "breathing ou ancrage",
-        "culpabilité": "defusion ou ecriture",
-        "coup de mou": "marche ou adaptive_coaching",
-      };
-      const toolHint = sosContext
-        ? Object.entries(sosToolHints).find(([key]) => sosContext.toLowerCase().includes(key))?.[1] ?? ""
-        : "";
-
+    
       const sosPrompt = `Tu es le Jumeau Numérique d'un nutritionniste expert. Tu dois choisir et personnaliser un outil de soutien émotionnel pour ${firstName}.
+    
+    CONTEXTE PATIENT :
+    ${patientContext}
+    
+    PERSONNALISATION MIROIR (utilise ces éléments pour rendre le script de l'exercice unique et personnel) :
+    ${mirrorContext || "Pas de données spécifiques."}
+    
+    DERNIERS ÉCHANGES :
+    ${context || "Aucun échange récent."}
+    
+        RÈGLES :
+        RÈGLES :
+    - Choisis l'outil parmi :
+      breathing (stress/anxiété/tension)
+      ancrage (panique/dissociation/perte de repères)
+      manger (impulsions alimentaires/TCA/envie de grignoter)
+      marche (fatigue/rumination/besoin de mouvement)
+      body_scan (confusion faim réelle vs émotionnelle, sensations corporelles)
+      defusion (pensées automatiques négatives, culpabilité, "je suis nul")
+      ecriture (ruminations nocturnes, trop-plein émotionnel, besoin de vider)
+      adaptive_coaching (situation unique nécessitant un exercice sur mesure TCC)
 
-CONTEXTE PATIENT :
-${patientContext}
+    - Si tu choisis adaptive_coaching, génère toi-même les steps du tool_script en fonction du problème précis du patient. Les steps doivent suivre une approche TCC (Thérapies Cognitivo-Comportementales) : identifier la pensée automatique, la questionner, proposer une action concrète. Reste dans un cadre bienveillant et nutritionnel.
+    
+    - ANTI-REDONDANCE : Les outils récemment utilisés par ce patient sont : ${recentTools || "aucun"}. Évite de reproposer le même outil. Varie systématiquement.
+    
+    - PROPOSITION, PAS IMPOSITION : Amène toujours l'exercice comme une proposition douce, sauf si le patient a explicitement demandé de l'aide (bouton SOS pressé).
+    
+    - HUMOUR BIENVEILLANT : Si le patient exprime de la lassitude envers un exercice ("encore la respiration ?"), réponds avec autodérision et légèreté. Exemple : "Je sais, je suis monomaniaque du souffle - mais c'est le seul bouton Reset de ton système nerveux que je peux activer à distance ! 🌿"
+    
+    - Le twin_message doit suivre cette structure en moins de 30 mots :
+      1. Valide l'émotion immédiate du dernier message du patient (écho émotionnel 70%)
+      2. Lien subtil avec l'objectif de santé si pertinent (ADN praticien 30%, s'inspirer du Murmure ou du ton)
+      3. Transition douce vers l'exercice
+      Exemple : "Je sens que cet examen raté t'a épuisé, ${firstName}. Prenons 2 minutes pour retrouver ton calme avant d'y revenir."
+      Maximum 30 mots. Jamais robotique, toujours humain.
+    
+    - Les steps du tool_script doivent être personnalisés et varier à chaque fois - jamais de texte générique ou identique à une session précédente.
+    
+    - Réponds UNIQUEMENT en JSON sans markdown ni backticks :
+    {"tool_id":"breathing","twin_message":"Message personnalisé avec prénom max 30 mots","tool_script":{"step_1":"instruction personnalisée","step_2":"instruction personnalisée","step_3":"instruction personnalisée"}}`;
 
-PERSONNALISATION MIROIR :
-${mirrorContext || "Pas de données spécifiques."}
-
-DERNIERS ÉCHANGES :
-${context || "Aucun échange récent."}
-
-RÈGLES :
-- Choisis l'outil parmi : breathing, ancrage, manger, marche, body_scan, defusion, ecriture, adaptive_coaching
-${toolHint ? `- TYPE DE CRISE DÉCLARÉ : "${sosContext}" → Privilégie : ${toolHint}` : ""}
-- ANTI-REDONDANCE : Outils récemment utilisés : ${recentTools || "aucun"}. Évite de reproposer le même.
-- Le twin_message : max 30 mots, valide l'émotion (70%), transition douce vers l'exercice.
-- Les steps du tool_script : personnalisés, jamais génériques, adaptés au profil du patient.
-- Si adaptive_coaching : génère des steps suivant une approche TCC (identifier pensée automatique, questionner, action concrète).
-
-Réponds UNIQUEMENT en JSON sans markdown ni backticks :
-{"tool_id":"breathing","twin_message":"Message personnalisé max 30 mots","tool_script":{"step_1":"instruction personnalisée","step_2":"instruction personnalisée","step_3":"instruction personnalisée"}}`;
-
+    
       const sosModel = genAI.getGenerativeModel({
         model: "gemini-3.1-flash-lite",
         generationConfig: { maxOutputTokens: 400, temperature: 0.7 },
       });
-
+    
       const sosResult = await sosModel.generateContent(sosPrompt);
       const sosText = sosResult.response.text().trim().replace(/```json|```/g, "").trim();
-
+    
+      // Tracking en base
       try {
         await supabase.from("sos_events").insert({
           patient_id: patientId,
           practitioner_id: practitionerId,
           triggered_at: new Date().toISOString(),
           raw_response: sosText,
-          sos_context: sosContext ?? null,
         });
       } catch { /* silencieux */ }
-
+    
       try {
-        return Response.json({ tool: JSON.parse(sosText) });
+        const parsed = JSON.parse(sosText);
+        return Response.json({ tool: parsed });
       } catch {
         return Response.json({
-          tool: { tool_id: "breathing", twin_message: `${firstName}, prenons un moment pour souffler ensemble.`, tool_script: {} },
+          tool: {
+            tool_id: "breathing",
+            twin_message: `${firstName}, prenons un moment pour souffler ensemble.`,
+            tool_script: {},
+          },
         });
       }
-    }
+    }      
 
-    // ═══ FLOW PRINCIPAL ═══
+    // ═══ DÉTECTION CRISE ═══
+const crisisLevel = detectCrisisLevel(message);
+
+if (crisisLevel === "critical" && patientId && practitionerId) {
+  const supabase = createSupabaseClient();
+  const responseType = getCriticalResponseType(message);
+  const criticalResponse = CRISIS_CRITICAL_RESPONSES[responseType];
+
+  // Vérification Gemini avant d'envoyer l'alerte
+  const verifyModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: { maxOutputTokens: 10, temperature: 0 } });
+  const verifyResult = await verifyModel.generateContent(`Ce message exprime-t-il un danger de mort immédiat pour le patient ou pour autrui ? Réponds uniquement par "oui" ou "non". Message : "${message}"`);
+  const verifyText = verifyResult.response.text().trim().toLowerCase();
+
+  if (verifyText.includes("oui")) {
+    // Mettre à jour le statut patient
+    await supabase.from("patients").update({
+      emotional_status: "red_critical",
+      emotional_insight: "Alerte critique détectée",
+    }).eq("user_id", patientId);
+
+    // Ajouter admin_alert
+    const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
+    const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+    await supabase.from("patients").update({
+      admin_alerts: [...alerts, { type: "crisis", alert_type: responseType, date: new Date().toISOString(), seen: false, murmure: "" }]
+    }).eq("user_id", patientId);
+
+    // Sauvegarder la conversation
+    await supabase.from("conversations").insert([
+      { patient_id: patientId, practitioner_id: practitionerId, role: "user", content: message, session_id: sessionId ?? null },
+      { patient_id: patientId, practitioner_id: practitionerId, role: "assistant", content: criticalResponse, session_id: sessionId ?? null },
+    ]);
+
+    // Envoyer email au praticien
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "",
+        },
+        body: JSON.stringify({ patientId, practitionerId, alertType: responseType, message }),        
+      });
+    } catch { /* silencieux */ }
+
+    return new Response(criticalResponse, {
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+}
+
+if (crisisLevel === "alert" && patientId && practitionerId) {
+  const supabase = createSupabaseClient();
+  const murmure = getAlertMurmure(message);
+
+  await supabase.from("patients").update({ emotional_status: "red" }).eq("user_id", patientId);
+  
+  const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
+  const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+  
+  await supabase.from("patients").update({
+    admin_alerts: [...alerts, { 
+      type: "alert", 
+      alert_type: "behavioral", 
+      date: new Date().toISOString(), 
+      seen: false, 
+      murmure 
+    }]
+  }).eq("user_id", patientId);
+
+  // ON NE RETURN PAS - Gemini continue
+}
+
 
     const practitionerData = practitionerId
       ? await getPractitionerData(practitionerId)
@@ -757,7 +825,6 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
     const plan = practitionerData.plan;
     const config = PLAN_CONFIG[plan];
 
-    // Rate limit
     let showWarning = false;
     if (patientId) {
       const dailyCount = await getDailyMessageCount(patientId);
@@ -770,92 +837,20 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
             : "Votre compagnon de suivi a besoin de faire le point sur nos échanges d'aujourd'hui pour préparer votre prochain bilan. On se retrouve demain pour continuer ? 🌿",
         }, { status: 429 });
       }
+      
+      // Avertissement à 90% de la limite
       const warningThreshold = Math.floor(config.dailyMessageLimit * 0.9);
       showWarning = dailyCount >= warningThreshold && dailyCount < config.dailyMessageLimit;
-    }
-
-    // Récupérer statut actuel du patient (pour verrou red_behavioral)
-    const supabaseMain = createSupabaseClient();
-    let currentEmotionalStatus = "green";
-    let redBehavioralUntil: Date | null = null;
-
-    if (patientId) {
-      const { data: patientStatus } = await supabaseMain
-        .from("patients")
-        .select("emotional_status, red_behavioral_until")
-        .eq("user_id", patientId)
-        .single();
-      if (patientStatus) {
-        currentEmotionalStatus = (patientStatus as { emotional_status?: string }).emotional_status ?? "green";
-        const until = (patientStatus as { red_behavioral_until?: string }).red_behavioral_until;
-        redBehavioralUntil = until ? new Date(until) : null;
       }
-    }
 
-    const behavioralLocked = currentEmotionalStatus === "red_behavioral"
-      && redBehavioralUntil !== null
-      && redBehavioralUntil > new Date();
 
-    // Paralléliser : profil patient + documents + analyse crise LLM
-    const profileResult = patientId ? getPatientProfile(patientId) : Promise.resolve({ context: "", pathologies: undefined });
-    const crisisPromise = (message && patientId && !behavioralLocked)
-      ? profileResult.then(p => analyzeCrisisWithLLM(message, p.context))
-      : Promise.resolve<CrisisAnalysis>({ level: "none", murmure: "" });
-
-    const [{ context: patientContext, pathologies: patientPathologies }, crisisAnalysis] = await Promise.all([
-      profileResult,
-      crisisPromise,
+    const [patientContext, documentsContext] = await Promise.all([
+      patientId ? getPatientProfile(patientId) : Promise.resolve(""),
+      practitionerId ? getRelevantDocuments(message, practitionerId, config.ragChunks) : Promise.resolve(""),
     ]);
 
-    const documentsContext = practitionerId
-      ? await getRelevantDocuments(message, practitionerId, config.ragChunks, patientId, patientPathologies)
-      : "";
-
-    // Gérer crise LLM détectée
-    if (crisisAnalysis.level === "red_critical" && patientId && practitionerId) {
-      await supabaseMain.from("patients").update({ emotional_status: "red_critical", emotional_insight: crisisAnalysis.murmure || "Urgence détectée par IA" }).eq("user_id", patientId);
-      const { data: cur } = await supabaseMain.from("patients").select("admin_alerts").eq("user_id", patientId).single();
-      const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
-      await supabaseMain.from("patients").update({
-        admin_alerts: [...alerts, { type: "admin_alert", alert_type: "critical_llm", date: new Date().toISOString(), seen: false, murmure: crisisAnalysis.murmure }]
-      }).eq("user_id", patientId);
-      try {
-        await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "" },
-          body: JSON.stringify({ patientId, practitionerId, alertType: "implicit_critical", message }),
-        });
-      } catch { /* silencieux */ }
-    }
-
-    if (crisisAnalysis.level === "red_behavioral" && patientId && practitionerId && !behavioralLocked) {
-      const lockUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
-      await supabaseMain.from("patients").update({
-        emotional_status: "red_behavioral",
-        emotional_insight: crisisAnalysis.murmure || "Alerte comportementale détectée",
-        red_behavioral_until: lockUntil,
-      }).eq("user_id", patientId);
-      // Email praticien
-      try {
-        await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "" },
-          body: JSON.stringify({ patientId, practitionerId, alertType: "behavioral", message }),
-        });
-      } catch { /* silencieux */ }
-      const { data: cur } = await supabaseMain.from("patients").select("admin_alerts").eq("user_id", patientId).single();
-      const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
-      await supabaseMain.from("patients").update({
-        admin_alerts: [...alerts, { type: "admin_alert", alert_type: "behavioral", date: new Date().toISOString(), seen: false, murmure: crisisAnalysis.murmure }]
-      }).eq("user_id", patientId);
-    }
-
-    const forceAncrage = behavioralLocked
-      || crisisAnalysis.level === "red_behavioral"
-      || currentEmotionalStatus === "red_behavioral";
-
     const practitionerPrompt = systemPrompt ||
-      buildSystemPrompt(practitionerData.profile, patientContext, documentsContext, forceAncrage);
+      buildSystemPrompt(practitionerData.profile, patientContext, documentsContext);
 
     let conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[] = [];
     if (patientId && practitionerId) {
@@ -871,7 +866,10 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
     const model = genAI.getGenerativeModel({
       model: modelName,
       systemInstruction: practitionerPrompt,
-      generationConfig: { maxOutputTokens: config.maxOutputTokens, temperature: 0.78 },
+      generationConfig: {
+        maxOutputTokens: config.maxOutputTokens,
+        temperature: 0.78,
+      },
     });
 
     const chat = model.startChat({ history: conversationHistory });
@@ -909,7 +907,7 @@ Max 150 mots. Sans markdown.`;
             fullText += chunkText;
             controller.enqueue(encoder.encode(chunkText));
             await new Promise(resolve => setTimeout(resolve, 5));
-          }
+          }          
         } catch {
           controller.close();
           return;
@@ -930,42 +928,7 @@ Max 150 mots. Sans markdown.`;
           } catch { /* silencieux */ }
           fullText = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
         }
-
-        // ═══ VERROU red_behavioral 48h ═══
-        // Si le patient est verrouillé, Gemini ne peut pas repasser à green tout seul.
-        // Seul le praticien peut lever red_critical manuellement.
-        const isRedCritical = currentEmotionalStatus === "red_critical";
-        const isRedBehavioralLocked = behavioralLocked;
-
-        if (isRedCritical) {
-          // red_critical ne change jamais automatiquement
-          emotionalStatus = "red_critical";
-          emotionalInsight = "Verrou praticien actif";
-        } else if (isRedBehavioralLocked && emotionalStatus !== "red_critical") {
-          // Verrou 48h actif : Gemini ne peut PAS repasser en green ou orange tant que le verrou court
-          // Seule une escalade red_critical peut changer le statut pendant cette période
-          emotionalStatus = "red_behavioral";
-          emotionalInsight = `Verrou actif jusqu'au ${redBehavioralUntil?.toLocaleDateString("fr-FR")}`;
-        }
-
-        // Nouveau red_behavioral détecté dans la réponse → initialiser verrou 48h
-        if (emotionalStatus === "red_behavioral" && !isRedBehavioralLocked && !isRedCritical) {
-          const lockUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
-          if (patientId) {
-            await supabase.from("patients").update({ red_behavioral_until: lockUntil }).eq("user_id", patientId);
-            // Email praticien
-            if (practitionerId) {
-              try {
-                await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json", "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "" },
-                  body: JSON.stringify({ patientId, practitionerId, alertType: "behavioral", message }),
-                });
-              } catch { /* silencieux */ }
-            }
-          }
-        }
-
+        
         if (patientId) {
           await supabase.from("conversations").insert([
             {
@@ -984,22 +947,21 @@ Max 150 mots. Sans markdown.`;
             },
           ]);
 
-          void incrementDailyMessageCount(patientId);
-
+          if (patientId) void incrementDailyMessageCount(patientId);
           await supabase.from("patients").update({
             emotional_status: emotionalStatus,
             emotional_insight: emotionalInsight,
             ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString() } : {}),
           }).eq("user_id", patientId);
-
-          if (adminAlert.action === "admin_alert" && !isRedCritical) {
+        
+          if (adminAlert.action === "admin_alert") {
             const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
             const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
             await supabase.from("patients").update({
               admin_alerts: [...alerts, { type: adminAlert.alert_type, date: new Date().toISOString(), seen: false }]
             }).eq("user_id", patientId);
           }
-
+        
           if (sessionId) {
             await supabase.from("conversations_sessions").update({
               last_message: fullText.slice(0, 100),
@@ -1007,7 +969,7 @@ Max 150 mots. Sans markdown.`;
             }).eq("id", sessionId);
           }
         }
-
+        
         controller.close();
       },
     });
@@ -1029,3 +991,4 @@ Max 150 mots. Sans markdown.`;
 }
 
 export { invalidatePractitionerCache };
+

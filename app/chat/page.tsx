@@ -326,6 +326,43 @@ const OnboardingTour = ({ step, firstName, onNext, onSkip, isMobile }: Onboardin
   );
 };
 
+// ═══ CARTOGRAPHIE DES DUOS D'OUTILS SOS ═══
+const TOOL_DUOS: Record<string, { id: string; emoji: string; label: string; desc: string }[]> = {
+  fringale: [
+    { id: "body_scan", emoji: "🧘‍♂️", label: "Scanner mon corps", desc: "Distinguer faim réelle et faim émotionnelle" },
+    { id: "manger", emoji: "🍏", label: "Manger en pleine conscience", desc: "Ralentir et savourer, étape par étape" },
+  ],
+  stress: [
+    { id: "breathing", emoji: "🌬️", label: "Calmer mon souffle", desc: "Cohérence cardiaque · 3 min · Prouvé" },
+    { id: "ancrage", emoji: "👀", label: "Ancrer mes 5 sens", desc: "Technique 5-4-3-2-1 · Retour au présent" },
+  ],
+  "culpabilité": [
+    { id: "ecriture", emoji: "📝", label: "Écrire pour me libérer", desc: "Vider ce qui pèse · Personne ne lira" },
+    { id: "defusion", emoji: "🧠", label: "Prendre de la distance", desc: "Défusion cognitive · Observer sans juger" },
+  ],
+  "coup de mou": [
+    { id: "marche", emoji: "🚶‍♂️", label: "Faire quelques pas", desc: "Marche consciente · Se vider la tête" },
+    { id: "adaptive_coaching", emoji: "💬", label: "Retrouver mon jumeau", desc: "Coaching TCC personnalisé pour toi" },
+  ],
+};
+
+function generateCelebration(firstName: string, toolId: string, before: number, after: number): string {
+  const delta = before - after; // positif = stress réduit
+  const toolNames: Record<string, string> = {
+    breathing: "la cohérence cardiaque", ancrage: "l'ancrage sensoriel",
+    manger: "la pleine conscience", marche: "la marche consciente",
+    body_scan: "le body scan", defusion: "la défusion cognitive",
+    ecriture: "l'écriture cathartique", adaptive_coaching: "ce moment de coaching",
+  };
+  const tool = toolNames[toolId] ?? "cet exercice";
+  const name = firstName || "toi";
+  if (delta >= 4) return `Regarde ça, ${name} ! Tu as fait baisser l'intensité de ${delta} points en quelques minutes grâce à ${tool}. Sois fier(e) de toi. 🌿`;
+  if (delta >= 2) return `Bien joué, ${name}. Tu as gagné ${delta} points de calme avec ${tool}. Chaque petit pas vers le mieux compte énormément. 🌿`;
+  if (delta >= 1) return `Tu as tenu bon, ${name}. Même un point de mieux, c'est une vraie victoire. Tu as choisi de prendre soin de toi. 🌿`;
+  if (delta === 0) return `C'est ok, ${name}. ${tool.charAt(0).toUpperCase() + tool.slice(1)} plante parfois une graine qui germe plus tard. L'essentiel, c'est que tu aies essayé. 🌿`;
+  return `Tu as essayé, ${name}, et c'est ce qui compte. Ton praticien voit ces données et adaptera ton accompagnement à la prochaine séance. 🌿`;
+}
+
 export default function ChatPage() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -393,6 +430,10 @@ export default function ChatPage() {
   const [feedbackScore, setFeedbackScore] = useState<number | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
+  const [emotionalStatus, setEmotionalStatus] = useState<"green" | "red_behavioral" | "red_critical">("green");
+  const [showSOSTriageModal, setShowSOSTriageModal] = useState(false);
+  const [selectedTriageCtx, setSelectedTriageCtx] = useState("");
+  const [showToolDuo, setShowToolDuo] = useState(false);
 
 
   const ancrageSteps = [
@@ -482,10 +523,12 @@ export default function ChatPage() {
         const { data: hist } = await supabase.from("conversations").select("role, content").eq("patient_id", data.user.id).eq("practitioner_id", practId).is("session_id", null).order("created_at", { ascending: true });
         if (hist?.length) setMessages(hist as ChatMessage[]);
       }
-      const { data: pat } = await supabase.from("patients").select("first_name, last_name, onboarding_done").eq("user_id", data.user.id).single();
+      const { data: pat } = await supabase.from("patients").select("first_name, last_name, onboarding_done, emotional_status").eq("user_id", data.user.id).single();
       if (pat) {
         const p = pat as { first_name?: string; last_name?: string; onboarding_done?: boolean };
         if (p.first_name) setPatientFirstName(p.first_name);
+        const es = (p as { emotional_status?: string }).emotional_status;
+        if (es === "red_critical" || es === "red_behavioral") setEmotionalStatus(es);
         setPatientInitials(`${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase() || "?");
         if (p.first_name) setEditFirstName(p.first_name);
         if (p.last_name) setEditLastName(p.last_name ?? "");
@@ -547,22 +590,31 @@ export default function ChatPage() {
     } catch { /* silencieux */ }
   };
 
-  const handleSOS = async () => {
+  const handleSOS = async (sosContext?: string, directLaunch = false) => {
     if (!patientId || !practitionerIdFromDb || sosLoading) return;
     setSosLoading(true);
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: "", patientId, practitionerId: practitionerIdFromDb, isSOS: true }),
+        body: JSON.stringify({ message: "", patientId, practitionerId: practitionerIdFromDb, isSOS: true, sosContext }),
       });
       const data = await res.json() as { tool?: ToolData };
       const tool = data.tool ?? { tool_id: "breathing", twin_message: getVariant("breathing"), tool_script: {} };
-      setPendingToolData({ id: tool.tool_id, data: tool });
-      setShowStressBeforeModal(true);
+      if (directLaunch) {
+        setActiveTool({ id: tool.tool_id, data: tool });
+      } else {
+        setPendingToolData({ id: tool.tool_id, data: tool });
+        setShowStressBeforeModal(true);
+      }
     } catch {
-      setPendingToolData({ id: "breathing", data: { tool_id: "breathing", twin_message: getVariant("breathing"), tool_script: {} } });
-      setShowStressBeforeModal(true);
+      const fallback = { tool_id: "breathing", twin_message: getVariant("breathing"), tool_script: {} };
+      if (directLaunch) {
+        setActiveTool({ id: "breathing", data: fallback });
+      } else {
+        setPendingToolData({ id: "breathing", data: fallback });
+        setShowStressBeforeModal(true);
+      }
     }
     setSosLoading(false);
   };
@@ -649,7 +701,14 @@ export default function ChatPage() {
       if (statusMatch) {
         try {
           const parsed = JSON.parse(statusMatch[1]) as { status: string };
-          if (parsed.status === "red" && !activeTool) setShowPreemptiveSOS(true);
+          if (parsed.status === "red_critical") {
+            setEmotionalStatus("red_critical");
+          } else if (parsed.status === "red_behavioral") {
+            setEmotionalStatus("red_behavioral");
+            if (!activeTool) setShowPreemptiveSOS(true);
+          } else if (parsed.status === "red" && !activeTool) {
+            setShowPreemptiveSOS(true);
+          }
         } catch { /* silencieux */ }
       }
       if (patientId) await loadSessions(patientId);
@@ -684,13 +743,14 @@ export default function ChatPage() {
         }),
       });
       const data = await res.json() as { sosFailed?: boolean };
+      const celebration = generateCelebration(patientFirstName, completedToolId ?? "", stressBefore ?? 5, score);
       if (data.sosFailed) {
-        setFeedbackMessage("Je vois que l'exercice n'a pas suffi à t'apaiser. C'est ok, cela arrive quand la tension est trop forte. Ton praticien vient d'être notifié pour t'accompagner. En attendant, essaye de boire un verre d'eau et de t'allonger quelques minutes. 🌿");
+        setFeedbackMessage(`${celebration}\n\nJe vois que la tension reste forte. C'est ok, cela arrive. Ton praticien vient d'être notifié pour t'accompagner. 🌿`);
       } else {
-        setFeedbackMessage("Super, garde cette sensation avec toi pour la suite. Tu as bien fait de prendre ce moment pour toi. 🌿");
+        setFeedbackMessage(celebration);
       }
     } catch {
-      setFeedbackMessage("Merci pour ton retour. 🌿");
+      setFeedbackMessage(generateCelebration(patientFirstName, completedToolId ?? "", stressBefore ?? 5, score));
     }
     setFeedbackSubmitting(false);
   };
@@ -896,7 +956,7 @@ export default function ChatPage() {
         />
       )}
 
-      {/* Modale stress AVANT outil */}
+      {/* ═══ MODALE STRESS AVANT ═══ */}
       {showStressBeforeModal && (
         <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 380, border: `1px solid ${ACCENT_BORDER}`, textAlign: "center" }}>
@@ -912,19 +972,16 @@ export default function ChatPage() {
               ))}
             </div>
             <button onClick={() => {
-              if (!pendingToolData) return;
+              if (!stressBefore) return;
               setShowStressBeforeModal(false);
-              setActiveTool(pendingToolData);
-              setPendingToolData(null);
+              setShowToolDuo(true);
             }} disabled={!stressBefore}
               style={{ width: "100%", height: 48, borderRadius: 12, background: stressBefore ? ACCENT : "rgba(255,255,255,0.05)", border: "none", color: stressBefore ? "black" : TEXT_MUTED, fontSize: 15, fontWeight: 600, cursor: stressBefore ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
-              Lancer l'exercice →
+              Choisir mon exercice →
             </button>
             <button onClick={() => {
-              if (!pendingToolData) return;
               setShowStressBeforeModal(false);
-              setActiveTool(pendingToolData);
-              setPendingToolData(null);
+              setShowToolDuo(true);
               setStressBefore(null);
             }} style={{ marginTop: 10, background: "none", border: "none", cursor: "pointer", fontSize: 13, color: TEXT_MUTED }}>
               Passer
@@ -933,7 +990,52 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Modale stress APRÈS outil */}
+      {/* ═══ MODALE DUO D'OUTILS ═══ */}
+      {showToolDuo && (() => {
+        const duos = TOOL_DUOS[selectedTriageCtx] ?? TOOL_DUOS["stress"];
+        const triageEmoji: Record<string, string> = { fringale: "🍕", stress: "📈", "culpabilité": "🧠", "coup de mou": "🔋" };
+        return (
+          <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.9)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div style={{ background: "#0a0f0c", borderRadius: 24, padding: "28px 24px", width: "100%", maxWidth: 400, border: "1px solid rgba(16,185,129,0.2)", boxShadow: "0 24px 80px rgba(0,0,0,0.7)", animation: "fadeUp 0.3s ease" }}>
+              <div style={{ textAlign: "center", marginBottom: 24 }}>
+                <p style={{ fontSize: 28, margin: "0 0 8px" }}>{triageEmoji[selectedTriageCtx] ?? "💙"}</p>
+                <h3 style={{ margin: "0 0 6px", fontSize: 17, fontWeight: 700, color: TEXT_PRIMARY }}>Qu'est-ce qui te parle le mieux ?</h3>
+                <p style={{ margin: 0, fontSize: 13, color: TEXT_SECONDARY }}>Choisis l'exercice qui te semble le plus accessible</p>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
+                {duos.map(tool => (
+                  <button key={tool.id} disabled={sosLoading}
+                    onClick={() => {
+                      setShowToolDuo(false);
+                      void handleSOS(`${selectedTriageCtx} | outil préféré: ${tool.id}`, true);
+                    }}
+                    style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 18px", borderRadius: 16, background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.15)", cursor: sosLoading ? "not-allowed" : "pointer", textAlign: "left", transition: "all 0.2s", opacity: sosLoading ? 0.5 : 1 }}
+                    onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.04)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                    <span style={{ fontSize: 32, flexShrink: 0 }}>{tool.emoji}</span>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: TEXT_PRIMARY }}>{tool.label}</p>
+                      <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED }}>{tool.desc}</p>
+                    </div>
+                    {sosLoading ? (
+                      <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${ACCENT_BORDER}`, borderTop: `2px solid ${ACCENT}`, flexShrink: 0, animation: "spin 1s linear infinite" }} />
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6" stroke={TEXT_MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => { setShowToolDuo(false); setSelectedTriageCtx(""); }}
+                style={{ width: "100%", height: 38, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 13, cursor: "pointer" }}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ═══ MODALE STRESS APRÈS OUTIL ═══ */}
+      {showStressModal && (
       {showStressModal && (
         <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 380, border: `1px solid ${ACCENT_BORDER}`, textAlign: "center" }}>
@@ -987,31 +1089,96 @@ export default function ChatPage() {
         </div>
       )}
 
+      {/* ═══ MODALE TRIAGE SOS ═══ */}
+      {showSOSTriageModal && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.88)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0a0f0c", borderRadius: 24, padding: "28px 24px", width: "100%", maxWidth: 400, border: "1px solid rgba(6,182,212,0.25)", boxShadow: "0 24px 80px rgba(0,0,0,0.7)" }}>
+            <div style={{ textAlign: "center", marginBottom: 22 }}>
+              <p style={{ fontSize: 30, margin: "0 0 8px" }}>💙</p>
+              <h3 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY }}>Comment puis-je vous aider ?</h3>
+              <p style={{ margin: 0, fontSize: 13, color: TEXT_SECONDARY }}>Choisissez ce qui correspond le mieux à ce que vous ressentez</p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                { emoji: "🍕", label: "Fringale / Impulsion alimentaire", ctx: "fringale", desc: "Envie soudaine, compulsion, difficulté à résister" },
+                { emoji: "📈", label: "Pic de stress / Anxiété forte", ctx: "stress", desc: "Tension, agitation, sensation d'être dépassé(e)" },
+                { emoji: "🧠", label: "Culpabilité / Ruminations", ctx: "culpabilité", desc: "Pensées négatives qui tournent en boucle" },
+                { emoji: "🔋", label: "Coup de mou / Baisse de régime", ctx: "coup de mou", desc: "Fatigue, découragement, manque d'élan" },
+              ].map(({ emoji, label, ctx, desc }) => (
+                <button key={ctx} onClick={() => { setShowSOSTriageModal(false); setSelectedTriageCtx(ctx); setStressBefore(null); setShowStressBeforeModal(true); }}
+                  style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(6,182,212,0.08)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.25)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}>
+                  <span style={{ fontSize: 26, flexShrink: 0 }}>{emoji}</span>
+                  <div>
+                    <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 600, color: TEXT_PRIMARY }}>{label}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: TEXT_MUTED }}>{desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setShowSOSTriageModal(false)} style={{ marginTop: 16, width: "100%", height: 38, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 13, cursor: "pointer" }}>
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
+
       {showFeedback && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.9)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.92)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 400, border: `1px solid ${ACCENT_BORDER}`, animation: "fadeUp 0.3s ease" }}>
             {!feedbackScore ? (
               <>
-                <p style={{ fontSize: 32, textAlign: "center", margin: "0 0 8px" }}>🌿</p>
-                <h3 style={{ fontSize: 18, fontWeight: 600, color: "white", textAlign: "center", margin: "0 0 6px" }}>Comment tu te sens ?</h3>
-                <p style={{ fontSize: 13, color: "#64748b", textAlign: "center", margin: "0 0 24px" }}>1 = encore tendu(e) · 10 = complètement apaisé(e)</p>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 12 }}>
+                <div style={{ textAlign: "center", marginBottom: 20 }}>
+                  <p style={{ fontSize: 28, margin: "0 0 8px" }}>🌿</p>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY, margin: "0 0 6px" }}>Comment tu te sens ?</h3>
+                  <p style={{ fontSize: 13, color: TEXT_SECONDARY, margin: 0 }}>1 = encore tendu(e) · 10 = complètement apaisé(e)</p>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 8, marginBottom: 16 }}>
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => (
                     <button key={score} onClick={() => void submitFeedback(score)} disabled={feedbackSubmitting}
-                      style={{ height: 48, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: score <= 3 ? "rgba(244,63,94,0.08)" : score <= 6 ? "rgba(245,158,11,0.08)" : "rgba(16,185,129,0.08)", color: score <= 3 ? "#f87171" : score <= 6 ? "#f59e0b" : "#10b981", fontSize: 16, fontWeight: 700, cursor: "pointer", transition: "all 0.15s" }}
-                      onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.08)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}>
+                      style={{ height: 50, borderRadius: 12, border: `1px solid ${score <= 3 ? "rgba(244,63,94,0.25)" : score <= 6 ? "rgba(245,158,11,0.25)" : "rgba(16,185,129,0.25)"}`, background: score <= 3 ? "rgba(244,63,94,0.06)" : score <= 6 ? "rgba(245,158,11,0.06)" : "rgba(16,185,129,0.06)", color: score <= 3 ? "#f87171" : score <= 6 ? "#f59e0b" : ACCENT, fontSize: 17, fontWeight: 700, cursor: "pointer", transition: "all 0.15s" }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.1)"; e.currentTarget.style.borderColor = score <= 3 ? "rgba(244,63,94,0.5)" : score <= 6 ? "rgba(245,158,11,0.5)" : `rgba(16,185,129,0.5)`; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.borderColor = score <= 3 ? "rgba(244,63,94,0.25)" : score <= 6 ? "rgba(245,158,11,0.25)" : "rgba(16,185,129,0.25)"; }}>
                       {score}
                     </button>
                   ))}
                 </div>
+                <button onClick={() => closeFeedbackAndTool(activeTool?.id ?? "")}
+                  style={{ width: "100%", height: 36, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 13, cursor: "pointer" }}>
+                  Passer
+                </button>
               </>
+            ) : feedbackSubmitting ? (
+              <div style={{ textAlign: "center", padding: "20px 0" }}>
+                <ArcSpinner size={40} />
+                <p style={{ margin: "16px 0 0", fontSize: 14, color: TEXT_SECONDARY }}>Enregistrement...</p>
+              </div>
             ) : (
               <>
-                <p style={{ fontSize: 44, textAlign: "center", margin: "0 0 12px" }}>{feedbackScore >= 7 ? "🌟" : feedbackScore >= 4 ? "🌿" : "💙"}</p>
-                <p style={{ fontSize: 14, color: "white", textAlign: "center", lineHeight: 1.7, margin: "0 0 24px" }}>{feedbackMessage}</p>
+                {/* Célébration */}
+                <div style={{ textAlign: "center", marginBottom: 24 }}>
+                  <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 16px" }}>
+                    <div style={{ position: "absolute", inset: -10, borderRadius: "50%", background: `radial-gradient(circle, ${feedbackScore >= 7 ? "rgba(16,185,129,0.2)" : feedbackScore >= 4 ? "rgba(245,158,11,0.15)" : "rgba(6,182,212,0.15)"}, transparent 70%)`, animation: "glow-idle 2.5s ease-in-out infinite" }} />
+                    <div style={{ width: 72, height: 72, borderRadius: "50%", background: feedbackScore >= 7 ? ACCENT_DIM : feedbackScore >= 4 ? "rgba(245,158,11,0.08)" : "rgba(6,182,212,0.08)", border: `1.5px solid ${feedbackScore >= 7 ? ACCENT_BORDER : feedbackScore >= 4 ? "rgba(245,158,11,0.2)" : "rgba(6,182,212,0.2)"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 34 }}>
+                      {feedbackScore >= 7 ? "🌟" : feedbackScore >= 4 ? "🌿" : "💙"}
+                    </div>
+                  </div>
+                  {/* Delta visuel si stressBefore connu */}
+                  {stressBefore !== null && (
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: feedbackScore >= 4 ? "rgba(16,185,129,0.08)" : "rgba(6,182,212,0.08)", border: `1px solid ${feedbackScore >= 4 ? ACCENT_BORDER : "rgba(6,182,212,0.2)"}`, borderRadius: 20, padding: "5px 14px", marginBottom: 16 }}>
+                      <span style={{ fontSize: 13, color: TEXT_MUTED }}>{stressBefore}</span>
+                      <svg width="16" height="8" viewBox="0 0 16 8" fill="none"><path d="M0 4h14M10 1l4 3-4 3" stroke={feedbackScore >= 4 ? ACCENT : "#06b6d4"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: feedbackScore >= 7 ? ACCENT : feedbackScore >= 4 ? "#f59e0b" : "#06b6d4" }}>{feedbackScore}</span>
+                      {stressBefore - feedbackScore > 0 && (
+                        <span style={{ fontSize: 11, color: ACCENT, fontWeight: 600 }}>−{stressBefore - feedbackScore} pts</span>
+                      )}
+                    </div>
+                  )}
+                  <p style={{ fontSize: 14, color: TEXT_PRIMARY, lineHeight: 1.75, margin: 0, whiteSpace: "pre-line" }}>{feedbackMessage}</p>
+                </div>
                 <button onClick={() => closeFeedbackAndTool(activeTool?.id ?? "")}
-                  style={{ width: "100%", height: 48, borderRadius: 12, background: "#10b981", border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer" }}>
+                  style={{ width: "100%", height: 48, borderRadius: 12, background: ACCENT, border: "none", color: "black", fontSize: 15, fontWeight: 600, cursor: "pointer", boxShadow: "0 0 16px rgba(16,185,129,0.25)" }}>
                   Continuer 🌿
                 </button>
               </>
@@ -1279,7 +1446,7 @@ export default function ChatPage() {
               </div>
             </button>
 
-            <button onClick={() => void handleSOS()} disabled={sosLoading}
+            <button onClick={() => { if (emotionalStatus === "red_critical") return; setShowSOSTriageModal(true); }} disabled={sosLoading || emotionalStatus === "red_critical"}
               style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "none", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
               onMouseEnter={e => { if (!sosLoading) e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}>
@@ -1465,7 +1632,34 @@ export default function ChatPage() {
           )}
         </main>
 
-        {hasMessages && (
+        {/* ═══ BANNIÈRE URGENCE RED_CRITICAL ═══ */}
+        {emotionalStatus === "red_critical" && (
+          <div style={{ background: "rgba(127,0,0,0.18)", backdropFilter: "blur(20px)", borderTop: "1px solid rgba(244,63,94,0.35)", padding: isMobile ? "14px 16px" : "16px 24px", flexShrink: 0 }}>
+            <div style={{ maxWidth: 700, margin: "0 auto" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 14, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 16, padding: "16px 18px" }}>
+                <span style={{ fontSize: 22, flexShrink: 0 }}>🚨</span>
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#f87171" }}>Une alerte a été transmise à votre praticien</p>
+                  <p style={{ margin: "0 0 12px", fontSize: 13, color: "#fca5a5", lineHeight: 1.6 }}>Si vous traversez une situation d'urgence, contactez immédiatement un professionnel.</p>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <a href="tel:15" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 10, background: "rgba(244,63,94,0.15)", border: "1px solid rgba(244,63,94,0.4)", color: "#f87171", fontSize: 15, fontWeight: 700, textDecoration: "none", transition: "all 0.2s" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(244,63,94,0.25)"}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "rgba(244,63,94,0.15)"}>
+                      📞 <span>SAMU · 15</span>
+                    </a>
+                    <a href="tel:3114" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 10, background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.3)", color: "#fca5a5", fontSize: 15, fontWeight: 700, textDecoration: "none", transition: "all 0.2s" }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(244,63,94,0.2)"}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "rgba(244,63,94,0.1)"}>
+                      💙 <span>Numéro national · 3114</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {hasMessages && emotionalStatus !== "red_critical" && (
           <div style={{ background: "rgba(7,11,9,0.97)", backdropFilter: "blur(20px)", borderTop: `1px solid ${BORDER}`, padding: isMobile ? "10px 12px" : "10px 20px", paddingBottom: "max(14px, env(safe-area-inset-bottom))", flexShrink: 0 }}>
             {pendingImage && (
               <div style={{ maxWidth: 700, margin: "0 auto 8px" }}>
