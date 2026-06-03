@@ -586,6 +586,7 @@ export default function DashboardPage() {
   const [replyGenerating, setReplyGenerating] = useState(false);
   const [replySending, setReplySending] = useState(false);
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
+  const patientsRef = useRef<RealPatient[]>([]);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const [vueEnsembleFilter, setVueEnsembleFilter] = useState<"tous" | "urgences" | "bravos" | "ras">("tous");
   const [bravoState, setBravoState] = useState<Record<string, { expanded: boolean; text: string; editing: boolean; loading: boolean; sent: boolean }>>({});
@@ -849,12 +850,73 @@ export default function DashboardPage() {
     return () => { subscription.unsubscribe(); };
   }, []);
 
+  // Sync patientsRef pour éviter les stale closures dans les intervals
+  useEffect(() => { patientsRef.current = patients; }, [patients]);
+
+  // ═══ CONVERSATIONS — chargement initial + polling incrémental 10s ═══
   useEffect(() => {
     if (!selectedPatientId || !practitionerId || onboardingDemoMode) return;
-    supabase.from("conversations").select("id, role, content, created_at").eq("patient_id", selectedPatientId).eq("practitioner_id", practitionerId).order("created_at", { ascending: true }).then(({ data }) => setConversations((data as Conversation[]) ?? []));
-    const patient = patients.find((p) => p.id === selectedPatientId);
-    void patient;
+    let lastTs: string | null = null;
+
+    // Chargement initial complet
+    supabase.from("conversations").select("id, role, content, created_at")
+      .eq("patient_id", selectedPatientId)
+      .eq("practitioner_id", practitionerId)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        if (data) {
+          setConversations(data as Conversation[]);
+          lastTs = (data as Conversation[]).at(-1)?.created_at ?? null;
+        }
+      });
+
+    // Polling incrémental : seulement les nouveaux messages (quasi 0 octet si rien de nouveau)
+    const interval = setInterval(async () => {
+      if (!lastTs) return;
+      const { data: newMsgs } = await supabase.from("conversations")
+        .select("id, role, content, created_at")
+        .eq("patient_id", selectedPatientId)
+        .eq("practitioner_id", practitionerId)
+        .gt("created_at", lastTs)
+        .order("created_at", { ascending: true });
+      if (newMsgs && newMsgs.length > 0) {
+        setConversations(prev => [...prev, ...(newMsgs as Conversation[])]);
+        lastTs = (newMsgs as Conversation[]).at(-1)!.created_at;
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, [selectedPatientId, practitionerId, onboardingDemoMode]);
+
+  // ═══ ALERTES — window.focus + polling 30s ═══
+  useEffect(() => {
+    if (!practitionerId || onboardingDemoMode) return;
+    const handleFocus = () => void loadPatients(practitionerId);
+    window.addEventListener("focus", handleFocus);
+    const alertInterval = setInterval(async () => {
+      const ids = patientsRef.current.map(p => p.id);
+      if (ids.length === 0) return;
+      const { data: fresh } = await supabase
+        .from("patients")
+        .select("user_id, admin_alerts, emotional_status, emotional_insight, latest_victory")
+        .in("user_id", ids);
+      if (!fresh) return;
+      setPatients(prev => prev.map(p => {
+        const f = (fresh as { user_id: string; admin_alerts?: object[]; emotional_status?: string; emotional_insight?: string; latest_victory?: string }[]).find(d => d.user_id === p.id);
+        if (!f) return p;
+        return { ...p,
+          admin_alerts: (f.admin_alerts ?? p.admin_alerts) as typeof p.admin_alerts,
+          emotional_status: (f.emotional_status ?? p.emotional_status) as typeof p.emotional_status,
+          emotional_insight: f.emotional_insight ?? p.emotional_insight,
+          latest_victory: f.latest_victory ?? p.latest_victory,
+        };
+      }));
+    }, 30000);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      clearInterval(alertInterval);
+    };
+  }, [practitionerId, onboardingDemoMode]);
 
   const displayedConversations = onboardingDemoMode ? (DEMO_CONVERSATIONS_BY_PATIENT[selectedPatientId ?? "demo-1"] ?? DEMO_CONVERSATIONS) : conversations;
   const displayedPatients = onboardingDemoMode ? demoPatients as unknown as RealPatient[] : patients;

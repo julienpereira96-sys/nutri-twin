@@ -205,20 +205,11 @@ const onboardingSteps = [
     position: "center" as const,
   },
   {
-    id: "journal",
-    highlight: "journal",
-    icon: "📖",
-    title: "Mon Journal",
-    text: "C'est ici que vous déposerez vos ressentis. Plus vous m'en dites, plus je serai à même de vous aider entre vos séances.",
-    position: "sidebar" as const,
-    glowColor: "rgba(245,158,11,0.4)",
-  },
-  {
     id: "sos",
     highlight: "sos",
     icon: "💙",
     title: "Mon Soutien",
-    text: "En cas de tempête, ce bouton est votre ancre immédiate. Je ne vous laisserai jamais seul face à une crise.",
+    text: "Ce bouton est votre ancre immédiate en cas de tempête. Fringale, stress, coup de mou — une aide guidée vous attend en un clic. Je ne vous laisserai jamais seul(e).",
     position: "sidebar" as const,
     glowColor: "rgba(6,182,212,0.4)",
   },
@@ -236,7 +227,7 @@ const onboardingSteps = [
     highlight: null,
     icon: "💬",
     title: "La conversation",
-    text: "Et ici, nous discutons de tout, comme si vous étiez au cabinet. Je reste là, disponible pour vous.",
+    text: "Ici, nous discutons de tout, comme si vous étiez au cabinet. Posez vos questions, partagez vos doutes. Je reste là, disponible pour vous.",
     position: "center" as const,
   },
 ];
@@ -258,7 +249,7 @@ const OnboardingTour = ({ step, firstName, onNext, onSkip, isMobile }: Onboardin
     if (current.position === "center") return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
     if (current.position === "sidebar") return isMobile
       ? { bottom: 100, left: "50%", transform: "translateX(-50%)" }
-      : { top: current.id === "journal" ? 180 : 240, left: 325, transform: "none" };
+      : { top: 200, left: 325, transform: "none" };
     if (current.position === "bottom") return isMobile
       ? { bottom: 100, left: "50%", transform: "translateX(-50%)" }
       : { bottom: 110, right: 80, transform: "none" };
@@ -271,11 +262,8 @@ const OnboardingTour = ({ step, firstName, onNext, onSkip, isMobile }: Onboardin
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)", pointerEvents: "auto" }} onClick={onSkip} />
 
       {/* Lueur sur le bouton concerné */}
-      {current.highlight === "journal" && !isMobile && (
-        <div style={{ position: "absolute", top: 168, left: 12, width: 281, height: 50, borderRadius: 12, boxShadow: `0 0 0 2px ${current.glowColor}, 0 0 20px ${current.glowColor}`, pointerEvents: "none", animation: "breathe 2s ease-in-out infinite" }} />
-      )}
       {current.highlight === "sos" && !isMobile && (
-        <div style={{ position: "absolute", top: 226, left: 12, width: 281, height: 50, borderRadius: 12, boxShadow: `0 0 0 2px ${current.glowColor}, 0 0 20px ${current.glowColor}`, pointerEvents: "none", animation: "breathe 2s ease-in-out infinite" }} />
+        <div style={{ position: "absolute", top: 172, left: 12, width: 281, height: 80, borderRadius: 18, boxShadow: `0 0 0 2px ${current.glowColor}, 0 0 28px ${current.glowColor}`, pointerEvents: "none", animation: "breathe 2s ease-in-out infinite" }} />
       )}
 
       {/* Bulle principale */}
@@ -434,6 +422,9 @@ export default function ChatPage() {
   const [showSOSTriageModal, setShowSOSTriageModal] = useState(false);
   const [selectedTriageCtx, setSelectedTriageCtx] = useState("");
   const [showToolDuo, setShowToolDuo] = useState(false);
+  const [chatSearch, setChatSearch] = useState("");
+  const [chatSearchIdx, setChatSearchIdx] = useState(0);
+  const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
 
   const ancrageSteps = [
@@ -677,8 +668,6 @@ export default function ChatPage() {
   const send = async (text?: string) => {
     const trimmed = (text ?? message).trim();
     if ((!trimmed && !pendingImage) || loading) return;
-    let sessionId = currentSessionId;
-    if (!sessionId) { sessionId = await createSession(trimmed || "📷 Photo"); setCurrentSessionId(sessionId); }
     const img = pendingImage;
     const newMessages: ChatMessage[] = [...messages, { role: "user", content: trimmed || "📷 Photo de repas", imageUrl: img?.previewUrl }];
     const assistantIndex = newMessages.length;
@@ -686,7 +675,7 @@ export default function ChatPage() {
     setMessage(""); setPendingImage(null); setLoading(true);
     abortControllerRef.current = new AbortController();
     try {
-      const body: Record<string, string | undefined> = { message: trimmed || "Analyse cette photo", patientId: patientId ?? undefined, practitionerId: practitionerIdFromDb ?? undefined, sessionId: sessionId ?? undefined };
+      const body: Record<string, string | undefined> = { message: trimmed || "Analyse cette photo", patientId: patientId ?? undefined, practitionerId: practitionerIdFromDb ?? undefined };
       if (img) { body.imageBase64 = img.base64; body.imageMimeType = img.mimeType; }
       const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: abortControllerRef.current.signal });
       if (!res.ok || !res.body) throw new Error("Erreur");
@@ -711,7 +700,6 @@ export default function ChatPage() {
           }
         } catch { /* silencieux */ }
       }
-      if (patientId) await loadSessions(patientId);
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         setMessages(prev => { const u = [...prev]; u[assistantIndex] = { role: "assistant", content: "Impossible de contacter le serveur." }; return u; });
@@ -1424,100 +1412,121 @@ export default function ChatPage() {
             </button>
           </div>
 
-          {/* Mon accompagnement */}
-          <div style={{ marginBottom: 12 }}>
-            <p style={{ margin: "0 4px 8px", fontSize: 10, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Mon accompagnement</p>
-            <button onClick={() => { setActiveTool({ id: "journal", data: null }); if (isMobile) setSidebarOpen(false); }}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "none", cursor: "pointer", transition: "all 0.2s", marginBottom: 4, boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}>
-              <div style={{ width: 34, height: 34, borderRadius: 9, border: "1px solid rgba(245,158,11,0.4)", background: "rgba(245,158,11,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 0 10px rgba(245,158,11,0.2), inset 0 0 8px rgba(245,158,11,0.05)" }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                  <line x1="9" y1="7" x2="15" y2="7" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round"/>
-                  <line x1="9" y1="11" x2="15" y2="11" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <div style={{ textAlign: "left" }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: TEXT_PRIMARY }}>Mon Journal</p>
-                <p style={{ margin: 0, fontSize: 10, color: TEXT_MUTED }}>Humeur · Repas · Émotions</p>
-              </div>
-            </button>
-
-            <button onClick={() => { if (emotionalStatus === "red_critical") return; setShowSOSTriageModal(true); }} disabled={sosLoading || emotionalStatus === "red_critical"}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: "none", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
-              onMouseEnter={e => { if (!sosLoading) e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}>
-              <div style={{ width: 34, height: 34, borderRadius: 9, border: "1px solid rgba(6,182,212,0.4)", background: "rgba(6,182,212,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 0 10px rgba(6,182,212,0.2), inset 0 0 8px rgba(6,182,212,0.05)" }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="#06b6d4" stroke="#06b6d4" strokeWidth="0.5">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                </svg>
-              </div>
-              <div style={{ textAlign: "left" }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: TEXT_PRIMARY }}>{sosLoading ? "Analyse..." : "Mon Soutien"}</p>
-                <p style={{ margin: 0, fontSize: 10, color: TEXT_MUTED }}>Aide personnalisée immédiate</p>
-              </div>
-            </button>
-          </div>
-
-          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 4px 12px" }} />
-
-          <div style={{ marginBottom: 8 }}>
-            <p style={{ margin: "5px 4px 8px", fontSize: 10, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Mes conversations</p>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "9px 12px", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3)" }}>
-              <SearchIcon size={13} color={TEXT_MUTED} />
-              <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Rechercher..." style={{ flex: 1, border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 12, outline: "none", caretColor: ACCENT }} />
-            </div>
-          </div>
-
-          <div style={{ flex: 1, overflowY: "auto", marginBottom: 8 }}>
-            {filteredSessions.length > 0 && (
-              <p style={{ margin: "0 4px 8px", fontSize: 10, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Discussions récentes</p>
-            )}
-            {filteredSessions.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "24px 16px" }}>
-                <p style={{ fontSize: 13, color: TEXT_MUTED, margin: 0 }}>Aucune discussion</p>
-                <p style={{ fontSize: 11, color: TEXT_MUTED, margin: "4px 0 0", opacity: 0.6 }}>Commencez une conversation !</p>
-              </div>
-            ) : filteredSessions.map(session => (
-              <div key={session.id} style={{ position: "relative", marginBottom: 2 }}
-                onMouseEnter={() => setHoveredSession(session.id)}
-                onMouseLeave={() => setHoveredSession(null)}>
-                <button onClick={() => void loadSession(session.id)}
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: 12, textAlign: "left", background: currentSessionId === session.id ? "rgba(16,185,129,0.12)" : hoveredSession === session.id ? "rgba(255,255,255,0.04)" : "transparent", border: "none", cursor: "pointer", transition: "all 0.15s", paddingRight: hoveredSession === session.id ? 42 : 12, display: "flex", alignItems: "center", gap: 10, boxShadow: currentSessionId === session.id ? "0 2px 8px rgba(0,0,0,0.2)" : "none" }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 10, background: currentSessionId === session.id ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 14 }}>💬</div>
-                  <div style={{ overflow: "hidden", flex: 1 }}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: currentSessionId === session.id ? ACCENT : TEXT_PRIMARY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.title}</p>
-                    <p style={{ margin: 0, fontSize: 10, color: TEXT_MUTED, marginTop: 1 }}>{new Date(session.last_message_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</p>
-                  </div>
-                </button>
-                {hoveredSession === session.id && (
-                  <button onClick={e => { e.stopPropagation(); void deleteSession(session.id); }}
-                    style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", width: 26, height: 26, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TEXT_MUTED, transition: "all 0.15s" }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.color = "#f87171"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = TEXT_MUTED; }}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><polyline points="3,6 5,6 21,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M19,6V20C19,21 18,22 17,22H7C6,22 5,21 5,20V6M8,6V4C8,3 9,2 10,2H14C15,2 16,3 16,4V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                  </button>
+          {/* ═══ MON SOUTIEN — Bouton héro ═══ */}
+          <div style={{ marginBottom: 20 }}>
+            <button
+              onClick={() => { if (emotionalStatus === "red_critical") return; setShowSOSTriageModal(true); if (isMobile) setSidebarOpen(false); }}
+              disabled={sosLoading || emotionalStatus === "red_critical"}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "16px 16px", borderRadius: 18, background: "linear-gradient(135deg, rgba(6,182,212,0.12), rgba(6,182,212,0.04))", border: "1px solid rgba(6,182,212,0.3)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.25s", boxShadow: "0 0 24px rgba(6,182,212,0.12), 0 4px 16px rgba(0,0,0,0.3)", position: "relative", overflow: "hidden" }}
+              onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(6,182,212,0.2), rgba(6,182,212,0.08))"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.5)"; e.currentTarget.style.boxShadow = "0 0 32px rgba(6,182,212,0.2), 0 4px 20px rgba(0,0,0,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+              onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(6,182,212,0.12), rgba(6,182,212,0.04))"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.3)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(6,182,212,0.12), 0 4px 16px rgba(0,0,0,0.3)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+              {/* Lueur de fond animée */}
+              <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 30% 50%, rgba(6,182,212,0.07), transparent 65%)", pointerEvents: "none" }} />
+              <div style={{ width: 46, height: 46, borderRadius: 14, border: "1.5px solid rgba(6,182,212,0.5)", background: "rgba(6,182,212,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 0 16px rgba(6,182,212,0.25), inset 0 0 10px rgba(6,182,212,0.08)", animation: "glow-sos 3s ease-in-out infinite" }}>
+                {sosLoading ? (
+                  <div style={{ width: 22, height: 22, borderRadius: "50%", border: "2px solid rgba(6,182,212,0.3)", borderTop: "2px solid #06b6d4", animation: "spin 1s linear infinite" }} />
+                ) : (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="#06b6d4" stroke="#06b6d4" strokeWidth="0.5">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                  </svg>
                 )}
               </div>
-            ))}
-          </div>
-
-          <div style={{ paddingBottom: 16 }}>
-            <button onClick={() => { setMessages([]); setCurrentSessionId(null); if (isMobile) setSidebarOpen(false); }}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: `1px solid rgba(16,185,129,0.18)`, cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
-              <div style={{ width: 32, height: 32, borderRadius: 10, background: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5V19M5 12H19" stroke="black" strokeWidth="2.5" strokeLinecap="round"/></svg>
+              <div style={{ textAlign: "left", flex: 1, position: "relative" }}>
+                <p style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#e0f7fa", letterSpacing: "-0.2px" }}>{sosLoading ? "En route..." : "Mon Soutien"}</p>
+                <p style={{ margin: 0, fontSize: 11, color: "rgba(6,182,212,0.7)", lineHeight: 1.5 }}>Aide immédiate · Exercices guidés</p>
               </div>
-              <div style={{ textAlign: "left" }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: ACCENT }}>Nouvelle conversation</p>
-                <p style={{ margin: 0, fontSize: 10, color: TEXT_MUTED }}>Démarrer un nouvel échange</p>
-              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.5 }}><path d="M9 18l6-6-6-6" stroke="#06b6d4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </div>
+
+          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 4px 14px" }} />
+
+          {/* ═══ RECHERCHE DANS LA CONVERSATION ═══ */}
+          {(() => {
+            const q = chatSearch.trim().toLowerCase();
+            const matchIndices = q
+              ? visibleMessages.reduce<number[]>((acc, m, i) => { if (m.content.toLowerCase().includes(q)) acc.push(i); return acc; }, [])
+              : [];
+            const safeIdx = matchIndices.length > 0 ? Math.min(chatSearchIdx, matchIndices.length - 1) : 0;
+            const scrollToMatch = (targetIdx: number) => {
+              const msgIdx = matchIndices[targetIdx];
+              if (msgIdx == null) return;
+              const el = messageRefs.current[msgIdx];
+              if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+            };
+            const handleSearchNav = (dir: 1 | -1) => {
+              if (matchIndices.length === 0) return;
+              const next = (safeIdx + dir + matchIndices.length) % matchIndices.length;
+              setChatSearchIdx(next);
+              scrollToMatch(next);
+            };
+            return (
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ margin: "0 4px 8px", fontSize: 10, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Rechercher</p>
+                <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "9px 12px", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3)", border: `1px solid ${chatSearch ? "rgba(16,185,129,0.2)" : "transparent"}`, transition: "border-color 0.2s" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <SearchIcon size={13} color={chatSearch ? ACCENT : TEXT_MUTED} />
+                    <input
+                      value={chatSearch}
+                      onChange={e => { setChatSearch(e.target.value); setChatSearchIdx(0); }}
+                      placeholder="Mot-clé dans la conversation..."
+                      style={{ flex: 1, border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 12, outline: "none", caretColor: ACCENT }}
+                    />
+                    {chatSearch && (
+                      <button onClick={() => { setChatSearch(""); setChatSearchIdx(0); }} style={{ background: "none", border: "none", cursor: "pointer", color: TEXT_MUTED, fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+                    )}
+                  </div>
+                  {q && (
+                    <div style={{ marginTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 11, color: matchIndices.length > 0 ? ACCENT : TEXT_MUTED }}>
+                        {matchIndices.length === 0 ? "Aucun résultat" : `${safeIdx + 1} / ${matchIndices.length} résultat${matchIndices.length > 1 ? "s" : ""}`}
+                      </span>
+                      {matchIndices.length > 1 && (
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <button onClick={() => handleSearchNav(-1)} style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", color: TEXT_SECONDARY, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>↑</button>
+                          <button onClick={() => handleSearchNav(1)} style={{ width: 24, height: 24, borderRadius: 6, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", color: TEXT_SECONDARY, fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }}>↓</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {/* Aperçus des résultats */}
+                {q && matchIndices.length > 0 && (
+                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4, maxHeight: 200, overflowY: "auto" }}>
+                    {matchIndices.map((msgIdx, j) => {
+                      const m = visibleMessages[msgIdx];
+                      const lc = m.content.toLowerCase();
+                      const pos = lc.indexOf(q);
+                      const snippet = m.content.slice(Math.max(0, pos - 20), pos + q.length + 40);
+                      const before = snippet.slice(0, Math.min(20, pos));
+                      const match = snippet.slice(Math.min(20, pos), Math.min(20, pos) + q.length);
+                      const after = snippet.slice(Math.min(20, pos) + q.length);
+                      return (
+                        <button key={j} onClick={() => { setChatSearchIdx(j); scrollToMatch(j); if (isMobile) setSidebarOpen(false); }}
+                          style={{ textAlign: "left", padding: "8px 10px", borderRadius: 10, background: j === safeIdx ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.03)", border: `1px solid ${j === safeIdx ? "rgba(16,185,129,0.2)" : "transparent"}`, cursor: "pointer", transition: "all 0.15s" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = j === safeIdx ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.03)"; }}>
+                          <p style={{ margin: "0 0 2px", fontSize: 10, color: m.role === "user" ? ACCENT : TEXT_MUTED, fontWeight: 600 }}>{m.role === "user" ? "Vous" : "Jumeau"}</p>
+                          <p style={{ margin: 0, fontSize: 11, color: TEXT_SECONDARY, lineHeight: 1.5 }}>
+                            {pos > 20 && "..."}
+                            {before}
+                            <span style={{ background: "rgba(16,185,129,0.25)", color: ACCENT, fontWeight: 700, borderRadius: 3, padding: "0 2px" }}>{match}</span>
+                            {after}
+                            {pos + q.length + 40 < m.content.length && "..."}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {q && matchIndices.length === 0 && !hasMessages && (
+                  <p style={{ margin: "8px 4px 0", fontSize: 11, color: TEXT_MUTED }}>Commencez une conversation pour pouvoir la rechercher.</p>
+                )}
+              </div>
+            );
+          })()}
+
+          <div style={{ flex: 1 }} />
         </div>
       </aside>
 
@@ -1598,15 +1607,19 @@ export default function ChatPage() {
                   const isUser = msg.role === "user";
                   const isLastAssistant = !isUser && index === visibleMessages.length - 1;
                   if (!isUser && !msg.content && isLastAssistant) return null;
+                  const q = chatSearch.trim().toLowerCase();
+                  const matchIndices = q ? visibleMessages.reduce<number[]>((acc, m, i) => { if (m.content.toLowerCase().includes(q)) acc.push(i); return acc; }, []) : [];
+                  const isChatMatch = q && msg.content.toLowerCase().includes(q);
+                  const isActiveMatch = matchIndices[Math.min(chatSearchIdx, matchIndices.length - 1)] === index;
                   return (
-                    <div key={index} style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8, animation: "fadeUp 0.25s ease" }}>
+                    <div key={index} ref={el => { messageRefs.current[index] = el; }} style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8, animation: "fadeUp 0.25s ease", transition: "opacity 0.2s", opacity: q && !isChatMatch ? 0.35 : 1 }}>
                       <div style={{ maxWidth: isMobile ? "88%" : "76%" }}>
                         {msg.imageUrl && (
                           <div style={{ marginBottom: 6, display: "flex", justifyContent: "flex-end" }}>
                             <img src={msg.imageUrl} alt="Photo" style={{ maxWidth: isMobile ? 160 : 200, maxHeight: isMobile ? 160 : 200, borderRadius: 12, objectFit: "cover", border: `1px solid ${ACCENT_BORDER}` }} />
                           </div>
                         )}
-                        <div style={{ padding: isMobile ? "11px 14px" : "12px 18px", borderRadius: isUser ? "16px 16px 4px 16px" : "16px 16px 16px 4px", background: isUser ? "linear-gradient(135deg, rgba(16,185,129,0.9), rgba(16,185,129,0.3))" : SURFACE, backdropFilter: isUser ? "none" : "blur(8px)", color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.75, border: isUser ? `1px solid rgba(16,185,129,0.18)` : `1px solid ${BORDER}`, boxShadow: isUser ? "0 2px 12px rgba(0,0,0,0.3)" : "none" }}>
+                        <div style={{ padding: isMobile ? "11px 14px" : "12px 18px", borderRadius: isUser ? "16px 16px 4px 16px" : "16px 16px 16px 4px", background: isActiveMatch ? "rgba(16,185,129,0.18)" : isUser ? "linear-gradient(135deg, rgba(16,185,129,0.85), rgba(5,150,105,0.7))" : "rgba(255,255,255,0.04)", backdropFilter: isUser ? "none" : "blur(8px)", color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.75, border: isActiveMatch ? `1.5px solid ${ACCENT}` : isUser ? `1px solid rgba(16,185,129,0.2)` : `1px solid ${BORDER}`, boxShadow: isUser ? "0 2px 12px rgba(0,0,0,0.3)" : isActiveMatch ? `0 0 0 3px rgba(16,185,129,0.15)` : "none", transition: "all 0.3s" }}>
                           {msg.content}
                         </div>
                       </div>
@@ -1697,6 +1710,7 @@ export default function ChatPage() {
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes glow-idle { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
+        @keyframes glow-sos { 0%, 100% { box-shadow: 0 0 16px rgba(6,182,212,0.25), inset 0 0 10px rgba(6,182,212,0.08); } 50% { box-shadow: 0 0 28px rgba(6,182,212,0.45), inset 0 0 14px rgba(6,182,212,0.15); } }
         @keyframes breathe { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.75); } }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         * { box-sizing: border-box; }
