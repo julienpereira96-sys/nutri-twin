@@ -1036,7 +1036,6 @@ export default function ChatPage() {
 
       {/* ═══ MODALE STRESS APRÈS OUTIL ═══ */}
       {showStressModal && (
-      {showStressModal && (
         <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 380, border: `1px solid ${ACCENT_BORDER}`, textAlign: "center" }}>
             <p style={{ fontSize: 32, marginBottom: 12 }}>🌿</p>
