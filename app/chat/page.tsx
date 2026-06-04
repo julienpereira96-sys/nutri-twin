@@ -423,6 +423,7 @@ export default function ChatPage() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
   const [emotionalStatus, setEmotionalStatus] = useState<"green" | "red_behavioral" | "red_critical">("green");
+  const [showSasButtons, setShowSasButtons] = useState(false);
   const [showSOSTriageModal, setShowSOSTriageModal] = useState(false);
   const [selectedTriageCtx, setSelectedTriageCtx] = useState("");
   const [showToolDuo, setShowToolDuo] = useState(false);
@@ -687,8 +688,12 @@ export default function ChatPage() {
       while (true) {
         const { done, value } = await reader.read(); if (done) break;
         fullText += decoder.decode(value, { stream: true });
-        const clean = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
+        const clean = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/g, "").trim();
         setMessages(prev => { const u = [...prev]; u[assistantIndex] = { role: "assistant", content: clean }; return u; });
+      }
+      // Détecter le signal sas de décompression
+      if (fullText.includes("|||SAS|||")) {
+        setShowSasButtons(true);
       }
       const statusMatch = fullText.match(/\|\|\|([\s\S]*?)\|\|\|/);
       if (statusMatch) {
@@ -713,6 +718,22 @@ export default function ChatPage() {
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement> | KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
+  };
+
+  const handleSasReprendreFile = async () => {
+    if (!patientId) return;
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    await supabase.from("patients").update({ emotional_status: "green", red_behavioral_until: null }).eq("user_id", patientId);
+    setEmotionalStatus("green");
+    setShowSasButtons(false);
+  };
+
+  const handleSasResterSafe = async () => {
+    if (!patientId) return;
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const newUntil = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+    await supabase.from("patients").update({ red_behavioral_until: newUntil }).eq("user_id", patientId);
+    setShowSasButtons(false);
   };
 
   const breathingColor: Record<BreathingStep, string> = { idle: ACCENT, inhale: ACCENT, hold: "#6366f1", exhale: "#06b6d4", done: ACCENT };
@@ -1057,6 +1078,34 @@ export default function ChatPage() {
             <button onClick={() => { setShowStressModal(false); setStressBefore(null); setStressAfter(null); setCompletedToolId(null); }}
               style={{ marginTop: 10, background: "none", border: "none", cursor: "pointer", fontSize: 13, color: TEXT_MUTED }}>
               Passer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ SAS DE DÉCOMPRESSION ═══ */}
+      {showSasButtons && !activeTool && (
+        <div style={{ position: "fixed", bottom: hasMessages ? 110 : 190, left: "50%", transform: "translateX(-50%)", zIndex: 91, width: "calc(100% - 32px)", maxWidth: 520, background: "#0a0f0c", borderRadius: 18, border: "1px solid rgba(6,182,212,0.3)", padding: "16px 18px", boxShadow: "0 8px 36px rgba(6,182,212,0.1), 0 8px 32px rgba(0,0,0,0.5)", animation: "fadeUp 0.3s ease" }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
+            <div style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid rgba(6,182,212,0.4)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 17 }}>🌊</div>
+            <p style={{ margin: 0, fontSize: 13, color: TEXT_PRIMARY, lineHeight: 1.55 }}>
+              On se retrouve après notre discussion d'hier. Comment tu souhaites avancer aujourd'hui ?
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={() => void handleSasReprendreFile()}
+              style={{ flex: 1, height: 40, borderRadius: 12, background: "linear-gradient(135deg, rgba(16,185,129,0.18), rgba(6,182,212,0.12))", border: "1px solid rgba(16,185,129,0.35)", color: "#6ee7b7", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.28), rgba(6,182,212,0.2))"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.55)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.18), rgba(6,182,212,0.12))"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; }}>
+              ✦ Reprendre le fil
+            </button>
+            <button
+              onClick={() => void handleSasResterSafe()}
+              style={{ flex: 1, height: 40, borderRadius: 12, background: "rgba(6,182,212,0.07)", border: "1px solid rgba(6,182,212,0.2)", color: "rgba(6,182,212,0.8)", fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(6,182,212,0.13)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.35)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(6,182,212,0.07)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.2)"; }}>
+              Rester en mode safe
             </button>
           </div>
         </div>

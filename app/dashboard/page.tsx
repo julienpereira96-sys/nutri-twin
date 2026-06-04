@@ -1884,7 +1884,7 @@ export default function DashboardPage() {
                             style={{ fontSize: 11, color: "#64748b", background: "none", border: "none", cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}
                             onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
                             onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                            Ignorer
+                            Marquer comme vu / Classer
                           </button>
                         </div>
                       );

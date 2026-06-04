@@ -127,8 +127,12 @@ ${patientContext.slice(0, 500)}
 MESSAGE : "${message}"
 
 Réponds UNIQUEMENT en JSON sans markdown :
-- level : "red_critical" si intention suicidaire/urgence vitale explicite ou fortement implicite, "red_behavioral" si TCA actif/grossesse/arrêt traitement/décompensation/détresse psychologique sévère, "none" sinon
-- murmure : phrase courte (max 15 mots) pour le praticien si level != none, "" sinon
+- level :
+  "red_critical" si intention suicidaire/urgence vitale explicite ou fortement implicite (mots-clés : en finir, me tuer, suicide).
+  "red_behavioral" uniquement si le patient exprime une détresse émotionnelle active, une perte de contrôle alimentaire immédiate (crise d'hyperphagie, boulimie en cours/récente), ou un sentiment de dégoût profond de soi ("je me dégoûte", "j'ai tout foiré").
+  ATTENTION : renvoie "none" si le message est une question théorique, informative, ou l'utilisation d'une question prédéfinie de l'interface (ex: "Comment résister à une fringale ?").
+  "none" sinon.
+- murmure : phrase courte (max 15 mots) pour le praticien si level != none, "" sinon.
 
 {"level":"none","murmure":""}`;
 
@@ -459,7 +463,8 @@ function buildSystemPrompt(
   profile: Record<string, string> | null,
   patientContext: string,
   documentsContext: string,
-  forceAncrage = false
+  forceAncrage = false,
+  sasDecompression = false
 ): string {
   if (!profile) return getDefaultPrompt();
 
@@ -471,6 +476,11 @@ RÈGLES STRICTES pour ce mode :
 - 100% écoute active, validation émotionnelle, ancrage TCC.
 - Si le patient demande un conseil alimentaire, dis doucement que vous y reviendrez quand il se sentira prêt.
 - Ton praticien est informé et prendra le relais à la prochaine séance.
+${sasDecompression ? `
+📍 SAS DE DÉCOMPRESSION (ce message uniquement) :
+Réponds normalement au message du patient avec ta posture bienveillante.
+Puis ajoute à la toute fin de ta réponse, après un saut de ligne, exactement cette question :
+"Comment tu te sens aujourd'hui après notre discussion d'hier ? On reprend doucement le fil de nos objectifs de fond, ou tu as encore besoin qu'on avance sans pression ?"` : ""}
 ` : "";
 
   return `Tu ES le Jumeau Numérique de ce nutritionniste expert. Le patient ne doit jamais sentir qu'il parle à une machine, mais à une extension directe de l'esprit et de la méthode de son praticien.
@@ -796,9 +806,15 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
       && redBehavioralUntil !== null
       && redBehavioralUntil > new Date();
 
+    // Post-lock : le verrou 12h est expiré mais le statut est encore red_behavioral
+    // → le patient n'a pas encore répondu au sas de décompression
+    const behavioralPostLock = currentEmotionalStatus === "red_behavioral"
+      && redBehavioralUntil !== null
+      && redBehavioralUntil <= new Date();
+
     // Paralléliser : profil patient + documents + analyse crise LLM
     const profileResult = patientId ? getPatientProfile(patientId) : Promise.resolve({ context: "", pathologies: undefined });
-    const crisisPromise = (message && patientId && !behavioralLocked)
+    const crisisPromise = (message && patientId && !behavioralLocked && !behavioralPostLock)
       ? profileResult.then(p => analyzeCrisisWithLLM(message, p.context))
       : Promise.resolve<CrisisAnalysis>({ level: "none", murmure: "" });
 
@@ -828,21 +844,14 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
       } catch { /* silencieux */ }
     }
 
-    if (crisisAnalysis.level === "red_behavioral" && patientId && practitionerId && !behavioralLocked) {
-      const lockUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    if (crisisAnalysis.level === "red_behavioral" && patientId && practitionerId && !behavioralLocked && !behavioralPostLock) {
+      const lockUntil = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
       await supabaseMain.from("patients").update({
         emotional_status: "red_behavioral",
         emotional_insight: crisisAnalysis.murmure || "Alerte comportementale détectée",
         red_behavioral_until: lockUntil,
       }).eq("user_id", patientId);
-      // Email praticien
-      try {
-        await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "" },
-          body: JSON.stringify({ patientId, practitionerId, alertType: "behavioral", message }),
-        });
-      } catch { /* silencieux */ }
+      // Alerte discrète sur le Dashboard uniquement (pas d'email pour éviter le spam praticien)
       const { data: cur } = await supabaseMain.from("patients").select("admin_alerts").eq("user_id", patientId).single();
       const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
       await supabaseMain.from("patients").update({
@@ -851,11 +860,12 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
     }
 
     const forceAncrage = behavioralLocked
+      || behavioralPostLock
       || crisisAnalysis.level === "red_behavioral"
       || currentEmotionalStatus === "red_behavioral";
 
     const practitionerPrompt = systemPrompt ||
-      buildSystemPrompt(practitionerData.profile, patientContext, documentsContext, forceAncrage);
+      buildSystemPrompt(practitionerData.profile, patientContext, documentsContext, forceAncrage, behavioralPostLock);
 
     let conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[] = [];
     if (patientId && practitionerId) {
@@ -931,38 +941,34 @@ Max 150 mots. Sans markdown.`;
           fullText = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
         }
 
-        // ═══ VERROU red_behavioral 48h ═══
+        // ═══ VERROU red_behavioral 12h ═══
         // Si le patient est verrouillé, Gemini ne peut pas repasser à green tout seul.
         // Seul le praticien peut lever red_critical manuellement.
         const isRedCritical = currentEmotionalStatus === "red_critical";
         const isRedBehavioralLocked = behavioralLocked;
+        const isPostLock = behavioralPostLock;
 
         if (isRedCritical) {
           // red_critical ne change jamais automatiquement
           emotionalStatus = "red_critical";
           emotionalInsight = "Verrou praticien actif";
         } else if (isRedBehavioralLocked && emotionalStatus !== "red_critical") {
-          // Verrou 48h actif : Gemini ne peut PAS repasser en green ou orange tant que le verrou court
+          // Verrou 12h actif : Gemini ne peut PAS repasser en green ou orange tant que le verrou court
           // Seule une escalade red_critical peut changer le statut pendant cette période
           emotionalStatus = "red_behavioral";
           emotionalInsight = `Verrou actif jusqu'au ${redBehavioralUntil?.toLocaleDateString("fr-FR")}`;
+        } else if (isPostLock && emotionalStatus !== "red_critical") {
+          // Post-lock : le patient voit le sas de décompression, on maintient red_behavioral
+          // jusqu'à ce qu'il clique sur un bouton (Reprendre le fil / Rester en mode safe)
+          emotionalStatus = "red_behavioral";
+          emotionalInsight = "Sas de décompression en attente";
         }
 
-        // Nouveau red_behavioral détecté dans la réponse → initialiser verrou 48h
-        if (emotionalStatus === "red_behavioral" && !isRedBehavioralLocked && !isRedCritical) {
-          const lockUntil = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+        // Nouveau red_behavioral détecté dans la réponse → initialiser verrou 12h (pas d'email)
+        if (emotionalStatus === "red_behavioral" && !isRedBehavioralLocked && !isRedCritical && !isPostLock) {
+          const lockUntil = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
           if (patientId) {
             await supabase.from("patients").update({ red_behavioral_until: lockUntil }).eq("user_id", patientId);
-            // Email praticien
-            if (practitionerId) {
-              try {
-                await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json", "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "" },
-                  body: JSON.stringify({ patientId, practitionerId, alertType: "behavioral", message }),
-                });
-              } catch { /* silencieux */ }
-            }
           }
         }
 
@@ -1006,6 +1012,17 @@ Max 150 mots. Sans markdown.`;
               last_message_at: new Date().toISOString(),
             }).eq("id", sessionId);
           }
+        }
+
+        // ═══ SAS DE DÉCOMPRESSION ═══
+        // Si le verrou 12h vient d'expirer (post-lock), émettre le signal SAS.
+        // On réétend le verrou d'1h pour éviter le re-déclenchement si le patient
+        // envoie un autre message avant d'avoir cliqué sur un bouton.
+        if (isPostLock && patientId) {
+          await supabase.from("patients").update({
+            red_behavioral_until: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          }).eq("user_id", patientId);
+          controller.enqueue(encoder.encode("|||SAS|||"));
         }
 
         controller.close();
