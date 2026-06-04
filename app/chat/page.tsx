@@ -39,6 +39,10 @@ const TEXT_PRIMARY = "#f1f5f9";
 const TEXT_SECONDARY = "#94a3b8";
 const TEXT_MUTED = "#64748b";
 const BG_MAIN = "#080e0b";
+// Direction artistique Cyan / Émeraude — espace interactif
+const CYAN = "#06b6d4";
+const CYAN_DIM = "rgba(6,182,212,0.08)";
+const CYAN_BORDER = "rgba(6,182,212,0.2)";
 
 const quickActions = [
   "J'ai craqué ce soir, que faire ?",
@@ -154,7 +158,7 @@ type InputBarProps = {
 };
 
 const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendingImage, photoHovered, setPhotoHovered, handleImageClick, handleKeyDown, inputRef }: InputBarProps) => (
-  <div style={{ display: "flex", gap: 8, alignItems: isCenter ? "flex-start" : "center", background: SURFACE, borderRadius: isCenter ? 16 : 14, border: `1px solid ${BORDER}`, padding: isCenter ? "18px 16px" : "6px 8px 6px 14px", transition: "border-color 0.2s", minHeight: isCenter ? 120 : undefined }}>
+  <div className="nt-inputbar" style={{ display: "flex", gap: 8, alignItems: isCenter ? "flex-start" : "center", background: SURFACE, borderRadius: isCenter ? 16 : 14, border: `1px solid ${BORDER}`, padding: isCenter ? "18px 16px" : "6px 8px 6px 14px", transition: "border-color 0.25s, box-shadow 0.25s", minHeight: isCenter ? 120 : undefined }}>
     {isCenter ? (
       <div style={{ flex: 1, minWidth: 0 }}>
         <textarea
@@ -165,7 +169,7 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
           placeholder="Posez-moi vos questions, je suis là pour vous accompagner entre vos séances..."
           rows={3}
           spellCheck={false}
-          style={{ width: "100%", border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 16, outline: "none", caretColor: ACCENT, lineHeight: 1.6, resize: "none", fontFamily: "inherit", display: "block" }}
+          style={{ width: "100%", border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 16, outline: "none", caretColor: CYAN, lineHeight: 1.6, resize: "none", fontFamily: "inherit", display: "block" }}
         />
       </div>
     ) : (
@@ -174,7 +178,7 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
         onChange={e => setMessage(e.target.value)}
         onKeyDown={handleKeyDown as React.KeyboardEventHandler<HTMLInputElement>}
         placeholder={pendingImage ? "Ajoutez un commentaire..." : "Posez votre question..."}
-        style={{ flex: 1, height: 36, border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, outline: "none", caretColor: ACCENT }}
+        style={{ flex: 1, height: 36, border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, outline: "none", caretColor: CYAN }}
       />
     )}
     <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0, alignSelf: isCenter ? "flex-end" : "center" }}>
@@ -187,8 +191,8 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
         </button>
       </div>
       <button onClick={() => void send()} disabled={loading || (!message.trim() && !pendingImage)}
-        style={{ width: 36, height: 36, borderRadius: 10, background: !loading && (message.trim() || pendingImage) ? ACCENT : SURFACE, border: "none", cursor: !loading && (message.trim() || pendingImage) ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", boxShadow: !loading && (message.trim() || pendingImage) ? "0 0 10px rgba(16,185,129,0.3)" : "none" }}>
-        <SendIcon size={14} color={!loading && (message.trim() || pendingImage) ? "black" : TEXT_MUTED} />
+        style={{ width: 36, height: 36, borderRadius: 10, background: !loading && (message.trim() || pendingImage) ? "linear-gradient(135deg, #10b981 0%, #06b6d4 100%)" : SURFACE, border: "none", cursor: !loading && (message.trim() || pendingImage) ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.25s", boxShadow: !loading && (message.trim() || pendingImage) ? "0 0 14px rgba(6,182,212,0.3), 0 0 6px rgba(16,185,129,0.2)" : "none" }}>
+        <SendIcon size={14} color={!loading && (message.trim() || pendingImage) ? "white" : TEXT_MUTED} />
       </button>
     </div>
   </div>
@@ -931,7 +935,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div style={{ height: "100vh", background: BG_MAIN, fontFamily: "'Inter', -apple-system, sans-serif", display: "flex", color: TEXT_PRIMARY, overflow: "hidden" }}>
+    <div style={{ height: "100vh", background: `radial-gradient(ellipse at 18% 85%, rgba(6,182,212,0.055) 0%, transparent 48%), radial-gradient(ellipse at 82% 15%, rgba(16,185,129,0.04) 0%, transparent 44%), ${BG_MAIN}`, fontFamily: "'Inter', -apple-system, sans-serif", display: "flex", color: TEXT_PRIMARY, overflow: "hidden" }}>
 
       {/* ═══ ONBOARDING ═══ */}
       {showOnboarding && (
@@ -1573,8 +1577,12 @@ export default function ChatPage() {
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: isMobile ? "24px 16px 100px" : "32px 24px 100px" }}>
               <div style={{ maxWidth: 580, width: "100%", textAlign: "center" }}>
                 <div style={{ position: "relative", width: 64, height: 64, margin: "0 auto 24px" }}>
-                  <div style={{ position: "absolute", inset: -12, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.15), transparent 70%)", animation: "glow-idle 3s ease-in-out infinite" }} />
-                  <div style={{ width: 64, height: 64, borderRadius: "50%", border: `1.5px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", fontSize: 28 }}>🌿</div>
+                  {/* Halo cyan externe — léger, décalé de phase */}
+                  <div style={{ position: "absolute", inset: -24, borderRadius: "50%", background: "radial-gradient(circle, rgba(6,182,212,0.09), transparent 62%)", animation: "glow-idle 4s ease-in-out infinite", animationDelay: "1.4s", pointerEvents: "none" }} />
+                  {/* Halo vert interne — existant */}
+                  <div style={{ position: "absolute", inset: -12, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.18), transparent 70%)", animation: "glow-idle 3s ease-in-out infinite" }} />
+                  {/* Cercle principal avec bordure dégradée vert→cyan */}
+                  <div style={{ width: 64, height: 64, borderRadius: "50%", border: "1.5px solid transparent", background: "linear-gradient(#080e0b, #080e0b) padding-box, linear-gradient(135deg, rgba(16,185,129,0.65), rgba(6,182,212,0.45)) border-box", boxShadow: "0 0 20px rgba(16,185,129,0.12), 0 0 36px rgba(6,182,212,0.07)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", fontSize: 28 }}>🌿</div>
                 </div>
                 <h1 style={{ margin: "0 0 8px", fontSize: isMobile ? 26 : 30, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.5px" }}>
                   {patientFirstName ? `Bonjour ${patientFirstName} 👋` : "Bonjour 👋"}
@@ -1589,9 +1597,9 @@ export default function ChatPage() {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
                   {quickActions.map(action => (
                     <button key={action} onClick={() => void send(action)}
-                      style={{ background: SURFACE, border: `1px solid ${BORDER}`, borderRadius: 20, padding: "8px 14px", fontSize: isMobile ? 13 : 14, color: TEXT_SECONDARY, cursor: "pointer", transition: "all 0.2s" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = ACCENT_DIM; e.currentTarget.style.color = ACCENT; e.currentTarget.style.borderColor = ACCENT_BORDER; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = SURFACE; e.currentTarget.style.color = TEXT_SECONDARY; e.currentTarget.style.borderColor = BORDER; }}>
+                      style={{ background: CYAN_DIM, border: `1px solid ${CYAN_BORDER}`, borderRadius: 28, padding: "9px 18px", fontSize: isMobile ? 13 : 14, color: TEXT_SECONDARY, cursor: "pointer", transition: "all 0.25s" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(6,182,212,0.14)"; e.currentTarget.style.color = CYAN; e.currentTarget.style.borderColor = "rgba(6,182,212,0.4)"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 6px 16px rgba(6,182,212,0.12)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = CYAN_DIM; e.currentTarget.style.color = TEXT_SECONDARY; e.currentTarget.style.borderColor = CYAN_BORDER; e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; }}>
                       {action}
                     </button>
                   ))}
@@ -1712,6 +1720,8 @@ export default function ChatPage() {
         @keyframes glow-idle { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
         @keyframes glow-sos { 0%, 100% { box-shadow: 0 0 16px rgba(6,182,212,0.25), inset 0 0 10px rgba(6,182,212,0.08); } 50% { box-shadow: 0 0 28px rgba(6,182,212,0.45), inset 0 0 14px rgba(6,182,212,0.15); } }
         @keyframes breathe { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.75); } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .nt-inputbar:focus-within { border-color: rgba(6,182,212,0.45) !important; box-shadow: 0 0 0 3px rgba(6,182,212,0.07), 0 0 16px rgba(6,182,212,0.07) !important; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 3px; }
