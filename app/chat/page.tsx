@@ -359,7 +359,7 @@ export default function ChatPage() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<ActiveTool>(null);
   const [patientId, setPatientId] = useState<string | null>(null);
   const [patientFirstName, setPatientFirstName] = useState("");
@@ -1586,7 +1586,7 @@ export default function ChatPage() {
       {/* ═══ ZONE PRINCIPALE ═══ */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        <header style={{ background: "linear-gradient(90deg, #0b1a14 0%, #080e0b 50%, #0b1a14 100%)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(16,185,129,0.15)", padding: "0 16px", height: 82, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        <header style={{ background: "rgba(8,14,11,0.92)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 16px", height: 62, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           {!sidebarOpen && (
             <button onClick={() => setSidebarOpen(true)} style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
               onMouseEnter={e => e.currentTarget.style.background = SURFACE}
@@ -1658,8 +1658,8 @@ export default function ChatPage() {
           )}
 
           {hasMessages && (
-            <div style={{ flex: 1, padding: isMobile ? "16px 12px 100px" : "20px 20px 100px" }}>
-              <div style={{ maxWidth: 700, margin: "0 auto", display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ flex: 1, padding: isMobile ? "16px 12px 100px" : "24px 24px 100px" }}>
+              <div style={{ maxWidth: 780, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
                   const isLastAssistant = !isUser && index === visibleMessages.length - 1;
@@ -1669,23 +1669,34 @@ export default function ChatPage() {
                   const isChatMatch = q && msg.content.toLowerCase().includes(q);
                   const isActiveMatch = matchIndices[Math.min(chatSearchIdx, matchIndices.length - 1)] === index;
                   return (
-                    <div key={index} ref={el => { messageRefs.current[index] = el; }} style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8, animation: "fadeUp 0.25s ease", transition: "opacity 0.2s", opacity: q && !isChatMatch ? 0.35 : 1 }}>
-                      <div style={{ maxWidth: isMobile ? "88%" : "76%" }}>
+                    <div key={index} ref={el => { messageRefs.current[index] = el; }}
+                      style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: isUser ? "flex-end" : "flex-start", gap: isUser ? 0 : 12, animation: "fadeUp 0.25s ease", transition: "opacity 0.2s", opacity: q && !isChatMatch ? 0.35 : 1 }}>
+                      {/* Avatar NutriTwin pour les réponses AI */}
+                      {!isUser && (
+                        <div style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.22)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0, marginTop: 2 }}>🌿</div>
+                      )}
+                      <div style={{ maxWidth: isUser ? (isMobile ? "82%" : "65%") : "calc(100% - 38px)" }}>
                         {msg.imageUrl && (
-                          <div style={{ marginBottom: 6, display: "flex", justifyContent: "flex-end" }}>
-                            <img src={msg.imageUrl} alt="Photo" style={{ maxWidth: isMobile ? 160 : 200, maxHeight: isMobile ? 160 : 200, borderRadius: 12, objectFit: "cover", border: `1px solid ${ACCENT_BORDER}` }} />
+                          <div style={{ marginBottom: 6, display: "flex", justifyContent: isUser ? "flex-end" : "flex-start" }}>
+                            <img src={msg.imageUrl} alt="Photo" style={{ maxWidth: isMobile ? 160 : 200, maxHeight: isMobile ? 160 : 200, borderRadius: 14, objectFit: "cover", border: `1px solid ${ACCENT_BORDER}` }} />
                           </div>
                         )}
-                        <div style={{ padding: isMobile ? "11px 14px" : "12px 18px", borderRadius: isUser ? "16px 16px 4px 16px" : "16px 16px 16px 4px", background: isActiveMatch ? "rgba(16,185,129,0.18)" : isUser ? "linear-gradient(135deg, rgba(16,185,129,0.85), rgba(5,150,105,0.7))" : "rgba(255,255,255,0.04)", backdropFilter: isUser ? "none" : "blur(8px)", color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.75, border: isActiveMatch ? `1.5px solid ${ACCENT}` : isUser ? `1px solid rgba(16,185,129,0.2)` : `1px solid ${BORDER}`, boxShadow: isUser ? "0 2px 12px rgba(0,0,0,0.3)" : isActiveMatch ? `0 0 0 3px rgba(16,185,129,0.15)` : "none", transition: "all 0.3s" }}>
-                          {msg.content}
-                        </div>
+                        {isUser ? (
+                          <div style={{ padding: isMobile ? "10px 16px" : "11px 18px", borderRadius: 20, background: isActiveMatch ? "rgba(16,185,129,0.25)" : "#10b981", color: "#fff", fontSize: 15, lineHeight: 1.7, border: isActiveMatch ? `1.5px solid ${ACCENT}` : "none", boxShadow: "0 1px 6px rgba(0,0,0,0.25)", transition: "all 0.3s" }}>
+                            {msg.content}
+                          </div>
+                        ) : (
+                          <div style={{ padding: "2px 0", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.85, border: isActiveMatch ? `1px solid rgba(16,185,129,0.4)` : "none", borderRadius: isActiveMatch ? 10 : 0, paddingLeft: isActiveMatch ? 10 : 0, boxShadow: isActiveMatch ? `0 0 0 3px rgba(16,185,129,0.07)` : "none", transition: "all 0.3s" }}>
+                            {msg.content}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
                 })}
                 {loading && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <ArcSpinner size={28} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.22)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><ArcSpinner size={14} /></div>
                     <button onClick={stopGeneration}
                       style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: "14px 14px 14px 4px", background: SURFACE, border: `1px solid ${BORDER}`, cursor: "pointer", color: TEXT_SECONDARY, fontSize: 12, transition: "all 0.2s" }}
                       onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(244,63,94,0.3)"; e.currentTarget.style.color = "#f87171"; }}
@@ -1731,7 +1742,7 @@ export default function ChatPage() {
         {hasMessages && emotionalStatus !== "red_critical" && (
           <div style={{ background: "rgba(7,11,9,0.97)", backdropFilter: "blur(20px)", borderTop: `1px solid ${BORDER}`, padding: isMobile ? "10px 12px" : "10px 20px", paddingBottom: "max(14px, env(safe-area-inset-bottom))", flexShrink: 0 }}>
             {pendingImage && (
-              <div style={{ maxWidth: 700, margin: "0 auto 8px" }}>
+              <div style={{ maxWidth: 780, margin: "0 auto 8px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <img src={pendingImage.previewUrl} alt="Preview" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", border: `1px solid ${ACCENT_BORDER}` }} />
                   <p style={{ margin: 0, fontSize: 12, color: TEXT_SECONDARY }}>Photo prête</p>
@@ -1740,13 +1751,13 @@ export default function ChatPage() {
               </div>
             )}
             {imageCompressing && (
-              <div style={{ maxWidth: 700, margin: "0 auto 6px" }}>
+              <div style={{ maxWidth: 780, margin: "0 auto 6px" }}>
                 <div style={{ height: 2, background: SURFACE, borderRadius: 1 }}>
                   <div style={{ height: "100%", background: ACCENT, borderRadius: 1, width: `${compressionProgress}%`, transition: "width 0.1s" }} />
                 </div>
               </div>
             )}
-            <div style={{ maxWidth: 700, margin: "0 auto" }}>
+            <div style={{ maxWidth: 780, margin: "0 auto" }}>
               <InputBar isCenter={false} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} />
               <p style={{ margin: "6px 0 0", fontSize: 10, color: TEXT_MUTED, textAlign: "center" }}>
                 NutriTwin est une IA et peut se tromper · En cas de doute, consultez votre praticien

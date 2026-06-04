@@ -26,12 +26,13 @@ const DEMO_PATIENTS_INITIAL = [
     private_notes: [{ id: "n1", text: "Tendances émotionnelles fortes le soir. Suggérer un journal alimentaire.", created_at: new Date().toISOString() }],
     lastActive: "Il y a 2h", streak: 5, sosResolved: 2, onboardingCompleted: true,
     lastMessage: "Oui, c'est clair maintenant. Merci. On continue !",
+    victory_detected_at: null, // en crise — trophée masqué
   },
   {
     id: "demo-2", firstName: "Julie", lastName: "P.", initials: "JP",
-    avatarColor: "#8b5cf6", emotional_status: "orange", emotional_insight: "Fatigue professionnelle",
+    avatarColor: "#8b5cf6", emotional_status: "orange", emotional_insight: "Anxieuse mais motivée",
     admin_alerts: [{ type: "alert", date: "2026-05-17T12:30:00", seen: false, murmure: "Rappelle-lui de prendre soin d'elle malgré la charge de travail." }],
-    totalMessages: 18, latest_victory: "3 repas complets cette semaine",
+    totalMessages: 18, latest_victory: "A repris sans culpabilité après l'écart",
     age: 28, sexe: "F", taille: 162, poids: 58,
     objective: "Maintenir son poids et améliorer son énergie au quotidien.",
     pathologies: "Aucune",
@@ -43,11 +44,12 @@ const DEMO_PATIENTS_INITIAL = [
     private_notes: [],
     lastActive: "Il y a 1j", streak: 3, sosResolved: 0, onboardingCompleted: true,
     lastMessage: "Le lien alimentation-sommeil est réel — continuez sur cette lancée.",
+    victory_detected_at: null, // en alerte orange — trophée masqué
   },
   {
     id: "demo-3", firstName: "Thomas", lastName: "R.", initials: "TR",
-    avatarColor: "#3b82f6", emotional_status: "green", emotional_insight: "Progression constante",
-    totalMessages: 40, latest_victory: "Poids stable depuis 3 semaines",
+    avatarColor: "#3b82f6", emotional_status: "green", emotional_insight: "En confiance, régulier",
+    totalMessages: 40, latest_victory: "A écouté sa satiété au dîner",
     age: 41, sexe: "M", taille: 178, poids: 82,
     objective: "Maintenir le poids atteint et développer une alimentation intuitive.",
     pathologies: "Hypertension",
@@ -59,6 +61,7 @@ const DEMO_PATIENTS_INITIAL = [
     private_notes: [{ id: "n3", text: "Très assidu. Envisager de passer à une consultation mensuelle.", created_at: new Date().toISOString() }],
     lastActive: "Il y a 3h", streak: 12, sosResolved: 1, onboardingCompleted: true,
     lastMessage: "C'est la meilleure preuve que le programme a fonctionné 😊",
+    victory_detected_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // il y a 2h → trophée visible
   },
 ];
 
@@ -342,7 +345,7 @@ type RealPatient = {
   allergies?: string; traitements?: string; objectif_clinique?: string; niveau_activite?: string;
   regime_specifique?: string;   practitioner_instruction?: { id: string; text: string; expires_at?: string | null; created_at: string }[];
   emotional_status?: string; emotional_insight?: string;
-  latest_victory?: string; private_notes?: { id: string; text: string; created_at: string }[]; created_at?: string;
+  latest_victory?: string; victory_detected_at?: string | null; private_notes?: { id: string; text: string; created_at: string }[]; created_at?: string;
   lastActive?: string | null; streak?: number; sosResolved?: number; onboardingCompleted?: boolean; onboardingStatus?: string | null;
 };
 
@@ -350,7 +353,7 @@ type Conversation = { id: string; role: "user" | "assistant"; content: string; c
 type ReportPeriod = "week" | "month" | "custom";
 type ActiveTab = "patients" | "vue_ensemble";
 type Document = { id: string; file_name: string; file_type: string; created_at: string; content?: string; };
-type MonthlyStats = { messages_geres: number; crises_nocturnes: number; temps_economise_heures: number; temps_accompagnement_heures: number; taux_retention: number; questions_repetitives_pct: number; sos_resolutions?: number; chat_resolutions?: number; delta_stress_avant?: number | null; delta_stress_apres?: number | null; };
+type MonthlyStats = { messages_geres: number; crises_nocturnes: number; temps_economise_heures: number; temps_accompagnement_heures: number; taux_retention: number; questions_repetitives_pct: number; sos_resolutions?: number; chat_resolutions?: number; taux_apaisement?: number | null; top_crisis_context?: string | null; };
 
 const AVATAR_COLORS = ["#f43f5e", "#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ec4899", "#06b6d4", "#f97316"];
 
@@ -588,7 +591,7 @@ export default function DashboardPage() {
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
   const patientsRef = useRef<RealPatient[]>([]);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
-  const [vueEnsembleFilter, setVueEnsembleFilter] = useState<"tous" | "urgences" | "bravos" | "ras">("tous");
+  const [vueEnsembleFilter, setVueEnsembleFilter] = useState<"tous" | "alertes" | "victoires" | "ras">("tous");
   const [bravoState, setBravoState] = useState<Record<string, { expanded: boolean; text: string; editing: boolean; loading: boolean; sent: boolean }>>({});
   const conversationContainerRef = useRef<HTMLDivElement>(null);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -693,9 +696,6 @@ export default function DashboardPage() {
     const { count: sosCount } = await supabase.from("sos_events").select("*", { count: "exact", head: true }).eq("practitioner_id", pid);
     const { data: sosFeedbacks } = await supabase.from("sos_feedback").select("score_after, stress_before_proxy").eq("practitioner_id", pid);
     const chatResolutions = (sosFeedbacks ?? []).filter(f => f.score_after < f.stress_before_proxy).length;
-    const feedbacksWithData = (sosFeedbacks ?? []).filter(f => f.stress_before_proxy > 0 && f.score_after > 0);
-    const avgBefore = feedbacksWithData.length > 0 ? Math.round(feedbacksWithData.reduce((sum, f) => sum + f.stress_before_proxy, 0) / feedbacksWithData.length * 10) / 10 : null;
-    const avgAfter = feedbacksWithData.length > 0 ? Math.round(feedbacksWithData.reduce((sum, f) => sum + f.score_after, 0) / feedbacksWithData.length * 10) / 10 : null;
     const msgs = totalMessages ?? 0;
     const tempsLibere = Math.round(((msgs * 0.75) + ((sosCount ?? 0) * 5)) / 60 * 10) / 10;
     const { data: sessions } = await supabase.from("conversations_sessions").select("created_at, last_message_at").eq("practitioner_id", pid);
@@ -706,6 +706,30 @@ export default function DashboardPage() {
         return sum + Math.min(dur, 60);
       }, 0) / 60 * 10
     ) / 10;
+
+    // Taux d'Apaisement : % d'épisodes SOS résolus (score_after < stress_before_proxy)
+    const totalFeedbacks = (sosFeedbacks ?? []).length;
+    const tauxApaisement = totalFeedbacks > 0
+      ? Math.round((chatResolutions / totalFeedbacks) * 100)
+      : null;
+
+    // Contexte de crise le plus fréquent → météo émotionnelle "Avant"
+    const { data: sosEvents } = await supabase
+      .from("sos_events").select("sos_context").eq("practitioner_id", pid).limit(100);
+    const contextCounts: Record<string, number> = {};
+    (sosEvents ?? []).forEach((e: { sos_context?: string }) => {
+      if (e.sos_context) contextCounts[e.sos_context] = (contextCounts[e.sos_context] || 0) + 1;
+    });
+    const topContext = Object.entries(contextCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+    const contextMeteo: Record<string, string> = {
+      fringale: "Fringale / Pulsion",
+      stress: "Submergé(e)",
+      culpabilite: "Coupable / Honteux(se)",
+      culpabilité: "Coupable / Honteux(se)",
+      "coup de mou": "Découragé(e)",
+    };
+    const topCrisisContext = topContext ? (contextMeteo[topContext] ?? "En détresse") : null;
+
     setMonthlyStats({
       messages_geres: msgs,
       crises_nocturnes: 0,
@@ -715,8 +739,8 @@ export default function DashboardPage() {
       questions_repetitives_pct: 72,
       sos_resolutions: sosCount ?? 0,
       chat_resolutions: chatResolutions,
-      delta_stress_avant: avgBefore,
-      delta_stress_apres: avgAfter,
+      taux_apaisement: tauxApaisement,
+      top_crisis_context: topCrisisContext,
     });
   };
 
@@ -725,7 +749,7 @@ export default function DashboardPage() {
     if (!relations || relations.length === 0) { setLoading(false); setOnboardingDemoMode(true); return true; }
     const patientIds = relations.map((r) => r.patient_id as string);
 
-    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, latest_victory, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status").in("user_id", patientIds);
+    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status").in("user_id", patientIds);
     if (!patientsData) { setLoading(false); return false; }
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -795,6 +819,7 @@ export default function DashboardPage() {
         emotional_status: p.emotional_status ?? "green", emotional_insight: p.emotional_insight ?? "",
         created_at: p.created_at,
         latest_victory: p.latest_victory ?? "",
+        victory_detected_at: (p as { victory_detected_at?: string | null }).victory_detected_at ?? null,
         onboardingCompleted: p.onboarding_completed ?? false,
         onboardingStatus: p.onboarding_status ?? null,
         admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[] | null) ?? [],
@@ -898,17 +923,18 @@ export default function DashboardPage() {
       if (ids.length === 0) return;
       const { data: fresh } = await supabase
         .from("patients")
-        .select("user_id, admin_alerts, emotional_status, emotional_insight, latest_victory")
+        .select("user_id, admin_alerts, emotional_status, emotional_insight, latest_victory, victory_detected_at")
         .in("user_id", ids);
       if (!fresh) return;
       setPatients(prev => prev.map(p => {
-        const f = (fresh as { user_id: string; admin_alerts?: object[]; emotional_status?: string; emotional_insight?: string; latest_victory?: string }[]).find(d => d.user_id === p.id);
+        const f = (fresh as { user_id: string; admin_alerts?: object[]; emotional_status?: string; emotional_insight?: string; latest_victory?: string; victory_detected_at?: string | null }[]).find(d => d.user_id === p.id);
         if (!f) return p;
         return { ...p,
           admin_alerts: (f.admin_alerts ?? p.admin_alerts) as typeof p.admin_alerts,
           emotional_status: (f.emotional_status ?? p.emotional_status) as typeof p.emotional_status,
           emotional_insight: f.emotional_insight ?? p.emotional_insight,
           latest_victory: f.latest_victory ?? p.latest_victory,
+          victory_detected_at: f.victory_detected_at ?? p.victory_detected_at,
         };
       }));
     }, 30000);
@@ -927,7 +953,10 @@ export default function DashboardPage() {
   const filteredPatients = displayedPatients.filter((p) => `${p.firstName} ${p.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()));
   const redPatients = displayedPatients.filter((p) => p.emotional_status === "red" || p.emotional_status === "red_critical");
   const orangePatients = displayedPatients.filter((p) => p.emotional_status === "orange");
-  const victoryPatients = displayedPatients.filter((p) => p.latest_victory);
+  const isVictoryFresh = (p: { latest_victory?: string; victory_detected_at?: string | null }) =>
+    !!(p.latest_victory && p.victory_detected_at
+      && (Date.now() - new Date(p.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
+  const victoryPatients = displayedPatients.filter(isVictoryFresh);
 
   const openMurmureModal = () => {
     setMurmureText("");
@@ -1795,7 +1824,10 @@ export default function DashboardPage() {
                     else if (isOrange) { cardBg = "rgba(245,158,11,0.04)"; cardBorder = "rgba(245,158,11,0.28)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
                     else { cardBg = "rgba(16,185,129,0.04)"; cardBorder = "rgba(16,185,129,0.22)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
                   }
-                  // Sous-texte : alerte si non ignorée, sinon dernier message
+                  // Victoire récente : seulement si < 48h
+                  const victoryFresh = !!(patient.latest_victory && patient.victory_detected_at
+                    && (Date.now() - new Date(patient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
+                  // Sous-texte : alerte > victoire > dernier message
                   const subText = (activeAlert && patient.emotional_insight)
                     ? patient.emotional_insight
                     : (patient.lastMessage || "Aucun message");
@@ -1809,8 +1841,9 @@ export default function DashboardPage() {
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{patient.firstName} {patient.lastName}</p>
-                          <p style={{ margin: "2px 0 0", fontSize: 11, color: subColor, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
-                            {subText}
+                          <p style={{ margin: "2px 0 0", fontSize: 11, color: subColor, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s", display: "flex", alignItems: "center", gap: 4 }}>
+                            {!activeAlert && victoryFresh && <span style={{ fontSize: 11, flexShrink: 0 }} title={patient.latest_victory}>🏆</span>}
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subText}</span>
                           </p>
                         </div>
                         {activeAlert && <div style={{ width: 7, height: 7, borderRadius: "50%", background: alertColor2, flexShrink: 0 }} />}
@@ -2322,40 +2355,45 @@ export default function DashboardPage() {
 
               {/* KPI blocks */}
               {(() => {
-                const stressAvant = onboardingDemoMode ? 7.4 : (monthlyStats?.delta_stress_avant ?? 0);
-                const stressApres = onboardingDemoMode ? 3.2 : (monthlyStats?.delta_stress_apres ?? 0);
                 const crises = onboardingDemoMode ? 3 : (patients.reduce((sum, p) => sum + (p.totalMessages > 0 ? 1 : 0), 0) || 0);
                 const messages = onboardingDemoMode ? 92 : (monthlyStats?.messages_geres ?? 0);
                 const heures = onboardingDemoMode ? 14 : (monthlyStats?.temps_economise_heures ?? 0);
+                const tauxApaisement = onboardingDemoMode ? 85 : (monthlyStats?.taux_apaisement ?? null);
+                const crisisAvant = onboardingDemoMode ? "Submergé(e)" : (monthlyStats?.top_crisis_context ?? null);
                 return (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
                 <div style={{ background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 16, padding: 20 }}>
-                  <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Delta de stress moyen</p>
-                  <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginBottom: 12 }}>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ margin: "0 0 4px", fontSize: 10, color: "#64748b" }}>Avant</p>
-                      <div style={{ height: 6, background: "rgba(244,63,94,0.15)", borderRadius: 3, marginBottom: 4 }}>
-                        <div style={{ height: "100%", width: `${(stressAvant / 10) * 100}%`, background: coral, borderRadius: 3 }} />
+                  <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Taux d'Apaisement Moyen</p>
+                  {tauxApaisement !== null ? (
+                    <>
+                      <p style={{ margin: "0 0 14px", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+                        <span style={{ fontSize: 48, fontWeight: 900, color: emerald }}>{tauxApaisement}</span>
+                        <span style={{ fontSize: 22, fontWeight: 700, color: emerald }}>%</span>
+                      </p>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ flex: 1, background: "rgba(244,63,94,0.08)", borderRadius: 8, padding: "7px 10px" }}>
+                          <p style={{ margin: "0 0 3px", fontSize: 10, color: "#64748b" }}>Avant</p>
+                          <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: coral, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                            {crisisAvant || "En détresse"}
+                          </p>
+                        </div>
+                        <span style={{ color: "#475569", fontSize: 14, flexShrink: 0 }}>→</span>
+                        <div style={{ flex: 1, background: "rgba(16,185,129,0.08)", borderRadius: 8, padding: "7px 10px" }}>
+                          <p style={{ margin: "0 0 3px", fontSize: 10, color: "#64748b" }}>Après</p>
+                          <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: emerald }}>Apaisé(e)</p>
+                        </div>
                       </div>
-                      <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: coral }}>{stressAvant || "-"}</p>
-                    </div>
-                    <div style={{ fontSize: 18, color: "#64748b", paddingBottom: 4 }}>→</div>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ margin: "0 0 4px", fontSize: 10, color: "#64748b" }}>Après</p>
-                      <div style={{ height: 6, background: "rgba(16,185,129,0.15)", borderRadius: 3, marginBottom: 4 }}>
-                        <div style={{ height: "100%", width: `${(stressApres / 10) * 100}%`, background: emerald, borderRadius: 3 }} />
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ margin: "0 0 14px", lineHeight: 1 }}>
+                        <span style={{ fontSize: 36, fontWeight: 900, color: "#475569" }}>—</span>
+                      </p>
+                      <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 12, color: "#64748b" }}>Données insuffisantes</span>
                       </div>
-                      <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: emerald }}>{stressApres || "-"}</p>
-                    </div>
-                  </div>
-                  <div style={{ background: "rgba(16,185,129,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <TrendDownIcon size={13} color={emerald} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: emerald }}>
-                      {stressAvant && stressApres
-                        ? `-${Math.round((1 - stressApres / stressAvant) * 100)}% de stress moyen`
-                        : "Pas encore de données"}
-                    </span>
-                  </div>
+                    </>
+                  )}
                 </div>
                 <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 16, padding: 20 }}>
                   <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Crises apaisées</p>
@@ -2385,10 +2423,10 @@ export default function DashboardPage() {
                 <span style={{ fontSize: 11, color: "#64748b", alignSelf: "center", marginRight: 4 }}>Filtrer par :</span>
                 {([
                   { key: "tous", label: "Tous" },
-                  { key: "urgences", label: "Urgences" },
-                  { key: "bravos", label: "Bravos à envoyer" },
+                  { key: "alertes", label: "Alertes" },
+                  { key: "victoires", label: "Victoires" },
                   { key: "ras", label: "RAS" },
-                ] as { key: "tous" | "urgences" | "bravos" | "ras"; label: string }[]).map(f => (
+                ] as { key: "tous" | "alertes" | "victoires" | "ras"; label: string }[]).map(f => (
                   <button key={f.key} onClick={() => setVueEnsembleFilter(f.key)}
                     style={{ height: 28, borderRadius: 20, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: vueEnsembleFilter === f.key ? "1px solid rgba(255,255,255,0.2)" : "1px solid rgba(255,255,255,0.06)", background: vueEnsembleFilter === f.key ? "rgba(255,255,255,0.08)" : "transparent", color: vueEnsembleFilter === f.key ? "white" : "#64748b", transition: "all 0.2s" }}>
                     {f.label}
@@ -2406,18 +2444,18 @@ export default function DashboardPage() {
                 const ao = order[a.emotional_status as keyof typeof order] ?? 3;
                 const bo = order[b.emotional_status as keyof typeof order] ?? 3;
                 if (ao !== bo) return ao - bo;
-                // À égalité de statut, ceux avec victoire avant ceux sans
-                if (a.latest_victory && !b.latest_victory) return -1;
-                if (!a.latest_victory && b.latest_victory) return 1;
+                // À égalité de statut, ceux avec victoire fraîche avant ceux sans
+                if (isVictoryFresh(a) && !isVictoryFresh(b)) return -1;
+                if (!isVictoryFresh(a) && isVictoryFresh(b)) return 1;
                 return 0;
               });
 
               // Filtre
               const filtered = sorted.filter(p => {
                 if (vueEnsembleFilter === "tous") return true;
-                if (vueEnsembleFilter === "urgences") return p.emotional_status === "red_critical" || p.emotional_status === "red" || p.emotional_status === "orange";
-                if (vueEnsembleFilter === "bravos") return !!p.latest_victory && p.emotional_status === "green";
-                if (vueEnsembleFilter === "ras") return p.emotional_status === "green" && !p.latest_victory;
+                if (vueEnsembleFilter === "alertes") return p.emotional_status === "red_critical" || p.emotional_status === "red" || p.emotional_status === "orange";
+                if (vueEnsembleFilter === "victoires") return isVictoryFresh(p) && p.emotional_status === "green";
+                if (vueEnsembleFilter === "ras") return p.emotional_status === "green" && !isVictoryFresh(p);
                 return true;
               });
 
@@ -2430,7 +2468,7 @@ export default function DashboardPage() {
                     const isRed = patient.emotional_status === "red" || isCritical;
                     const isOrange = patient.emotional_status === "orange";
                     const hasAlert = isRed || isOrange;
-                    const hasVictory = !!patient.latest_victory && !hasAlert;
+                    const hasVictory = isVictoryFresh(patient) && !hasAlert;
                     const bState = bravoState[patient.id];
 
                     // Couleurs de la carte
@@ -2457,8 +2495,14 @@ export default function DashboardPage() {
                           <div style={{ width: 38, height: 38, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "white", flexShrink: 0 }}>{patient.initials}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "white", filter: discretMode ? "blur(4px)" : "none" }}>{patient.firstName} {patient.lastName}</p>
-                            <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{patient.totalMessages} messages</p>
+                            {patient.emotional_insight && (
+                              <p style={{ margin: "2px 0 0", fontSize: 11, color: hasAlert ? alertColor : (hasVictory ? emerald : "#94a3b8"), fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", filter: discretMode ? "blur(4px)" : "none" }}>
+                                {patient.emotional_insight}
+                              </p>
+                            )}
+                            <p style={{ margin: "2px 0 0", fontSize: 10, color: "#475569" }}>{patient.totalMessages} messages</p>
                           </div>
+                          {hasVictory && <span style={{ fontSize: 14, flexShrink: 0, alignSelf: "flex-start" }} title={patient.latest_victory}>🏆</span>}
                         </div>
 
                         {/* Contenu selon statut */}

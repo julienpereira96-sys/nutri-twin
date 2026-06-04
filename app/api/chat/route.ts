@@ -562,10 +562,14 @@ Si le message commence par [ADMIN:identity_correction] :
 - Ajoute obligatoirement : |||{"status":"green","reason":"demande correction identité","victory":"","action":"admin_alert","alert_type":"identity_correction"}|||
 
 JSON TECHNIQUE OBLIGATOIRE - À ajouter en toute fin de réponse, invisible pour le patient :
-|||{"status":"green","reason":"résumé état en 8 mots max","victory":""}|||
+|||{"status":"green","reason":"météo émotionnelle en 4-8 mots","victory":""}|||
 - status : "red_critical" si urgence vitale implicite détectée, "red_behavioral" si détresse comportementale/TCA/psychologique sévère, "orange" si difficulté modérée, "green" si tout va bien
-- reason : phrase courte décrivant l'état émotionnel du patient
-- victory : UNE phrase UNIQUEMENT si le patient rapporte un changement de comportement MAJEUR ou une réussite difficile. Vide "" sinon.`;
+- reason : TOUJOURS rempli — météo émotionnelle du patient en 4-8 mots, dynamique et précise.
+  Exemples green : "En confiance", "Motivé(e) malgré la fatigue", "Serein(e) et régulier(e)", "Curieux(se) de progresser"
+  Exemples orange : "Anxieux(se) mais motivé(e)", "Frustré(e) face aux écarts", "Fatigué(e) / En restriction", "Découragé(e) par le plateau"
+  Exemples red : "Détresse émotionnelle active", "Perte de contrôle alimentaire", "Dégoût de soi exprimé"
+  Ne jamais laisser vide. Ne jamais écrire "patient va bien" ou "aucune alerte".
+- victory : UNE phrase courte UNIQUEMENT si le patient rapporte une réussite TCC concrète (ex: résister à une fringale, écouter sa satiété, gérer une envie de crise sans craquer, reprendre après un écart sans culpabilité). Exemples : "A écouté sa satiété ce soir", "A résisté à la fringale du soir", "A repris sans culpabilité après l'écart". Vide "" sinon.`;
 }
 
 function getDefaultPrompt(): string {
