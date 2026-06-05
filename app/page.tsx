@@ -816,10 +816,70 @@ export default function Home() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3 max-w-5xl mx-auto">
-              <PricingCard name="Essentiel" price="149€" description="Pour démarrer et accompagner vos patients prioritaires." features={["Jusqu'à 10 patients", "1 praticien", "Jumeau configuré sur 31 questions", "Chat patient 24h/24", "Dashboard praticien", "Support par email"]} plan="essentiel" featured={false} />
-              <PricingCard name="Professionnel" price="249€" badge="Recommandé" description="Le jumeau le plus fidèle à votre expertise." features={["Jusqu'à 50 patients", "1 praticien", "Jumeau configuré sur 31 questions", "Upload documents & protocoles", "Fidélité maximale du jumeau", "Rapport IA mensuel par patient", "Support prioritaire"]} plan="pro" featured={true} />
-              <PricingCard name="Cabinet" price="499€" description="Pour les cabinets multi-praticiens." features={["Jusqu'à 150 patients", "3 praticiens inclus", "Upload documents illimité", "Rapport IA mensuel par patient", "+99€/praticien supplémentaire", "Support dédié"]} plan="cabinet" featured={false} />
+              <PricingCard
+                name="Essentiel"
+                price="149€"
+                description="Pour démarrer et accompagner vos patients prioritaires."
+                features={[
+                  "Jusqu'à 10 patients suivis en simultané",
+                  "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)",
+                  "Suivi patient et gestion des crises 24h/24 & 7j/7",
+                  "Analyse en temps réel (détection des comportements et alertes de crises)",
+                  "Préparation automatisée de vos consultations et bilans",
+                  "Espace de stockage sécurisé pour vos protocoles et documents",
+                ]}
+                plan="essentiel"
+                featured={false}
+              />
+              <PricingCard
+                name="Professionnel"
+                price="249€"
+                badge="Recommandé"
+                description="Le jumeau le plus fidèle à votre expertise."
+                features={[
+                  "Jusqu'à 50 patients suivis en simultané",
+                  "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)",
+                  "Suivi patient et gestion des crises 24h/24 & 7j/7",
+                  "Analyse en temps réel (détection des comportements et alertes de crises)",
+                  "Préparation automatisée de vos consultations et bilans",
+                  "Espace de stockage sécurisé pour vos protocoles et documents",
+                  "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients",
+                  "Mémoire clinique long terme (le Jumeau conserve une synthèse permanente de tout le parcours)",
+                  "Plafond d'échanges quotidien étendu par patient (*)",
+                ]}
+                plan="pro"
+                featured={true}
+              />
+              <PricingCard
+                name="Cabinet"
+                price="599€"
+                description="Pour les cabinets multi-praticiens et centres de santé."
+                features={[
+                  "3 comptes praticiens indépendants inclus",
+                  "Jusqu'à 150 patients suivis au global au sein du cabinet",
+                  "Votre Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)",
+                  "Suivi patient et gestion des crises 24h/24 & 7j/7",
+                  "Analyse en temps réel (détection des comportements et alertes de crises)",
+                  "Préparation automatisée de vos consultations et bilans",
+                  "Espace de stockage sécurisé pour vos protocoles et documents",
+                  "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients",
+                  "Mémoire clinique long terme (le Jumeau conserve une synthèse permanente de tout le parcours)",
+                  "Espace collaboratif : Possibilité de transférer ou de partager un dossier entre confrères",
+                  "Plafond d'échanges quotidien étendu par patient (*)",
+                ]}
+                plan="cabinet"
+                featured={false}
+              />
             </div>
+
+            {/* Note de bas de grille tarifaire */}
+            <p className="mx-auto mt-8 max-w-3xl text-center text-[11px] leading-relaxed text-zinc-500">
+              (*) Gestion des volumes et sécurité : L&apos;enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel
+              et élargie à 100 messages/jour sur le plan Professionnel et Cabinet afin de garantir la stabilité technique de la
+              plateforme et de maintenir un cadre d&apos;échange structuré pour le patient. Conformément à la réglementation,
+              toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais
+              utilisées pour entraîner des modèles d&apos;IA publics.
+            </p>
           </div>
         </section>
 

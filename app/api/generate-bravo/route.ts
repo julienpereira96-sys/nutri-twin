@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   let message = `${firstName}, votre praticien a remarqué votre belle victoire. Continuez comme ça ! 🌿`;
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash-lite",
+      model: "gemini-3.1-flash-lite",
       generationConfig: { maxOutputTokens: 150, temperature: 0.8 },
     });
     const result = await model.generateContent(

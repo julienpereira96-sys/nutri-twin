@@ -185,15 +185,22 @@ ${profileSection ? `${profileSection}\n\n` : ""}${sosSection ? `${sosSection}\n\
 Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks :
 {"synthese": "...", "patterns": "...", "victoires": "...", "murmures_bilan": "..."}`;
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
-      generationConfig: { maxOutputTokens: 1000, temperature: 0.5 },
-    });
-
-    const result = await model.generateContent(prompt);
-    const rawText = result.response.text().trim().replace(/```json|```/g, "").trim();
-
-    const report = JSON.parse(rawText) as { synthese: string; patterns: string; victoires: string; murmures_bilan: string };
+    let report: { synthese: string; patterns: string; victoires: string; murmures_bilan: string };
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-3-flash-preview",
+        generationConfig: { maxOutputTokens: 1000, temperature: 0.5 },
+      });
+      const result = await model.generateContent(prompt);
+      const rawText = result.response.text().trim().replace(/```json|```/g, "").trim();
+      report = JSON.parse(rawText) as typeof report;
+      if (!report.synthese || !report.patterns) throw new Error("Structure JSON invalide");
+    } catch {
+      return NextResponse.json(
+        { error: "Une erreur est survenue lors de la génération du rapport. Veuillez réessayer dans quelques instants." },
+        { status: 502 }
+      );
+    }
 
     return NextResponse.json({ report });
   } catch (error: unknown) {

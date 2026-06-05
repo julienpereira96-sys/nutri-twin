@@ -347,6 +347,7 @@ type RealPatient = {
   emotional_status?: string; emotional_insight?: string;
   latest_victory?: string; victory_detected_at?: string | null; private_notes?: { id: string; text: string; created_at: string }[]; created_at?: string;
   lastActive?: string | null; streak?: number; sosResolved?: number; onboardingCompleted?: boolean; onboardingStatus?: string | null;
+  sharing_status?: string; cabinet_id?: string;
 };
 
 type Conversation = { id: string; role: "user" | "assistant"; content: string; created_at: string; };
@@ -591,7 +592,9 @@ export default function DashboardPage() {
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
   const patientsRef = useRef<RealPatient[]>([]);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
-  const [vueEnsembleFilter, setVueEnsembleFilter] = useState<"tous" | "alertes" | "victoires" | "ras">("tous");
+  const [vueEnsembleFilter, setVueEnsembleFilter] = useState<"tous" | "alertes" | "victoires" | "ras" | "partages">("tous");
+  const [practitionerCabinetId, setPractitionerCabinetId] = useState<string | null>(null);
+  const [cabinetSharedPatients, setCabinetSharedPatients] = useState<RealPatient[]>([]);
   const [bravoState, setBravoState] = useState<Record<string, { expanded: boolean; text: string; editing: boolean; loading: boolean; sent: boolean }>>({});
   const conversationContainerRef = useRef<HTMLDivElement>(null);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -749,7 +752,7 @@ export default function DashboardPage() {
     if (!relations || relations.length === 0) { setLoading(false); setOnboardingDemoMode(true); return true; }
     const patientIds = relations.map((r) => r.patient_id as string);
 
-    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status").in("user_id", patientIds);
+    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id").in("user_id", patientIds);
     if (!patientsData) { setLoading(false); return false; }
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -823,6 +826,8 @@ export default function DashboardPage() {
         onboardingCompleted: p.onboarding_completed ?? false,
         onboardingStatus: p.onboarding_status ?? null,
         admin_alerts: (p.admin_alerts as { type: string; date: string; seen: boolean }[] | null) ?? [],
+        sharing_status: (p as { sharing_status?: string }).sharing_status ?? "private",
+        cabinet_id: (p as { cabinet_id?: string | null }).cabinet_id ?? undefined,
       };
     });
     setPatients(patientsWithStats);
@@ -833,6 +838,27 @@ export default function DashboardPage() {
     setLoading(false);
     return isDemo;
   };
+
+  const loadSharedCabinetPatients = async (cabinetId: string, ownPatientIds: string[]) => {
+    const { data } = await supabase
+      .from("patients")
+      .select("user_id, first_name, last_name, email, emotional_status, emotional_insight, latest_victory, victory_detected_at, sharing_status, cabinet_id, created_at")
+      .eq("cabinet_id", cabinetId)
+      .eq("sharing_status", "shared")
+      .not("user_id", "in", `(${ownPatientIds.join(",") || "00000000-0000-0000-0000-000000000000"})`);
+    if (!data) return;
+    const shared: RealPatient[] = data.map((p, i) => ({
+      id: p.user_id, firstName: p.first_name ?? "Patient", lastName: p.last_name ?? "",
+      initials: `${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase(),
+      avatarColor: AVATAR_COLORS[i % AVATAR_COLORS.length], email: p.email ?? "",
+      lastMessage: "", lastMessageTime: "", lastMessageRole: "", totalMessages: 0,
+      emotional_status: p.emotional_status ?? "green", emotional_insight: p.emotional_insight ?? "",
+      latest_victory: p.latest_victory ?? "", victory_detected_at: p.victory_detected_at ?? null,
+      sharing_status: "shared", cabinet_id: cabinetId, created_at: p.created_at,
+    }));
+    setCabinetSharedPatients(shared);
+  };
+
   useEffect(() => {
     // Écouter l'expiration de session en cours d'utilisation
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
@@ -848,13 +874,14 @@ export default function DashboardPage() {
       }
       const pid = data.user.id;
       setPractitionerId(pid);
-      const { data: practitioner } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin").eq("user_id", pid).single();
+      const { data: practitioner } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin, cabinet_id").eq("user_id", pid).single();
       if (practitioner) {
-        const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string };
+        const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string; cabinet_id?: string | null };
         setPractitionerName(`${p.first_name} ${p.last_name}`);
         setPractitionerEmail(p.email ?? "");
         setPractitionerSpecialty(p.specialty ?? "");
         setSavedPin(p.discrete_pin ?? "");
+        if (p.cabinet_id) setPractitionerCabinetId(p.cabinet_id);
       }
       // Tour check séparé pour ne pas bloquer le chargement si la colonne n'existe pas encore
       const { data: tourData, error: tourError } = await supabase.from("practitioners").select("dashboard_tour_done").eq("user_id", pid).single();
@@ -869,7 +896,17 @@ export default function DashboardPage() {
       setHasDocuments((count ?? 0) > 0);
       if ((count ?? 0) > 0) { const hidden = localStorage.getItem("fidelity_hidden"); if (hidden === "true") setShowFidelity(false); }
       const isDemo = await loadPatients(pid);
-      if (!isDemo) await Promise.all([loadMonthlyStats(pid), loadDocuments(pid)]);
+      if (!isDemo) {
+        await Promise.all([loadMonthlyStats(pid), loadDocuments(pid)]);
+        // Charger les dossiers partagés du cabinet si le praticien appartient à un
+        const { data: pracData } = await supabase.from("practitioners").select("cabinet_id").eq("user_id", pid).single();
+        const cid = (pracData as { cabinet_id?: string | null } | null)?.cabinet_id;
+        if (cid) {
+          const { data: rels } = await supabase.from("patient_practitioner").select("patient_id").eq("practitioner_id", pid);
+          const ownIds = (rels ?? []).map(r => r.patient_id as string);
+          await loadSharedCabinetPatients(cid, ownIds);
+        }
+      }
     });
 
     return () => { subscription.unsubscribe(); };
@@ -2432,6 +2469,13 @@ export default function DashboardPage() {
                     {f.label}
                   </button>
                 ))}
+                {!onboardingDemoMode && practitionerCabinetId && (
+                  <button onClick={() => setVueEnsembleFilter("partages")}
+                    style={{ height: 28, borderRadius: 20, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: vueEnsembleFilter === "partages" ? "1px solid rgba(99,102,241,0.5)" : "1px solid rgba(99,102,241,0.15)", background: vueEnsembleFilter === "partages" ? "rgba(99,102,241,0.15)" : "transparent", color: vueEnsembleFilter === "partages" ? "#818cf8" : "#64748b", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 5 }}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    Cabinet
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2450,16 +2494,18 @@ export default function DashboardPage() {
                 return 0;
               });
 
-              // Filtre
-              const filtered = sorted.filter(p => {
-                if (vueEnsembleFilter === "tous") return true;
-                if (vueEnsembleFilter === "alertes") return p.emotional_status === "red_critical" || p.emotional_status === "red" || p.emotional_status === "orange";
-                if (vueEnsembleFilter === "victoires") return isVictoryFresh(p) && p.emotional_status === "green";
-                if (vueEnsembleFilter === "ras") return p.emotional_status === "green" && !isVictoryFresh(p);
-                return true;
-              });
+              // Filtre — "partages" injecte les dossiers partagés du cabinet
+              const filtered = vueEnsembleFilter === "partages"
+                ? cabinetSharedPatients
+                : sorted.filter(p => {
+                    if (vueEnsembleFilter === "tous") return true;
+                    if (vueEnsembleFilter === "alertes") return p.emotional_status === "red_critical" || p.emotional_status === "red" || p.emotional_status === "orange";
+                    if (vueEnsembleFilter === "victoires") return isVictoryFresh(p) && p.emotional_status === "green";
+                    if (vueEnsembleFilter === "ras") return p.emotional_status === "green" && !isVictoryFresh(p);
+                    return true;
+                  });
 
-              if (filtered.length === 0) return <p style={{ textAlign: "center", color: "#64748b", marginTop: 40 }}>Aucun patient dans cette catégorie</p>;
+              if (filtered.length === 0) return <p style={{ textAlign: "center", color: "#64748b", marginTop: 40 }}>{vueEnsembleFilter === "partages" ? "Aucun dossier partagé dans votre cabinet pour l'instant." : "Aucun patient dans cette catégorie"}</p>;
 
               return (
                 <div data-tour="radar" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
@@ -3118,8 +3164,25 @@ export default function DashboardPage() {
               <button onClick={() => setShowPatientDocModal(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 13, cursor: "pointer" }}>Annuler</button>
               <button
                 onClick={async () => {
-                  if (patientDocFiles.length === 0 || !practitionerId) return;
+                  if (patientDocFiles.length === 0) return;
                   setPatientDocUploading(true); setPatientDocErrors([]); setPatientDocSuccess([]);
+                  // Mode démo : simulation 2s + ajout d'un faux document local
+                  if (onboardingDemoMode) {
+                    await new Promise(r => setTimeout(r, 2000));
+                    const fakeDoc: Document = {
+                      id: `demo-doc-${Date.now()}`,
+                      file_name: "Bilan_Demo_Anonymise.pdf",
+                      file_type: "pdf",
+                      created_at: new Date().toISOString(),
+                    };
+                    setDocuments(prev => [fakeDoc, ...prev]);
+                    setPatientDocSuccess(["Bilan_Demo_Anonymise.pdf"]);
+                    setPatientDocUploading(false);
+                    setPatientDocFiles([]);
+                    setHasDocuments(true);
+                    return;
+                  }
+                  if (!practitionerId) return;
                   for (const file of patientDocFiles) {
                     const formData = new FormData();
                     formData.append("file", file);
@@ -3137,9 +3200,9 @@ export default function DashboardPage() {
                   setHasDocuments(true);
                   if (practitionerId) await loadDocuments(practitionerId);
                 }}
-                disabled={patientDocUploading || patientDocFiles.length === 0 || onboardingDemoMode}
-                style={{ flex: 2, height: 44, borderRadius: 10, background: patientDocUploading || patientDocFiles.length === 0 || onboardingDemoMode ? "rgba(96,165,250,0.05)" : "rgba(96,165,250,0.15)", border: `1px solid ${patientDocUploading || patientDocFiles.length === 0 || onboardingDemoMode ? "rgba(96,165,250,0.1)" : "rgba(96,165,250,0.35)"}`, color: patientDocUploading || patientDocFiles.length === 0 || onboardingDemoMode ? "#4b5563" : "#60a5fa", fontSize: 13, fontWeight: 600, cursor: patientDocUploading || patientDocFiles.length === 0 || onboardingDemoMode ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
-                {onboardingDemoMode ? "Indisponible en mode démo" : patientDocUploading ? "Anonymisation & indexation..." : `Indexer ${patientDocFiles.length > 0 ? patientDocFiles.length + " fichier" + (patientDocFiles.length > 1 ? "s" : "") : ""}`}
+                disabled={patientDocUploading || patientDocFiles.length === 0}
+                style={{ flex: 2, height: 44, borderRadius: 10, background: patientDocUploading || patientDocFiles.length === 0 ? "rgba(96,165,250,0.05)" : "rgba(96,165,250,0.15)", border: `1px solid ${patientDocUploading || patientDocFiles.length === 0 ? "rgba(96,165,250,0.1)" : "rgba(96,165,250,0.35)"}`, color: patientDocUploading || patientDocFiles.length === 0 ? "#4b5563" : "#60a5fa", fontSize: 13, fontWeight: 600, cursor: patientDocUploading || patientDocFiles.length === 0 ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
+                {patientDocUploading ? "Anonymisation & indexation..." : `Indexer ${patientDocFiles.length > 0 ? patientDocFiles.length + " fichier" + (patientDocFiles.length > 1 ? "s" : "") : ""}`}
               </button>
             </div>
           </div>
@@ -3399,7 +3462,13 @@ export default function DashboardPage() {
                   </>
                 );
               } catch {
-                return <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{reportContent}</p>;
+                return (
+                  <div style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.18)", borderRadius: 12, padding: "16px 18px", textAlign: "center" }}>
+                    <p style={{ margin: "0 0 6px", fontSize: 13, color: "#f59e0b", fontWeight: 600 }}>Erreur de lecture du rapport</p>
+                    <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>Le rapport n'a pas pu être analysé. Veuillez réessayer.</p>
+                    <button onClick={() => { setReportContent(""); setReportError(""); }} style={{ marginTop: 12, height: 34, padding: "0 16px", borderRadius: 8, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)", color: "#f59e0b", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>Réessayer</button>
+                  </div>
+                );
               }
             })()}
           </div>
@@ -3776,7 +3845,13 @@ export default function DashboardPage() {
                     </div>
                   );
                 } catch {
-                  return <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7 }}>{bilanContent}</p>;
+                  return (
+                    <div style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.18)", borderRadius: 12, padding: "16px 18px", textAlign: "center" }}>
+                      <p style={{ margin: "0 0 6px", fontSize: 13, color: "#f59e0b", fontWeight: 600 }}>Erreur de lecture du bilan</p>
+                      <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>Le bilan n'a pas pu être analysé. Veuillez réessayer.</p>
+                      <button onClick={() => setBilanContent("")} style={{ marginTop: 12, height: 34, padding: "0 16px", borderRadius: 8, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)", color: "#f59e0b", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>Réessayer</button>
+                    </div>
+                  );
                 }
               })()
             ) : null}

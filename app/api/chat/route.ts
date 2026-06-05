@@ -9,35 +9,32 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 });
 
+// ═══ CONFIGURATION DES PLANS ═══
+// Modèle chat : gemini-3.1-flash-lite pour tous les textes (tous plans confondus)
+//               gemini-3-flash-preview uniquement si image Base64 détectée
+// Mémoire    : Essentiel → 3 jours / 20 msg max, sans résumé
+//              Pro+      → 7 jours / 40 msg max + résumé des messages plus anciens
 const PLAN_CONFIG = {
   essentiel: {
-    model: "gemini-3.1-flash-lite",
     maxOutputTokens: 420,
-    historyLimit: 20,
     ragChunks: 5,
     dailyMessageLimit: 30,
     isFounder: false,
   },
   pro: {
-    model: "gemini-3-flash-preview",
     maxOutputTokens: 650,
-    historyLimit: 100,
     ragChunks: 8,
     dailyMessageLimit: 100,
     isFounder: false,
   },
   cabinet: {
-    model: "gemini-3-flash-preview",
     maxOutputTokens: 650,
-    historyLimit: 100,
     ragChunks: 8,
     dailyMessageLimit: 100,
     isFounder: false,
   },
   fondateur: {
-    model: "gemini-3-flash-preview",
     maxOutputTokens: 650,
-    historyLimit: 100,
     ragChunks: 8,
     dailyMessageLimit: 100,
     isFounder: true,
@@ -57,19 +54,6 @@ type ChatRequest = {
   isSOS?: boolean;
   sosContext?: string; // contexte de triage SOS (fringale / stress / culpabilité / coup de mou)
 };
-
-const COMPLEX_KEYWORDS = [
-  "faim", "manger", "repas", "aliment", "calorie", "régime", "poids",
-  "maigrir", "grossir", "sport", "exercice", "santé", "maladie", "diabète",
-  "cholestérol", "allergie", "intolérance", "fatigue", "stress", "anxieux",
-  "triste", "déprime", "craquage", "écart", "motivation", "découragement",
-  "résultat", "plateau", "ballonnement", "digestion", "sucre", "glucide",
-  "protéine", "lipide", "vitamine", "complément", "jeûne", "détox",
-  "j'ai mangé", "j'ai craqué", "je me sens", "j'ai mal", "pourquoi",
-  "comment", "que faire", "conseil", "aide", "problème",
-  "peur", "honte", "marre", "ras-le-bol", "abandon", "nul", "nulle",
-  "échec", "culpabilité", "désespoir", "craquer", "pleurer",
-];
 
 // ═══ GARDE-FOU BRUT — urgences vitales absolues uniquement ═══
 // Ces mots-clés déclenchent un bypass immédiat AVANT tout appel LLM.
@@ -142,12 +126,6 @@ Réponds UNIQUEMENT en JSON sans markdown :
   } catch {
     return { level: "none", murmure: "" };
   }
-}
-
-function isComplexMessage(message: string): boolean {
-  const lower = message.toLowerCase();
-  if (message.split(" ").length > 15) return true;
-  return COMPLEX_KEYWORDS.some((kw) => lower.includes(kw));
 }
 
 function createSupabaseClient() {
@@ -235,8 +213,7 @@ async function hasDocuments(practitionerId: string, patientId?: string): Promise
 }
 
 function messageNeedsRAG(message: string, patientPathologies?: string): boolean {
-  // Toujours appeler le RAG si le message est complexe
-  if (isComplexMessage(message)) return true;
+  // Appelle le RAG pour tout message d'au moins 4 mots
   if (message.split(" ").length >= 4) return true;
 
   // Court mais contient un terme médical du dossier patient → RAG quand même
@@ -415,45 +392,65 @@ async function summarizeOldMessages(messages: { role: string; content: string }[
   }
 }
 
+// ═══ MÉMOIRE HYBRIDE INDEXÉE SUR LE PLAN ═══
+// Essentiel : fenêtre 3 jours / 20 messages max — mémoire immédiate uniquement, pas de résumé.
+//             L'historique plus ancien est silencieusement coupé (levier d'upsell vers Pro).
+// Pro+      : fenêtre 7 jours / 40 messages max — les messages hors fenêtre sont résumés
+//             par summarizeOldMessages (gemini-3.1-flash-lite) et injectés en tête du contexte.
 async function getConversationHistory(
   patientId: string,
   practitionerId: string,
-  historyLimit: number,
+  plan: PlanType,
   sessionId?: string
 ): Promise<{ role: "user" | "model"; parts: { text: string }[] }[]> {
   try {
     const supabase = createSupabaseClient();
-    let query = supabase
+    const isEssentiel = plan === "essentiel";
+    const windowDays = isEssentiel ? 3 : 7;
+    const hardCap = isEssentiel ? 20 : 40;
+    const windowStart = new Date(Date.now() - windowDays * 24 * 60 * 60 * 1000).toISOString();
+
+    // Mémoire vive : messages dans la fenêtre temporelle du plan
+    let recentQuery = supabase
       .from("conversations")
       .select("role, content, created_at")
       .eq("patient_id", patientId)
       .eq("practitioner_id", practitionerId)
+      .gte("created_at", windowStart)
       .order("created_at", { ascending: true })
-      .limit(historyLimit + 50);
+      .limit(hardCap);
 
-    if (sessionId) query = query.eq("session_id", sessionId);
+    if (sessionId) recentQuery = recentQuery.eq("session_id", sessionId);
 
-    const { data } = await query;
-    const messages = data as { role: string; content: string; created_at: string }[] | null;
-    if (!messages || messages.length === 0) return [];
+    const { data: recentData } = await recentQuery;
+    const recentMessages = (recentData as { role: string; content: string; created_at: string }[] | null) ?? [];
 
-    if (messages.length > historyLimit) {
-      const oldMessages = messages.slice(0, messages.length - historyLimit);
-      const recentMessages = messages.slice(messages.length - historyLimit);
-      const summary = await summarizeOldMessages(oldMessages);
-      return [
-        { role: "user" as const, parts: [{ text: summary }] },
-        ...recentMessages.map((m) => ({
-          role: m.role === "assistant" ? "model" as const : "user" as const,
-          parts: [{ text: m.content }],
-        })),
-      ];
-    }
-
-    return messages.map((m) => ({
+    const recentFormatted = recentMessages.map((m) => ({
       role: m.role === "assistant" ? "model" as const : "user" as const,
       parts: [{ text: m.content }],
     }));
+
+    // Plan Essentiel : mémoire immédiate uniquement, on coupe sans résumé
+    if (isEssentiel) return recentFormatted;
+
+    // Plan Pro+ : mémoire long terme — résumer les messages hors fenêtre
+    const { data: olderData } = await supabase
+      .from("conversations")
+      .select("role, content")
+      .eq("patient_id", patientId)
+      .eq("practitioner_id", practitionerId)
+      .lt("created_at", windowStart)
+      .order("created_at", { ascending: true })
+      .limit(100);
+
+    const olderMessages = (olderData as { role: string; content: string }[] | null) ?? [];
+    if (olderMessages.length === 0) return recentFormatted;
+
+    const summary = await summarizeOldMessages(olderMessages);
+    return [
+      { role: "user" as const, parts: [{ text: summary }] },
+      ...recentFormatted,
+    ];
   } catch {
     return [];
   }
@@ -873,14 +870,12 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
 
     let conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[] = [];
     if (patientId && practitionerId) {
-      conversationHistory = await getConversationHistory(patientId, practitionerId, config.historyLimit, sessionId);
+      conversationHistory = await getConversationHistory(patientId, practitionerId, plan, sessionId);
     }
 
-    const modelName = imageBase64
-      ? "gemini-3-flash-preview"
-      : plan === "essentiel"
-        ? config.model
-        : isComplexMessage(message) ? "gemini-3-flash-preview" : "gemini-3.1-flash-lite";
+    // Routage modèle : gemini-3.1-flash-lite pour tout le texte (tous plans),
+    // gemini-3-flash-preview uniquement si image Base64 présente dans la requête.
+    const modelName = imageBase64 ? "gemini-3-flash-preview" : "gemini-3.1-flash-lite";
 
     const model = genAI.getGenerativeModel({
       model: modelName,

@@ -126,16 +126,22 @@ Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks :
   {"question": "...", "justification": "...", "objectif": "..."}
 ]`;
 
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
-      generationConfig: { maxOutputTokens: 800, temperature: 0.6 },
-    });
-
-    const result = await model.generateContent(prompt);
-    const rawText = result.response.text().trim().replace(/```json|```/g, "").trim();
-
-    // Valider que c'est bien du JSON
-    const questions = JSON.parse(rawText) as { question: string; justification: string; objectif: string }[];
+    let questions: { question: string; justification: string; objectif: string }[];
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-3-flash-preview",
+        generationConfig: { maxOutputTokens: 800, temperature: 0.6 },
+      });
+      const result = await model.generateContent(prompt);
+      const rawText = result.response.text().trim().replace(/```json|```/g, "").trim();
+      questions = JSON.parse(rawText) as typeof questions;
+      if (!Array.isArray(questions) || questions.length === 0 || !questions[0].question) throw new Error("Structure JSON invalide");
+    } catch {
+      return NextResponse.json(
+        { error: "Une erreur est survenue lors de la génération du bilan. Veuillez réessayer dans quelques instants." },
+        { status: 502 }
+      );
+    }
 
     // Mettre à jour le curseur avec le timestamp du message le plus récent
     const newestMessage = (chatMessages ?? []).reduce((latest, msg) => {

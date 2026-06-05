@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
   try {
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash-lite",
+      model: "gemini-3.1-flash-lite",
       generationConfig: { maxOutputTokens: 160, temperature: 0.75 },
     });
     const result = await model.generateContent(
