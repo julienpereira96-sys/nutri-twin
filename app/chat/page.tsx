@@ -100,10 +100,16 @@ const CameraIcon = ({ size = 18, color = TEXT_SECONDARY }: { size?: number; colo
   </svg>
 );
 
-const SendIcon = ({ size = 16, color = "black" }: { size?: number; color?: string }) => (
+const ArrowUpIcon = ({ size = 16, color = "white" }: { size?: number; color?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path d="M22 2L11 13" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 19V5M5 12l7-7 7 7" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
+const SettingsIcon = ({ size = 16, color = TEXT_MUTED }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
   </svg>
 );
 
@@ -157,46 +163,44 @@ type InputBarProps = {
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
 };
 
-const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendingImage, photoHovered, setPhotoHovered, handleImageClick, handleKeyDown, inputRef }: InputBarProps) => (
-  <div className="nt-inputbar" style={{ display: "flex", gap: 8, alignItems: isCenter ? "flex-start" : "center", background: SURFACE, borderRadius: isCenter ? 16 : 14, border: `1px solid ${BORDER}`, padding: isCenter ? "18px 16px" : "6px 8px 6px 14px", transition: "border-color 0.25s, box-shadow 0.25s", minHeight: isCenter ? 120 : undefined }}>
-    {isCenter ? (
+const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendingImage, photoHovered, setPhotoHovered, handleImageClick, handleKeyDown, inputRef }: InputBarProps) => {
+  const canSend = !loading && (message.trim().length > 0 || !!pendingImage);
+  return (
+    <div className="nt-inputbar" style={{ display: "flex", alignItems: "flex-end", background: "rgba(15,22,18,0.92)", borderRadius: 18, border: "1px solid rgba(16,185,129,0.18)", padding: isCenter ? "16px 14px 14px" : "10px 10px 10px 16px", transition: "border-color 0.25s, box-shadow 0.25s", minHeight: isCenter ? 110 : undefined, gap: 8 }}>
+      {/* Textarea / input */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <textarea
           ref={inputRef}
           value={message}
           onChange={e => setMessage(e.target.value)}
           onKeyDown={handleKeyDown as React.KeyboardEventHandler<HTMLTextAreaElement>}
-          placeholder="Posez-moi vos questions, je suis là pour vous accompagner entre vos séances..."
-          rows={3}
+          placeholder={pendingImage ? "Ajoutez un commentaire..." : "Posez votre question..."}
+          rows={isCenter ? 3 : 1}
           spellCheck={false}
-          style={{ width: "100%", border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 16, outline: "none", caretColor: CYAN, lineHeight: 1.6, resize: "none", fontFamily: "inherit", display: "block" }}
+          className="chat-input"
+          style={{ width: "100%", border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, outline: "none", caretColor: ACCENT, lineHeight: 1.65, resize: "none", fontFamily: "inherit", display: "block", maxHeight: 160, overflowY: "auto" }}
         />
       </div>
-    ) : (
-      <input
-        value={message}
-        onChange={e => setMessage(e.target.value)}
-        onKeyDown={handleKeyDown as React.KeyboardEventHandler<HTMLInputElement>}
-        placeholder={pendingImage ? "Ajoutez un commentaire..." : "Posez votre question..."}
-        style={{ flex: 1, height: 36, border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, outline: "none", caretColor: CYAN }}
-      />
-    )}
-    <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0, alignSelf: isCenter ? "flex-end" : "center" }}>
-      <div style={{ position: "relative", flexShrink: 0 }}
-        onMouseEnter={() => setPhotoHovered(true)}
-        onMouseLeave={() => setPhotoHovered(false)}>
-        <span style={{ position: "absolute", right: "100%", top: "50%", fontSize: 12, color: ACCENT, fontWeight: 500, border: `1px solid ${ACCENT_BORDER}`, borderRadius: 6, padding: "3px 10px", background: ACCENT_DIM, whiteSpace: "nowrap", marginRight: 8, opacity: photoHovered ? 1 : 0, transform: photoHovered ? "translateY(-50%) translateX(0px)" : "translateY(-50%) translateX(20px)", transition: "opacity 0.5s ease, transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94)", pointerEvents: "none" }}>Analyser votre repas</span>
-        <button onClick={handleImageClick} style={{ width: 34, height: 34, borderRadius: 8, background: photoHovered ? ACCENT_DIM : "transparent", border: `1px solid ${photoHovered ? ACCENT_BORDER : "transparent"}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}>
-          <CameraIcon size={16} color={photoHovered ? ACCENT : TEXT_MUTED} />
+      {/* Actions */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+        {/* Camera */}
+        <div style={{ position: "relative" }}
+          onMouseEnter={() => setPhotoHovered(true)}
+          onMouseLeave={() => setPhotoHovered(false)}>
+          <span style={{ position: "absolute", bottom: "calc(100% + 8px)", right: 0, fontSize: 11, color: ACCENT, fontWeight: 500, border: `1px solid ${ACCENT_BORDER}`, borderRadius: 6, padding: "3px 10px", background: ACCENT_DIM, whiteSpace: "nowrap", opacity: photoHovered ? 1 : 0, transform: photoHovered ? "translateY(0)" : "translateY(6px)", transition: "opacity 0.2s, transform 0.2s", pointerEvents: "none" }}>Analyser votre repas</span>
+          <button onClick={handleImageClick} style={{ width: 32, height: 32, borderRadius: 8, background: photoHovered ? ACCENT_DIM : "transparent", border: `1px solid ${photoHovered ? ACCENT_BORDER : "transparent"}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}>
+            <CameraIcon size={15} color={photoHovered ? ACCENT : TEXT_MUTED} />
+          </button>
+        </div>
+        {/* Send */}
+        <button onClick={() => void send()} disabled={!canSend}
+          style={{ width: 34, height: 34, borderRadius: 10, background: canSend ? ACCENT : "rgba(255,255,255,0.05)", border: "none", cursor: canSend ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", boxShadow: canSend ? "0 0 12px rgba(16,185,129,0.3)" : "none", flexShrink: 0 }}>
+          <ArrowUpIcon size={15} color={canSend ? "black" : TEXT_MUTED} />
         </button>
       </div>
-      <button onClick={() => void send()} disabled={loading || (!message.trim() && !pendingImage)}
-        style={{ width: 36, height: 36, borderRadius: 10, background: !loading && (message.trim() || pendingImage) ? "linear-gradient(135deg, #10b981 0%, #06b6d4 100%)" : SURFACE, border: "none", cursor: !loading && (message.trim() || pendingImage) ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.25s", boxShadow: !loading && (message.trim() || pendingImage) ? "0 0 14px rgba(6,182,212,0.3), 0 0 6px rgba(16,185,129,0.2)" : "none" }}>
-        <SendIcon size={14} color={!loading && (message.trim() || pendingImage) ? "white" : TEXT_MUTED} />
-      </button>
     </div>
-  </div>
-);
+  );
+};
 
 // ═══ ONBOARDING TOUR ═══
 const onboardingSteps = [
@@ -388,8 +392,14 @@ export default function ChatPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profilePhotoRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // ─── Typewriter refs ───
+  const targetTextRef = useRef<string>("");
+  const displayedLenRef = useRef<number>(0);
+  const streamDoneRef = useRef<boolean>(false);
+  const typewriterRafRef = useRef<number | null>(null);
   const hasMessages = messages.filter(m => !m.hidden).length > 0;
   const sidebarWidth = 305;
   const [showStressModal, setShowStressModal] = useState(false);
@@ -449,7 +459,19 @@ export default function ChatPage() {
     "Vous êtes ancré dans le moment présent. 🌿",
   ];
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  // Scroll vers le bas : instantané pendant le stream (60fps typewriter), smooth quand loading s'arrête
+  useEffect(() => {
+    if (loading) {
+      const el = scrollContainerRef.current;
+      if (!el) return;
+      const id = setInterval(() => { el.scrollTop = el.scrollHeight; }, 32);
+      return () => clearInterval(id);
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [loading]);
+  // Scroll immédiat pour les changements non-stream (chargement session, navigation)
+  useEffect(() => { if (!loading) messagesEndRef.current?.scrollIntoView({ behavior: "instant" }); }, [messages, loading]);
 
   useEffect(() => {
     const check = () => { const m = window.innerWidth < 768; setIsMobile(m); if (m) setSidebarOpen(false); };
@@ -679,37 +701,74 @@ export default function ChatPage() {
     setMessages([...newMessages, { role: "assistant", content: "" }]);
     setMessage(""); setPendingImage(null); setLoading(true);
     abortControllerRef.current = new AbortController();
+
+    // ─── Reset typewriter ───
+    if (typewriterRafRef.current !== null) { cancelAnimationFrame(typewriterRafRef.current); typewriterRafRef.current = null; }
+    targetTextRef.current = "";
+    displayedLenRef.current = 0;
+    streamDoneRef.current = false;
+
+    // ─── RAF tick : avance de 4 chars/frame ≈ 240 chars/sec à 60fps ───
+    const CHARS_PER_FRAME = 4;
+    const tick = () => {
+      const target = targetTextRef.current;
+      const cur = displayedLenRef.current;
+      if (cur < target.length) {
+        const next = Math.min(cur + CHARS_PER_FRAME, target.length);
+        displayedLenRef.current = next;
+        setMessages(prev => {
+          const u = [...prev];
+          if (u[assistantIndex]) u[assistantIndex] = { ...u[assistantIndex], content: target.slice(0, next) };
+          return u;
+        });
+      }
+      // Continue tant que le stream n'est pas terminé OU qu'on n'a pas tout affiché
+      if (!streamDoneRef.current || displayedLenRef.current < targetTextRef.current.length) {
+        typewriterRafRef.current = requestAnimationFrame(tick);
+      } else {
+        typewriterRafRef.current = null;
+      }
+    };
+    typewriterRafRef.current = requestAnimationFrame(tick);
+
     try {
       const body: Record<string, string | undefined> = { message: trimmed || "Analyse cette photo", patientId: patientId ?? undefined, practitionerId: practitionerIdFromDb ?? undefined };
       if (img) { body.imageBase64 = img.base64; body.imageMimeType = img.mimeType; }
       const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: abortControllerRef.current.signal });
       if (!res.ok || !res.body) throw new Error("Erreur");
+
+      // ─── Stream : mise à jour cible uniquement, le RAF affiche ───
       const reader = res.body.getReader(); const decoder = new TextDecoder(); let fullText = "";
       while (true) {
         const { done, value } = await reader.read(); if (done) break;
         fullText += decoder.decode(value, { stream: true });
-        const clean = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/g, "").trim();
-        setMessages(prev => { const u = [...prev]; u[assistantIndex] = { role: "assistant", content: clean }; return u; });
+        targetTextRef.current = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/g, "").trim();
       }
-      // Détecter le signal sas de décompression
-      if (fullText.includes("|||SAS|||")) {
-        setShowSasButtons(true);
-      }
+
+      // ─── Stream terminé : attendre que le typewriter finisse ───
+      streamDoneRef.current = true;
+      await new Promise<void>(resolve => {
+        const waitForTypewriter = () => {
+          if (displayedLenRef.current >= targetTextRef.current.length) { resolve(); }
+          else { setTimeout(waitForTypewriter, 16); }
+        };
+        waitForTypewriter();
+      });
+
+      // ─── Signaux post-stream ───
+      if (fullText.includes("|||SAS|||")) { setShowSasButtons(true); }
       const statusMatch = fullText.match(/\|\|\|([\s\S]*?)\|\|\|/);
       if (statusMatch) {
         try {
           const parsed = JSON.parse(statusMatch[1]) as { status: string };
-          if (parsed.status === "red_critical") {
-            setEmotionalStatus("red_critical");
-          } else if (parsed.status === "red_behavioral") {
-            setEmotionalStatus("red_behavioral");
-            if (!activeTool) setShowPreemptiveSOS(true);
-          } else if (parsed.status === "red" && !activeTool) {
-            setShowPreemptiveSOS(true);
-          }
+          if (parsed.status === "red_critical") { setEmotionalStatus("red_critical"); }
+          else if (parsed.status === "red_behavioral") { setEmotionalStatus("red_behavioral"); if (!activeTool) setShowPreemptiveSOS(true); }
+          else if (parsed.status === "red" && !activeTool) { setShowPreemptiveSOS(true); }
         } catch { /* silencieux */ }
       }
     } catch (err) {
+      // ─── Abort ou erreur réseau : stopper le typewriter ───
+      if (typewriterRafRef.current !== null) { cancelAnimationFrame(typewriterRafRef.current); typewriterRafRef.current = null; }
       if ((err as Error).name !== "AbortError") {
         setMessages(prev => { const u = [...prev]; u[assistantIndex] = { role: "assistant", content: "Impossible de contacter le serveur." }; return u; });
       }
@@ -956,7 +1015,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div style={{ height: "100vh", background: `radial-gradient(ellipse at 18% 85%, rgba(6,182,212,0.055) 0%, transparent 48%), radial-gradient(ellipse at 82% 15%, rgba(16,185,129,0.04) 0%, transparent 44%), ${BG_MAIN}`, fontFamily: "'Inter', -apple-system, sans-serif", display: "flex", color: TEXT_PRIMARY, overflow: "hidden" }}>
+    <div style={{ height: "100dvh", background: BG_MAIN, fontFamily: "'Inter', -apple-system, sans-serif", display: "flex", color: TEXT_PRIMARY, overflow: "hidden" }}>
 
       {/* ═══ ONBOARDING ═══ */}
       {showOnboarding && (
@@ -1441,14 +1500,14 @@ export default function ChatPage() {
         </div>
       )}
 
-      {sidebarOpen && isMobile && <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 20 }} />}
+      {sidebarOpen && isMobile && <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 20 }} />}
 
       {/* ═══ SIDEBAR ═══ */}
-      <aside style={{ width: sidebarOpen ? sidebarWidth : 0, minWidth: sidebarOpen ? sidebarWidth : 0, background: "linear-gradient(180deg, #0b1a14 0%, #090f0c 50%, #070c0a 100%)", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100vh", zIndex: isMobile ? 30 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 24px rgba(0,0,0,5)", borderRight: "1px solid rgba(16,185,129,0.08)", }}>
-        <div style={{ width: sidebarWidth, display: "flex", flexDirection: "column", height: "100%", padding: "0 12px" }}>
+      <aside style={{ width: sidebarOpen ? (isMobile ? "85vw" : sidebarWidth) : 0, minWidth: sidebarOpen ? (isMobile ? "85vw" : sidebarWidth) : 0, background: "linear-gradient(180deg, #0b1a14 0%, #090f0c 50%, #070c0a 100%)", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100dvh", zIndex: isMobile ? 30 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 24px rgba(0,0,0,0.5)", borderRight: "1px solid rgba(16,185,129,0.08)", }}>
+        <div style={{ width: isMobile ? "85vw" : sidebarWidth, display: "flex", flexDirection: "column", height: "100%", padding: "0 12px" }}>
 
           {/* Header sidebar */}
-          <div style={{ padding: "20px 16px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "transparent", borderBottom: "1px solid rgba(16,185,129,0.12)", margin: "0 -12px", marginBottom: 16 }}>
+          <div style={{ height: 64, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "transparent", borderBottom: "1px solid rgba(16,185,129,0.12)", margin: "0 -12px", marginBottom: 16, flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <img src="/logo.svg" alt="NutriTwin" style={{ height: 42, width: "auto", filter: "hue-rotate(17deg) saturate(165%) brightness(87%)" }}
                 onError={e => { const t = e.target as HTMLImageElement; t.style.display = "none"; const n = t.nextElementSibling as HTMLElement; if (n) n.style.display = "flex"; }} />
@@ -1465,30 +1524,26 @@ export default function ChatPage() {
             </button>
           </div>
 
-          {/* ═══ MON SOUTIEN — Bouton héro ═══ */}
-          <div style={{ marginBottom: 20 }}>
+          {/* ═══ MON SOUTIEN — Bouton ═══ */}
+          <div style={{ marginBottom: 16 }}>
             <button
               onClick={() => { if (emotionalStatus === "red_critical") return; setShowSOSTriageModal(true); if (isMobile) setSidebarOpen(false); }}
               disabled={sosLoading || emotionalStatus === "red_critical"}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "16px 16px", borderRadius: 18, background: "linear-gradient(135deg, rgba(6,182,212,0.12), rgba(6,182,212,0.04))", border: "1px solid rgba(6,182,212,0.3)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.25s", boxShadow: "0 0 24px rgba(6,182,212,0.12), 0 4px 16px rgba(0,0,0,0.3)", position: "relative", overflow: "hidden" }}
-              onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "linear-gradient(135deg, rgba(6,182,212,0.2), rgba(6,182,212,0.08))"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.5)"; e.currentTarget.style.boxShadow = "0 0 32px rgba(6,182,212,0.2), 0 4px 20px rgba(0,0,0,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
-              onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(6,182,212,0.12), rgba(6,182,212,0.04))"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.3)"; e.currentTarget.style.boxShadow = "0 0 24px rgba(6,182,212,0.12), 0 4px 16px rgba(0,0,0,0.3)"; e.currentTarget.style.transform = "translateY(0)"; }}>
-              {/* Lueur de fond animée */}
-              <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 30% 50%, rgba(6,182,212,0.07), transparent 65%)", pointerEvents: "none" }} />
-              <div style={{ width: 46, height: 46, borderRadius: 14, border: "1.5px solid rgba(6,182,212,0.5)", background: "rgba(6,182,212,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 0 16px rgba(6,182,212,0.25), inset 0 0 10px rgba(6,182,212,0.08)", animation: "glow-sos 3s ease-in-out infinite" }}>
-                {sosLoading ? (
-                  <div style={{ width: 22, height: 22, borderRadius: "50%", border: "2px solid rgba(6,182,212,0.3)", borderTop: "2px solid #06b6d4", animation: "spin 1s linear infinite" }} />
-                ) : (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="#06b6d4" stroke="#06b6d4" strokeWidth="0.5">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                  </svg>
-                )}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", borderRadius: 14, background: "rgba(6,182,212,0.07)", border: "1px solid rgba(6,182,212,0.28)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}
+              onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(6,182,212,0.13)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.45)"; } }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(6,182,212,0.07)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.28)"; }}>
+              {sosLoading ? (
+                <div style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid rgba(6,182,212,0.3)", borderTop: "2px solid #06b6d4", animation: "spin 1s linear infinite", flexShrink: 0 }} />
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#06b6d4" stroke="#06b6d4" strokeWidth="0.5" style={{ flexShrink: 0, filter: "drop-shadow(0 0 5px rgba(6,182,212,0.4))" }}>
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+              )}
+              <div style={{ flex: 1, textAlign: "left" }}>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#cff3f9", letterSpacing: "-0.1px" }}>{sosLoading ? "En route..." : "Mon Soutien"}</p>
+                <p style={{ margin: 0, fontSize: 11, color: "rgba(6,182,212,0.65)" }}>Aide immédiate</p>
               </div>
-              <div style={{ textAlign: "left", flex: 1, position: "relative" }}>
-                <p style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#e0f7fa", letterSpacing: "-0.2px" }}>{sosLoading ? "En route..." : "Mon Soutien"}</p>
-                <p style={{ margin: 0, fontSize: 11, color: "rgba(6,182,212,0.7)", lineHeight: 1.5 }}>Aide immédiate · Exercices guidés</p>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.5 }}><path d="M9 18l6-6-6-6" stroke="#06b6d4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.45 }}><path d="M9 18l6-6-6-6" stroke="#06b6d4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </div>
 
@@ -1580,13 +1635,32 @@ export default function ChatPage() {
           })()}
 
           <div style={{ flex: 1 }} />
+
+          {/* ═══ SIDEBAR BOTTOM — Avatar + Settings ═══ */}
+          <div style={{ padding: "12px 4px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10, margin: "0 -12px", paddingLeft: 16, paddingRight: 12, flexShrink: 0 }}>
+            <button onClick={() => setShowProfileModal(true)}
+              style={{ width: 36, height: 36, borderRadius: "50%", background: "radial-gradient(circle at 30% 30%, #10b981, #059669)", border: "2px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "black", flexShrink: 0, boxShadow: "0 0 10px rgba(16,185,129,0.15)", transition: "box-shadow 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow = "0 0 16px rgba(16,185,129,0.35)"}
+              onMouseLeave={e => e.currentTarget.style.boxShadow = "0 0 10px rgba(16,185,129,0.15)"}>
+              {patientInitials}
+            </button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: TEXT_PRIMARY, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{patientFirstName || "Patient"}</p>
+              <p style={{ margin: 0, fontSize: 10, color: TEXT_MUTED }}>Mon profil</p>
+            </div>
+            <button onClick={() => setShowProfileModal(true)} style={{ width: 30, height: 30, borderRadius: 8, background: "transparent", border: `1px solid ${BORDER}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.background = SURFACE; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = BORDER; }}>
+              <SettingsIcon size={14} />
+            </button>
+          </div>
         </div>
       </aside>
 
       {/* ═══ ZONE PRINCIPALE ═══ */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-        <header style={{ background: "rgba(8,14,11,0.92)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 16px", height: 62, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        <header style={{ background: "rgba(8,14,11,0.82)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 16px", height: 64, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           {!sidebarOpen && (
             <button onClick={() => setSidebarOpen(true)} style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
               onMouseEnter={e => e.currentTarget.style.background = SURFACE}
@@ -1599,29 +1673,20 @@ export default function ChatPage() {
               <MenuIcon size={16} />
             </button>
           )}
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              {hasMessages && (
-                <>
-                  <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY, lineHeight: 1.3 }}>Votre compagnon de suivi</p>
-                  <p style={{ margin: 0, fontSize: 11, color: TEXT_MUTED }}>Basé sur l'approche de votre praticien</p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: ACCENT, animation: "breathe 3s ease-in-out infinite" }} />
-                    <span style={{ fontSize: 11, color: ACCENT, fontWeight: 500 }}>{loading ? "En train de réfléchir..." : "À votre écoute"}</span>
-                  </div>
-                </>
-              )}
-            </div>
-            <button onClick={() => setShowProfileModal(true)}
-              style={{ width: 36, height: 36, borderRadius: "50%", background: `radial-gradient(circle at 30% 30%, #10b981, #059669)`, border: "2px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "black", flexShrink: 0, boxShadow: "0 0 10px rgba(16,185,129,0.15)", transition: "box-shadow 0.2s" }}
-              onMouseEnter={e => e.currentTarget.style.boxShadow = "0 0 16px rgba(16,185,129,0.35)"}
-              onMouseLeave={e => e.currentTarget.style.boxShadow = "0 0 10px rgba(16,185,129,0.15)"}>
-              {patientInitials}
-            </button>
+          <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
+            {hasMessages && (
+              <div>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY, lineHeight: 1.3 }}>Votre compagnon de suivi</p>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
+                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: ACCENT, animation: "breathe 3s ease-in-out infinite" }} />
+                  <span style={{ fontSize: 11, color: ACCENT, fontWeight: 500 }}>{loading ? "En train de réfléchir..." : "À votre écoute"}</span>
+                </div>
+              </div>
+            )}
           </div>
         </header>
 
-        <main style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+        <main ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
           {!hasMessages && (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: isMobile ? "24px 16px 100px" : "32px 24px 100px" }}>
               <div style={{ maxWidth: 580, width: "100%", textAlign: "center" }}>
@@ -1663,26 +1728,33 @@ export default function ChatPage() {
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
                   const isLastAssistant = !isUser && index === visibleMessages.length - 1;
-                  if (!isUser && !msg.content && isLastAssistant) return null;
+                  if (!isUser && !msg.content && isLastAssistant) {
+                    return (
+                      <div key={index} ref={el => { messageRefs.current[index] = el; }}
+                        style={{ display: "flex", alignItems: "flex-start", animation: "fadeUp 0.3s ease" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 2 }}>
+                          <div className="nt-skeleton" style={{ height: 12, width: isMobile ? 200 : 240, borderRadius: 6 }} />
+                          <div className="nt-skeleton nt-skeleton-2" style={{ height: 12, width: isMobile ? 155 : 185, borderRadius: 6 }} />
+                          <div className="nt-skeleton nt-skeleton-3" style={{ height: 12, width: isMobile ? 178 : 210, borderRadius: 6 }} />
+                        </div>
+                      </div>
+                    );
+                  }
                   const q = chatSearch.trim().toLowerCase();
                   const matchIndices = q ? visibleMessages.reduce<number[]>((acc, m, i) => { if (m.content.toLowerCase().includes(q)) acc.push(i); return acc; }, []) : [];
                   const isChatMatch = q && msg.content.toLowerCase().includes(q);
                   const isActiveMatch = matchIndices[Math.min(chatSearchIdx, matchIndices.length - 1)] === index;
                   return (
                     <div key={index} ref={el => { messageRefs.current[index] = el; }}
-                      style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: isUser ? "flex-end" : "flex-start", gap: isUser ? 0 : 12, animation: "fadeUp 0.25s ease", transition: "opacity 0.2s", opacity: q && !isChatMatch ? 0.35 : 1 }}>
-                      {/* Avatar NutriTwin pour les réponses AI */}
-                      {!isUser && (
-                        <div style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.22)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0, marginTop: 2 }}>🌿</div>
-                      )}
-                      <div style={{ maxWidth: isUser ? (isMobile ? "82%" : "65%") : "calc(100% - 38px)" }}>
+                      style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: isUser ? "flex-end" : "flex-start", gap: 0, animation: "fadeUp 0.25s ease", transition: "opacity 0.2s", opacity: q && !isChatMatch ? 0.35 : 1 }}>
+                      <div style={{ maxWidth: isUser ? (isMobile ? "75%" : "65%") : "100%" }}>
                         {msg.imageUrl && (
                           <div style={{ marginBottom: 6, display: "flex", justifyContent: isUser ? "flex-end" : "flex-start" }}>
                             <img src={msg.imageUrl} alt="Photo" style={{ maxWidth: isMobile ? 160 : 200, maxHeight: isMobile ? 160 : 200, borderRadius: 14, objectFit: "cover", border: `1px solid ${ACCENT_BORDER}` }} />
                           </div>
                         )}
                         {isUser ? (
-                          <div style={{ padding: isMobile ? "10px 16px" : "11px 18px", borderRadius: 20, background: isActiveMatch ? "rgba(16,185,129,0.25)" : "#10b981", color: "#fff", fontSize: 15, lineHeight: 1.7, border: isActiveMatch ? `1.5px solid ${ACCENT}` : "none", boxShadow: "0 1px 6px rgba(0,0,0,0.25)", transition: "all 0.3s" }}>
+                          <div style={{ padding: isMobile ? "10px 16px" : "11px 18px", borderRadius: 20, background: isActiveMatch ? "rgba(16,185,129,0.25)" : "rgba(16,185,129,0.1)", color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.7, border: isActiveMatch ? `1.5px solid ${ACCENT}` : "1px solid rgba(16,185,129,0.18)", boxShadow: "none", transition: "all 0.3s" }}>
                             {msg.content}
                           </div>
                         ) : (
@@ -1695,16 +1767,13 @@ export default function ChatPage() {
                   );
                 })}
                 {loading && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.22)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><ArcSpinner size={14} /></div>
-                    <button onClick={stopGeneration}
-                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: "14px 14px 14px 4px", background: SURFACE, border: `1px solid ${BORDER}`, cursor: "pointer", color: TEXT_SECONDARY, fontSize: 12, transition: "all 0.2s" }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(244,63,94,0.3)"; e.currentTarget.style.color = "#f87171"; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_SECONDARY; }}>
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-                      En train de réfléchir... · Arrêter
-                    </button>
-                  </div>
+                  <button onClick={stopGeneration}
+                    style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 10, background: "transparent", border: `1px solid rgba(255,255,255,0.08)`, cursor: "pointer", color: TEXT_MUTED, fontSize: 11, transition: "all 0.2s", marginTop: -4 }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(244,63,94,0.3)"; e.currentTarget.style.color = "#f87171"; e.currentTarget.style.background = "rgba(244,63,94,0.04)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = TEXT_MUTED; e.currentTarget.style.background = "transparent"; }}>
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+                    Arrêter
+                  </button>
                 )}
                 <div ref={messagesEndRef} />
               </div>
@@ -1740,26 +1809,26 @@ export default function ChatPage() {
         )}
 
         {hasMessages && emotionalStatus !== "red_critical" && (
-          <div style={{ background: "rgba(7,11,9,0.97)", backdropFilter: "blur(20px)", borderTop: `1px solid ${BORDER}`, padding: isMobile ? "10px 12px" : "10px 20px", paddingBottom: "max(14px, env(safe-area-inset-bottom))", flexShrink: 0 }}>
-            {pendingImage && (
-              <div style={{ maxWidth: 780, margin: "0 auto 8px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <img src={pendingImage.previewUrl} alt="Preview" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", border: `1px solid ${ACCENT_BORDER}` }} />
-                  <p style={{ margin: 0, fontSize: 12, color: TEXT_SECONDARY }}>Photo prête</p>
-                  <button onClick={() => setPendingImage(null)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: TEXT_SECONDARY, fontSize: 18 }}>×</button>
+          <div style={{ background: "rgba(8,14,11,0.88)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderTop: `1px solid rgba(255,255,255,0.06)`, padding: isMobile ? "10px 12px" : "12px 20px", paddingBottom: `max(${isMobile ? "10px" : "12px"}, env(safe-area-inset-bottom))`, flexShrink: 0 }}>
+            <div style={{ maxWidth: 768, margin: "0 auto" }}>
+              {pendingImage && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <img src={pendingImage.previewUrl} alt="Preview" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", border: `1px solid ${ACCENT_BORDER}` }} />
+                    <p style={{ margin: 0, fontSize: 12, color: TEXT_SECONDARY }}>Photo prête</p>
+                    <button onClick={() => setPendingImage(null)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: TEXT_SECONDARY, fontSize: 18 }}>×</button>
+                  </div>
                 </div>
-              </div>
-            )}
-            {imageCompressing && (
-              <div style={{ maxWidth: 780, margin: "0 auto 6px" }}>
-                <div style={{ height: 2, background: SURFACE, borderRadius: 1 }}>
-                  <div style={{ height: "100%", background: ACCENT, borderRadius: 1, width: `${compressionProgress}%`, transition: "width 0.1s" }} />
+              )}
+              {imageCompressing && (
+                <div style={{ marginBottom: 6 }}>
+                  <div style={{ height: 2, background: SURFACE, borderRadius: 1 }}>
+                    <div style={{ height: "100%", background: ACCENT, borderRadius: 1, width: `${compressionProgress}%`, transition: "width 0.1s" }} />
+                  </div>
                 </div>
-              </div>
-            )}
-            <div style={{ maxWidth: 780, margin: "0 auto" }}>
+              )}
               <InputBar isCenter={false} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} />
-              <p style={{ margin: "6px 0 0", fontSize: 10, color: TEXT_MUTED, textAlign: "center" }}>
+              <p style={{ margin: "5px 0 0", fontSize: 10, color: TEXT_MUTED, textAlign: "center", lineHeight: 1.5 }}>
                 NutriTwin est une IA et peut se tromper · En cas de doute, consultez votre praticien
               </p>
             </div>
@@ -1783,6 +1852,10 @@ export default function ChatPage() {
         @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .nt-inputbar:focus-within { border-color: rgba(6,182,212,0.45) !important; box-shadow: 0 0 0 3px rgba(6,182,212,0.07), 0 0 16px rgba(6,182,212,0.07) !important; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes nt-pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.65; } }
+        .nt-skeleton { background: linear-gradient(90deg, rgba(16,185,129,0.08), rgba(30,50,38,0.55), rgba(16,185,129,0.06)); animation: nt-pulse 1.7s ease-in-out infinite; }
+        .nt-skeleton-2 { animation-delay: 0.18s; }
+        .nt-skeleton-3 { animation-delay: 0.36s; }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }

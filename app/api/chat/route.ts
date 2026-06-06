@@ -873,6 +873,19 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
       conversationHistory = await getConversationHistory(patientId, practitionerId, plan, sessionId);
     }
 
+    // ═══ GARDE VISION — plan pro/cabinet/fondateur requis ═══
+    if (imageBase64) {
+      const visionAllowedPlans: PlanType[] = ["pro", "cabinet", "fondateur"];
+      if (!visionAllowedPlans.includes(plan)) {
+        // Invalide le cache au cas où le plan aurait changé récemment
+        if (practitionerId) await invalidatePractitionerCache(practitionerId);
+        return new Response(
+          JSON.stringify({ error: "vision_plan_required", message: "L'analyse de repas par photo nécessite un abonnement Pro ou Cabinet." }),
+          { status: 403, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // Routage modèle : gemini-3.1-flash-lite pour tout le texte (tous plans),
     // gemini-3-flash-preview uniquement si image Base64 présente dans la requête.
     const modelName = imageBase64 ? "gemini-3-flash-preview" : "gemini-3.1-flash-lite";
