@@ -19,6 +19,12 @@
   }
 }
 
+html,
+body {
+  overscroll-behavior-x: none; /* Bloque le swipe-back iOS en PWA standalone */
+  overscroll-behavior-y: none; /* Bloque le pull-to-refresh natif en PWA */
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

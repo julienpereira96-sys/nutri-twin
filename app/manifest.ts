@@ -6,6 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: "NutriTwin",
     description: "Votre jumeau numérique nutritionnel — suivi personnalisé avec votre praticien",
     start_url: "/",
+    scope: "/",
     display: "standalone",
     orientation: "portrait",
     background_color: "#080e0b",
