@@ -684,7 +684,6 @@ export default function ChatPage() {
   const sidebarWidth = 305;
   const [showPreemptiveSOS, setShowPreemptiveSOS] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  const [frozenWidgets, setFrozenWidgets] = useState<Set<number>>(new Set());
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [patientEmail, setPatientEmail] = useState("");
@@ -854,28 +853,11 @@ export default function ChatPage() {
     setAncrageStep(0); setMarcheStep(0);
   }, []);
 
-  // ─── Widget inline : complétion ───
-  const handleWidgetComplete = useCallback(async (toolId: string, widgetIndex: number) => {
-    // Geler le widget
-    setFrozenWidgets(prev => new Set(prev).add(widgetIndex));
-    setMessages(prev => {
-      const u = [...prev];
-      if (u[widgetIndex]?.widgetMeta) {
-        u[widgetIndex] = { ...u[widgetIndex], widgetMeta: { ...u[widgetIndex].widgetMeta!, completed: true } };
-      }
-      return u;
-    });
-    // Tracer l'événement SOS (sans scores numériques)
-    if (patientId && practitionerIdFromDb) {
-      try {
-        await fetch("/api/sos-feedback", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ patientId, practitionerId: practitionerIdFromDb, eventId: null, stressBeforeProxy: 5, scoreAfter: 5 }),
-        });
-      } catch { /* silencieux */ }
-    }
-    // Contexte sémantique injecté en silence dans l'IA
+  // ─── Exercice terminé : ferme la modale après célébration + déclenche l'IA ───
+  const handleExerciseComplete = useCallback(async (toolId: string) => {
+    // Fermeture différée pour laisser voir la célébration (2,5s)
+    setTimeout(() => closeTool(), 2500);
+    // Contexte sémantique injecté silencieusement dans l'IA
     const toolNames: Record<string, string> = {
       breathing: "cohérence cardiaque", ancrage: "ancrage sensoriel", marche: "marche consciente",
       manger: "pleine conscience alimentaire", body_scan: "body scan", defusion: "défusion cognitive",
@@ -883,20 +865,26 @@ export default function ChatPage() {
     };
     const toolName = toolNames[toolId] ?? "cet exercice";
     void send(
-      `[INFO SYSTÈME : Le patient vient de terminer l'exercice "${toolName}" via Mon Soutien. Adresse-toi à lui chaleureusement, sans mentionner de chiffres ni de scores. Évalue son état émotionnel à travers le dialogue naturel.]`,
+      `[INFO SYSTÈME : Le patient vient de terminer l'exercice "${toolName}" via Mon Soutien. Adresse-toi à lui chaleureusement. Évalue son état émotionnel à travers le dialogue naturel, sans mentionner de chiffres.]`,
       { hidden: true }
     );
+    // Tracer l'événement (non-bloquant)
+    if (patientId && practitionerIdFromDb) {
+      fetch("/api/sos-feedback", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ patientId, practitionerId: practitionerIdFromDb, eventId: null, stressBeforeProxy: 5, scoreAfter: 5 }),
+      }).catch(() => {});
+    }
     setShowToast(true);
     setTimeout(() => setShowToast(false), 4000);
-  }, [patientId, practitionerIdFromDb]);
+  }, [patientId, practitionerIdFromDb, closeTool]);
 
-  // ─── Sélection d'un outil dans le duo → widget inline ───
+  // ─── Sélection d'un outil dans le duo → modale plein écran ───
   const handleToolSelect = useCallback(async (toolId: string, sosContext: string) => {
     setShowToolDuo(false);
     const defaultData: ToolData = { tool_id: toolId, twin_message: getVariant(toolId), tool_script: {} };
-    const widgetIdx = messages.length;
-    setMessages(prev => [...prev, { role: "widget", content: "", widgetMeta: { toolId, toolData: defaultData, completed: false } }]);
-    // Fetch en arrière-plan pour personaliser
+    setActiveTool({ id: toolId, data: defaultData });
+    // Fetch en arrière-plan pour personnaliser
     if (patientId && practitionerIdFromDb) {
       try {
         const res = await fetch("/api/chat", {
@@ -905,17 +893,11 @@ export default function ChatPage() {
         });
         const data = await res.json() as { tool?: ToolData };
         if (data.tool) {
-          setMessages(prev => {
-            const u = [...prev];
-            if (u[widgetIdx]?.role === "widget") {
-              u[widgetIdx] = { ...u[widgetIdx], widgetMeta: { ...u[widgetIdx].widgetMeta!, toolData: data.tool! } };
-            }
-            return u;
-          });
+          setActiveTool(prev => prev ? { ...prev, data: data.tool! } : prev);
         }
       } catch { /* garder données par défaut */ }
     }
-  }, [messages.length, patientId, practitionerIdFromDb, getVariant]);
+  }, [patientId, practitionerIdFromDb, getVariant]);
 
   const sendHidden = async (msg: string) => {
     if (!patientId || !practitionerIdFromDb) return;
@@ -1103,10 +1085,26 @@ export default function ChatPage() {
   const breathingLabel: Record<BreathingStep, string> = { idle: "", inhale: "Inspirez...", hold: "Retenez...", exhale: "Expirez...", done: "Bravo !" };
   const visibleMessages = messages.filter(m => !m.hidden);
 
-  // Journal uniquement — les autres outils sont des widgets inline
+  // Modale plein écran pour tous les outils Mon Soutien
   const renderTool = () => {
-    if (!activeTool || activeTool.id !== "journal") return null;
-    return <JournalModal patientId={patientId} practitionerId={practitionerIdFromDb} onClose={() => closeTool()} />;
+    if (!activeTool) return null;
+    if (activeTool.id === "journal") {
+      return <JournalModal patientId={patientId} practitionerId={practitionerIdFromDb} onClose={() => closeTool()} />;
+    }
+    return (
+      <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(4,10,16,0.96)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: isMobile ? "20px 16px" : "24px" }}>
+        <button onClick={() => closeTool()} style={{ position: "absolute", top: 16, right: 16, width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TEXT_MUTED, fontSize: 20, lineHeight: 1 }}>×</button>
+        <div style={{ width: "100%", maxWidth: 440 }}>
+          <InlineWidget
+            toolId={activeTool.id}
+            toolData={activeTool.data}
+            firstName={patientFirstName}
+            frozen={false}
+            onComplete={handleExerciseComplete}
+          />
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -1704,8 +1702,8 @@ export default function ChatPage() {
               <div style={{ maxWidth: 780, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
-                  const isLastAssistant = !isUser && index === visibleMessages.length - 1;
-                  if (!isUser && !msg.content && isLastAssistant) {
+                  const isLastAssistant = msg.role === "assistant" && index === visibleMessages.length - 1;
+                  if (msg.role === "assistant" && !msg.content && isLastAssistant) {
                     return (
                       <div key={index} ref={el => { messageRefs.current[index] = el; }}
                         style={{ display: "flex", alignItems: "flex-start", animation: "fadeUp 0.3s ease", paddingLeft: 38 }}>
@@ -1714,22 +1712,6 @@ export default function ChatPage() {
                           <div className="nt-skeleton nt-skeleton-2" style={{ height: 12, width: isMobile ? 155 : 185, borderRadius: 6 }} />
                           <div className="nt-skeleton nt-skeleton-3" style={{ height: 12, width: isMobile ? 178 : 210, borderRadius: 6 }} />
                         </div>
-                      </div>
-                    );
-                  }
-                  // ─── Widget conversationnel inline ───
-                  if (msg.role === "widget" && msg.widgetMeta) {
-                    const actualIdx = messages.indexOf(msg);
-                    return (
-                      <div key={index} ref={el => { messageRefs.current[index] = el; }}
-                        style={{ display: "flex", justifyContent: "flex-start", animation: "fadeUp 0.3s ease" }}>
-                        <InlineWidget
-                          toolId={msg.widgetMeta.toolId}
-                          toolData={msg.widgetMeta.toolData}
-                          firstName={patientFirstName}
-                          frozen={frozenWidgets.has(actualIdx) || msg.widgetMeta.completed}
-                          onComplete={(tid) => handleWidgetComplete(tid, actualIdx)}
-                        />
                       </div>
                     );
                   }
