@@ -1586,7 +1586,7 @@ export default function ChatPage() {
         <div style={{ width: isMobile ? "80vw" : sidebarWidth, display: "flex", flexDirection: "column", height: "100%", padding: "0 12px" }}>
 
           {/* Header sidebar */}
-          <div style={{ height: 104, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "transparent", borderBottom: "1px solid rgba(16,185,129,0.12)", margin: "0 -12px", marginBottom: 16, flexShrink: 0 }}>
+          <div style={{ height: 72, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "transparent", borderBottom: "1px solid rgba(16,185,129,0.12)", margin: "0 -12px", marginBottom: 16, flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center" }}>
               <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: TEXT_PRIMARY, letterSpacing: "-0.6px", lineHeight: 1 }}>
                 Nutri<span style={{ color: ACCENT, textShadow: "0 0 18px rgba(16,185,129,0.35)" }}>Twin</span>
@@ -1714,7 +1714,7 @@ export default function ChatPage() {
           </div>
 
           {/* ═══ SIDEBAR BOTTOM — Avatar + Settings ═══ */}
-          <div style={{ height: 104, padding: "0 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10, margin: "0 -12px", flexShrink: 0 }}>
+          <div style={{ height: 72, padding: "0 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10, margin: "0 -12px", flexShrink: 0 }}>
             <button onClick={() => setShowProfileModal(true)}
               style={{ width: 38, height: 38, borderRadius: "50%", background: "radial-gradient(circle at 30% 30%, #10b981, #059669)", border: "2px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "black", flexShrink: 0, boxShadow: "0 0 10px rgba(16,185,129,0.15)", transition: "box-shadow 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.boxShadow = "0 0 16px rgba(16,185,129,0.35)"}
@@ -1748,7 +1748,7 @@ export default function ChatPage() {
           if (dx < -50 && sidebarOpen) setSidebarOpen(false);
         }}>
 
-        <header style={{ background: "rgba(8,14,11,0.78)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 16px", height: 104, display: "flex", alignItems: "center", gap: 10, flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}>
+        <header style={{ background: "rgba(8,14,11,0.78)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 16px", height: 72, display: "flex", alignItems: "center", gap: 10, flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}>
           {!sidebarOpen && (
             <button onClick={() => setSidebarOpen(true)} style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: `1px solid ${BORDER}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}
               onMouseEnter={e => { e.currentTarget.style.background = SURFACE; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}
