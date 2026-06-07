@@ -255,6 +255,7 @@ type InputBarProps = {
 
 const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendingImage, photoHovered, setPhotoHovered, handleImageClick, handleKeyDown, inputRef }: InputBarProps) => {
   const canSend = !loading && (message.trim().length > 0 || !!pendingImage);
+  const [focused, setFocused] = useState(false);
 
   useEffect(() => {
     const el = inputRef.current;
@@ -266,19 +267,21 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
   }, [message, isCenter, inputRef]);
 
   return (
-    <div className="nt-inputbar" style={{ display: "flex", alignItems: "center", background: "rgba(15,22,18,0.92)", borderRadius: 18, border: "1px solid rgba(16,185,129,0.18)", padding: isCenter ? "16px 14px" : "8px 8px 8px 14px", transition: "border-color 0.25s, box-shadow 0.25s", minHeight: isCenter ? 110 : 46, gap: 6 }}>
+    <div className="nt-inputbar" style={{ display: "flex", alignItems: "center", background: "rgba(15,22,18,0.92)", borderRadius: 18, border: `1px solid ${focused ? "rgba(16,185,129,0.5)" : "rgba(255,255,255,0.10)"}`, padding: isCenter ? "16px 14px" : "10px 10px 10px 14px", transition: "border-color 0.25s, box-shadow 0.25s", minHeight: isCenter ? 110 : 50, gap: 6 }}>
       {/* Textarea */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-start", paddingTop: isCenter ? 0 : 2 }}>
         <textarea
           ref={inputRef}
           value={message}
           onChange={e => setMessage(e.target.value)}
           onKeyDown={handleKeyDown as React.KeyboardEventHandler<HTMLTextAreaElement>}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
           placeholder={pendingImage ? "Ajoutez un commentaire..." : "Posez votre question..."}
           rows={isCenter ? 3 : 1}
           spellCheck={false}
           className="chat-input"
-          style={{ width: "100%", border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, outline: "none", caretColor: ACCENT, lineHeight: isCenter ? 1.65 : 1.5, resize: "none", fontFamily: "inherit", display: "block", maxHeight: 160, overflowY: "hidden", padding: 0, verticalAlign: "middle" }}
+          style={{ width: "100%", border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, outline: "none", caretColor: ACCENT, lineHeight: isCenter ? 1.65 : 1.5, resize: "none", fontFamily: "inherit", display: "block", maxHeight: 160, overflowY: "hidden", padding: 0 }}
         />
       </div>
       {/* Actions */}
@@ -1575,10 +1578,12 @@ export default function ChatPage() {
                 Nutri<span style={{ color: ACCENT, textShadow: "0 0 18px rgba(16,185,129,0.35)" }}>Twin</span>
               </p>
             </div>
-            <button onClick={() => setSidebarOpen(false)} style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
-              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
-              <MenuIcon size={14} />
+            <button onClick={() => setSidebarOpen(false)} style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={TEXT_SECONDARY} strokeWidth="2" strokeLinecap="round">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
             </button>
           </div>
 
@@ -1697,7 +1702,7 @@ export default function ChatPage() {
           {/* ═══ SIDEBAR BOTTOM — Avatar + Settings ═══ */}
           <div style={{ padding: "12px 4px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10, margin: "0 -12px", paddingLeft: 16, paddingRight: 12, flexShrink: 0 }}>
             <button onClick={() => setShowProfileModal(true)}
-              style={{ width: 38, height: 38, borderRadius: "50%", background: "radial-gradient(circle at 30% 30%, #10b981, #059669)", border: "2px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "black", flexShrink: 0, boxShadow: "0 0 10px rgba(16,185,129,0.15)", transition: "box-shadow 0.2s", transform: isMobile ? "translateY(-6px)" : undefined }}
+              style={{ width: 38, height: 38, borderRadius: "50%", background: "radial-gradient(circle at 30% 30%, #10b981, #059669)", border: "2px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "black", flexShrink: 0, boxShadow: "0 0 10px rgba(16,185,129,0.15)", transition: "box-shadow 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.boxShadow = "0 0 16px rgba(16,185,129,0.35)"}
               onMouseLeave={e => e.currentTarget.style.boxShadow = "0 0 10px rgba(16,185,129,0.15)"}>
               {patientInitials}
@@ -1716,7 +1721,7 @@ export default function ChatPage() {
       </aside>
 
       {/* ═══ ZONE PRINCIPALE ═══ */}
-      <div ref={mainAreaRef} style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}
+      <div ref={mainAreaRef} style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, touchAction: "pan-y" }}
         onTouchStart={e => {
           touchStartXRef.current = e.touches[0].clientX;
           touchStartYRef.current = e.touches[0].clientY;
@@ -1731,10 +1736,10 @@ export default function ChatPage() {
 
         <header style={{ background: "rgba(8,14,11,0.78)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 16px", height: 64, display: "flex", alignItems: "center", gap: 10, flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}>
           {!sidebarOpen && (
-            <button onClick={() => setSidebarOpen(true)} style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-              onMouseEnter={e => e.currentTarget.style.background = SURFACE}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-              <MenuIcon size={16} />
+            <button onClick={() => setSidebarOpen(true)} style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; }}>
+              <MenuIcon size={17} />
             </button>
           )}
           {isMobile && sidebarOpen && (
@@ -1745,7 +1750,7 @@ export default function ChatPage() {
           <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
             {hasMessages && (
               <div>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY, lineHeight: 1.3 }}>Votre compagnon de suivi</p>
+                <p style={{ margin: 0, fontSize: 17, fontWeight: 600, color: TEXT_PRIMARY, lineHeight: 1.3 }}>Votre compagnon de suivi</p>
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 2 }}>
                   <div style={{ width: 5, height: 5, borderRadius: "50%", background: ACCENT, animation: "breathe 3s ease-in-out infinite" }} />
                   <span style={{ fontSize: 11, color: ACCENT, fontWeight: 500 }}>{loading ? "En train de réfléchir..." : "À votre écoute"}</span>
@@ -1755,7 +1760,7 @@ export default function ChatPage() {
           </div>
         </header>
 
-        <main ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", paddingBottom: isMobile ? 100 : 0 }}
+        <main ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", overscrollBehaviorX: "none", display: "flex", flexDirection: "column", paddingBottom: isMobile ? 100 : 0 }}
           onScroll={e => {
             const el = e.currentTarget;
             setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 220);
@@ -1821,8 +1826,8 @@ export default function ChatPage() {
           )}
 
           {hasMessages && (
-            <div style={{ flex: 1, padding: isMobile ? "16px 16px 100px" : "24px 36px 100px" }}>
-              <div style={{ maxWidth: 780, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
+            <div style={{ flex: 1, padding: isMobile ? "16px 16px 80px" : "24px 36px 80px" }}>
+              <div style={{ maxWidth: 780, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20, touchAction: "auto" }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
                   const isLastAssistant = msg.role === "assistant" && index === visibleMessages.length - 1;
@@ -1915,8 +1920,11 @@ export default function ChatPage() {
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
             borderTop: "1px solid rgba(255,255,255,0.06)",
-            padding: isMobile ? "10px 12px" : "12px 20px",
-            paddingBottom: `max(${isMobile ? "10px" : "12px"}, env(safe-area-inset-bottom, 0px))`,
+            padding: isMobile ? "12px 12px" : "14px 20px",
+            paddingBottom: `max(${isMobile ? "16px" : "14px"}, env(safe-area-inset-bottom, 0px))`,
+            opacity: sidebarOpen && isMobile ? 0.4 : 1,
+            pointerEvents: sidebarOpen && isMobile ? "none" : "auto",
+            transition: "opacity 0.25s",
             paddingLeft: isMobile ? "max(12px, env(safe-area-inset-left, 0px))" : undefined,
             paddingRight: isMobile ? "max(12px, env(safe-area-inset-right, 0px))" : undefined,
             flexShrink: 0,
@@ -1951,11 +1959,11 @@ export default function ChatPage() {
         {showScrollBottom && hasMessages && (
           <button
             onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
-            style={{ position: "fixed", bottom: isMobile ? 96 : 76, right: 18, zIndex: 26, width: 36, height: 36, borderRadius: "50%", background: "rgba(8,14,11,0.88)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.28)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(0,0,0,0.35)", transition: "all 0.2s", color: ACCENT }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.transform = "translateY(2px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.28)"; e.currentTarget.style.transform = ""; }}
+            style={{ position: "fixed", bottom: isMobile ? 100 : 80, left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.07)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(0,0,0,0.25)", transition: "all 0.2s", color: ACCENT }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.transform = "translateX(-50%) translateY(2px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.transform = "translateX(-50%)"; }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 5v14M5 12l7 7 7-7"/>
             </svg>
           </button>
