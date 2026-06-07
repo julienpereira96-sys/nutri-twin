@@ -281,7 +281,7 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
           rows={isCenter ? 3 : 1}
           spellCheck={false}
           className="chat-input"
-          style={{ width: "100%", border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, outline: "none", caretColor: ACCENT, lineHeight: isCenter ? 1.65 : 1.5, resize: "none", fontFamily: "inherit", display: "block", maxHeight: 160, overflowY: "hidden", padding: 0, touchAction: "auto" }}
+          style={{ width: "100%", border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, outline: "none", caretColor: ACCENT, lineHeight: 1.5, resize: "none", fontFamily: "inherit", display: "block", maxHeight: 160, overflowY: "hidden", padding: 0, touchAction: "auto" }}
         />
       </div>
       {/* Actions */}
@@ -653,6 +653,7 @@ export default function ChatPage() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  const [sessionLoading, setSessionLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<ActiveTool>(null);
   const [patientId, setPatientId] = useState<string | null>(null);
@@ -773,7 +774,15 @@ export default function ChatPage() {
   useEffect(() => {
     const el = mainAreaRef.current;
     if (!el) return;
+    // Capture la cible du touchstart pour détecter si le doigt est dans un champ de saisie
+    let touchStartTarget: Element | null = null;
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartTarget = e.target as Element | null;
+    };
     const handleTouchMove = (e: TouchEvent) => {
+      // Ne jamais intercepter les glissements horizontaux dans un textarea/input
+      // (nécessaire pour la sélection de texte native sur iOS)
+      if (touchStartTarget && (touchStartTarget.tagName === "TEXTAREA" || touchStartTarget.tagName === "INPUT")) return;
       const dx = e.touches[0].clientX - touchStartXRef.current;
       const dy = e.touches[0].clientY - touchStartYRef.current;
       if (!swipeIntentRef.current && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
@@ -781,8 +790,12 @@ export default function ChatPage() {
       }
       if (swipeIntentRef.current === "horizontal") e.preventDefault();
     };
+    el.addEventListener("touchstart", handleTouchStart, { passive: true });
     el.addEventListener("touchmove", handleTouchMove, { passive: false });
-    return () => el.removeEventListener("touchmove", handleTouchMove);
+    return () => {
+      el.removeEventListener("touchstart", handleTouchStart);
+      el.removeEventListener("touchmove", handleTouchMove);
+    };
   }, []);
 
   useEffect(() => {
@@ -871,6 +884,7 @@ export default function ChatPage() {
         }
       }
       await loadSessions(data.user.id);
+      setSessionLoading(false);
     });
 
     return () => { subscription.unsubscribe(); };
@@ -1613,6 +1627,7 @@ export default function ChatPage() {
           <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 4px 14px" }} />
 
           {/* ═══ RECHERCHE DANS LA CONVERSATION ═══ */}
+          <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
           {(() => {
             const q = chatSearch.trim().toLowerCase();
             const matchIndices = q
@@ -1663,7 +1678,7 @@ export default function ChatPage() {
                 </div>
                 {/* Aperçus des résultats */}
                 {q && matchIndices.length > 0 && (
-                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4, maxHeight: 200, overflowY: "auto" }}>
+                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                     {matchIndices.map((msgIdx, j) => {
                       const m = visibleMessages[msgIdx];
                       const lc = m.content.toLowerCase();
@@ -1696,8 +1711,7 @@ export default function ChatPage() {
               </div>
             );
           })()}
-
-          <div style={{ flex: 1 }} />
+          </div>
 
           {/* ═══ SIDEBAR BOTTOM — Avatar + Settings ═══ */}
           <div style={{ padding: "14px 12px", paddingLeft: 16, paddingBottom: `max(${isMobile ? "28px" : "18px"}, env(safe-area-inset-bottom, 0px))`, borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10, margin: "0 -12px", flexShrink: 0 }}>
@@ -1747,7 +1761,7 @@ export default function ChatPage() {
               <MenuIcon size={16} />
             </button>
           )}
-          <div style={{ flex: 1, display: "flex", alignItems: "center", paddingLeft: sidebarOpen && !isMobile ? 20 : 0 }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
             {hasMessages && (
               <div>
                 <p style={{ margin: 0, fontSize: 17, fontWeight: 600, color: TEXT_PRIMARY, lineHeight: 1.3 }}>Votre compagnon de suivi</p>
@@ -1790,7 +1804,7 @@ export default function ChatPage() {
               </button>
             </div>
           )}
-          {!hasMessages && (
+          {!hasMessages && !sessionLoading && (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: isMobile ? "24px 16px 100px" : "32px 24px 100px" }}>
               <div style={{ maxWidth: 580, width: "100%", textAlign: "center" }}>
                 <div style={{ position: "relative", width: 64, height: 64, margin: "0 auto 24px" }}>
@@ -1959,9 +1973,9 @@ export default function ChatPage() {
         {showScrollBottom && hasMessages && (
           <button
             onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
-            style={{ position: "fixed", bottom: isMobile ? 120 : 90, left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.07)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)", transition: "all 0.2s", color: ACCENT }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.transform = "translateX(-50%) translateY(2px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.transform = "translateX(-50%)"; }}
+            style={{ position: "fixed", bottom: isMobile ? 85 : 90, left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.07)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)", transition: "border-color 0.2s, box-shadow 0.2s", color: ACCENT }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.3), 0 6px 24px rgba(16,185,129,0.2)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)"; }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 5v14M5 12l7 7 7-7"/>
