@@ -455,7 +455,7 @@ type InlineWidgetProps = {
   toolData: ToolData | null;
   firstName: string;
   frozen: boolean;
-  onComplete: (toolId: string) => Promise<void>;
+  onComplete: (toolId: string) => void | Promise<void>;
 };
 
 const InlineWidget = ({ toolId, toolData, firstName, frozen, onComplete }: InlineWidgetProps) => {
@@ -696,6 +696,7 @@ export default function ChatPage() {
   const [deleteError, setDeleteError] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [pinnedMessage, setPinnedMessage] = useState<{ text: string; sent_at: string; practitioner_id: string } | null>(null);
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
   const [savingPatientProfile, setSavingPatientProfile] = useState(false);
@@ -707,6 +708,7 @@ export default function ChatPage() {
   const [showSOSTriageModal, setShowSOSTriageModal] = useState(false);
   const [selectedTriageCtx, setSelectedTriageCtx] = useState("");
   const [showToolDuo, setShowToolDuo] = useState(false);
+  const [postExerciseStep, setPostExerciseStep] = useState<{ toolId: string; answer: string } | null>(null);
   const [chatSearch, setChatSearch] = useState("");
   const [chatSearchIdx, setChatSearchIdx] = useState(0);
   const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -811,7 +813,7 @@ export default function ChatPage() {
         const { data: hist } = await supabase.from("conversations").select("role, content").eq("patient_id", data.user.id).eq("practitioner_id", practId).is("session_id", null).order("created_at", { ascending: true });
         if (hist?.length) setMessages(hist as ChatMessage[]);
       }
-      const { data: pat } = await supabase.from("patients").select("first_name, last_name, onboarding_done, emotional_status").eq("user_id", data.user.id).single();
+      const { data: pat } = await supabase.from("patients").select("first_name, last_name, onboarding_done, emotional_status, practitioner_pinned_message").eq("user_id", data.user.id).single();
       if (pat) {
         const p = pat as { first_name?: string; last_name?: string; onboarding_done?: boolean };
         if (p.first_name) setPatientFirstName(p.first_name);
@@ -829,6 +831,8 @@ export default function ChatPage() {
         // Charger victoires
         const victories = (p as { victories_history?: string[] }).victories_history ?? [];
         setPatientVictories(victories);
+        const ppm = (p as { practitioner_pinned_message?: { text: string; sent_at: string; practitioner_id: string } | null }).practitioner_pinned_message;
+        if (ppm) setPinnedMessage(ppm);
         if (!p.onboarding_done) {
           setTimeout(() => setShowOnboarding(true), 600);
         }
@@ -858,19 +862,20 @@ export default function ChatPage() {
   //   - l'affichage du message système dans le fil patient
   //   - le déclenchement de l'analyse de crise
   //   - la mise à jour prématurée de emotional_status en BDD
-  const handleExerciseComplete = useCallback(async (toolId: string) => {
-    // Fermeture différée pour laisser voir la célébration (2,5s)
-    setTimeout(() => closeTool(), 2500);
+  // Appelée par InlineWidget quand l'exercice se termine
+  // → affiche le step post-exercice DANS la modale (pas d'injection dans le chat)
+  const handleExerciseComplete = useCallback((toolId: string) => {
+    setPostExerciseStep({ toolId, answer: "" });
+  }, []);
 
-    const toolNames: Record<string, string> = {
-      breathing: "cohérence cardiaque", ancrage: "ancrage sensoriel", marche: "marche consciente",
-      manger: "pleine conscience alimentaire", body_scan: "body scan", defusion: "défusion cognitive",
-      ecriture: "écriture cathartique", adaptive_coaching: "coaching personnalisé",
-    };
-    const toolName = toolNames[toolId] ?? "cet exercice";
+  // Soumission de la réponse post-exercice depuis la modale
+  const handlePostExerciseSubmit = useCallback(async () => {
+    if (!postExerciseStep) return;
+    const { toolId, answer } = postExerciseStep;
+    setPostExerciseStep(null);
+    closeTool();
 
-    // Tracer l'événement SOS (non-bloquant) — isPlaceholder=true évite le déclenchement
-    // de red_critical car il n'y a plus de scores réels dans l'UX
+    // Tracer l'événement SOS en arrière-plan (placeholder)
     if (patientId && practitionerIdFromDb) {
       fetch("/api/sos-feedback", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -878,46 +883,20 @@ export default function ChatPage() {
       }).catch(() => {});
     }
 
-    // Follow-up post-exercice : question fixe personnalisée via canal dédié
-    // → bypass total de l'analyse de crise, emotional_status, et pipeline chat normal
-    if (patientId && practitionerIdFromDb) {
-      try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: `[POST_EXERCICE:${toolId}]`,
-            patientId,
-            practitionerId: practitionerIdFromDb,
-            isPostExercise: true,
-          }),
-        });
-        if (res.ok) {
-          const followupText = (await res.text()).trim();
-          if (followupText) {
-            // Insérer un message vide en premier, puis animer le typewriter
-            setMessages(prev => [...prev, { role: "assistant" as const, content: "" }]);
-            let i = 0;
-            const interval = setInterval(() => {
-              i += 3;
-              setMessages(prev => {
-                const updated = [...prev];
-                const last = updated[updated.length - 1];
-                if (last?.role === "assistant") {
-                  updated[updated.length - 1] = { ...last, content: followupText.slice(0, i) };
-                }
-                return updated;
-              });
-              if (i >= followupText.length) clearInterval(interval);
-            }, 16);
-          }
-        }
-      } catch { /* silencieux — le toast suffit si le réseau coupe */ }
+    // Envoyer la réponse au canal isPostExercise pour analyse Gemini (apaisement)
+    // — traitement silencieux en arrière-plan, ne modifie pas l'UI chat
+    if (patientId && practitionerIdFromDb && answer.trim()) {
+      fetch("/api/chat", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: answer.trim(),
+          patientId,
+          practitionerId: practitionerIdFromDb,
+          isPostExercise: true,
+        }),
+      }).catch(() => {});
     }
-
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 4000);
-  }, [patientId, practitionerIdFromDb, closeTool]);
+  }, [postExerciseStep, patientId, practitionerIdFromDb, closeTool]);
 
   // ─── Sélection d'un outil dans le duo → modale plein écran ───
   const handleToolSelect = useCallback(async (toolId: string, sosContext: string) => {
@@ -1133,15 +1112,54 @@ export default function ChatPage() {
     }
     return (
       <div style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(4,10,16,0.96)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: isMobile ? "20px 16px" : "24px" }}>
-        <button onClick={() => closeTool()} style={{ position: "absolute", top: 16, right: 16, width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TEXT_MUTED, fontSize: 20, lineHeight: 1 }}>×</button>
+        {/* Bouton fermer — masqué pendant le step post-exercice */}
+        {!postExerciseStep && (
+          <button onClick={() => closeTool()} style={{ position: "absolute", top: 16, right: 16, width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TEXT_MUTED, fontSize: 20, lineHeight: 1 }}>×</button>
+        )}
         <div style={{ width: "100%", maxWidth: 440 }}>
-          <InlineWidget
-            toolId={activeTool.id}
-            toolData={activeTool.data}
-            firstName={patientFirstName}
-            frozen={false}
-            onComplete={handleExerciseComplete}
-          />
+          {postExerciseStep ? (
+            /* ─── Step post-exercice : question de ressenti à l'intérieur de la modale ─── */
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 40, marginBottom: 16 }}>🌿</div>
+              <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "#e2e8f0" }}>
+                Bravo pour ce moment de soin
+              </h2>
+              <p style={{ margin: "0 0 24px", fontSize: 15, color: "#94a3b8", lineHeight: 1.6 }}>
+                Comment tu te sens dans ton corps et dans ta tête là, tout de suite ?
+              </p>
+              <textarea
+                autoFocus
+                value={postExerciseStep.answer}
+                onChange={e => setPostExerciseStep(prev => prev ? { ...prev, answer: e.target.value } : null)}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handlePostExerciseSubmit(); } }}
+                placeholder="Décris ce que tu ressens…"
+                rows={3}
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(16,185,129,0.25)", background: "rgba(16,185,129,0.04)", color: "#e2e8f0", padding: "12px 14px", fontSize: 15, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "inherit", lineHeight: 1.6, marginBottom: 12 }}
+                onFocus={e => { e.target.style.borderColor = "rgba(16,185,129,0.5)"; }}
+                onBlur={e => { e.target.style.borderColor = "rgba(16,185,129,0.25)"; }}
+              />
+              <button
+                onClick={() => void handlePostExerciseSubmit()}
+                disabled={!postExerciseStep.answer.trim()}
+                style={{ width: "100%", height: 46, borderRadius: 12, background: postExerciseStep.answer.trim() ? "#10b981" : "rgba(16,185,129,0.2)", border: "none", color: postExerciseStep.answer.trim() ? "black" : "#64748b", fontSize: 15, fontWeight: 700, cursor: postExerciseStep.answer.trim() ? "pointer" : "default", transition: "all 0.2s" }}>
+                Valider →
+              </button>
+              <button
+                onClick={() => void handlePostExerciseSubmit()}
+                style={{ marginTop: 10, background: "none", border: "none", color: "#475569", fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>
+                Passer
+              </button>
+            </div>
+          ) : (
+            /* ─── Exercice normal ─── */
+            <InlineWidget
+              toolId={activeTool.id}
+              toolData={activeTool.data}
+              firstName={patientFirstName}
+              frozen={false}
+              onComplete={handleExerciseComplete}
+            />
+          )}
         </div>
       </div>
     );
@@ -1661,17 +1679,21 @@ export default function ChatPage() {
           touchStartYRef.current = e.touches[0].clientY;
         }}
         onTouchMove={e => {
-          // Bloquer le swipe gauche (retour navigateur iOS PWA)
+          // Bloquer le swipe gauche (retour navigateur iOS PWA) uniquement quand la sidebar est fermée
           const dx = e.touches[0].clientX - touchStartXRef.current;
           const dy = Math.abs(e.touches[0].clientY - touchStartYRef.current);
-          if (dx < -10 && dy < 40) e.preventDefault();
+          if (dx < -10 && dy < 40 && !sidebarOpen) e.preventDefault();
         }}
         onTouchEnd={e => {
           const dx = e.changedTouches[0].clientX - touchStartXRef.current;
           const dy = Math.abs(e.changedTouches[0].clientY - touchStartYRef.current);
-          // Swipe droit depuis le bord gauche → ouvre la sidebar
-          if (dx > 55 && dy < 60 && touchStartXRef.current < 32 && !sidebarOpen) {
+          // Swipe droit depuis n'importe où → ouvre la sidebar
+          if (dx > 55 && dy < 60 && !sidebarOpen) {
             setSidebarOpen(true);
+          }
+          // Swipe gauche quand sidebar ouverte → ferme la sidebar
+          if (dx < -55 && dy < 60 && sidebarOpen) {
+            setSidebarOpen(false);
           }
         }}>
 
@@ -1701,7 +1723,32 @@ export default function ChatPage() {
           </div>
         </header>
 
-        <main ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
+        <main ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", paddingBottom: isMobile ? 100 : 0 }}>
+          {/* ═══ BANDEAU POST-IT PRATICIEN ═══ */}
+          {pinnedMessage && (
+            <div style={{ position: "sticky", top: 0, zIndex: 30, margin: "0 0 0 0", background: "rgba(16,185,129,0.06)", borderBottom: "1px solid rgba(16,185,129,0.2)", backdropFilter: "blur(12px)", padding: "10px 16px", display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>📌</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 600, color: "rgba(16,185,129,0.7)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Message de votre praticien</p>
+                <p style={{ margin: 0, fontSize: 14, color: "#e2e8f0", lineHeight: 1.6 }}>{pinnedMessage.text}</p>
+              </div>
+              <button
+                onClick={async () => {
+                  setPinnedMessage(null);
+                  if (patientId) {
+                    fetch("/api/dismiss-pinned-message", {
+                      method: "POST", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ patientId }),
+                    }).catch(() => {});
+                  }
+                }}
+                style={{ flexShrink: 0, padding: "4px 10px", borderRadius: 8, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", color: "rgba(16,185,129,0.85)", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginTop: 2 }}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(16,185,129,0.22)"}
+                onMouseLeave={e => e.currentTarget.style.background = "rgba(16,185,129,0.12)"}>
+                Lu ✓
+              </button>
+            </div>
+          )}
           {!hasMessages && (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: isMobile ? "24px 16px 100px" : "32px 24px 100px" }}>
               <div style={{ maxWidth: 580, width: "100%", textAlign: "center" }}>
@@ -1761,7 +1808,7 @@ export default function ChatPage() {
                   const isActiveMatch = matchIndices[Math.min(chatSearchIdx, matchIndices.length - 1)] === index;
                   return (
                     <div key={index} ref={el => { messageRefs.current[index] = el; }}
-                      style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: isUser ? "flex-end" : "flex-start", gap: 0, animation: "fadeUp 0.25s ease", transition: "opacity 0.2s", opacity: q && !isChatMatch ? 0.35 : 1, paddingLeft: isUser ? 0 : 38 }}>
+                      style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: isUser ? "flex-end" : "flex-start", gap: 0, animation: "fadeUp 0.25s ease", transition: "opacity 0.2s", opacity: q && !isChatMatch ? 0.35 : 1 }}>
                       <div style={{ maxWidth: isUser ? (isMobile ? "82%" : "65%") : "100%" }}>
                         {msg.imageUrl && (
                           <div style={{ marginBottom: 6, display: "flex", justifyContent: isUser ? "flex-end" : "flex-start" }}>
@@ -1824,7 +1871,18 @@ export default function ChatPage() {
         )}
 
         {hasMessages && emotionalStatus !== "red_critical" && (
-          <div style={{ background: "#070c0a", borderTop: "1px solid rgba(16,185,129,0.08)", padding: isMobile ? "10px 12px" : "12px 20px", paddingBottom: `max(${isMobile ? "10px" : "12px"}, env(safe-area-inset-bottom))`, flexShrink: 0 }}>
+          <div style={{
+            position: isMobile ? "fixed" : "static",
+            bottom: 0, left: 0, right: 0,
+            zIndex: isMobile ? 25 : "auto",
+            background: "#070c0a",
+            borderTop: "1px solid rgba(16,185,129,0.08)",
+            padding: isMobile ? "10px 12px" : "12px 20px",
+            paddingBottom: `max(${isMobile ? "10px" : "12px"}, env(safe-area-inset-bottom, 0px))`,
+            paddingLeft: isMobile ? "max(12px, env(safe-area-inset-left, 0px))" : undefined,
+            paddingRight: isMobile ? "max(12px, env(safe-area-inset-right, 0px))" : undefined,
+            flexShrink: 0,
+          }}>
             <div style={{ maxWidth: 768, margin: "0 auto" }}>
               {pendingImage && (
                 <div style={{ marginBottom: 8 }}>
@@ -1843,7 +1901,7 @@ export default function ChatPage() {
                 </div>
               )}
               <InputBar isCenter={false} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} />
-              <p style={{ margin: "5px 0 0", fontSize: 10, color: TEXT_MUTED, textAlign: "center", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <p style={{ margin: "5px 0 0", fontSize: 10, color: TEXT_MUTED, textAlign: "center", lineHeight: 1.4 }}>
                 NutriTwin est une IA et peut se tromper · En cas de doute, consultez votre praticien
               </p>
             </div>
@@ -1852,12 +1910,7 @@ export default function ChatPage() {
         )}
       </div>
 
-      {showToast && (
-        <div style={{ position: "fixed", bottom: 30, left: "50%", transform: "translateX(-50%)", zIndex: 120, background: "#0a0f0c", borderRadius: 14, border: `1px solid ${ACCENT_BORDER}`, padding: "12px 20px", boxShadow: "0 8px 32px rgba(0,0,0,0.5)", display: "flex", alignItems: "center", gap: 10, animation: "fadeUp 0.3s ease", whiteSpace: "nowrap" }}>
-          <span style={{ fontSize: 18 }}>🌿</span>
-          <p style={{ margin: 0, fontSize: 13, color: TEXT_PRIMARY, fontWeight: 500 }}>Données transmises à votre praticien. Bravo pour ce moment de calme.</p>
-        </div>
-      )}
+      {/* Toast supprimé — le ressenti post-exercice est maintenant recueilli dans la modale */}
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

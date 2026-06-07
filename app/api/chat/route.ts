@@ -1046,11 +1046,27 @@ Max 150 mots. Sans markdown.`;
 
           void incrementDailyMessageCount(patientId);
 
+          // ═══ BRIDAGE emotional_status — uniquement sur événements majeurs ═══
+          // Ne jamais écrire emotional_status pour les messages de routine (vert ↔ orange fluctuations).
+          // Seuls changements légitimes :
+          //   1) Crise détectée → red_critical ou red_behavioral
+          //   2) Résolution apaisement → green (depuis red_behavioral)
+          //   3) Retour green depuis un état rouge (post-lock ou résolution)
+          const isSignificantStatusChange =
+            emotionalStatus === "red_critical" ||
+            emotionalStatus === "red_behavioral" ||
+            shouldResolveApaisement ||
+            (currentEmotionalStatus !== "green" && emotionalStatus === "green");
+
           const patientStatusUpdate: Record<string, unknown> = {
-            emotional_status: emotionalStatus,
+            // emotional_insight (météo) peut toujours se mettre à jour — c'est cosmétique
             emotional_insight: emotionalInsight,
             ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString() } : {}),
           };
+          // emotional_status uniquement sur changements majeurs
+          if (isSignificantStatusChange) {
+            patientStatusUpdate.emotional_status = emotionalStatus;
+          }
           // Lever le verrou si apaisement confirmé ou si le post-lock a permis une résolution
           if (shouldResolveApaisement || (isPostLock && emotionalStatus === "green")) {
             patientStatusUpdate.red_behavioral_until = null;

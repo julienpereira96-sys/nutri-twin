@@ -2,6 +2,9 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
+// Requires Supabase column: patients.practitioner_pinned_message JSONB NULL
+// Schema: { text: string, sent_at: string, practitioner_id: string } | null
+
 export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user) return unauthorized();
@@ -12,6 +15,10 @@ export async function POST(request: Request) {
     messageText: string;
   };
 
+  if (!patientId || !practitionerId || !messageText?.trim()) {
+    return NextResponse.json({ error: "Paramètres manquants." }, { status: 400 });
+  }
+
   if (user.id !== practitionerId) return forbidden();
 
   const supabase = createClient(
@@ -19,25 +26,14 @@ export async function POST(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Insérer le message (role "assistant" = visible côté patient comme message du Jumeau/praticien)
-  await supabase.from("conversations").insert({
-    patient_id: patientId,
-    practitioner_id: practitionerId,
-    role: "assistant",
-    content: messageText,
-  });
-
-  // Marquer toutes les alertes de ce patient comme vues + passer le statut en vert
-  await supabase
-    .from("patients")
-    .update({ emotional_status: "green" })
-    .eq("user_id", patientId);
-
-  await supabase
-    .from("admin_alerts")
-    .update({ seen: true })
-    .eq("patient_id", patientId)
-    .eq("seen", false);
+  // Stocker le message comme post-it épinglé côté patient — pas dans le fil du chat IA
+  await supabase.from("patients").update({
+    practitioner_pinned_message: {
+      text: messageText.trim(),
+      sent_at: new Date().toISOString(),
+      practitioner_id: practitionerId,
+    },
+  }).eq("user_id", patientId);
 
   return NextResponse.json({ success: true });
 }

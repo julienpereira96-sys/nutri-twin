@@ -358,17 +358,18 @@ type MonthlyStats = { messages_geres: number; crises_nocturnes: number; temps_ec
 
 const AVATAR_COLORS = ["#f43f5e", "#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ec4899", "#06b6d4", "#f97316"];
 
-const CYAN_STATUS = "#06b6d4";
+const CYAN_STATUS = "#06b6d4"; // réservé côté patient (Mon Soutien)
+const ORANGE_BEHAVIORAL = "#f97316"; // red_behavioral côté praticien (dashboard)
 const RED_CRITICAL_COLOR = "#ef4444";
 function getStatusColor(status?: string) {
   if (status === "red_critical" || status === "red") return RED_CRITICAL_COLOR;
-  if (status === "red_behavioral") return CYAN_STATUS;
+  if (status === "red_behavioral") return ORANGE_BEHAVIORAL;
   if (status === "orange") return amber;
   return emerald;
 }
 function getStatusEmoji(status?: string) {
   if (status === "red_critical" || status === "red") return "🔴";
-  if (status === "red_behavioral") return "🔵";
+  if (status === "red_behavioral") return "🟠";
   if (status === "orange") return "🟡";
   return "🟢";
 }
@@ -2047,27 +2048,33 @@ export default function DashboardPage() {
                   {/* Bloc Action — intervention bubble */}
                   {showInterventionBubble && !replyMode && (() => {
                     const patIsRed = selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical";
-                    const actionColor = patIsRed ? coral : amber;
-                    const actionBorder = patIsRed ? "rgba(244,63,94,0.2)" : "rgba(245,158,11,0.18)";
-                    const actionBtnBorder = patIsRed ? "rgba(244,63,94,0.35)" : "rgba(245,158,11,0.3)";
-                    const actionBtnHover = patIsRed ? "rgba(244,63,94,0.22)" : "rgba(245,158,11,0.2)";
-                    const actionBtnSolidBg = patIsRed ? "rgba(244,63,94,0.18)" : "rgba(245,158,11,0.14)";
+                    const patIsBehavioral = selectedPatient.emotional_status === "red_behavioral";
+                    // Behavioral → orange, critical/red → rouge, sinon amber
+                    const actionColor = patIsRed ? coral : patIsBehavioral ? ORANGE_BEHAVIORAL : amber;
+                    const actionBorder = patIsRed ? "rgba(244,63,94,0.2)" : patIsBehavioral ? "rgba(249,115,22,0.2)" : "rgba(245,158,11,0.18)";
+                    const actionBtnBorder = patIsRed ? "rgba(244,63,94,0.35)" : patIsBehavioral ? "rgba(249,115,22,0.35)" : "rgba(245,158,11,0.3)";
+                    const actionBtnHover = patIsRed ? "rgba(244,63,94,0.22)" : patIsBehavioral ? "rgba(249,115,22,0.22)" : "rgba(245,158,11,0.2)";
+                    const actionBtnSolidBg = patIsRed ? "rgba(244,63,94,0.18)" : patIsBehavioral ? "rgba(249,115,22,0.14)" : "rgba(245,158,11,0.14)";
                     return (
                       <div style={{ borderTop: `1px solid ${actionBorder}`, background: "rgba(10,10,12,0.97)", backdropFilter: "blur(12px)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 12, color: "#64748b", flex: 1, minWidth: 140 }}>Souhaitez-vous envoyer un mot de soutien ?</span>
-                        {/* Bouton principal — solid alert color */}
-                        <button onClick={() => void generateSoutien()}
-                          style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: actionBtnSolidBg, border: `1px solid ${actionBtnBorder}`, color: actionColor, transition: "all 0.2s", whiteSpace: "nowrap" }}
-                          onMouseEnter={e => { e.currentTarget.style.background = actionBtnHover; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = actionBtnSolidBg; }}>
-                          Générer avec mon Jumeau
-                        </button>
-                        {/* Bouton secondaire — ghost */}
+                        <span style={{ fontSize: 12, color: "#64748b", flex: 1, minWidth: 140 }}>
+                          {patIsBehavioral ? "Envoyer un message de soutien au patient" : "Souhaitez-vous envoyer un mot de soutien ?"}
+                        </span>
+                        {/* Bouton "Générer avec mon Jumeau" — masqué pour red_behavioral */}
+                        {!patIsBehavioral && (
+                          <button onClick={() => void generateSoutien()}
+                            style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: actionBtnSolidBg, border: `1px solid ${actionBtnBorder}`, color: actionColor, transition: "all 0.2s", whiteSpace: "nowrap" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = actionBtnHover; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = actionBtnSolidBg; }}>
+                            Générer avec mon Jumeau
+                          </button>
+                        )}
+                        {/* Bouton message manuel — toujours visible */}
                         <button onClick={() => { setShowInterventionBubble(false); setReplyMode(true); setReplyText(""); setReplyIsFromJumeau(false); setTimeout(() => replyInputRef.current?.focus(), 50); }}
-                          style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: "transparent", border: `1px solid ${actionBtnBorder}`, color: actionColor, transition: "all 0.2s", whiteSpace: "nowrap" }}
+                          style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: patIsBehavioral ? actionBtnSolidBg : "transparent", border: `1px solid ${actionBtnBorder}`, color: actionColor, transition: "all 0.2s", whiteSpace: "nowrap" }}
                           onMouseEnter={e => { e.currentTarget.style.background = actionBtnHover; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-                          Répondre manuellement
+                          onMouseLeave={e => { e.currentTarget.style.background = patIsBehavioral ? actionBtnSolidBg : "transparent"; }}>
+                          {patIsBehavioral ? "Écrire un message →" : "Répondre manuellement"}
                         </button>
                         <button onClick={() => setShowInterventionBubble(false)}
                           style={{ height: 30, padding: "0 8px", background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#4b5563", lineHeight: 1 }}
@@ -2649,11 +2656,11 @@ export default function DashboardPage() {
                     let cardShadow = "none";
                     if (isCritical) { cardBg = "rgba(239,68,68,0.04)"; cardBorder = "rgba(239,68,68,0.25)"; cardShadow = "0 0 16px rgba(239,68,68,0.10)"; }
                     else if (isRed) { cardBg = "rgba(239,68,68,0.03)"; cardBorder = "rgba(239,68,68,0.18)"; }
-                    else if (isBehavioral) { cardBg = "rgba(6,182,212,0.03)"; cardBorder = "rgba(6,182,212,0.22)"; cardShadow = "0 0 12px rgba(6,182,212,0.08)"; }
+                    else if (isBehavioral) { cardBg = "rgba(249,115,22,0.03)"; cardBorder = "rgba(249,115,22,0.22)"; cardShadow = "0 0 12px rgba(249,115,22,0.08)"; }
                     else if (isOrange) { cardBg = "rgba(245,158,11,0.02)"; cardBorder = "rgba(245,158,11,0.15)"; }
                     else if (hasVictory) { cardBg = "rgba(16,185,129,0.02)"; cardBorder = "rgba(16,185,129,0.15)"; }
 
-                    const alertColor = isCritical || isRed ? RED_CRITICAL_COLOR : isBehavioral ? CYAN_STATUS : amber;
+                    const alertColor = isCritical || isRed ? RED_CRITICAL_COLOR : isBehavioral ? ORANGE_BEHAVIORAL : amber;
 
                     return (
                       <div key={patient.id}
