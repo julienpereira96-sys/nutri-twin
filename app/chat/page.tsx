@@ -255,6 +255,16 @@ type InputBarProps = {
 
 const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendingImage, photoHovered, setPhotoHovered, handleImageClick, handleKeyDown, inputRef }: InputBarProps) => {
   const canSend = !loading && (message.trim().length > 0 || !!pendingImage);
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el || isCenter) return;
+    el.style.height = "auto";
+    const newHeight = Math.min(el.scrollHeight, 160);
+    el.style.height = newHeight + "px";
+    el.style.overflowY = el.scrollHeight > 160 ? "auto" : "hidden";
+  }, [message, isCenter, inputRef]);
+
   return (
     <div className="nt-inputbar" style={{ display: "flex", alignItems: "center", background: "rgba(15,22,18,0.92)", borderRadius: 18, border: "1px solid rgba(16,185,129,0.18)", padding: isCenter ? "16px 14px" : "8px 8px 8px 14px", transition: "border-color 0.25s, box-shadow 0.25s", minHeight: isCenter ? 110 : 46, gap: 6 }}>
       {/* Textarea */}
@@ -268,7 +278,7 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
           rows={isCenter ? 3 : 1}
           spellCheck={false}
           className="chat-input"
-          style={{ width: "100%", border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, outline: "none", caretColor: ACCENT, lineHeight: isCenter ? 1.65 : "normal", resize: "none", fontFamily: "inherit", display: "block", maxHeight: 160, overflowY: "auto", padding: 0, verticalAlign: "middle" }}
+          style={{ width: "100%", border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, outline: "none", caretColor: ACCENT, lineHeight: isCenter ? 1.65 : 1.5, resize: "none", fontFamily: "inherit", display: "block", maxHeight: 160, overflowY: "hidden", padding: 0, verticalAlign: "middle" }}
         />
       </div>
       {/* Actions */}
@@ -675,6 +685,10 @@ export default function ChatPage() {
   // ─── Swipe mobile ───
   const touchStartXRef = useRef(0);
   const touchStartYRef = useRef(0);
+  const swipeIntentRef = useRef<"horizontal" | "vertical" | null>(null);
+  const mainAreaRef = useRef<HTMLDivElement>(null);
+  // ─── Scroll-to-bottom ───
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
   // ─── Typewriter refs ───
   const targetTextRef = useRef<string>("");
   const displayedLenRef = useRef<number>(0);
@@ -750,6 +764,22 @@ export default function ChatPage() {
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // ─── Swipe non-passif : verrou directionnel dès les premiers pixels ───
+  useEffect(() => {
+    const el = mainAreaRef.current;
+    if (!el) return;
+    const handleTouchMove = (e: TouchEvent) => {
+      const dx = e.touches[0].clientX - touchStartXRef.current;
+      const dy = e.touches[0].clientY - touchStartYRef.current;
+      if (!swipeIntentRef.current && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
+        swipeIntentRef.current = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
+      }
+      if (swipeIntentRef.current === "horizontal") e.preventDefault();
+    };
+    el.addEventListener("touchmove", handleTouchMove, { passive: false });
+    return () => el.removeEventListener("touchmove", handleTouchMove);
   }, []);
 
   useEffect(() => {
@@ -1102,7 +1132,7 @@ export default function ChatPage() {
 
   const breathingColor: Record<BreathingStep, string> = { idle: ACCENT, inhale: ACCENT, hold: "#6366f1", exhale: "#34d399", done: ACCENT };
   const breathingLabel: Record<BreathingStep, string> = { idle: "", inhale: "Inspirez...", hold: "Retenez...", exhale: "Expirez...", done: "Bravo !" };
-  const visibleMessages = messages.filter(m => !m.hidden);
+  const visibleMessages = messages.filter(m => !m.hidden && !m.content.startsWith("[INFO SYSTÈME") && !m.content.startsWith("[POST_EXERCICE"));
 
   // Modale plein écran pour tous les outils Mon Soutien
   const renderTool = () => {
@@ -1166,7 +1196,12 @@ export default function ChatPage() {
   };
 
   return (
-    <div style={{ height: "100dvh", background: BG_MAIN, fontFamily: "'Inter', -apple-system, sans-serif", display: "flex", color: TEXT_PRIMARY, overflow: "hidden" }}>
+    <>
+      {/* DM Sans — chargé uniquement pour le chat */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
+    <div style={{ height: "100dvh", background: BG_MAIN, fontFamily: "'DM Sans', -apple-system, sans-serif", display: "flex", color: TEXT_PRIMARY, overflow: "hidden" }}>
 
       {/* ═══ ONBOARDING ═══ */}
       {showOnboarding && (
@@ -1519,7 +1554,15 @@ export default function ChatPage() {
         </div>
       )}
 
-      {sidebarOpen && isMobile && <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 20 }} />}
+      {sidebarOpen && isMobile && <div
+        onClick={() => setSidebarOpen(false)}
+        onTouchStart={e => { touchStartXRef.current = e.touches[0].clientX; touchStartYRef.current = e.touches[0].clientY; swipeIntentRef.current = null; }}
+        onTouchEnd={e => {
+          const dx = e.changedTouches[0].clientX - touchStartXRef.current;
+          const dy = Math.abs(e.changedTouches[0].clientY - touchStartYRef.current);
+          if (dx < -40 && dy < 80) setSidebarOpen(false);
+        }}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 20 }} />}
 
       {/* ═══ SIDEBAR ═══ */}
       <aside style={{ width: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, minWidth: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, background: "linear-gradient(180deg, #0b1a14 0%, #090f0c 50%, #070c0a 100%)", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100dvh", zIndex: isMobile ? 30 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 24px rgba(0,0,0,0.5)", borderRight: "1px solid rgba(16,185,129,0.08)", }}>
@@ -1673,31 +1716,20 @@ export default function ChatPage() {
       </aside>
 
       {/* ═══ ZONE PRINCIPALE ═══ */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}
+      <div ref={mainAreaRef} style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}
         onTouchStart={e => {
           touchStartXRef.current = e.touches[0].clientX;
           touchStartYRef.current = e.touches[0].clientY;
-        }}
-        onTouchMove={e => {
-          // Bloquer le swipe gauche (retour navigateur iOS PWA) uniquement quand la sidebar est fermée
-          const dx = e.touches[0].clientX - touchStartXRef.current;
-          const dy = Math.abs(e.touches[0].clientY - touchStartYRef.current);
-          if (dx < -10 && dy < 40 && !sidebarOpen) e.preventDefault();
+          swipeIntentRef.current = null;
         }}
         onTouchEnd={e => {
+          if (swipeIntentRef.current !== "horizontal") return;
           const dx = e.changedTouches[0].clientX - touchStartXRef.current;
-          const dy = Math.abs(e.changedTouches[0].clientY - touchStartYRef.current);
-          // Swipe droit depuis n'importe où → ouvre la sidebar
-          if (dx > 55 && dy < 60 && !sidebarOpen) {
-            setSidebarOpen(true);
-          }
-          // Swipe gauche quand sidebar ouverte → ferme la sidebar
-          if (dx < -55 && dy < 60 && sidebarOpen) {
-            setSidebarOpen(false);
-          }
+          if (dx > 50 && !sidebarOpen) setSidebarOpen(true);
+          if (dx < -50 && sidebarOpen) setSidebarOpen(false);
         }}>
 
-        <header style={{ background: "#0b1a14", borderBottom: "1px solid rgba(16,185,129,0.08)", padding: "0 16px", height: 64, display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        <header style={{ background: "rgba(8,14,11,0.78)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 16px", height: 64, display: "flex", alignItems: "center", gap: 10, flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}>
           {!sidebarOpen && (
             <button onClick={() => setSidebarOpen(true)} style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
               onMouseEnter={e => e.currentTarget.style.background = SURFACE}
@@ -1723,7 +1755,11 @@ export default function ChatPage() {
           </div>
         </header>
 
-        <main ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", paddingBottom: isMobile ? 100 : 0 }}>
+        <main ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", paddingBottom: isMobile ? 100 : 0 }}
+          onScroll={e => {
+            const el = e.currentTarget;
+            setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 220);
+          }}>
           {/* ═══ BANDEAU POST-IT PRATICIEN ═══ */}
           {pinnedMessage && (
             <div style={{ position: "sticky", top: 0, zIndex: 30, margin: "0 0 0 0", background: "rgba(16,185,129,0.06)", borderBottom: "1px solid rgba(16,185,129,0.2)", backdropFilter: "blur(12px)", padding: "10px 16px", display: "flex", alignItems: "flex-start", gap: 10 }}>
@@ -1785,7 +1821,7 @@ export default function ChatPage() {
           )}
 
           {hasMessages && (
-            <div style={{ flex: 1, padding: isMobile ? "16px 12px 100px" : "24px 24px 100px" }}>
+            <div style={{ flex: 1, padding: isMobile ? "16px 16px 100px" : "24px 36px 100px" }}>
               <div style={{ maxWidth: 780, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20 }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
@@ -1816,11 +1852,11 @@ export default function ChatPage() {
                           </div>
                         )}
                         {isUser ? (
-                          <div style={{ padding: isMobile ? "10px 16px" : "11px 18px", borderRadius: 20, background: isActiveMatch ? "rgba(16,185,129,0.25)" : "rgba(16,185,129,0.1)", color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.7, border: isActiveMatch ? `1.5px solid ${ACCENT}` : "1px solid rgba(16,185,129,0.18)", boxShadow: "none", transition: "all 0.3s" }}>
+                          <div style={{ padding: isMobile ? "10px 16px" : "11px 18px", borderRadius: 18, background: isActiveMatch ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.07)", color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.7, border: isActiveMatch ? `1.5px solid ${ACCENT}` : "1px solid rgba(255,255,255,0.1)", boxShadow: "none", transition: "all 0.3s" }}>
                             {msg.content}
                           </div>
                         ) : (
-                          <div style={{ padding: "2px 0", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.85, border: isActiveMatch ? `1px solid rgba(16,185,129,0.4)` : "none", borderRadius: isActiveMatch ? 10 : 0, paddingLeft: isActiveMatch ? 10 : 0, boxShadow: isActiveMatch ? `0 0 0 3px rgba(16,185,129,0.07)` : "none", transition: "all 0.3s" }}>
+                          <div style={{ padding: "2px 0", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.7, border: isActiveMatch ? `1px solid rgba(16,185,129,0.4)` : "none", borderRadius: isActiveMatch ? 10 : 0, paddingLeft: isActiveMatch ? 10 : 0, boxShadow: isActiveMatch ? `0 0 0 3px rgba(16,185,129,0.07)` : "none", transition: "all 0.3s" }}>
                             {msg.content}
                           </div>
                         )}
@@ -1875,8 +1911,10 @@ export default function ChatPage() {
             position: isMobile ? "fixed" : "static",
             bottom: 0, left: 0, right: 0,
             zIndex: isMobile ? 25 : "auto",
-            background: "#070c0a",
-            borderTop: "1px solid rgba(16,185,129,0.08)",
+            background: "rgba(7,12,10,0.78)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            borderTop: "1px solid rgba(255,255,255,0.06)",
             padding: isMobile ? "10px 12px" : "12px 20px",
             paddingBottom: `max(${isMobile ? "10px" : "12px"}, env(safe-area-inset-bottom, 0px))`,
             paddingLeft: isMobile ? "max(12px, env(safe-area-inset-left, 0px))" : undefined,
@@ -1901,12 +1939,26 @@ export default function ChatPage() {
                 </div>
               )}
               <InputBar isCenter={false} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} />
-              <p style={{ margin: "5px 0 0", fontSize: 10, color: TEXT_MUTED, textAlign: "center", lineHeight: 1.4 }}>
-                NutriTwin est une IA et peut se tromper · En cas de doute, consultez votre praticien
+              <p style={{ margin: "5px 0 0", fontSize: 10, color: TEXT_MUTED, textAlign: "center", whiteSpace: "nowrap" }}>
+                NutriTwin est une IA · En cas de doute, consultez votre praticien
               </p>
             </div>
             <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleImageChange} style={{ display: "none" }} />
           </div>
+        )}
+
+        {/* ─── Bouton scroll-to-bottom ─── */}
+        {showScrollBottom && hasMessages && (
+          <button
+            onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
+            style={{ position: "fixed", bottom: isMobile ? 96 : 76, right: 18, zIndex: 26, width: 36, height: 36, borderRadius: "50%", background: "rgba(8,14,11,0.88)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.28)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(0,0,0,0.35)", transition: "all 0.2s", color: ACCENT }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.transform = "translateY(2px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.28)"; e.currentTarget.style.transform = ""; }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12l7 7 7-7"/>
+            </svg>
+          </button>
         )}
       </div>
 
@@ -1932,5 +1984,6 @@ export default function ChatPage() {
         @media (max-width: 767px) { .chat-input { font-size: 16px !important; } }
       `}</style>
     </div>
+    </>
   );
 }
