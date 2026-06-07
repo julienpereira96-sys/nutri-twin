@@ -1578,7 +1578,7 @@ export default function ChatPage() {
                 Nutri<span style={{ color: ACCENT, textShadow: "0 0 18px rgba(16,185,129,0.35)" }}>Twin</span>
               </p>
             </div>
-            <button onClick={() => setSidebarOpen(false)} style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}
+            <button onClick={() => setSidebarOpen(false)} style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={TEXT_SECONDARY} strokeWidth="2" strokeLinecap="round">
@@ -1736,7 +1736,7 @@ export default function ChatPage() {
 
         <header style={{ background: "rgba(8,14,11,0.78)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 16px", height: 64, display: "flex", alignItems: "center", gap: 10, flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}>
           {!sidebarOpen && (
-            <button onClick={() => setSidebarOpen(true)} style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}
+            <button onClick={() => setSidebarOpen(true)} style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; }}>
               <MenuIcon size={17} />
@@ -1857,7 +1857,7 @@ export default function ChatPage() {
                           </div>
                         )}
                         {isUser ? (
-                          <div style={{ padding: isMobile ? "10px 16px" : "11px 18px", borderRadius: 18, background: isActiveMatch ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.07)", color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.7, border: isActiveMatch ? `1.5px solid ${ACCENT}` : "1px solid rgba(255,255,255,0.1)", boxShadow: "none", transition: "all 0.3s" }}>
+                          <div style={{ padding: isMobile ? "10px 16px" : "11px 18px", borderRadius: 18, background: isActiveMatch ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.07)", color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.7, border: isActiveMatch ? `1.5px solid ${ACCENT}` : "1px solid rgba(255,255,255,0.1)", boxShadow: isActiveMatch ? "none" : "inset 0 1px 3px rgba(0,0,0,0.3)", transition: "all 0.3s" }}>
                             {msg.content}
                           </div>
                         ) : (
@@ -1959,7 +1959,7 @@ export default function ChatPage() {
         {showScrollBottom && hasMessages && (
           <button
             onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
-            style={{ position: "fixed", bottom: isMobile ? 100 : 80, left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.07)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(0,0,0,0.25)", transition: "all 0.2s", color: ACCENT }}
+            style={{ position: "fixed", bottom: isMobile ? 100 : 80, left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.07)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)", transition: "all 0.2s", color: ACCENT }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.transform = "translateX(-50%) translateY(2px)"; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.transform = "translateX(-50%)"; }}
           >
