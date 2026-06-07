@@ -780,6 +780,9 @@ export default function ChatPage() {
       touchStartTarget = e.target as Element | null;
     };
     const handleTouchMove = (e: TouchEvent) => {
+      // Désactiver complètement le swipe si un champ de saisie est actif (clavier ouvert)
+      const active = document.activeElement;
+      if (active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT")) return;
       // Ne jamais intercepter les glissements horizontaux dans un textarea/input
       // (nécessaire pour la sélection de texte native sur iOS)
       if (touchStartTarget && (touchStartTarget.tagName === "TEXTAREA" || touchStartTarget.tagName === "INPUT")) return;
@@ -1714,7 +1717,7 @@ export default function ChatPage() {
           </div>
 
           {/* ═══ SIDEBAR BOTTOM — Avatar + Settings ═══ */}
-          <div style={{ height: 72, padding: "0 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10, margin: "0 -12px", flexShrink: 0 }}>
+          <div style={{ padding: isMobile ? "33px 16px" : "17px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10, margin: "0 -12px", flexShrink: 0 }}>
             <button onClick={() => setShowProfileModal(true)}
               style={{ width: 38, height: 38, borderRadius: "50%", background: "radial-gradient(circle at 30% 30%, #10b981, #059669)", border: "2px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "black", flexShrink: 0, boxShadow: "0 0 10px rgba(16,185,129,0.15)", transition: "box-shadow 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.boxShadow = "0 0 16px rgba(16,185,129,0.35)"}
@@ -1743,6 +1746,9 @@ export default function ChatPage() {
         }}
         onTouchEnd={e => {
           if (swipeIntentRef.current !== "horizontal") return;
+          // Ne pas ouvrir/fermer la sidebar si un champ de saisie est actif
+          const active = document.activeElement;
+          if (active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT")) return;
           const dx = e.changedTouches[0].clientX - touchStartXRef.current;
           if (dx > 50 && !sidebarOpen) setSidebarOpen(true);
           if (dx < -50 && sidebarOpen) setSidebarOpen(false);
@@ -1777,7 +1783,7 @@ export default function ChatPage() {
         <main ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", overscrollBehaviorX: "none", display: "flex", flexDirection: "column", paddingBottom: isMobile ? 100 : 0 }}
           onScroll={e => {
             const el = e.currentTarget;
-            setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 220);
+            setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 400);
           }}>
           {/* ═══ BANDEAU POST-IT PRATICIEN ═══ */}
           {pinnedMessage && (
@@ -1969,7 +1975,7 @@ export default function ChatPage() {
             {showScrollBottom && (
               <button
                 onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
-                style={{ position: "absolute", bottom: "calc(100% + 20px)", left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.07)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)", transition: "border-color 0.2s, box-shadow 0.2s", color: ACCENT }}
+                style={{ position: "absolute", bottom: "calc(100% + 20px)", left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 44, height: 44, borderRadius: "50%", background: "rgba(15,22,18,0.92)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.45)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(0,0,0,0.4)", transition: "border-color 0.2s, box-shadow 0.2s", color: ACCENT }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.3), 0 6px 24px rgba(16,185,129,0.2)"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)"; }}
               >
