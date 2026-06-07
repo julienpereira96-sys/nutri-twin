@@ -1717,7 +1717,8 @@ export default function ChatPage() {
           </div>
 
           {/* ═══ SIDEBAR BOTTOM — Avatar + Settings ═══ */}
-          <div style={{ padding: isMobile ? "33px 16px" : "17px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10, margin: "0 -12px", flexShrink: 0 }}>
+          <div style={{ padding: isMobile ? "33px 14px" : "31px 14px", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, background: "rgba(15,22,18,0.92)", borderRadius: 18, padding: "10px 14px", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3)" }}>
             <button onClick={() => setShowProfileModal(true)}
               style={{ width: 38, height: 38, borderRadius: "50%", background: "radial-gradient(circle at 30% 30%, #10b981, #059669)", border: "2px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "black", flexShrink: 0, boxShadow: "0 0 10px rgba(16,185,129,0.15)", transition: "box-shadow 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.boxShadow = "0 0 16px rgba(16,185,129,0.35)"}
@@ -1733,6 +1734,7 @@ export default function ChatPage() {
               onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = BORDER; }}>
               <SettingsIcon size={16} />
             </button>
+          </div>
           </div>
         </div>
       </aside>
