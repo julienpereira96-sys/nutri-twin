@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       conversationsQuery = conversationsQuery.gt("created_at", lastCursor);
     }
 
-    const [{ data: chatMessages }, { data: journalEntries }, { data: patient }] = await Promise.all([
+    const [{ data: chatMessages }, { data: journalEntries }, { data: patient }, { data: sosEventsRaw }] = await Promise.all([
       conversationsQuery,
       supabase
         .from("journal_entries")
@@ -63,6 +63,21 @@ export async function POST(request: Request) {
         .select("first_name, last_name, age, pathologies, objective, objectif_clinique")
         .eq("user_id", patientId)
         .single(),
+      // Épisodes Mon Soutien depuis le curseur (ou tout si pas de curseur)
+      lastCursor
+        ? supabase
+            .from("sos_events")
+            .select("triggered_at, sos_context, raw_response")
+            .eq("patient_id", patientId)
+            .gt("triggered_at", lastCursor)
+            .order("triggered_at", { ascending: false })
+            .limit(20)
+        : supabase
+            .from("sos_events")
+            .select("triggered_at, sos_context, raw_response")
+            .eq("patient_id", patientId)
+            .order("triggered_at", { ascending: false })
+            .limit(20),
     ]);
 
     const firstName = (patient as { first_name?: string } | null)?.first_name ?? "le patient";
@@ -102,6 +117,25 @@ export async function POST(request: Request) {
       (patient as { objective?: string } | null)?.objective ? `Objectif personnel : ${(patient as { objective?: string }).objective}` : "",
     ].filter(Boolean).join(" | ") || "";
 
+    // Construire la section Mon Soutien
+    const toolNames: Record<string, string> = {
+      breathing: "Cohérence cardiaque", ancrage: "Ancrage sensoriel", marche: "Marche consciente",
+      manger: "Pleine conscience alimentaire", body_scan: "Body scan", defusion: "Défusion cognitive",
+      ecriture: "Écriture cathartique", adaptive_coaching: "Coaching personnalisé",
+    };
+    type SosEventRow = { triggered_at: string; sos_context: string; raw_response?: { tool_id?: string } | null };
+    const sosEpisodes = (sosEventsRaw ?? []) as SosEventRow[];
+    const sosSection = sosEpisodes.length > 0
+      ? `ÉPISODES MON SOUTIEN DEPUIS LE DERNIER BILAN (${sosEpisodes.length} déclenchement${sosEpisodes.length > 1 ? "s" : ""}) :\n` +
+        sosEpisodes.map(ev => {
+          const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+          const context = ev.sos_context?.split(" | ")[0] ?? "non précisé";
+          const toolId = ev.raw_response?.tool_id;
+          const exercise = toolId ? (toolNames[toolId] ?? toolId) : "exercice non précisé";
+          return `  - ${date} : ${context} → ${exercise}`;
+        }).join("\n")
+      : "";
+
     const prompt = `Tu es l'assistant d'un nutritionniste qui prépare sa prochaine consultation avec ${firstName}.
 
 ${patientProfile ? `PROFIL PATIENT :\n${patientProfile}\n\n` : ""}MESSAGES DU PATIENT DEPUIS LE DERNIER BILAN (${messageCount} messages) :
@@ -109,8 +143,8 @@ ${chatData}
 
 JOURNAL DES 14 DERNIERS JOURS :
 ${journalData}
-
-Génère exactement 3 questions clés que le praticien devrait poser lors de la prochaine consultation. Les questions doivent être précises, personnalisées et montrer que le praticien a suivi de près l'évolution du patient.
+${sosSection ? `\n${sosSection}\n` : ""}
+Génère exactement 3 questions clés que le praticien devrait poser lors de la prochaine consultation. Les questions doivent être précises, personnalisées et montrer que le praticien a suivi de près l'évolution du patient.${sosSection ? " Intègre les épisodes Mon Soutien si pertinents pour comprendre l'état émotionnel du patient." : ""}
 
 Pour chaque question :
 - "question" : la question à poser, formulée directement au patient

@@ -53,6 +53,7 @@ type ChatRequest = {
   imageMimeType?: string;
   isSOS?: boolean;
   sosContext?: string; // contexte de triage SOS (fringale / stress / culpabilité / coup de mou)
+  isPostExercise?: boolean; // follow-up chaud post-exercice — bypass total des effets de bord
 };
 
 // ═══ GARDE-FOU BRUT — urgences vitales absolues uniquement ═══
@@ -559,7 +560,7 @@ Si le message commence par [ADMIN:identity_correction] :
 - Ajoute obligatoirement : |||{"status":"green","reason":"demande correction identité","victory":"","action":"admin_alert","alert_type":"identity_correction"}|||
 
 JSON TECHNIQUE OBLIGATOIRE - À ajouter en toute fin de réponse, invisible pour le patient :
-|||{"status":"green","reason":"météo émotionnelle en 4-8 mots","victory":""}|||
+|||{"status":"green","reason":"météo émotionnelle en 4-8 mots","victory":"","apaisement":"non"}|||
 - status : "red_critical" si urgence vitale implicite détectée, "red_behavioral" si détresse comportementale/TCA/psychologique sévère, "orange" si difficulté modérée, "green" si tout va bien
 - reason : TOUJOURS rempli — météo émotionnelle du patient en 4-8 mots, dynamique et précise.
   Exemples green : "En confiance", "Motivé(e) malgré la fatigue", "Serein(e) et régulier(e)", "Curieux(se) de progresser"
@@ -605,6 +606,7 @@ export async function POST(request: Request) {
       imageMimeType,
       isSOS,
       sosContext,
+      isPostExercise,
     } = await request.json() as ChatRequest;
 
     // Auth
@@ -747,6 +749,7 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
           triggered_at: new Date().toISOString(),
           raw_response: sosText,
           sos_context: sosContext ?? null,
+          status: "pending",
         });
       } catch { /* silencieux */ }
 
@@ -757,6 +760,39 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
           tool: { tool_id: "breathing", twin_message: `${firstName}, prenons un moment pour souffler ensemble.`, tool_script: {} },
         });
       }
+    }
+
+    // ═══ POST-EXERCICE — question fixe personnalisée, zéro LLM, zéro effet de bord ═══
+    // Ce canal ne touche pas emotional_status, ne sauvegarde pas le message système,
+    // ne déclenche aucune analyse de crise. Seule la question fixe est renvoyée + persistée.
+    if (isPostExercise && patientId && practitionerId) {
+      const supabase = createSupabaseClient();
+
+      // Récupérer le prénom pour personnaliser
+      const { data: patientRow } = await supabase
+        .from("patients")
+        .select("first_name")
+        .eq("user_id", patientId)
+        .single();
+
+      const firstName = (patientRow as { first_name?: string } | null)?.first_name?.trim() ?? "";
+      const greeting = firstName ? `${firstName}, j` : "J";
+      const followupText =
+        `${greeting}'ai déposé ce moment de soin dans ton carnet de bord. ` +
+        `Dis-moi avec tes propres mots, comment tu te sens dans ton corps et dans ta tête là, tout de suite ?`;
+
+      // Persister uniquement la question (pas le message système interne)
+      await supabase.from("conversations").insert({
+        patient_id: patientId,
+        practitioner_id: practitionerId,
+        role: "assistant",
+        content: followupText,
+        session_id: null,
+      });
+
+      return new Response(followupText, {
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      });
     }
 
     // ═══ FLOW PRINCIPAL ═══
@@ -846,7 +882,7 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
     }
 
     if (crisisAnalysis.level === "red_behavioral" && patientId && practitionerId && !behavioralLocked && !behavioralPostLock) {
-      const lockUntil = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+      const lockUntil = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
       await supabaseMain.from("patients").update({
         emotional_status: "red_behavioral",
         emotional_insight: crisisAnalysis.murmure || "Alerte comportementale détectée",
@@ -940,45 +976,51 @@ Max 150 mots. Sans markdown.`;
         let emotionalStatus = "green";
         let emotionalInsight = "";
         let victoryText = "";
+        let apaisementConfirme = false;
         let adminAlert: { action?: string; alert_type?: string } = {};
         const statusMatch = fullText.match(/\|\|\|([\s\S]*?)\|\|\|/);
         if (statusMatch) {
           try {
-            const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string; victory?: string; action?: string; alert_type?: string };
+            const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string; victory?: string; action?: string; alert_type?: string; apaisement?: string };
             emotionalStatus = parsed.status;
             emotionalInsight = parsed.reason;
             victoryText = parsed.victory ?? "";
+            apaisementConfirme = parsed.apaisement === "oui";
             if (parsed.action) adminAlert = { action: parsed.action, alert_type: parsed.alert_type };
           } catch { /* silencieux */ }
           fullText = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
         }
 
-        // ═══ VERROU red_behavioral 12h ═══
-        // Si le patient est verrouillé, Gemini ne peut pas repasser à green tout seul.
-        // Seul le praticien peut lever red_critical manuellement.
+        // ═══ VERROU red_behavioral 6h — logique de résolution ═══
+        // Priorités : 1) red_critical (verrou praticien absolu)
+        //             2) Apaisement confirmé par Gemini → résolution immédiate, même verrou actif
+        //             3) Verrou 6h actif → maintien red_behavioral
+        //             4) Post-lock (6h expiré) → Gemini décide librement (expiration auto)
         const isRedCritical = currentEmotionalStatus === "red_critical";
         const isRedBehavioralLocked = behavioralLocked;
         const isPostLock = behavioralPostLock;
 
+        const shouldResolveApaisement = apaisementConfirme && !isRedCritical
+          && (isRedBehavioralLocked || isPostLock || currentEmotionalStatus === "red_behavioral");
+
         if (isRedCritical) {
-          // red_critical ne change jamais automatiquement
+          // red_critical ne change jamais automatiquement — verrou praticien absolu
           emotionalStatus = "red_critical";
           emotionalInsight = "Verrou praticien actif";
+        } else if (shouldResolveApaisement) {
+          // Apaisement validé → résolution immédiate même si verrou 6h encore actif
+          emotionalStatus = "green";
+          // emotionalInsight garde la météo positive de Gemini
         } else if (isRedBehavioralLocked && emotionalStatus !== "red_critical") {
-          // Verrou 12h actif : Gemini ne peut PAS repasser en green ou orange tant que le verrou court
-          // Seule une escalade red_critical peut changer le statut pendant cette période
+          // Verrou 6h actif : Gemini ne peut PAS repasser en green ou orange
           emotionalStatus = "red_behavioral";
-          emotionalInsight = `Verrou actif jusqu'au ${redBehavioralUntil?.toLocaleDateString("fr-FR")}`;
-        } else if (isPostLock && emotionalStatus !== "red_critical") {
-          // Post-lock : le patient voit le sas de décompression, on maintient red_behavioral
-          // jusqu'à ce qu'il clique sur un bouton (Reprendre le fil / Rester en mode safe)
-          emotionalStatus = "red_behavioral";
-          emotionalInsight = "Sas de décompression en attente";
+          emotionalInsight = "Accompagnement actif en cours";
         }
+        // isPostLock (6h expiré) → Gemini détermine librement (expiration auto côté dashboard)
 
-        // Nouveau red_behavioral détecté dans la réponse → initialiser verrou 12h (pas d'email)
+        // Nouveau red_behavioral détecté → initialiser verrou 6h
         if (emotionalStatus === "red_behavioral" && !isRedBehavioralLocked && !isRedCritical && !isPostLock) {
-          const lockUntil = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+          const lockUntil = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
           if (patientId) {
             await supabase.from("patients").update({ red_behavioral_until: lockUntil }).eq("user_id", patientId);
           }
@@ -1004,11 +1046,33 @@ Max 150 mots. Sans markdown.`;
 
           void incrementDailyMessageCount(patientId);
 
-          await supabase.from("patients").update({
+          const patientStatusUpdate: Record<string, unknown> = {
             emotional_status: emotionalStatus,
             emotional_insight: emotionalInsight,
             ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString() } : {}),
-          }).eq("user_id", patientId);
+          };
+          // Lever le verrou si apaisement confirmé ou si le post-lock a permis une résolution
+          if (shouldResolveApaisement || (isPostLock && emotionalStatus === "green")) {
+            patientStatusUpdate.red_behavioral_until = null;
+          }
+          await supabase.from("patients").update(patientStatusUpdate).eq("user_id", patientId);
+
+          // Apaisement confirmé → marquer le sos_event le plus récent en "success"
+          if (shouldResolveApaisement) {
+            try {
+              const { data: recentSosEvent } = await supabase
+                .from("sos_events")
+                .select("id")
+                .eq("patient_id", patientId)
+                .in("status", ["pending"])
+                .order("triggered_at", { ascending: false })
+                .limit(1)
+                .single();
+              if (recentSosEvent?.id) {
+                await supabase.from("sos_events").update({ status: "success" }).eq("id", (recentSosEvent as { id: string }).id);
+              }
+            } catch { /* silencieux — pas d'event en attente */ }
+          }
 
           if (adminAlert.action === "admin_alert" && !isRedCritical) {
             const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
@@ -1024,17 +1088,6 @@ Max 150 mots. Sans markdown.`;
               last_message_at: new Date().toISOString(),
             }).eq("id", sessionId);
           }
-        }
-
-        // ═══ SAS DE DÉCOMPRESSION ═══
-        // Si le verrou 12h vient d'expirer (post-lock), émettre le signal SAS.
-        // On réétend le verrou d'1h pour éviter le re-déclenchement si le patient
-        // envoie un autre message avant d'avoir cliqué sur un bouton.
-        if (isPostLock && patientId) {
-          await supabase.from("patients").update({
-            red_behavioral_until: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-          }).eq("user_id", patientId);
-          controller.enqueue(encoder.encode("|||SAS|||"));
         }
 
         controller.close();

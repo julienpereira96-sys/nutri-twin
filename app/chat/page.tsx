@@ -853,28 +853,68 @@ export default function ChatPage() {
     setAncrageStep(0); setMarcheStep(0);
   }, []);
 
-  // ─── Exercice terminé : ferme la modale après célébration + déclenche l'IA ───
+  // ─── Exercice terminé : ferme la modale + follow-up IA via canal dédié ───
+  // N'utilise PAS send() pour éviter :
+  //   - l'affichage du message système dans le fil patient
+  //   - le déclenchement de l'analyse de crise
+  //   - la mise à jour prématurée de emotional_status en BDD
   const handleExerciseComplete = useCallback(async (toolId: string) => {
     // Fermeture différée pour laisser voir la célébration (2,5s)
     setTimeout(() => closeTool(), 2500);
-    // Contexte sémantique injecté silencieusement dans l'IA
+
     const toolNames: Record<string, string> = {
       breathing: "cohérence cardiaque", ancrage: "ancrage sensoriel", marche: "marche consciente",
       manger: "pleine conscience alimentaire", body_scan: "body scan", defusion: "défusion cognitive",
       ecriture: "écriture cathartique", adaptive_coaching: "coaching personnalisé",
     };
     const toolName = toolNames[toolId] ?? "cet exercice";
-    void send(
-      `[INFO SYSTÈME : Le patient vient de terminer l'exercice "${toolName}" via Mon Soutien. Adresse-toi à lui chaleureusement. Évalue son état émotionnel à travers le dialogue naturel, sans mentionner de chiffres.]`,
-      { hidden: true }
-    );
-    // Tracer l'événement (non-bloquant)
+
+    // Tracer l'événement SOS (non-bloquant) — isPlaceholder=true évite le déclenchement
+    // de red_critical car il n'y a plus de scores réels dans l'UX
     if (patientId && practitionerIdFromDb) {
       fetch("/api/sos-feedback", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId, practitionerId: practitionerIdFromDb, eventId: null, stressBeforeProxy: 5, scoreAfter: 5 }),
+        body: JSON.stringify({ patientId, practitionerId: practitionerIdFromDb, eventId: null, stressBeforeProxy: 5, scoreAfter: 5, isPlaceholder: true }),
       }).catch(() => {});
     }
+
+    // Follow-up post-exercice : question fixe personnalisée via canal dédié
+    // → bypass total de l'analyse de crise, emotional_status, et pipeline chat normal
+    if (patientId && practitionerIdFromDb) {
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: `[POST_EXERCICE:${toolId}]`,
+            patientId,
+            practitionerId: practitionerIdFromDb,
+            isPostExercise: true,
+          }),
+        });
+        if (res.ok) {
+          const followupText = (await res.text()).trim();
+          if (followupText) {
+            // Insérer un message vide en premier, puis animer le typewriter
+            setMessages(prev => [...prev, { role: "assistant" as const, content: "" }]);
+            let i = 0;
+            const interval = setInterval(() => {
+              i += 3;
+              setMessages(prev => {
+                const updated = [...prev];
+                const last = updated[updated.length - 1];
+                if (last?.role === "assistant") {
+                  updated[updated.length - 1] = { ...last, content: followupText.slice(0, i) };
+                }
+                return updated;
+              });
+              if (i >= followupText.length) clearInterval(interval);
+            }, 16);
+          }
+        }
+      } catch { /* silencieux — le toast suffit si le réseau coupe */ }
+    }
+
     setShowToast(true);
     setTimeout(() => setShowToast(false), 4000);
   }, [patientId, practitionerIdFromDb, closeTool]);

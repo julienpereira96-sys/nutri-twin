@@ -61,6 +61,7 @@ export async function POST(request: Request) {
       { data: chatMessages },
       { data: patient },
       { data: sosEvents },
+      { data: sosEventsRaw },
     ] = await Promise.all([
       supabase
         .from("conversations")
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
         `)
         .eq("user_id", patientId)
         .single(),
-      // SOS events for the period
+      // SOS feedback (données historiques avec scores réels)
       supabase
         .from("sos_feedback")
         .select("tool_id, stress_before, stress_after, created_at")
@@ -95,6 +96,14 @@ export async function POST(request: Request) {
         .gte("created_at", `${dateFrom}T00:00:00`)
         .lte("created_at", `${dateTo}T23:59:59`)
         .order("created_at", { ascending: true }),
+      // SOS events (déclenchements avec contexte + exercice choisi)
+      supabase
+        .from("sos_events")
+        .select("triggered_at, sos_context, raw_response")
+        .eq("patient_id", patientId)
+        .gte("triggered_at", `${dateFrom}T00:00:00`)
+        .lte("triggered_at", `${dateTo}T23:59:59`)
+        .order("triggered_at", { ascending: true }),
     ]);
 
     const firstName = (patient as { first_name?: string } | null)?.first_name ?? "le patient";
@@ -147,24 +156,53 @@ export async function POST(request: Request) {
 
     // ── Build SOS stats ──
     const events = (sosEvents ?? []) as { tool_id: string; stress_before: number | null; stress_after: number | null }[];
+    const toolNamesReport: Record<string, string> = {
+      breathing: "Cohérence cardiaque", ancrage: "Ancrage sensoriel", marche: "Marche consciente",
+      manger: "Pleine conscience alimentaire", body_scan: "Body scan", defusion: "Défusion cognitive",
+      ecriture: "Écriture cathartique", adaptive_coaching: "Coaching personnalisé",
+    };
+    type SosEventReportRow = { triggered_at: string; sos_context: string; raw_response?: { tool_id?: string } | null };
+    const sosEpisodesReport = (sosEventsRaw ?? []) as SosEventReportRow[];
+
     let sosSection = "";
-    if (events.length > 0) {
+    if (sosEpisodesReport.length > 0) {
+      // Compter les contextes déclencheurs
+      const contextCounts: Record<string, number> = {};
+      const toolCounts: Record<string, number> = {};
+      sosEpisodesReport.forEach(ev => {
+        const ctx = ev.sos_context?.split(" | ")[0] ?? "non précisé";
+        contextCounts[ctx] = (contextCounts[ctx] ?? 0) + 1;
+        const toolId = ev.raw_response?.tool_id;
+        if (toolId) toolCounts[toolId] = (toolCounts[toolId] ?? 0) + 1;
+      });
+      const topContexts = Object.entries(contextCounts).sort((a, b) => b[1] - a[1]).map(([c, n]) => `${c} (${n}x)`).join(", ");
+      const topTools = Object.entries(toolCounts).sort((a, b) => b[1] - a[1]).map(([t, n]) => `${toolNamesReport[t] ?? t} (${n}x)`).join(", ");
+      const episodesList = sosEpisodesReport.map(ev => {
+        const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+        const ctx = ev.sos_context?.split(" | ")[0] ?? "non précisé";
+        const toolId = ev.raw_response?.tool_id;
+        const exercise = toolId ? (toolNamesReport[toolId] ?? toolId) : "exercice non précisé";
+        return `  - ${date} : ${ctx} → ${exercise}`;
+      }).join("\n");
+
+      sosSection = `INTERVENTIONS MON SOUTIEN (période du ${dateFrom} au ${dateTo}) :
+- Volume : ${sosEpisodesReport.length} déclenchement${sosEpisodesReport.length > 1 ? "s" : ""}
+- Contextes principaux : ${topContexts || "non renseigné"}
+- Exercices choisis : ${topTools || "non renseigné"}
+- Détail chronologique :
+${episodesList}`;
+    } else if (events.length > 0) {
+      // Fallback sur sos_feedback si pas d'events (données historiques avant migration)
       const withFeedback = events.filter(e => e.stress_before != null && e.stress_after != null);
       const apaises = withFeedback.filter(e => (e.stress_after ?? 0) >= 6).length;
       const persistants = withFeedback.length - apaises;
-      const avgDelta = withFeedback.length > 0
-        ? (withFeedback.reduce((s, e) => s + ((e.stress_after ?? 0) - (e.stress_before ?? 0)), 0) / withFeedback.length).toFixed(1)
-        : null;
       const toolCounts: Record<string, number> = {};
-      events.forEach(e => { toolCounts[e.tool_id] = (toolCounts[e.tool_id] ?? 0) + 1; });
-      const topTools = Object.entries(toolCounts).sort((a, b) => b[1] - a[1]).map(([t, c]) => `${t} (${c}x)`).join(", ");
-
+      events.forEach(e => { if (e.tool_id) toolCounts[e.tool_id] = (toolCounts[e.tool_id] ?? 0) + 1; });
+      const topTools = Object.entries(toolCounts).sort((a, b) => b[1] - a[1]).map(([t, c]) => `${toolNamesReport[t] ?? t} (${c}x)`).join(", ");
       sosSection = `DONNÉES SOS / CRISES (période du ${dateFrom} au ${dateTo}) :
-- Volume : ${events.length} déclenchement${events.length > 1 ? "s" : ""} SOS
+- Volume : ${events.length} déclenchement${events.length > 1 ? "s" : ""}
 - Outils utilisés : ${topTools || "non renseigné"}
-${withFeedback.length > 0 ? `- Crises apaisées (score après ≥ 6) : ${apaises} / ${withFeedback.length}
-- Crises persistantes (score après < 6) : ${persistants} / ${withFeedback.length}
-- Évolution stress moyenne : ${avgDelta !== null ? (Number(avgDelta) >= 0 ? `+${avgDelta}` : avgDelta) : "n/a"} points (négatif = réduction du stress)` : "- Aucun feedback recueilli"}`;
+${withFeedback.length > 0 ? `- Crises apaisées : ${apaises} / ${withFeedback.length} | Persistantes : ${persistants} / ${withFeedback.length}` : ""}`;
     }
 
     // ── Build chat section ──

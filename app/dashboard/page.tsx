@@ -346,7 +346,7 @@ type RealPatient = {
   regime_specifique?: string;   practitioner_instruction?: { id: string; text: string; expires_at?: string | null; created_at: string }[];
   emotional_status?: string; emotional_insight?: string;
   latest_victory?: string; victory_detected_at?: string | null; private_notes?: { id: string; text: string; created_at: string }[]; created_at?: string;
-  lastActive?: string | null; streak?: number; sosResolved?: number; onboardingCompleted?: boolean; onboardingStatus?: string | null;
+  lastActive?: string | null; streak?: number; sosResolved?: number; sosEvents?: { triggered_at: string; sos_context: string; tool_id?: string; status?: string | null }[]; red_behavioral_until?: string | null; onboardingCompleted?: boolean; onboardingStatus?: string | null;
   sharing_status?: string; cabinet_id?: string;
 };
 
@@ -358,14 +358,31 @@ type MonthlyStats = { messages_geres: number; crises_nocturnes: number; temps_ec
 
 const AVATAR_COLORS = ["#f43f5e", "#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ec4899", "#06b6d4", "#f97316"];
 
-function getStatusColor(status?: string) { if (status === "red") return coral; if (status === "orange") return amber; return emerald; }
-function getStatusEmoji(status?: string) { if (status === "red" || status === "red_critical") return "🔴"; if (status === "orange") return "🟡"; return "🟢"; }
+const CYAN_STATUS = "#06b6d4";
+const RED_CRITICAL_COLOR = "#ef4444";
+function getStatusColor(status?: string) {
+  if (status === "red_critical" || status === "red") return RED_CRITICAL_COLOR;
+  if (status === "red_behavioral") return CYAN_STATUS;
+  if (status === "orange") return amber;
+  return emerald;
+}
+function getStatusEmoji(status?: string) {
+  if (status === "red_critical" || status === "red") return "🔴";
+  if (status === "red_behavioral") return "🔵";
+  if (status === "orange") return "🟡";
+  return "🟢";
+}
 
 // ═══ SVG ICONS ═══
 const AlertIcon = ({ size = 16, color = coral }: { size?: number; color?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
     <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
     <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+  </svg>
+);
+const InfoCircleIcon = ({ size = 13, color = "#64748b" }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+    <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
   </svg>
 );
 const TrophyIcon = ({ size = 12, color = emerald }: { size?: number; color?: string }) => (
@@ -418,7 +435,7 @@ function LeverAlerteCritique({ alert, patientId, onResolved }: { alert: { type: 
 
   const resolve = async () => {
     setLoading(true);
-    await supabase.from("patients").update({ emotional_status: "green", admin_alerts: [] }).eq("user_id", patientId);
+    await supabase.from("patients").update({ emotional_status: "green", admin_alerts: [], red_behavioral_until: null }).eq("user_id", patientId);
     await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId }) });
     onResolved();
     setLoading(false);
@@ -438,7 +455,7 @@ function LeverAlerteCritique({ alert, patientId, onResolved }: { alert: { type: 
   );
 }
 
-function LeverAlerteSimple({ alert, patientId, murmureSuggere, onResolved }: { alert: object; patientId: string; murmureSuggere: string; onResolved: (murmure: string) => void }) {
+function LeverAlerteSimple({ alert, patientId, murmureSuggere, onResolved, showMurmure = true }: { alert: object; patientId: string; murmureSuggere: string; onResolved: (murmure: string) => void; showMurmure?: boolean }) {
   const [open, setOpen] = useState(false);
   const [murmure, setMurmure] = useState(murmureSuggere);
   const [loading, setLoading] = useState(false);
@@ -449,7 +466,8 @@ function LeverAlerteSimple({ alert, patientId, murmureSuggere, onResolved }: { a
     await supabase.from("patients").update({
       emotional_status: "green",
       admin_alerts: [],
-      ...(murmure ? { practitioner_instruction: [] } : {}),
+      red_behavioral_until: null,
+      ...(murmure && showMurmure ? { practitioner_instruction: [] } : {}),
     }).eq("user_id", patientId);
     onResolved(murmure);
     setLoading(false);
@@ -465,9 +483,13 @@ function LeverAlerteSimple({ alert, patientId, murmureSuggere, onResolved }: { a
 
   return (
     <div style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 8, padding: "10px 12px" }}>
-      <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: amber }}>Murmure suggéré par le Jumeau</p>
-      <textarea value={murmure} onChange={e => setMurmure(e.target.value)} rows={3}
-        style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "white", padding: "8px 10px", fontSize: 11, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.5, marginBottom: 8 }} />
+      {showMurmure && (
+        <>
+          <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: amber }}>Murmure suggéré par le Jumeau</p>
+          <textarea value={murmure} onChange={e => setMurmure(e.target.value)} rows={3}
+            style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "white", padding: "8px 10px", fontSize: 11, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.5, marginBottom: 8 }} />
+        </>
+      )}
       <div style={{ display: "flex", gap: 6 }}>
         <button onClick={() => setOpen(false)} style={{ flex: 1, height: 28, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 11, cursor: "pointer" }}>Annuler</button>
         <button onClick={resolve} disabled={loading}
@@ -611,6 +633,7 @@ export default function DashboardPage() {
   const [inviteError, setInviteError] = useState("");
   const [editingMurmureId, setEditingMurmureId] = useState<string | null>(null);
   const [editingMurmureText, setEditingMurmureText] = useState("");
+  const [openSosPopover, setOpenSosPopover] = useState<string | null>(null); // patientId ou null
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteText, setEditingNoteText] = useState("");
   const [inviteAge, setInviteAge] = useState("");
@@ -752,10 +775,12 @@ export default function DashboardPage() {
     if (!relations || relations.length === 0) { setLoading(false); setOnboardingDemoMode(true); return true; }
     const patientIds = relations.map((r) => r.patient_id as string);
 
-    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id").in("user_id", patientIds);
+    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id").in("user_id", patientIds);
     if (!patientsData) { setLoading(false); return false; }
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const now = new Date();
+    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
     // 3 requêtes batch au lieu de 4 × N requêtes individuelles
     const [
@@ -775,8 +800,10 @@ export default function DashboardPage() {
         .eq("role", "user")
         .gte("created_at", thirtyDaysAgo),
       supabase.from("sos_events")
-        .select("patient_id")
-        .in("patient_id", patientIds),
+        .select("patient_id, triggered_at, sos_context, raw_response, status")
+        .in("patient_id", patientIds)
+        .gte("triggered_at", startOfCurrentMonth)
+        .order("triggered_at", { ascending: false }),
     ]);
 
     // Construire les maps de lookup (agrégation côté client, une seule passe)
@@ -796,10 +823,21 @@ export default function DashboardPage() {
       streakDaysByPatient.get(p)!.add(day);
     }
 
+    type SosEventItem = { triggered_at: string; sos_context: string; tool_id?: string; status?: string | null };
     const sosCountByPatient = new Map<string, number>();
+    const sosEventsByPatient = new Map<string, SosEventItem[]>();
     for (const sos of (allSosEvents ?? [])) {
       const p = sos.patient_id as string;
       sosCountByPatient.set(p, (sosCountByPatient.get(p) ?? 0) + 1);
+      const toolId = (sos.raw_response as { tool_id?: string } | null)?.tool_id;
+      const item: SosEventItem = {
+        triggered_at: sos.triggered_at as string,
+        sos_context: (sos.sos_context as string) ?? "",
+        tool_id: toolId,
+        status: (sos.status as string | null) ?? null,
+      };
+      if (!sosEventsByPatient.has(p)) sosEventsByPatient.set(p, []);
+      sosEventsByPatient.get(p)!.push(item);
     }
 
     const patientsWithStats = patientsData.map((p, i) => {
@@ -813,7 +851,9 @@ export default function DashboardPage() {
         lastMessageRole: lastConv?.role ?? "", totalMessages: totalCountByPatient.get(p.user_id) ?? 0,
         lastActive: lastConv?.created_at ?? null,
         streak: streakDaysByPatient.get(p.user_id)?.size ?? 0,
-        sosResolved: sosCountByPatient.get(p.user_id) ?? 0,
+        sosResolved: (sosEventsByPatient.get(p.user_id) ?? []).filter(e => e.status === "success").length,
+        sosEvents: sosEventsByPatient.get(p.user_id) ?? [],
+        red_behavioral_until: (p as { red_behavioral_until?: string | null }).red_behavioral_until ?? null,
         age: p.age, sexe: p.sexe, taille: p.taille, poids: p.poids, traitements: p.traitements,
         objectif_clinique: p.objectif_clinique, niveau_activite: p.niveau_activite, regime_specifique: p.regime_specifique,
         objective: p.objective, pathologies: p.pathologies, allergies: p.allergies,
@@ -830,6 +870,26 @@ export default function DashboardPage() {
         cabinet_id: (p as { cabinet_id?: string | null }).cabinet_id ?? undefined,
       };
     });
+    // Expiration auto red_behavioral : mettre à jour en BDD les patients dont le verrou a expiré
+    const expiredPatients = patientsWithStats.filter(p =>
+      p.emotional_status === "red_behavioral" &&
+      p.red_behavioral_until != null &&
+      new Date(p.red_behavioral_until) <= now
+    );
+    if (expiredPatients.length > 0) {
+      for (const ep of expiredPatients) {
+        // Mettre à jour le statut en BDD silencieusement (fire-and-forget)
+        void supabase.from("patients").update({ emotional_status: "green", red_behavioral_until: null })
+          .eq("user_id", ep.id).then(() => {}, () => {});
+        // Marquer les sos_events pending comme expired
+        void supabase.from("sos_events").update({ status: "expired" })
+          .eq("patient_id", ep.id).eq("status", "pending")
+          .then(() => {}, () => {});
+        // Mettre à jour localement
+        ep.emotional_status = "green";
+        ep.red_behavioral_until = null;
+      }
+    }
     setPatients(patientsWithStats);
     const isDemo = patientsWithStats.length === 0;
     setOnboardingDemoMode(isDemo);
@@ -2117,16 +2177,81 @@ export default function DashboardPage() {
                         })() : "Jamais";
                       const streak = p.streak ?? 0;
                       const sos = p.sosResolved ?? 0;
-                      return [
-                        { label: "Dernière connexion", value: lastActiveStr },
-                        { label: "Assiduité", value: streak > 0 ? `${streak} jours actifs` : "Aucune activité" },
-                        { label: "Crises désamorcées", value: sos > 0 ? `${sos}` : "Aucune" },
-                      ].map((item) => (
-                        <div key={item.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                          <span style={{ fontSize: 11, color: "#64748b" }}>{item.label}</span>
-                          <span style={{ fontSize: 11, color: "#e2e8f0", fontWeight: 500 }}>{item.value}</span>
-                        </div>
-                      ));
+                      const sosEvts = p.sosEvents ?? [];
+                      const toolNames: Record<string, string> = {
+                        breathing: "Cohérence cardiaque", ancrage: "Ancrage sensoriel",
+                        marche: "Marche consciente", manger: "Pleine conscience alimentaire",
+                        body_scan: "Body scan", defusion: "Défusion cognitive",
+                        ecriture: "Écriture cathartique", adaptive_coaching: "Coaching personnalisé",
+                      };
+                      return (
+                        <>
+                          {[
+                            { label: "Dernière connexion", value: lastActiveStr },
+                            { label: "Assiduité", value: streak > 0 ? `${streak} jours actifs` : "Aucune activité" },
+                          ].map((item) => (
+                            <div key={item.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                              <span style={{ fontSize: 11, color: "#64748b" }}>{item.label}</span>
+                              <span style={{ fontSize: 11, color: "#e2e8f0", fontWeight: 500 }}>{item.value}</span>
+                            </div>
+                          ))}
+                          {/* Crises désamorcées ce mois + (i) popover */}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 0, position: "relative" }}>
+                            <span style={{ fontSize: 11, color: "#64748b" }}>Crises désamorcées</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                              <span style={{ fontSize: 11, color: sos > 0 ? emerald : "#e2e8f0", fontWeight: 500 }}>
+                                {sos > 0 ? `${sos} ce mois` : "Aucune"}
+                              </span>
+                              {sos > 0 && (
+                                <div style={{ position: "relative" }}>
+                                  <button
+                                    onClick={() => setOpenSosPopover(openSosPopover === p.id ? null : p.id)}
+                                    style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 0, opacity: 0.7, transition: "opacity 0.15s" }}
+                                    onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }}
+                                    onMouseLeave={e => { e.currentTarget.style.opacity = "0.7"; }}
+                                    title="Voir le détail des crises"
+                                  >
+                                    <InfoCircleIcon size={13} color={emerald} />
+                                  </button>
+                                  {openSosPopover === p.id && (
+                                    <div style={{
+                                      position: "absolute", right: 0, bottom: "calc(100% + 6px)", zIndex: 200,
+                                      background: "#0f172a", border: "1px solid rgba(16,185,129,0.25)",
+                                      borderRadius: 10, padding: "10px 12px", minWidth: 220, maxWidth: 280,
+                                      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                                    }}>
+                                      <div style={{ fontSize: 10, fontWeight: 700, color: emerald, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
+                                        Mon Soutien — ce mois
+                                      </div>
+                                      {sosEvts.length === 0 ? (
+                                        <span style={{ fontSize: 11, color: "#64748b" }}>Aucun détail disponible</span>
+                                      ) : sosEvts.map((ev, idx) => {
+                                        const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+                                        const context = ev.sos_context?.split(" | ")[0] ?? "–";
+                                        const exercise = ev.tool_id ? (toolNames[ev.tool_id] ?? ev.tool_id) : "–";
+                                        const isSuccess = ev.status === "success";
+                                        const rowColor = isSuccess ? emerald : "#f59e0b";
+                                        const statusLabel = isSuccess ? "" : " [Non résolu]";
+                                        return (
+                                          <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: idx < sosEvts.length - 1 ? 6 : 0, paddingBottom: idx < sosEvts.length - 1 ? 6 : 0, borderBottom: idx < sosEvts.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                                            <span style={{ fontSize: 9, marginTop: 2, color: rowColor, flexShrink: 0 }}>●</span>
+                                            <span style={{ fontSize: 10, color: "#64748b", whiteSpace: "nowrap", paddingTop: 1 }}>{date}</span>
+                                            <span style={{ fontSize: 10, color: "#94a3b8", flex: 1 }}>
+                                              <span style={{ color: "#cbd5e1", textTransform: "capitalize" }}>{context}</span>
+                                              {exercise !== "–" && <><span style={{ color: "#475569" }}> → </span><span style={{ color: rowColor }}>{exercise}</span></>}
+                                              {statusLabel && <span style={{ color: "#f59e0b", fontSize: 9, marginLeft: 3 }}>{statusLabel}</span>}
+                                            </span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </>
+                      );
                     })()}
                   </div>
 
@@ -2151,7 +2276,7 @@ export default function DashboardPage() {
                               setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", admin_alerts: [] } : p));
                             }} />
                           ) : (
-                            <LeverAlerteSimple alert={alert} patientId={selectedPatient.id} murmureSuggere={(alert as { murmure?: string }).murmure ?? ""} onResolved={(murmure) => {
+                            <LeverAlerteSimple alert={alert} patientId={selectedPatient.id} murmureSuggere={(alert as { murmure?: string }).murmure ?? ""} showMurmure={(alert as { alert_type?: string }).alert_type !== "behavioral"} onResolved={(murmure) => {
                               setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", practitioner_instruction: murmure ? [...(p.practitioner_instruction ?? []), { id: crypto.randomUUID(), text: murmure, expires_at: null, created_at: new Date().toISOString() }] : p.practitioner_instruction, admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a) } : p));
                             }} />
                           )}
@@ -2482,11 +2607,11 @@ export default function DashboardPage() {
             {displayedPatients.length === 0 ? (
               <p style={{ textAlign: "center", color: "#64748b", marginTop: 60 }}>Aucun patient</p>
             ) : (() => {
-              // Tri strict : red_critical > red > orange > green+victory > green/neutre
+              // Tri strict : red_critical > red_behavioral > orange > green
               const sorted = [...displayedPatients].sort((a, b) => {
-                const order = { red_critical: 0, red: 1, orange: 2, green: 3 };
-                const ao = order[a.emotional_status as keyof typeof order] ?? 3;
-                const bo = order[b.emotional_status as keyof typeof order] ?? 3;
+                const order: Record<string, number> = { red_critical: 0, red: 1, red_behavioral: 2, orange: 3, green: 4 };
+                const ao = order[a.emotional_status ?? "green"] ?? 4;
+                const bo = order[b.emotional_status ?? "green"] ?? 4;
                 if (ao !== bo) return ao - bo;
                 // À égalité de statut, ceux avec victoire fraîche avant ceux sans
                 if (isVictoryFresh(a) && !isVictoryFresh(b)) return -1;
@@ -2499,7 +2624,7 @@ export default function DashboardPage() {
                 ? cabinetSharedPatients
                 : sorted.filter(p => {
                     if (vueEnsembleFilter === "tous") return true;
-                    if (vueEnsembleFilter === "alertes") return p.emotional_status === "red_critical" || p.emotional_status === "red" || p.emotional_status === "orange";
+                    if (vueEnsembleFilter === "alertes") return p.emotional_status === "red_critical" || p.emotional_status === "red" || p.emotional_status === "red_behavioral" || p.emotional_status === "orange";
                     if (vueEnsembleFilter === "victoires") return isVictoryFresh(p) && p.emotional_status === "green";
                     if (vueEnsembleFilter === "ras") return p.emotional_status === "green" && !isVictoryFresh(p);
                     return true;
@@ -2511,9 +2636,10 @@ export default function DashboardPage() {
                 <div data-tour="radar" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16 }}>
                   {filtered.map((patient) => {
                     const isCritical = patient.emotional_status === "red_critical";
+                    const isBehavioral = patient.emotional_status === "red_behavioral";
                     const isRed = patient.emotional_status === "red" || isCritical;
                     const isOrange = patient.emotional_status === "orange";
-                    const hasAlert = isRed || isOrange;
+                    const hasAlert = isRed || isBehavioral || isOrange;
                     const hasVictory = isVictoryFresh(patient) && !hasAlert;
                     const bState = bravoState[patient.id];
 
@@ -2521,12 +2647,13 @@ export default function DashboardPage() {
                     let cardBg = "rgba(255,255,255,0.02)";
                     let cardBorder = "rgba(255,255,255,0.07)";
                     let cardShadow = "none";
-                    if (isCritical) { cardBg = "rgba(244,63,94,0.04)"; cardBorder = "rgba(244,63,94,0.25)"; cardShadow = "0 0 16px rgba(244,63,94,0.08)"; }
-                    else if (isRed) { cardBg = "rgba(244,63,94,0.03)"; cardBorder = "rgba(244,63,94,0.18)"; }
+                    if (isCritical) { cardBg = "rgba(239,68,68,0.04)"; cardBorder = "rgba(239,68,68,0.25)"; cardShadow = "0 0 16px rgba(239,68,68,0.10)"; }
+                    else if (isRed) { cardBg = "rgba(239,68,68,0.03)"; cardBorder = "rgba(239,68,68,0.18)"; }
+                    else if (isBehavioral) { cardBg = "rgba(6,182,212,0.03)"; cardBorder = "rgba(6,182,212,0.22)"; cardShadow = "0 0 12px rgba(6,182,212,0.08)"; }
                     else if (isOrange) { cardBg = "rgba(245,158,11,0.02)"; cardBorder = "rgba(245,158,11,0.15)"; }
                     else if (hasVictory) { cardBg = "rgba(16,185,129,0.02)"; cardBorder = "rgba(16,185,129,0.15)"; }
 
-                    const alertColor = isRed ? coral : amber;
+                    const alertColor = isCritical || isRed ? RED_CRITICAL_COLOR : isBehavioral ? CYAN_STATUS : amber;
 
                     return (
                       <div key={patient.id}
