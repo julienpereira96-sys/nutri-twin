@@ -267,9 +267,9 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
   }, [message, isCenter, inputRef]);
 
   return (
-    <div className="nt-inputbar" style={{ display: "flex", alignItems: "center", background: "rgba(15,22,18,0.92)", borderRadius: 18, border: `1px solid ${focused ? "rgba(16,185,129,0.5)" : "rgba(255,255,255,0.10)"}`, padding: isCenter ? "16px 14px" : "10px 10px 10px 14px", transition: "border-color 0.25s, box-shadow 0.25s", minHeight: isCenter ? 110 : 50, gap: 6 }}>
+    <div className="nt-inputbar" style={{ display: "flex", alignItems: "center", background: "rgba(15,22,18,0.92)", borderRadius: 18, border: `1px solid ${focused ? "rgba(16,185,129,0.5)" : "rgba(255,255,255,0.10)"}`, padding: isCenter ? "16px 14px" : "10px 10px 10px 14px", transition: "border-color 0.25s, box-shadow 0.25s", minHeight: isCenter ? 110 : undefined, gap: 6 }}>
       {/* Textarea */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "stretch" }}>
         <textarea
           ref={inputRef}
           value={message}
@@ -281,7 +281,7 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
           rows={isCenter ? 3 : 1}
           spellCheck={false}
           className="chat-input"
-          style={{ width: "100%", border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, outline: "none", caretColor: ACCENT, lineHeight: isCenter ? 1.65 : 1.5, resize: "none", fontFamily: "inherit", display: "block", maxHeight: 160, overflowY: "hidden", padding: 0 }}
+          style={{ width: "100%", border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, outline: "none", caretColor: ACCENT, lineHeight: isCenter ? 1.65 : 1.5, resize: "none", fontFamily: "inherit", display: "block", maxHeight: 160, overflowY: "hidden", padding: 0, touchAction: "auto" }}
         />
       </div>
       {/* Actions */}
@@ -1700,7 +1700,7 @@ export default function ChatPage() {
           <div style={{ flex: 1 }} />
 
           {/* ═══ SIDEBAR BOTTOM — Avatar + Settings ═══ */}
-          <div style={{ padding: "14px 12px 20px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10, margin: "0 -12px", flexShrink: 0 }}>
+          <div style={{ padding: "14px 12px", paddingLeft: 16, paddingBottom: `max(${isMobile ? "28px" : "18px"}, env(safe-area-inset-bottom, 0px))`, borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10, margin: "0 -12px", flexShrink: 0 }}>
             <button onClick={() => setShowProfileModal(true)}
               style={{ width: 38, height: 38, borderRadius: "50%", background: "radial-gradient(circle at 30% 30%, #10b981, #059669)", border: "2px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "black", flexShrink: 0, boxShadow: "0 0 10px rgba(16,185,129,0.15)", transition: "box-shadow 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.boxShadow = "0 0 16px rgba(16,185,129,0.35)"}
@@ -1747,7 +1747,7 @@ export default function ChatPage() {
               <MenuIcon size={16} />
             </button>
           )}
-          <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", paddingLeft: sidebarOpen && !isMobile ? 20 : 0 }}>
             {hasMessages && (
               <div>
                 <p style={{ margin: 0, fontSize: 17, fontWeight: 600, color: TEXT_PRIMARY, lineHeight: 1.3 }}>Votre compagnon de suivi</p>
@@ -1826,7 +1826,7 @@ export default function ChatPage() {
           )}
 
           {hasMessages && (
-            <div style={{ flex: 1, padding: isMobile ? "16px 16px 80px" : "24px 36px 80px" }}>
+            <div style={{ flex: 1, padding: isMobile ? "16px 16px 20px" : "24px 36px 20px" }}>
               <div style={{ maxWidth: 780, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20, touchAction: "auto" }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
@@ -1921,7 +1921,7 @@ export default function ChatPage() {
             WebkitBackdropFilter: "blur(20px)",
             borderTop: "1px solid rgba(255,255,255,0.06)",
             padding: isMobile ? "12px 12px" : "14px 20px",
-            paddingBottom: `max(${isMobile ? "16px" : "14px"}, env(safe-area-inset-bottom, 0px))`,
+            paddingBottom: `max(${isMobile ? "28px" : "18px"}, env(safe-area-inset-bottom, 0px))`,
             opacity: sidebarOpen && isMobile ? 0.4 : 1,
             pointerEvents: sidebarOpen && isMobile ? "none" : "auto",
             transition: "opacity 0.25s",
@@ -1959,7 +1959,7 @@ export default function ChatPage() {
         {showScrollBottom && hasMessages && (
           <button
             onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
-            style={{ position: "fixed", bottom: isMobile ? 100 : 80, left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.07)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)", transition: "all 0.2s", color: ACCENT }}
+            style={{ position: "fixed", bottom: isMobile ? 120 : 90, left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.07)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)", transition: "all 0.2s", color: ACCENT }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.transform = "translateX(-50%) translateY(2px)"; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.transform = "translateX(-50%)"; }}
           >
