@@ -269,7 +269,7 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
   return (
     <div className="nt-inputbar" style={{ display: "flex", alignItems: "center", background: "rgba(15,22,18,0.92)", borderRadius: 18, border: `1px solid ${focused ? "rgba(16,185,129,0.5)" : "rgba(255,255,255,0.10)"}`, padding: isCenter ? "16px 14px" : "10px 10px 10px 14px", transition: "border-color 0.25s, box-shadow 0.25s", minHeight: isCenter ? 110 : 50, gap: 6 }}>
       {/* Textarea */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "flex-start", paddingTop: isCenter ? 0 : 2 }}>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center" }}>
         <textarea
           ref={inputRef}
           value={message}
@@ -1578,9 +1578,9 @@ export default function ChatPage() {
                 Nutri<span style={{ color: ACCENT, textShadow: "0 0 18px rgba(16,185,129,0.35)" }}>Twin</span>
               </p>
             </div>
-            <button onClick={() => setSidebarOpen(false)} style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; }}>
+            <button onClick={() => setSidebarOpen(false)} style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: `1px solid ${BORDER}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.background = SURFACE; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = BORDER; }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={TEXT_SECONDARY} strokeWidth="2" strokeLinecap="round">
                 <path d="M18 6L6 18M6 6l12 12"/>
               </svg>
@@ -1700,7 +1700,7 @@ export default function ChatPage() {
           <div style={{ flex: 1 }} />
 
           {/* ═══ SIDEBAR BOTTOM — Avatar + Settings ═══ */}
-          <div style={{ padding: "12px 4px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10, margin: "0 -12px", paddingLeft: 16, paddingRight: 12, flexShrink: 0 }}>
+          <div style={{ padding: "14px 12px 20px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10, margin: "0 -12px", flexShrink: 0 }}>
             <button onClick={() => setShowProfileModal(true)}
               style={{ width: 38, height: 38, borderRadius: "50%", background: "radial-gradient(circle at 30% 30%, #10b981, #059669)", border: "2px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "black", flexShrink: 0, boxShadow: "0 0 10px rgba(16,185,129,0.15)", transition: "box-shadow 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.boxShadow = "0 0 16px rgba(16,185,129,0.35)"}
@@ -1711,10 +1711,10 @@ export default function ChatPage() {
               <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: TEXT_PRIMARY, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{patientFirstName || "Patient"}</p>
               <p style={{ margin: 0, fontSize: 10, color: TEXT_MUTED }}>Mon profil</p>
             </div>
-            <button onClick={() => setShowProfileModal(true)} style={{ width: 30, height: 30, borderRadius: 8, background: "transparent", border: `1px solid ${BORDER}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}
+            <button onClick={() => setShowProfileModal(true)} style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: `1px solid ${BORDER}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}
               onMouseEnter={e => { e.currentTarget.style.background = SURFACE; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = BORDER; }}>
-              <SettingsIcon size={14} />
+              <SettingsIcon size={16} />
             </button>
           </div>
         </div>
@@ -1736,10 +1736,10 @@ export default function ChatPage() {
 
         <header style={{ background: "rgba(8,14,11,0.78)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 16px", height: 64, display: "flex", alignItems: "center", gap: 10, flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}>
           {!sidebarOpen && (
-            <button onClick={() => setSidebarOpen(true)} style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.10)", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; }}>
-              <MenuIcon size={17} />
+            <button onClick={() => setSidebarOpen(true)} style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: `1px solid ${BORDER}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = SURFACE; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = BORDER; }}>
+              <MenuIcon size={16} />
             </button>
           )}
           {isMobile && sidebarOpen && (
@@ -1947,7 +1947,7 @@ export default function ChatPage() {
                 </div>
               )}
               <InputBar isCenter={false} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} />
-              <p style={{ margin: "5px 0 0", fontSize: 10, color: TEXT_MUTED, textAlign: "center", whiteSpace: "nowrap" }}>
+              <p style={{ margin: "10px 0 0", fontSize: 10, color: TEXT_MUTED, textAlign: "center", whiteSpace: "nowrap" }}>
                 NutriTwin est une IA · En cas de doute, consultez votre praticien
               </p>
             </div>
