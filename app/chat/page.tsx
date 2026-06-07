@@ -781,8 +781,8 @@ export default function ChatPage() {
     };
     const handleTouchMove = (e: TouchEvent) => {
       // Ne jamais intercepter les glissements horizontaux dans un textarea/input
-      // closest() couvre aussi les curseurs de sélection natifs iOS/Android dont e.target peut être un sous-nœud
-      if (touchStartTarget && (touchStartTarget.closest("textarea") || touchStartTarget.closest("input"))) return;
+      // (nécessaire pour la sélection de texte native sur iOS)
+      if (touchStartTarget && (touchStartTarget.tagName === "TEXTAREA" || touchStartTarget.tagName === "INPUT")) return;
       const dx = e.touches[0].clientX - touchStartXRef.current;
       const dy = e.touches[0].clientY - touchStartYRef.current;
       if (!swipeIntentRef.current && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
@@ -1602,7 +1602,7 @@ export default function ChatPage() {
           </div>
 
           {/* ═══ MON SOUTIEN — Bouton ═══ */}
-          <div style={{ marginBottom: 16, flexShrink: 0 }}>
+          <div style={{ marginBottom: 16 }}>
             <button
               onClick={() => { if (emotionalStatus === "red_critical") return; setShowSOSTriageModal(true); if (isMobile) setSidebarOpen(false); }}
               disabled={sosLoading || emotionalStatus === "red_critical"}
@@ -1624,10 +1624,10 @@ export default function ChatPage() {
             </button>
           </div>
 
-          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 4px 14px", flexShrink: 0 }} />
+          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 4px 14px" }} />
 
           {/* ═══ RECHERCHE DANS LA CONVERSATION ═══ */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+          <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
           {(() => {
             const q = chatSearch.trim().toLowerCase();
             const matchIndices = q
@@ -1647,9 +1647,9 @@ export default function ChatPage() {
               scrollToMatch(next);
             };
             return (
-              <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-                <p style={{ margin: "0 4px 8px", fontSize: 10, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase", flexShrink: 0 }}>Rechercher</p>
-                <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "9px 12px", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3)", border: `1px solid ${chatSearch ? "rgba(16,185,129,0.2)" : "transparent"}`, transition: "border-color 0.2s", flexShrink: 0 }}>
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ margin: "0 4px 8px", fontSize: 10, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Rechercher</p>
+                <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 12, padding: "9px 12px", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3)", border: `1px solid ${chatSearch ? "rgba(16,185,129,0.2)" : "transparent"}`, transition: "border-color 0.2s" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <SearchIcon size={13} color={chatSearch ? ACCENT : TEXT_MUTED} />
                     <input
@@ -1678,7 +1678,7 @@ export default function ChatPage() {
                 </div>
                 {/* Aperçus des résultats */}
                 {q && matchIndices.length > 0 && (
-                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4, flex: 1, overflowY: "auto" }}>
+                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
                     {matchIndices.map((msgIdx, j) => {
                       const m = visibleMessages[msgIdx];
                       const lc = m.content.toLowerCase();
@@ -1714,7 +1714,7 @@ export default function ChatPage() {
           </div>
 
           {/* ═══ SIDEBAR BOTTOM — Avatar + Settings ═══ */}
-          <div style={{ height: 72, minHeight: 72, padding: "0 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10, margin: "0 -12px", flexShrink: 0 }}>
+          <div style={{ padding: "14px 12px", paddingLeft: 16, paddingBottom: `max(${isMobile ? "28px" : "18px"}, env(safe-area-inset-bottom, 0px))`, borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 10, margin: "0 -12px", flexShrink: 0 }}>
             <button onClick={() => setShowProfileModal(true)}
               style={{ width: 38, height: 38, borderRadius: "50%", background: "radial-gradient(circle at 30% 30%, #10b981, #059669)", border: "2px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "black", flexShrink: 0, boxShadow: "0 0 10px rgba(16,185,129,0.15)", transition: "box-shadow 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.boxShadow = "0 0 16px rgba(16,185,129,0.35)"}
@@ -1735,7 +1735,7 @@ export default function ChatPage() {
       </aside>
 
       {/* ═══ ZONE PRINCIPALE ═══ */}
-      <div ref={mainAreaRef} style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, touchAction: "pan-y", height: "100%", overflow: "hidden", position: "relative" }}
+      <div ref={mainAreaRef} style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, touchAction: "pan-y" }}
         onTouchStart={e => {
           touchStartXRef.current = e.touches[0].clientX;
           touchStartYRef.current = e.touches[0].clientY;
@@ -1934,8 +1934,8 @@ export default function ChatPage() {
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
             borderTop: "1px solid rgba(255,255,255,0.06)",
-            padding: isMobile ? "12px 12px" : "14px 20px",
-            paddingBottom: `max(${isMobile ? "28px" : "18px"}, env(safe-area-inset-bottom, 0px))`,
+            padding: isMobile ? "20px 12px" : "14px 20px",
+            paddingBottom: `max(20px, env(safe-area-inset-bottom, 0px))`,
             opacity: sidebarOpen && isMobile ? 0.4 : 1,
             pointerEvents: sidebarOpen && isMobile ? "none" : "auto",
             transition: "opacity 0.25s",
@@ -1973,9 +1973,9 @@ export default function ChatPage() {
         {showScrollBottom && hasMessages && (
           <button
             onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
-            style={{ position: "absolute", bottom: 85, left: "50%", transform: "translateX(-50%)", zIndex: 40, width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.07)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)", transition: "border-color 0.2s, background-color 0.2s, box-shadow 0.2s", color: ACCENT }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.3), 0 6px 24px rgba(16,185,129,0.2)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)"; }}
+            style={{ position: "fixed", bottom: isMobile ? 85 : 90, left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.07)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.35)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)", transition: "border-color 0.2s, box-shadow 0.2s", color: ACCENT }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.3), 0 6px 24px rgba(16,185,129,0.2)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)"; }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 5v14M5 12l7 7 7-7"/>
