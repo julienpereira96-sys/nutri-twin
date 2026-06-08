@@ -1249,25 +1249,18 @@ export default function ChatPage() {
           onTransitionEnd={() => { if (splashFading) setSplashGone(true); }}
         >
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 32, transform: "translateY(-32px)" }}>
-            {/* Anneau + logo */}
-            <div style={{ position: "relative", width: 160, height: 160 }}>
-              {/* Arc tournant — couche isolée, aucun filtre */}
-              <svg width="160" height="160" viewBox="0 0 160 160"
-                style={{ position: "absolute", inset: 0, animation: "spin 1.2s linear infinite" }}>
-                {/* Arc glow (trait épais flou) */}
-                <circle cx="80" cy="80" r="74" fill="none"
-                  stroke="rgba(16,185,129,0.25)" strokeWidth="6"
-                  strokeDasharray="200 264" strokeLinecap="round"
-                />
-                {/* Arc net par-dessus */}
-                <circle cx="80" cy="80" r="74" fill="none"
-                  stroke="rgba(16,185,129,0.85)" strokeWidth="2"
-                  strokeDasharray="200 264" strokeLinecap="round"
-                />
-              </svg>
-              {/* Logo — couche totalement indépendante */}
+            {/* Cercle tournant + logo */}
+            <div style={{ position: "relative", width: 110, height: 110 }}>
+              {/* Anneau CSS pur — même technique que patient-login */}
+              <div style={{
+                position: "absolute", inset: 0, borderRadius: "50%",
+                border: "2px solid rgba(16,185,129,0.15)",
+                borderTop: "2px solid #10b981",
+                animation: "spin 1s linear infinite",
+              }} />
+              {/* Logo centré, immobile */}
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <img src="/logo-new.svg" alt="" style={{ width: 72, height: 72, display: "block" }} />
+                <img src="/logo-new.svg" alt="" style={{ width: 68, height: 68, display: "block" }} />
               </div>
             </div>
             {/* Nom de la marque */}
