@@ -654,6 +654,9 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(true);
+  const [splashFading, setSplashFading] = useState(false);
+  const [splashGone, setSplashGone] = useState(false);
+  const splashStartRef = useRef<number>(Date.now());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<ActiveTool>(null);
   const [patientId, setPatientId] = useState<string | null>(null);
@@ -892,6 +895,16 @@ export default function ChatPage() {
 
     return () => { subscription.unsubscribe(); };
   }, [loadSessions]);
+
+  useEffect(() => {
+    if (!sessionLoading && !splashFading) {
+      const CYCLE = 1200;
+      const elapsed = Date.now() - splashStartRef.current;
+      const remaining = CYCLE - (elapsed % CYCLE);
+      const t = setTimeout(() => setSplashFading(true), remaining);
+      return () => clearTimeout(t);
+    }
+  }, [sessionLoading, splashFading]);
 
   useEffect(() => () => { if (breathingIntervalRef.current) clearInterval(breathingIntervalRef.current); }, []);
 
@@ -1224,16 +1237,36 @@ export default function ChatPage() {
     <div style={{ height: "100dvh", background: BG_MAIN, fontFamily: "'DM Sans', -apple-system, sans-serif", display: "flex", color: TEXT_PRIMARY, overflow: "hidden" }}>
 
       {/* ═══ SPLASH SCREEN ═══ */}
-      <div style={{
-        position: "fixed", inset: 0, zIndex: 300,
-        background: BG_MAIN,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        opacity: sessionLoading ? 1 : 0,
-        pointerEvents: sessionLoading ? "auto" : "none",
-        transition: "opacity 0.5s ease",
-      }}>
-        <img src="/logo-new.svg" alt="NutriTwin" style={{ width: 80, height: 80 }} />
-      </div>
+      {!splashGone && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 300,
+            background: BG_MAIN,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            opacity: splashFading ? 0 : 1,
+            transition: "opacity 0.5s ease",
+          }}
+          onTransitionEnd={() => { if (splashFading) setSplashGone(true); }}
+        >
+          <div style={{ position: "relative", width: 128, height: 128, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {/* Arc tournant */}
+            <svg width="128" height="128" viewBox="0 0 128 128"
+              style={{ position: "absolute", inset: 0, animation: "spin 1.2s linear infinite" }}>
+              {/* Piste de fond */}
+              <circle cx="64" cy="64" r="58" fill="none" stroke="rgba(16,185,129,0.1)" strokeWidth="2"/>
+              {/* Arc lumineux */}
+              <circle cx="64" cy="64" r="58" fill="none"
+                stroke="#10b981" strokeWidth="2.5"
+                strokeDasharray="170 195"
+                strokeLinecap="round"
+                style={{ filter: "drop-shadow(0 0 5px rgba(16,185,129,0.9))" }}
+              />
+            </svg>
+            {/* Logo centré */}
+            <img src="/logo-new.svg" alt="" style={{ width: 56, height: 56, position: "relative", zIndex: 1 }} />
+          </div>
+        </div>
+      )}
 
       {/* ═══ ONBOARDING ═══ */}
       {showOnboarding && (
