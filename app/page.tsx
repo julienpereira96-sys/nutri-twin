@@ -415,8 +415,8 @@ export default function Home() {
       <header className="fixed top-0 z-50 w-full border-b border-white/[0.04] bg-[#070707]/80 backdrop-blur-2xl">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
       <a href="/" className="flex items-center gap-2">
-      <img src="/logo.svg" alt="NutriTwin" className="h-6 w-auto relative" style={{ filter: "hue-rotate(17deg) saturate(165%) brightness(87%)" }} />
-      <span className="text-[18px] tracking-tight">Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></span>
+      <img src="/logo-new.svg" alt="NutriTwin" className="h-7 w-auto relative" />
+      <span className="text-[18px] tracking-tight" style={{ fontFamily: "var(--font-jakarta), sans-serif" }}>Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></span>
         </a>
 
           <nav className="hidden items-center gap-8 lg:flex">
