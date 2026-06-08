@@ -104,9 +104,13 @@ export default function LoginPage() {
       <div className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-4 py-12 sm:px-6">
 
       <div className="mb-8 text-center">
-          <div className="relative mx-auto mb-4 w-fit">
-            <div className="absolute inset-0 rounded-full bg-emerald-500/10 blur-2xl" />
-            <img src="/logo-new.svg" alt="NutriTwin" style={{ width: 72, height: 72, position: "relative", display: "block" }} />
+          <div className="relative mx-auto mb-3 w-fit">
+            <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
+            <div style={{ position: "relative", width: 75, height: 75, margin: "0 auto" }}>
+              <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center", animation: "pulse-ring 2s ease-in-out infinite" }}>
+                <img src="/logo-new.svg" alt="" style={{ width: 36, height: 36 }} />
+              </div>
+            </div>
           </div>
           <h1 className="text-[22px] tracking-tight text-white" style={{ fontFamily: "var(--font-jakarta), sans-serif" }}>Mon espace Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
           <p className="mt-2 text-base text-zinc-400">Connectez-vous pour accéder <br /> à votre espace praticien</p>
