@@ -1248,22 +1248,38 @@ export default function ChatPage() {
           }}
           onTransitionEnd={() => { if (splashFading) setSplashGone(true); }}
         >
-          <div style={{ position: "relative", width: 128, height: 128, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {/* Arc tournant */}
-            <svg width="128" height="128" viewBox="0 0 128 128"
-              style={{ position: "absolute", inset: 0, animation: "spin 1.2s linear infinite" }}>
-              {/* Piste de fond */}
-              <circle cx="64" cy="64" r="58" fill="none" stroke="rgba(16,185,129,0.1)" strokeWidth="2"/>
-              {/* Arc lumineux */}
-              <circle cx="64" cy="64" r="58" fill="none"
-                stroke="#10b981" strokeWidth="2.5"
-                strokeDasharray="170 195"
-                strokeLinecap="round"
-                style={{ filter: "drop-shadow(0 0 5px rgba(16,185,129,0.9))" }}
-              />
-            </svg>
-            {/* Logo centré */}
-            <img src="/logo-new.svg" alt="" style={{ width: 56, height: 56, position: "relative", zIndex: 1 }} />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 28, transform: "translateY(-32px)" }}>
+            {/* Anneau + logo */}
+            <div style={{ position: "relative", width: 128, height: 128, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {/* Halo de fond */}
+              <div style={{ position: "absolute", width: 90, height: 90, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.18) 0%, transparent 70%)", animation: "glow-idle 2.4s ease-in-out infinite" }} />
+              {/* Arc tournant */}
+              <svg width="128" height="128" viewBox="0 0 128 128"
+                style={{ position: "absolute", inset: 0, animation: "spin 1.2s linear infinite" }}>
+                <defs>
+                  <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.2"/>
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="1"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="64" cy="64" r="58" fill="none" stroke="rgba(16,185,129,0.08)" strokeWidth="1.5"/>
+                <circle cx="64" cy="64" r="58" fill="none"
+                  stroke="url(#arcGrad)" strokeWidth="2.5"
+                  strokeDasharray="175 192"
+                  strokeLinecap="round"
+                  style={{ filter: "drop-shadow(0 0 6px rgba(16,185,129,0.85))" }}
+                />
+              </svg>
+              {/* Logo */}
+              <img src="/logo-new.svg" alt="" style={{ width: 58, height: 58, position: "relative", zIndex: 1, transform: "translateZ(0)", willChange: "transform" }} />
+            </div>
+            {/* Nom de la marque */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+              <span style={{ fontFamily: "var(--font-jakarta), 'DM Sans', sans-serif", fontSize: 22, letterSpacing: "-0.02em", color: "rgba(255,255,255,0.92)" }}>
+                Nutri<strong style={{ fontWeight: 800, color: "#10b981" }}>Twin</strong>
+              </span>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", letterSpacing: "0.06em" }}>Votre jumeau numérique</span>
+            </div>
           </div>
         </div>
       )}
