@@ -1248,28 +1248,27 @@ export default function ChatPage() {
           }}
           onTransitionEnd={() => { if (splashFading) setSplashGone(true); }}
         >
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 28, transform: "translateY(-32px)" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 32, transform: "translateY(-32px)" }}>
             {/* Anneau + logo */}
-            <div style={{ position: "relative", width: 148, height: 148, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {/* Blur glow derrière */}
-              <div style={{ position: "absolute", inset: -10, borderRadius: "50%", background: "rgba(16,185,129,0.15)", filter: "blur(22px)", animation: "glow-idle 2.4s ease-in-out infinite" }} />
-              {/* Cercle fixe style login */}
-              <div style={{
-                position: "absolute", width: 90, height: 90, borderRadius: "50%",
-                border: "2px solid rgba(16,185,129,0.6)",
-                boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)",
-              }} />
-              {/* Arc tournant */}
-              <svg width="148" height="148" viewBox="0 0 148 148"
+            <div style={{ position: "relative", width: 160, height: 160 }}>
+              {/* Arc tournant — couche isolée, aucun filtre */}
+              <svg width="160" height="160" viewBox="0 0 160 160"
                 style={{ position: "absolute", inset: 0, animation: "spin 1.2s linear infinite" }}>
-                <circle cx="74" cy="74" r="68" fill="none"
-                  stroke="rgba(16,185,129,0.6)" strokeWidth="2"
-                  strokeDasharray="180 247" strokeLinecap="round"
-                  style={{ filter: "drop-shadow(0 0 7px rgba(16,185,129,0.85))" }}
+                {/* Arc glow (trait épais flou) */}
+                <circle cx="80" cy="80" r="74" fill="none"
+                  stroke="rgba(16,185,129,0.25)" strokeWidth="6"
+                  strokeDasharray="200 264" strokeLinecap="round"
+                />
+                {/* Arc net par-dessus */}
+                <circle cx="80" cy="80" r="74" fill="none"
+                  stroke="rgba(16,185,129,0.85)" strokeWidth="2"
+                  strokeDasharray="200 264" strokeLinecap="round"
                 />
               </svg>
-              {/* Logo */}
-              <img src="/logo-new.svg" alt="" style={{ width: 52, height: 52, position: "relative", zIndex: 1, transform: "translateZ(0)", willChange: "transform" }} />
+              {/* Logo — couche totalement indépendante */}
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <img src="/logo-new.svg" alt="" style={{ width: 72, height: 72, display: "block" }} />
+              </div>
             </div>
             {/* Nom de la marque */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
