@@ -1223,6 +1223,18 @@ export default function ChatPage() {
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
     <div style={{ height: "100dvh", background: BG_MAIN, fontFamily: "'DM Sans', -apple-system, sans-serif", display: "flex", color: TEXT_PRIMARY, overflow: "hidden" }}>
 
+      {/* ═══ SPLASH SCREEN ═══ */}
+      <div style={{
+        position: "fixed", inset: 0, zIndex: 300,
+        background: BG_MAIN,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        opacity: sessionLoading ? 1 : 0,
+        pointerEvents: sessionLoading ? "auto" : "none",
+        transition: "opacity 0.5s ease",
+      }}>
+        <img src="/logo-new.svg" alt="NutriTwin" style={{ width: 80, height: 80 }} />
+      </div>
+
       {/* ═══ ONBOARDING ═══ */}
       {showOnboarding && (
         <OnboardingTour
