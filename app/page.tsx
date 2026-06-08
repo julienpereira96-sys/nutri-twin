@@ -416,7 +416,7 @@ export default function Home() {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
       <a href="/" className="flex items-center gap-2">
       <img src="/logo-new.svg" alt="NutriTwin" className="h-7 w-auto relative" />
-      <span className="text-[18px] tracking-tight" style={{ fontFamily: "var(--font-jakarta), sans-serif" }}>Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></span>
+      <span className="text-[22px] tracking-tight" style={{ fontFamily: "var(--font-jakarta), sans-serif" }}>Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></span>
         </a>
 
           <nav className="hidden items-center gap-8 lg:flex">
