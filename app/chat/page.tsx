@@ -1450,14 +1450,14 @@ export default function ChatPage() {
             try {
               const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
               const compressed = await compressImage(file);
+              // Afficher immédiatement depuis les données base64 (contourne le cache CDN)
+              setPatientPhoto(`data:image/jpeg;base64,${compressed.base64}`);
               const byteString = atob(compressed.base64);
               const ab = new ArrayBuffer(byteString.length);
               const ia = new Uint8Array(ab);
               for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
               const blob = new Blob([ab], { type: "image/jpeg" });
               await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg" });
-              const { data } = supabase.storage.from("Avatars").getPublicUrl(`${patientId}/avatar.jpg`);
-              setPatientPhoto(data.publicUrl + "?t=" + Date.now());
             } catch { /* silencieux */ }
             setUploadingPhoto(false);
             if (patientAvatarRef.current) patientAvatarRef.current.value = "";
@@ -1806,7 +1806,7 @@ export default function ChatPage() {
           </div>
 
           {/* ═══ SIDEBAR BOTTOM — Profil ═══ */}
-          <div style={{ padding: isMobile ? "0 4px 44px" : "0 4px 60px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <div style={{ padding: isMobile ? "0 4px 44px" : "0 4px 24px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
             <button onClick={() => setShowProfileModal(true)} style={{ flexShrink: 0, background: "none", border: "none", padding: 0, cursor: "pointer" }}>
               <div style={{ width: 40, height: 40, borderRadius: "50%", border: "1px solid rgba(16,185,129,0.5)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {patientPhoto ? (
@@ -2044,8 +2044,8 @@ export default function ChatPage() {
             position: isMobile ? "fixed" : "sticky",
             bottom: 0, left: 0, right: 0,
             zIndex: isMobile ? 25 : 10,
-            background: `linear-gradient(to bottom, transparent 0%, #0b0f0d 28%)`,
-            padding: isMobile ? "32px 12px 12px" : "40px 20px 24px",
+            background: isMobile ? `linear-gradient(to bottom, transparent 0%, #0b0f0d 28%)` : "transparent",
+            padding: isMobile ? "32px 12px 12px" : "12px 20px 20px",
             paddingBottom: isMobile ? `max(12px, env(safe-area-inset-bottom, 0px))` : "24px",
             paddingLeft: isMobile ? `max(12px, env(safe-area-inset-left, 0px))` : undefined,
             paddingRight: isMobile ? `max(12px, env(safe-area-inset-right, 0px))` : undefined,
@@ -2079,7 +2079,7 @@ export default function ChatPage() {
             {showScrollBottom && (
               <button
                 onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
-                style={{ position: "absolute", bottom: "calc(100% + 20px)", left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 44, height: 44, borderRadius: "50%", background: "rgba(15,22,18,0.92)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.45)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(0,0,0,0.4)", transition: "border-color 0.2s, box-shadow 0.2s", color: ACCENT }}
+                style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 44, height: 44, borderRadius: "50%", background: "rgba(15,22,18,0.92)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.45)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(0,0,0,0.4)", transition: "border-color 0.2s, box-shadow 0.2s", color: ACCENT }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.3), 0 6px 24px rgba(16,185,129,0.2)"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)"; }}
               >
