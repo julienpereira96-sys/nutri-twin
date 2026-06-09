@@ -6,9 +6,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
     <>
       <style>{`
         @keyframes static-splash-spin { to { transform: rotate(360deg); } }
-        #static-splash-ring {
-          animation: static-splash-spin 1.2s linear infinite;
-        }
+        @keyframes static-splash-glow { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
+        #static-splash-ring { animation: static-splash-spin 1.2s linear infinite; }
+        #static-splash-halo { animation: static-splash-glow 3s ease-in-out infinite; }
       `}</style>
 
       {/* Splash statique — rendu serveur, visible dès le premier octet HTML */}
@@ -22,6 +22,15 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       >
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 28, transform: "translateY(-24px)" }}>
           <div style={{ position: "relative", width: 140, height: 140 }}>
+            <div
+              id="static-splash-halo"
+              style={{
+                position: "absolute", top: -28, left: -28, right: -28, bottom: -28,
+                borderRadius: "50%",
+                background: "radial-gradient(circle, rgba(16,185,129,0.14), transparent 62%)",
+                pointerEvents: "none",
+              }}
+            />
             <div
               id="static-splash-ring"
               style={{

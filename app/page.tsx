@@ -415,7 +415,7 @@ export default function Home() {
       <header className="fixed top-0 z-50 w-full border-b border-white/[0.04] bg-[#070707]/80 backdrop-blur-2xl">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
       <a href="/" className="flex items-center gap-2">
-      <img src="/logo-new.svg" alt="NutriTwin" className="h-7 w-auto relative" />
+      <img src="/logo-new.svg" alt="NutriTwin" className="h-7 w-auto relative" style={{ filter: "drop-shadow(0 0 8px rgba(16,185,129,0.6)) drop-shadow(0 0 16px rgba(16,185,129,0.25))" }} />
       <span className="text-[22px] tracking-tight" style={{ fontFamily: "var(--font-jakarta), sans-serif" }}>Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></span>
         </a>
 
