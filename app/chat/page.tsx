@@ -1665,9 +1665,12 @@ export default function ChatPage() {
 
           {/* Header sidebar */}
           <div style={{ height: 84, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "transparent", borderBottom: "1px solid rgba(255,255,255,0.05)", margin: "0 -12px", marginBottom: 16, flexShrink: 0 }}>
-            <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: TEXT_PRIMARY, letterSpacing: "-0.6px", lineHeight: 1 }}>
-              Nutri<span style={{ color: ACCENT, textShadow: "0 0 18px rgba(16,185,129,0.35)" }}>Twin</span>
-            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <img src="/logo-new.svg" alt="" style={{ width: 22, height: 22, filter: "drop-shadow(0 0 6px rgba(16,185,129,0.55)) drop-shadow(0 0 12px rgba(16,185,129,0.25))" }} />
+              <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: TEXT_PRIMARY, letterSpacing: "-0.6px", lineHeight: 1 }}>
+                Nutri<span style={{ color: ACCENT, textShadow: "0 0 18px rgba(16,185,129,0.35)" }}>Twin</span>
+              </p>
+            </div>
             <button onClick={() => setSidebarOpen(false)} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.10)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}>
@@ -1791,13 +1794,13 @@ export default function ChatPage() {
 
           {/* ═══ SIDEBAR BOTTOM — Profil ═══ */}
           <div style={{ height: 1, background: "rgba(255,255,255,0.05)", margin: "0 4px 14px", flexShrink: 0 }} />
-          <div style={{ padding: isMobile ? "0 4px 28px" : "0 4px 20px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <div style={{ padding: isMobile ? "0 4px 14px" : "0 4px 8px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
             <button onClick={() => setShowProfileModal(true)} style={{ flexShrink: 0, background: "none", border: "none", padding: 0, cursor: "pointer" }}>
               <div style={{ width: 46, height: 46, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.4)", boxShadow: "0 0 12px rgba(16,185,129,0.15)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", transition: "box-shadow 0.2s" }}>
                 {patientPhoto ? (
                   <img src={patientPhoto} alt="avatar" style={{ width: 46, height: 46, objectFit: "cover" }} />
                 ) : (
-                  <div style={{ width: 46, height: 46, background: "radial-gradient(circle at 30% 30%, #10b981, #059669)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: "black" }}>{patientInitials}</div>
+                  <div style={{ width: "100%", height: "100%", background: "#0b0f0d", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, color: ACCENT }}>{patientInitials}</div>
                 )}
               </div>
             </button>
@@ -1832,19 +1835,21 @@ export default function ChatPage() {
         }}>
 
         <header style={{ background: "rgba(8,14,11,0.75)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", height: 84, display: "flex", alignItems: "center", flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}>
-          <div style={{ maxWidth: 780, width: "100%", margin: "0 auto", padding: isMobile ? "0 20px" : "0 36px", display: "flex", alignItems: "center", gap: 12 }}>
+          {/* Hamburger — ancré à gauche en absolu, aligné avec le bord gauche des messages */}
           {!sidebarOpen && (
-            <button onClick={() => setSidebarOpen(true)} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}
+            <button onClick={() => setSidebarOpen(true)} style={{ position: "absolute", left: isMobile ? 20 : 36, width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", zIndex: 1 }}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.10)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}>
               <MenuIcon size={16} />
             </button>
           )}
           {isMobile && sidebarOpen && (
-            <button onClick={() => setSidebarOpen(false)} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <button onClick={() => setSidebarOpen(false)} style={{ position: "absolute", left: 20, width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1 }}>
               <MenuIcon size={16} />
             </button>
           )}
+          <div style={{ flex: 1, display: "flex", alignItems: "center" }}>
+          <div style={{ maxWidth: 780, width: "100%", margin: "0 auto", padding: isMobile ? "0 20px" : "0 36px", display: "flex", alignItems: "center", gap: 14 }}>
             {hasMessages && (
               <>
                 {/* Avatar stack — Jumeau + Patient */}
@@ -1856,11 +1861,11 @@ export default function ChatPage() {
                     </svg>
                   </div>
                   {/* Avatar patient — photo ou initiales */}
-                  <div style={{ position: "absolute", right: 0, top: 4, width: 22, height: 22, borderRadius: "50%", border: "2px solid #0b0f0d", zIndex: 1, overflow: "hidden" }}>
+                  <div style={{ position: "absolute", right: 0, top: 4, width: 22, height: 22, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.5)", zIndex: 1, overflow: "hidden" }}>
                     {patientPhoto ? (
                       <img src={patientPhoto} alt="" style={{ width: 22, height: 22, objectFit: "cover" }} />
                     ) : (
-                      <div style={{ width: 22, height: 22, background: "radial-gradient(circle at 30% 30%, #10b981, #059669)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "black" }}>{patientInitials}</div>
+                      <div style={{ width: "100%", height: "100%", background: "#0b0f0d", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: ACCENT }}>{patientInitials}</div>
                     )}
                   </div>
                 </div>
@@ -1868,6 +1873,7 @@ export default function ChatPage() {
                 <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: TEXT_PRIMARY, letterSpacing: "-0.2px" }}>Votre compagnon <span style={{ color: ACCENT }}>de suivi</span></p>
               </>
             )}
+          </div>
           </div>
         </header>
 
