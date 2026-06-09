@@ -879,7 +879,11 @@ export default function ChatPage() {
         if (user?.email) setPatientEmail(user.email);
         // Charger photo
         const { data: photoData } = supabase.storage.from("Avatars").getPublicUrl(`${data.user.id}/avatar.jpg`);
-        if (photoData) setPatientPhoto(photoData.publicUrl + "?t=" + Date.now());
+        if (photoData) {
+          const savedTs = localStorage.getItem(`avatar_ts_${data.user.id}`);
+          const ts = savedTs ?? String(Date.now());
+          setPatientPhoto(photoData.publicUrl + "?t=" + ts);
+        }
         // Charger victoires
         const victories = (p as { victories_history?: string[] }).victories_history ?? [];
         setPatientVictories(victories);
@@ -1255,9 +1259,9 @@ export default function ChatPage() {
         >
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 28, transform: "translateY(-24px)" }}>
             {/* Cercle tournant + logo */}
-            <div style={{ position: "relative", width: 140, height: 140 }}>
+            <div style={{ position: "relative", width: 100, height: 100 }}>
               {/* Halo externe pulsant */}
-              <div style={{ position: "absolute", inset: -28, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.14), transparent 62%)", animation: "glow-idle 3s ease-in-out infinite", pointerEvents: "none" }} />
+              <div style={{ position: "absolute", inset: -20, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.14), transparent 62%)", animation: "glow-idle 3s ease-in-out infinite", pointerEvents: "none" }} />
               {/* Anneau CSS pur */}
               <div style={{
                 position: "absolute", inset: 0, borderRadius: "50%",
@@ -1457,7 +1461,8 @@ export default function ChatPage() {
               const ia = new Uint8Array(ab);
               for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
               const blob = new Blob([ab], { type: "image/jpeg" });
-              await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg" });
+              await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "no-store" });
+              localStorage.setItem(`avatar_ts_${patientId}`, String(Date.now()));
             } catch { /* silencieux */ }
             setUploadingPhoto(false);
             if (patientAvatarRef.current) patientAvatarRef.current.value = "";
@@ -2052,6 +2057,7 @@ export default function ChatPage() {
             opacity: sidebarOpen && isMobile ? 0.4 : 1,
             pointerEvents: sidebarOpen && isMobile ? "none" : "auto",
             transition: "opacity 0.25s",
+            ...(isMobile ? { transform: "translateZ(0)", WebkitTransform: "translateZ(0)" } : {}),
           }}>
             <div style={{ maxWidth: 768, margin: "0 auto" }}>
               {pendingImage && (

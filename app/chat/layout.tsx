@@ -23,11 +23,11 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 28, transform: "translateY(-24px)" }}>
-          <div style={{ position: "relative", width: 140, height: 140 }}>
+          <div style={{ position: "relative", width: 100, height: 100 }}>
             <div
               id="static-splash-halo"
               style={{
-                position: "absolute", top: -28, left: -28, right: -28, bottom: -28,
+                position: "absolute", top: -20, left: -20, right: -20, bottom: -20,
                 borderRadius: "50%",
                 background: "radial-gradient(circle, rgba(16,185,129,0.14), transparent 62%)",
                 pointerEvents: "none",
