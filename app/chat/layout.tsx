@@ -7,8 +7,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
       <style>{`
         @keyframes static-splash-spin { to { transform: rotate(360deg); } }
         @keyframes static-splash-glow { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
+        @keyframes static-splash-pulse { 0%, 100% { box-shadow: 0 0 14px rgba(16,185,129,0.3), 0 0 28px rgba(16,185,129,0.1); } 50% { box-shadow: 0 0 22px rgba(16,185,129,0.55), 0 0 40px rgba(16,185,129,0.2); } }
         #static-splash-ring { animation: static-splash-spin 1.2s linear infinite; }
         #static-splash-halo { animation: static-splash-glow 3s ease-in-out infinite; }
+        #static-splash-inner { animation: static-splash-pulse 2s ease-in-out infinite; }
       `}</style>
 
       {/* Splash statique — rendu serveur, visible dès le premier octet HTML */}
@@ -40,9 +42,20 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
               }}
             />
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="62" height="62" viewBox="0 0 585 586" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
-                <path d={path} fill="#10B981" />
-              </svg>
+              <div
+                id="static-splash-inner"
+                style={{
+                  width: 75, height: 75, borderRadius: "50%",
+                  background: "transparent",
+                  border: "2px solid rgba(16,185,129,0.6)",
+                  boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <svg width="36" height="36" viewBox="0 0 585 586" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
+                  <path d={path} fill="#10B981" />
+                </svg>
+              </div>
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
