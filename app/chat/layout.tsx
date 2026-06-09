@@ -5,12 +5,10 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   return (
     <>
       <style>{`
-        @keyframes static-splash-spin { to { transform: rotate(360deg); } }
-        @keyframes static-splash-glow { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
-        @keyframes static-splash-pulse { 0%, 100% { box-shadow: 0 0 14px rgba(16,185,129,0.3), 0 0 28px rgba(16,185,129,0.1); } 50% { box-shadow: 0 0 22px rgba(16,185,129,0.55), 0 0 40px rgba(16,185,129,0.2); } }
-        #static-splash-ring { animation: static-splash-spin 1.2s linear infinite; }
-        #static-splash-halo { animation: static-splash-glow 3s ease-in-out infinite; }
-        #static-splash-inner { animation: static-splash-pulse 2s ease-in-out infinite; }
+        @keyframes static-ripple-out { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(2.8); opacity: 0; } }
+        #static-splash-ring1 { animation: static-ripple-out 2.1s ease-out infinite; }
+        #static-splash-ring2 { animation: static-ripple-out 2.1s ease-out infinite; animation-delay: 0.7s; }
+        #static-splash-ring3 { animation: static-ripple-out 2.1s ease-out infinite; animation-delay: 1.4s; }
       `}</style>
 
       {/* Splash statique — rendu serveur, visible dès le premier octet HTML */}
@@ -23,39 +21,18 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 28, transform: "translateY(-24px)" }}>
-          <div style={{ position: "relative", width: 100, height: 100 }}>
-            <div
-              id="static-splash-halo"
-              style={{
-                position: "absolute", top: -20, left: -20, right: -20, bottom: -20,
-                borderRadius: "50%",
-                background: "radial-gradient(circle, rgba(16,185,129,0.14), transparent 62%)",
-                pointerEvents: "none",
-              }}
-            />
-            <div
-              id="static-splash-ring"
-              style={{
-                position: "absolute", inset: 0, borderRadius: "50%",
-                border: "1.5px solid rgba(16,185,129,0.12)",
-                borderTop: "1.5px solid #10b981",
-              }}
-            />
+          <div style={{ position: "relative", width: 80, height: 80 }}>
+            {/* Halo doux */}
+            <div style={{ position: "absolute", top: -12, left: -12, right: -12, bottom: -12, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.18), transparent 70%)", pointerEvents: "none" }} />
+            {/* Ripple rings */}
+            <div id="static-splash-ring1" style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.65)" }} />
+            <div id="static-splash-ring2" style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.5)" }} />
+            <div id="static-splash-ring3" style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.35)" }} />
+            {/* Logo centré */}
             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div
-                id="static-splash-inner"
-                style={{
-                  width: 75, height: 75, borderRadius: "50%",
-                  background: "transparent",
-                  border: "2px solid rgba(16,185,129,0.6)",
-                  boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}
-              >
-                <svg width="36" height="36" viewBox="0 0 585 586" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
-                  <path d={path} fill="#10B981" />
-                </svg>
-              </div>
+              <svg width="40" height="40" viewBox="0 0 585 586" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
+                <path d={path} fill="#10B981" />
+              </svg>
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
