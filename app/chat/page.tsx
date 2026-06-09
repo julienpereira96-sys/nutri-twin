@@ -1888,7 +1888,7 @@ export default function ChatPage() {
           </div>
         </header>
 
-        <main ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", overscrollBehaviorX: "none", display: "flex", flexDirection: "column", paddingBottom: isMobile ? 120 : 0 }}
+        <main ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", overscrollBehaviorX: "none", display: "flex", flexDirection: "column" }}
           onScroll={e => {
             const el = e.currentTarget;
             setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 400);
@@ -1954,7 +1954,7 @@ export default function ChatPage() {
           )}
 
           {hasMessages && (
-            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? "16px 16px 140px" : "24px 36px 24px" }}>
+            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? "16px 16px 100px" : "24px 36px 24px" }}>
               <div style={{ maxWidth: 780, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28, touchAction: "auto" }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
@@ -2044,8 +2044,8 @@ export default function ChatPage() {
             position: isMobile ? "fixed" : "sticky",
             bottom: 0, left: 0, right: 0,
             zIndex: isMobile ? 25 : 10,
-            background: isMobile ? `linear-gradient(to bottom, transparent 0%, #0b0f0d 28%)` : "transparent",
-            padding: isMobile ? "32px 12px 12px" : "12px 20px 20px",
+            background: isMobile ? `linear-gradient(to bottom, transparent 0%, #0b0f0d 40%)` : "transparent",
+            padding: isMobile ? "16px 12px 12px" : "12px 20px 20px",
             paddingBottom: isMobile ? `max(12px, env(safe-area-inset-bottom, 0px))` : "24px",
             paddingLeft: isMobile ? `max(12px, env(safe-area-inset-left, 0px))` : undefined,
             paddingRight: isMobile ? `max(12px, env(safe-area-inset-right, 0px))` : undefined,
