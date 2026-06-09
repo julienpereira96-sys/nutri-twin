@@ -694,6 +694,9 @@ export default function ChatPage() {
   const touchStartYRef = useRef(0);
   const swipeIntentRef = useRef<"horizontal" | "vertical" | null>(null);
   const mainAreaRef = useRef<HTMLDivElement>(null);
+  // ─── Ref session courante (pour Realtime sans recréer la subscription) ───
+  const currentSessionIdRef = useRef<string | null>(null);
+  useEffect(() => { currentSessionIdRef.current = currentSessionId; }, [currentSessionId]);
   // ─── Scroll-to-bottom ───
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   // ─── Typewriter refs ───
@@ -878,13 +881,31 @@ export default function ChatPage() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user?.email) setPatientEmail(user.email);
         // Charger photo
-        // Priorité : base64 en localStorage (pas de dépendance au CDN Supabase)
-        const cachedB64 = localStorage.getItem(`avatar_b64_${data.user.id}`);
-        if (cachedB64) {
-          setPatientPhoto(cachedB64);
-        } else {
-          const { data: photoData } = supabase.storage.from("Avatars").getPublicUrl(`${data.user.id}/avatar.jpg`);
-          if (photoData) setPatientPhoto(photoData.publicUrl + "?t=" + Date.now());
+        // 1. Afficher immédiatement depuis localStorage (rapide, pas de flash)
+        const userId = data.user.id;
+        const cachedB64 = localStorage.getItem(`avatar_b64_${userId}`);
+        if (cachedB64) setPatientPhoto(cachedB64);
+        // 2. Toujours vérifier Supabase en arrière-plan pour sync cross-device
+        try {
+          const { data: photoData } = supabase.storage.from("Avatars").getPublicUrl(`${userId}/avatar.jpg`);
+          if (photoData) {
+            const freshUrl = photoData.publicUrl + "?t=" + Date.now();
+            const res = await fetch(freshUrl);
+            if (res.ok) {
+              const blob = await res.blob();
+              const reader = new FileReader();
+              reader.onload = () => {
+                const b64 = reader.result as string;
+                setPatientPhoto(b64);
+                localStorage.setItem(`avatar_b64_${userId}`, b64);
+              };
+              reader.readAsDataURL(blob);
+            } else if (!cachedB64) {
+              setPatientPhoto(null);
+            }
+          }
+        } catch {
+          // Erreur réseau — on garde le cache local
         }
         // Charger victoires
         const victories = (p as { victories_history?: string[] }).victories_history ?? [];
@@ -901,6 +922,67 @@ export default function ChatPage() {
 
     return () => { subscription.unsubscribe(); };
   }, [loadSessions]);
+
+  // ─── Realtime : message épinglé praticien ───────────────────────────────────
+  // S'abonne aux UPDATE sur la ligne du patient dès que patientId est connu.
+  // Pas de rechargement de page nécessaire — le bandeau se met à jour instantanément.
+  useEffect(() => {
+    if (!patientId) return;
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const channel = supabase
+      .channel(`patient-pinned-${patientId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "patients", filter: `user_id=eq.${patientId}` },
+        (payload) => {
+          type PatientRow = {
+            practitioner_pinned_message?: { text: string; sent_at: string; practitioner_id: string } | null;
+            emotional_status?: string;
+          };
+          const row = payload.new as PatientRow;
+          // Message épinglé
+          setPinnedMessage(row.practitioner_pinned_message ?? null);
+          // Statut émotionnel (ex : praticien déverrouille depuis le dashboard)
+          if (row.emotional_status === "red_critical" || row.emotional_status === "red_behavioral") {
+            setEmotionalStatus(row.emotional_status);
+          } else if (row.emotional_status === "green") {
+            setEmotionalStatus("green");
+            setShowSasButtons(false);
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [patientId]);
+
+  // ─── Realtime : messages du chat ────────────────────────────────────────────
+  // S'abonne aux INSERT sur conversations dès que patientId et practitionerIdFromDb sont connus.
+  // La session courante est lue via ref pour garder la subscription stable.
+  // Anti-doublon : si le message vient d'être envoyé depuis cet appareil, il est déjà en state.
+  useEffect(() => {
+    if (!patientId || !practitionerIdFromDb) return;
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const channel = supabase
+      .channel(`conversations-${patientId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "conversations", filter: `patient_id=eq.${patientId}` },
+        (payload) => {
+          type MsgRow = { role: string; content: string; session_id: string | null; practitioner_id: string };
+          const row = payload.new as MsgRow;
+          // Ignorer si pas le bon praticien ou pas la session affichée
+          if (row.practitioner_id !== practitionerIdFromDb) return;
+          if (row.session_id !== currentSessionIdRef.current) return;
+          // Ignorer si déjà présent (envoyé depuis cet appareil)
+          setMessages(prev => {
+            if (prev.some(m => m.role === row.role && m.content === row.content)) return prev;
+            return [...prev, { role: row.role as ChatMessage["role"], content: row.content }];
+          });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [patientId, practitionerIdFromDb]);
 
   // Retire le splash statique (layout.tsx) dès que React est monté — le splash React prend le relais
   useEffect(() => {
