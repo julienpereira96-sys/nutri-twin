@@ -1643,7 +1643,7 @@ export default function ChatPage() {
         style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 20 }} />}
 
       {/* ═══ SIDEBAR ═══ */}
-      <aside style={{ width: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, minWidth: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, background: "linear-gradient(180deg, #0b1a14 0%, #090f0c 50%, #070c0a 100%)", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100dvh", zIndex: isMobile ? 30 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 24px rgba(0,0,0,0.5)", borderRight: "1px solid rgba(16,185,129,0.08)", }}>
+      <aside style={{ width: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, minWidth: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, background: "#040705", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100dvh", zIndex: isMobile ? 30 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 32px rgba(0,0,0,0.6)", borderRight: "1px solid rgba(16,185,129,0.08)", }}>
         <div style={{ width: isMobile ? "80vw" : sidebarWidth, display: "flex", flexDirection: "column", height: "100%", padding: "0 12px" }}>
 
           {/* Header sidebar */}
@@ -1814,7 +1814,7 @@ export default function ChatPage() {
           if (dx < -50 && sidebarOpen) setSidebarOpen(false);
         }}>
 
-        <header style={{ background: "rgba(8,14,11,0.78)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "0 16px", height: 72, display: "flex", alignItems: "center", gap: 10, flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}>
+        <header style={{ background: "rgba(8,14,11,0.75)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", padding: "0 16px", height: 72, display: "flex", alignItems: "center", gap: 10, flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}>
           {!sidebarOpen && (
             <button onClick={() => setSidebarOpen(true)} style={{ width: 32, height: 32, borderRadius: 8, background: "transparent", border: `1px solid ${BORDER}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}
               onMouseEnter={e => { e.currentTarget.style.background = SURFACE; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}
@@ -1840,7 +1840,7 @@ export default function ChatPage() {
           </div>
         </header>
 
-        <main ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", overscrollBehaviorX: "none", display: "flex", flexDirection: "column", paddingBottom: isMobile ? 100 : 0 }}
+        <main ref={scrollContainerRef} style={{ flex: 1, overflowY: "auto", overscrollBehaviorX: "none", display: "flex", flexDirection: "column", paddingBottom: isMobile ? 120 : 0 }}
           onScroll={e => {
             const el = e.currentTarget;
             setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 400);
@@ -1906,7 +1906,7 @@ export default function ChatPage() {
           )}
 
           {hasMessages && (
-            <div style={{ flex: 1, padding: isMobile ? "16px 16px 20px" : "24px 36px 20px" }}>
+            <div style={{ flex: 1, padding: isMobile ? "16px 16px 140px" : "24px 36px 140px" }}>
               <div style={{ maxWidth: 780, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20, touchAction: "auto" }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
@@ -1937,11 +1937,11 @@ export default function ChatPage() {
                           </div>
                         )}
                         {isUser ? (
-                          <div style={{ padding: isMobile ? "10px 16px" : "11px 18px", borderRadius: 18, background: isActiveMatch ? "rgba(16,185,129,0.2)" : "rgba(255,255,255,0.07)", color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.7, border: isActiveMatch ? `1.5px solid ${ACCENT}` : "1px solid rgba(255,255,255,0.1)", boxShadow: isActiveMatch ? "none" : "inset 0 1px 3px rgba(0,0,0,0.3)", transition: "all 0.3s" }}>
+                          <div style={{ padding: isMobile ? "10px 16px" : "11px 18px", borderRadius: 18, background: "transparent", color: TEXT_SECONDARY, fontSize: 15, lineHeight: 1.7, border: isActiveMatch ? `1.5px solid ${ACCENT}` : "1px solid rgba(255,255,255,0.08)", transition: "all 0.3s" }}>
                             {msg.content}
                           </div>
                         ) : (
-                          <div style={{ padding: "2px 0", background: "transparent", color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.7, border: isActiveMatch ? `1px solid rgba(16,185,129,0.4)` : "none", borderRadius: isActiveMatch ? 10 : 0, paddingLeft: isActiveMatch ? 10 : 0, boxShadow: isActiveMatch ? `0 0 0 3px rgba(16,185,129,0.07)` : "none", transition: "all 0.3s" }}>
+                          <div style={{ padding: isMobile ? "14px 16px" : "16px 20px", background: isActiveMatch ? "rgba(16,185,129,0.04)" : "rgba(255,255,255,0.02)", border: isActiveMatch ? `1px solid rgba(16,185,129,0.35)` : "1px solid rgba(16,185,129,0.12)", borderRadius: 16, color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.7, transition: "all 0.3s" }}>
                             {msg.content}
                           </div>
                         )}
@@ -1993,23 +1993,19 @@ export default function ChatPage() {
 
         {hasMessages && emotionalStatus !== "red_critical" && (
           <div style={{
-            position: isMobile ? "fixed" : "relative",
+            position: isMobile ? "fixed" : "sticky",
             bottom: 0, left: 0, right: 0,
-            zIndex: isMobile ? 25 : "auto",
-            background: "rgba(7,12,10,0.78)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            padding: isMobile ? "20px 12px" : "14px 20px",
-            paddingBottom: `max(20px, env(safe-area-inset-bottom, 0px))`,
+            zIndex: isMobile ? 25 : 10,
+            background: "transparent",
+            padding: isMobile ? "12px" : "0 20px 24px",
+            paddingBottom: isMobile ? `max(12px, env(safe-area-inset-bottom, 0px))` : "24px",
+            paddingLeft: isMobile ? `max(12px, env(safe-area-inset-left, 0px))` : undefined,
+            paddingRight: isMobile ? `max(12px, env(safe-area-inset-right, 0px))` : undefined,
             opacity: sidebarOpen && isMobile ? 0.4 : 1,
             pointerEvents: sidebarOpen && isMobile ? "none" : "auto",
             transition: "opacity 0.25s",
-            paddingLeft: isMobile ? "max(12px, env(safe-area-inset-left, 0px))" : undefined,
-            paddingRight: isMobile ? "max(12px, env(safe-area-inset-right, 0px))" : undefined,
-            flexShrink: 0,
           }}>
-            <div style={{ maxWidth: 768, margin: "0 auto" }}>
+            <div style={{ maxWidth: 768, margin: "0 auto", background: "rgba(8,14,11,0.88)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderRadius: 20, border: "1px solid rgba(255,255,255,0.07)", padding: "12px 14px", boxShadow: "0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.03)" }}>
               {pendingImage && (
                 <div style={{ marginBottom: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
