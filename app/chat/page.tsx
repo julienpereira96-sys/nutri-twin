@@ -38,18 +38,18 @@ type ActiveTool = {
 } | null;
 
 const ACCENT = "#10b981";
-const ACCENT_DIM = "rgba(16,185,129,0.1)";
-const ACCENT_BORDER = "rgba(16,185,129,0.2)";
+const ACCENT_DIM = "rgba(16,185,129,0.08)";
+const ACCENT_BORDER = "rgba(16,185,129,0.18)";
 // Couleurs thérapeutiques Mon Soutien — cobalt/cyan
 const CYAN = "#06b6d4";
 const CYAN_DIM = "rgba(6,182,212,0.08)";
 const CYAN_BORDER = "rgba(6,182,212,0.18)";
 const SURFACE = "rgba(255,255,255,0.04)";
-const BORDER = "rgba(255,255,255,0.08)";
-const TEXT_PRIMARY = "#f1f5f9";
-const TEXT_SECONDARY = "#94a3b8";
-const TEXT_MUTED = "#64748b";
-const BG_MAIN = "#080e0b";
+const BORDER = "rgba(255,255,255,0.07)";
+const TEXT_PRIMARY = "rgba(255,255,255,0.88)";
+const TEXT_SECONDARY = "rgba(255,255,255,0.45)";
+const TEXT_MUTED = "rgba(255,255,255,0.22)";
+const BG_MAIN = "#0b0f0d";
 // Direction artistique — émeraude unifié
 
 const quickActions = [
@@ -277,7 +277,7 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
           onKeyDown={handleKeyDown as React.KeyboardEventHandler<HTMLTextAreaElement>}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          placeholder={pendingImage ? "Ajoutez un commentaire..." : "Posez votre question..."}
+          placeholder={pendingImage ? "Ajoutez un commentaire..." : "Parlez-moi..."}
           rows={isCenter ? 3 : 1}
           spellCheck={false}
           className="chat-input"
@@ -1643,7 +1643,7 @@ export default function ChatPage() {
         style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 20 }} />}
 
       {/* ═══ SIDEBAR ═══ */}
-      <aside style={{ width: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, minWidth: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, background: "#040705", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100dvh", zIndex: isMobile ? 30 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 32px rgba(0,0,0,0.6)", borderRight: "1px solid rgba(16,185,129,0.08)", }}>
+      <aside style={{ width: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, minWidth: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, background: "#060908", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100dvh", zIndex: isMobile ? 30 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 32px rgba(0,0,0,0.6)", borderRight: "1px solid rgba(16,185,129,0.08)", }}>
         <div style={{ width: isMobile ? "80vw" : sidebarWidth, display: "flex", flexDirection: "column", height: "100%", padding: "0 12px" }}>
 
           {/* Header sidebar */}
@@ -1907,7 +1907,7 @@ export default function ChatPage() {
 
           {hasMessages && (
             <div style={{ flex: 1, padding: isMobile ? "16px 16px 140px" : "24px 36px 140px" }}>
-              <div style={{ maxWidth: 780, margin: "0 auto", display: "flex", flexDirection: "column", gap: 20, touchAction: "auto" }}>
+              <div style={{ maxWidth: 780, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28, touchAction: "auto" }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
                   const isLastAssistant = msg.role === "assistant" && index === visibleMessages.length - 1;
@@ -1937,11 +1937,11 @@ export default function ChatPage() {
                           </div>
                         )}
                         {isUser ? (
-                          <div style={{ padding: isMobile ? "10px 16px" : "11px 18px", borderRadius: 18, background: "transparent", color: TEXT_SECONDARY, fontSize: 15, lineHeight: 1.7, border: isActiveMatch ? `1.5px solid ${ACCENT}` : "1px solid rgba(255,255,255,0.08)", transition: "all 0.3s" }}>
+                          <div style={{ padding: isMobile ? "10px 16px" : "11px 18px", borderRadius: 18, background: "transparent", color: TEXT_SECONDARY, fontSize: 15, lineHeight: 1.6, border: isActiveMatch ? `1.5px solid ${ACCENT}` : "1px solid rgba(255,255,255,0.07)", transition: "all 0.3s" }}>
                             {msg.content}
                           </div>
                         ) : (
-                          <div style={{ padding: isMobile ? "14px 16px" : "16px 20px", background: isActiveMatch ? "rgba(16,185,129,0.04)" : "rgba(255,255,255,0.02)", border: isActiveMatch ? `1px solid rgba(16,185,129,0.35)` : "1px solid rgba(16,185,129,0.12)", borderRadius: 16, color: TEXT_PRIMARY, fontSize: 15, lineHeight: 1.7, transition: "all 0.3s" }}>
+                          <div style={{ padding: isMobile ? "16px 18px" : "18px 22px", background: isActiveMatch ? "rgba(16,185,129,0.04)" : "rgba(16,185,129,0.025)", border: isActiveMatch ? `1px solid rgba(16,185,129,0.3)` : "1px solid rgba(16,185,129,0.09)", borderRadius: 18, color: TEXT_PRIMARY, fontSize: isMobile ? 15 : 15.5, lineHeight: 1.75, transition: "all 0.3s" }}>
                             {msg.content}
                           </div>
                         )}

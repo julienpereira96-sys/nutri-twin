@@ -16,7 +16,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         id="static-splash"
         style={{
           position: "fixed", inset: 0, zIndex: 400,
-          background: "#080e0b",
+          background: "#0b0f0d",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
       >
