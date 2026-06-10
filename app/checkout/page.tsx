@@ -197,16 +197,16 @@ function PaymentForm({ plan }: { plan: string }) {
   onClick={handleSubmit}
   disabled={loading || !stripe}
   className="mt-6 w-full h-[52px] rounded-xl text-[15px] font-semibold text-black transition active:scale-95 disabled:opacity-50 cursor-pointer"
-  style={{ backgroundColor: emerald }}
+  style={{ background: "linear-gradient(135deg, #10b981, #059669)", border: "none", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
   onMouseEnter={(e) => {
     if (!loading && stripe) {
-      e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
-      e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+      e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)";
+      e.currentTarget.style.transform = "translateY(-1px)";
     }
   }}
   onMouseLeave={(e) => {
-    e.currentTarget.style.boxShadow = "none";
-    e.currentTarget.style.transform = "translateY(0) scale(1)";
+    e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)";
+    e.currentTarget.style.transform = "translateY(0)";
   }}
 >
 
@@ -380,7 +380,7 @@ function CheckoutForm() {
                 </div>
                 <p className="text-[14px] font-semibold text-white mb-1">Une erreur est survenue</p>
                 <p className="text-[13px] text-red-400 mb-4">{error}</p>
-                <Link href="/login" className="inline-flex items-center justify-center rounded-xl px-6 py-2.5 text-[13px] font-semibold text-black transition" style={{ backgroundColor: emerald, boxShadow: "0 4px 14px rgba(16,185,129,0.3)" }}>
+                <Link href="/login" className="inline-flex items-center justify-center rounded-xl px-6 py-2.5 text-[13px] font-semibold text-black transition" style={{ background: "linear-gradient(135deg, #10b981, #059669)", border: "none", boxShadow: "0 4px 24px rgba(16,185,129,0.25)" }}>
                   Se connecter
                 </Link>
               </div>

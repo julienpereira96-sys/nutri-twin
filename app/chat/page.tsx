@@ -685,6 +685,8 @@ export default function ChatPage() {
   const [marcheStep, setMarcheStep] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profilePhotoRef = useRef<HTMLInputElement>(null);
+  // Timestamp du dernier upload photo depuis cet appareil — évite que Realtime écrase la nouvelle photo avec l'ancienne depuis le CDN
+  const lastSelfUploadAtRef = useRef<number>(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -953,7 +955,8 @@ export default function ChatPage() {
             setShowSasButtons(false);
           }
           // Photo — re-fetch si avatar_updated_at a changé (upload ou suppression depuis un autre appareil)
-          if (row.avatar_updated_at && row.avatar_updated_at !== oldRow?.avatar_updated_at) {
+          // On ignore si c'est cet appareil qui vient d'uploader (CDN encore stale pendant ~5s)
+          if (row.avatar_updated_at && row.avatar_updated_at !== oldRow?.avatar_updated_at && Date.now() - lastSelfUploadAtRef.current > 5000) {
             const uid = row.user_id ?? patientId;
             const sup = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
             const { data: pd } = sup.storage.from("Avatars").getPublicUrl(`${uid}/avatar.jpg`);
@@ -1539,7 +1542,15 @@ export default function ChatPage() {
      {/* Modale profil */}
 {showProfileModal && (
   <div onClick={() => setShowProfileModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-    <div onClick={e => e.stopPropagation()} style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 360, border: `1px solid ${ACCENT_BORDER}`, maxHeight: "90vh", overflowY: "auto" }}>
+    <div onClick={e => e.stopPropagation()} style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 360, border: `1px solid ${ACCENT_BORDER}`, maxHeight: "90vh", overflowY: "auto", position: "relative" }}>
+
+      {/* Croix de fermeture */}
+      <button onClick={() => setShowProfileModal(false)}
+        style={{ position: "absolute", top: 16, right: 16, width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: 16, transition: "all 0.15s" }}
+        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#e2e8f0"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#64748b"; }}>
+        ×
+      </button>
 
       {/* Avatar */}
       <div style={{ textAlign: "center", marginBottom: 20 }}>
@@ -1573,6 +1584,8 @@ export default function ChatPage() {
               for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
               const blob = new Blob([ab], { type: "image/jpeg" });
               await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "no-store" });
+              // Marquer l'upload local pour que Realtime ne re-fetch pas depuis le CDN (encore stale)
+              lastSelfUploadAtRef.current = Date.now();
               // Déclenche le re-fetch sur les autres appareils via Realtime
               await supabase.from("patients").update({ avatar_updated_at: new Date().toISOString() }).eq("user_id", patientId);
             } catch { /* silencieux */ }

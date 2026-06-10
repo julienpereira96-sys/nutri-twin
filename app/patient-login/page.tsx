@@ -151,9 +151,10 @@ export default function PatientLoginPage() {
           )}
 
           <button type="submit" disabled={loading}
-            className="mt-6 w-full rounded-xl bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
-            onMouseEnter={e => { if (!loading) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
-            onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
+            className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+            style={{ background: "linear-gradient(135deg, #10b981, #059669)", border: "none", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
+            onMouseEnter={e => { if (!loading) { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>
             {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Connexion</span> : "Accéder à mon espace"}
           </button>
 
@@ -191,7 +192,10 @@ export default function PatientLoginPage() {
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "white" }}>Email envoyé !</p>
                 <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b" }}>Vérifiez votre boîte mail à <strong style={{ color: "#10b981" }}>{forgotEmail}</strong></p>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Pensez à vérifier vos spams.</p>
-                <button onClick={closeModal} style={{ marginTop: 16, height: 40, borderRadius: 20, padding: "0 20px", background: "#10b981", border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Fermer</button>
+                <button onClick={closeModal}
+                  style={{ marginTop: 16, height: 40, borderRadius: 20, padding: "0 20px", background: "linear-gradient(135deg, #10b981, #059669)", border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>Fermer</button>
               </div>
             ) : (
               <>
@@ -208,7 +212,9 @@ export default function PatientLoginPage() {
                 <div style={{ display: "flex", gap: 10 }}>
                   <button onClick={closeModal} style={{ flex: 1, height: 44, borderRadius: 10, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 14 }}>Annuler</button>
                   <button onClick={() => void handleForgotPassword()} disabled={resetLoading}
-                    style={{ flex: 2, height: 44, borderRadius: 10, background: resetLoading ? "rgba(255,255,255,0.05)" : "#10b981", border: "none", color: resetLoading ? "#64748b" : "black", fontSize: 14, fontWeight: 600, cursor: resetLoading ? "not-allowed" : "pointer" }}>
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: resetLoading ? "rgba(255,255,255,0.05)" : "linear-gradient(135deg, #10b981, #059669)", border: "none", color: resetLoading ? "#64748b" : "black", fontSize: 14, fontWeight: 600, cursor: resetLoading ? "not-allowed" : "pointer", boxShadow: resetLoading ? "none" : "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
+                    onMouseEnter={e => { if (!resetLoading) { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+                    onMouseLeave={e => { if (!resetLoading) { e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)"; e.currentTarget.style.transform = "translateY(0)"; } }}>
                     {resetLoading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />Envoi en cours</span> : "Envoyer le lien"}
                   </button>
                 </div>

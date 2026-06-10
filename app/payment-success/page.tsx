@@ -115,7 +115,9 @@ function PaymentSuccessContent() {
               </p>
               <button
                 onClick={() => window.location.reload()}
-                style={{ padding: "11px 24px", borderRadius: 10, background: emerald, color: "black", fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer" }}
+                style={{ padding: "11px 24px", borderRadius: 10, background: "linear-gradient(135deg, #10b981, #059669)", color: "black", fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}
               >
                 Rafraîchir la page
               </button>
@@ -164,15 +166,15 @@ function PaymentSuccessContent() {
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "center",
                   width: "100%", height: 50, borderRadius: 12,
-                  background: planReady ? emerald : "rgba(255,255,255,0.05)",
+                  background: planReady ? "linear-gradient(135deg, #10b981, #059669)" : "rgba(255,255,255,0.05)",
                   color: planReady ? "black" : "#4b5563",
                   fontWeight: 700, fontSize: 14,
                   cursor: planReady ? "pointer" : "not-allowed",
-                  border: "none", transition: "all 0.2s",
-                  boxShadow: planReady ? "0 4px 14px rgba(16,185,129,0.25)" : "none",
+                  border: "none", transition: "all 0.25s ease",
+                  boxShadow: planReady ? "0 4px 24px rgba(16,185,129,0.25)" : "none",
                 }}
-                onMouseEnter={e => { if (planReady && !navigating) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.01)"; } }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow = planReady ? "0 4px 14px rgba(16,185,129,0.25)" : "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}
+                onMouseEnter={e => { if (planReady && !navigating) { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = planReady ? "0 4px 24px rgba(16,185,129,0.25)" : "none"; e.currentTarget.style.transform = "translateY(0)"; }}
               >
                 {navigating
                   ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 15, height: 15, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement</span>

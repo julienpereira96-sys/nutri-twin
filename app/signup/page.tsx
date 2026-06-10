@@ -388,17 +388,17 @@ try {
     router.push(`/verify-otp?email=${encodeURIComponent(email.trim())}&plan=${plan}`);
   }} disabled={resending}
     className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer disabled:opacity-60"
-    style={{ backgroundColor: "#f59e0b" }}
-    onMouseEnter={e => { if (!resending) { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; } }}
-    onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
+    style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", border: "none", boxShadow: "0 4px 24px rgba(245,158,11,0.25)", transition: "all 0.25s ease" }}
+    onMouseEnter={e => { if (!resending) { e.currentTarget.style.boxShadow = "0 8px 32px rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+    onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(245,158,11,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>
     {resending ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Envoi</span> : "Recevoir mon code de vérification"}
   </button>
 ) : error && error.includes("compte existe déjà") ? (
   <button onClick={() => router.push(`/login?pending_plan=${plan}`)}
     className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer"
-    style={{ backgroundColor: "#f59e0b" }}
-    onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-2px) scale(1.02)"; }}
-    onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0) scale(1)"; }}>
+    style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", border: "none", boxShadow: "0 4px 24px rgba(245,158,11,0.25)", transition: "all 0.25s ease" }}
+    onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(245,158,11,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+    onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(245,158,11,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>
     {error.includes("finaliser") ? "Finaliser mon abonnement" : "Se connecter"}
   </button>
 
@@ -406,16 +406,17 @@ try {
   <button
     type="submit"
     disabled={loading || !acceptCGU}  
-  className="mt-6 w-full rounded-xl - bg-[#10b981] py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+  className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+  style={{ background: "linear-gradient(135deg, #10b981, #059669)", border: "none", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
   onMouseEnter={(e) => {
     if (!loading && acceptCGU) {
-      e.currentTarget.style.boxShadow = "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)";
-      e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+      e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)";
+      e.currentTarget.style.transform = "translateY(-1px)";
     }
   }}
   onMouseLeave={(e) => {
-    e.currentTarget.style.boxShadow = "none";
-    e.currentTarget.style.transform = "translateY(0) scale(1)";
+    e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)";
+    e.currentTarget.style.transform = "translateY(0)";
   }}
 >
 
