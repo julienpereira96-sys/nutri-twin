@@ -70,7 +70,7 @@ function AnimatedChat() {
           <div className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-500 ring-1 ring-emerald-500/20">21h14</div>
         </div>
 
-        <div ref={scrollRef} className="px-4 pt-4 pb-2" style={{ height: 450, overflowY: "auto", scrollbarWidth: "none", display: "flex", flexDirection: "column", gap: 13 }}>
+        <div ref={scrollRef} className="px-4 pt-4 pb-2" style={{ height: 455, overflowY: "auto", scrollbarWidth: "none", display: "flex", flexDirection: "column", gap: 13 }}>
           {visibleMessages.map(i => {
             const msg = messages[i];
             return (
@@ -142,7 +142,8 @@ function StaticDashboard() {
     { initials: "SM", name: "Sophie M.", insight: "Merci pour les conseils hier !", time: "Lun", color: "#f43f5e", status: "green", active: false, trophy: false },
     { initials: "MD", name: "Marc D.", insight: "Ça se passe bien cette semaine", time: "Mar", color: "#f59e0b", status: "green", active: false, trophy: false },
     { initials: "CL", name: "Claire L.", insight: "J'ai essayé votre recette 😊", time: "Dim", color: "#ec4899", status: "green", active: false, trophy: false },
-    { initials: "AV", name: "Antoine V.", insight: "Moins de grignotage le soir", time: "Dim", color: "#06b6d4", status: "green", active: false, trophy: false },
+    { initials: "AV", name: "Antoine V.", insight: "Bonsoir ! Grosse journée mais j'ai tenu 💪", time: "Dim", color: "#06b6d4", status: "green", active: false, trophy: false },
+    { initials: "LB", name: "Léa B.", insight: "J'ai adoré la recette que vous m'avez donnée", time: "Sam", color: "#10b981", status: "green", active: false, trophy: false },
   ];
 
   return (
@@ -195,7 +196,7 @@ function StaticDashboard() {
           <div style={{ display: "grid", gridTemplateColumns: "240px 1fr 280px", minHeight: 520, borderRadius: "0 0 20px 20px", overflow: "hidden" }}>
 
             {/* Sidebar patients */}
-            <div style={{ background: "#111111", borderRight: "1px solid rgba(255,255,255,0.06)", padding: 10, display: "flex", flexDirection: "column" }}>
+            <div style={{ background: "rgba(255,255,255,0.02)", borderRight: "1px solid rgba(255,255,255,0.06)", padding: 10, display: "flex", flexDirection: "column" }}>
               <div style={{ background: "#1a1a1a", borderRadius: 8, padding: "6px 10px", marginBottom: 8, display: "flex", alignItems: "center", gap: 6, border: "1px solid rgba(255,255,255,0.06)" }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <span style={{ fontSize: 10, color: "#4b5563" }}>Rechercher...</span>
@@ -227,7 +228,7 @@ function StaticDashboard() {
             </div>
 
             {/* Zone conversation */}
-            <div style={{ background: "#0d0d0d", display: "flex", flexDirection: "column" }}>
+            <div style={{ background: "rgba(255,255,255,0.02)", display: "flex", flexDirection: "column" }}>
               <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "white", flexShrink: 0 }}>JP</div>
                 <div>
@@ -235,7 +236,7 @@ function StaticDashboard() {
                   <p style={{ margin: 0, fontSize: 9, color: "#6b7280" }}>julie.p@email.fr</p>
                 </div>
               </div>
-              <div style={{ flex: 1, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 10, overflow: "hidden" }}>
+              <div style={{ flex: 1, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 10, overflow: "hidden", background: "#070707" }}>
                 {julieConversation.map((msg, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: msg.role === "patient" ? "flex-end" : "flex-start" }}>
                     <div style={{
@@ -262,7 +263,7 @@ function StaticDashboard() {
             </div>
 
             {/* Fiche patient (droite) */}
-            <div style={{ background: "#0f0f0f", borderLeft: "1px solid rgba(255,255,255,0.06)", padding: "16px 14px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div style={{ background: "rgba(255,255,255,0.02)", borderLeft: "1px solid rgba(255,255,255,0.06)", padding: "16px 14px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               {/* Identité */}
               <div style={{ textAlign: "center" }}>
                 <p style={{ margin: "0 0 1px", fontSize: 13, fontWeight: 700, color: "white" }}>Julie P.</p>
@@ -325,7 +326,7 @@ function StaticDashboard() {
 
               {/* Supprimer */}
               <div style={{ textAlign: "center" }}>
-                <span style={{ fontSize: 10, color: "rgba(244,63,94,0.5)" }}>Supprimer le patient</span>
+                <span style={{ fontSize: 10, color: "#f87171" }}>Supprimer le patient</span>
               </div>
             </div>
           </div>

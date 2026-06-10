@@ -2168,7 +2168,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Métriques */}
-                  <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", padding: "10px 12px", marginBottom: 10 }}>
+                  <div style={{ marginBottom: 10, padding: "2px 0" }}>
                     {(() => {
                       const p = selectedPatient as RealPatient;
                       const lastActiveStr = onboardingDemoMode
