@@ -76,9 +76,9 @@ function AnimatedChat() {
             return (
               <div key={i} style={{ display: "flex", justifyContent: msg.role === "patient" ? "flex-end" : "flex-start", animation: "chatFadeIn 0.35s ease forwards" }}>
                 <div style={{
-                  maxWidth: msg.role === "patient" ? "82%" : "92%",
+                  maxWidth: msg.role === "patient" ? "82%" : "100%",
                   borderRadius: msg.role === "patient" ? 14 : 0,
-                  padding: msg.role === "patient" ? "7px 12px" : "2px 0",
+                  padding: msg.role === "patient" ? "7px 12px" : "2px 4px",
                   fontSize: 13,
                   lineHeight: msg.role === "patient" ? 1.5 : 1.7,
                   background: msg.role === "patient" ? "rgba(16,185,129,0.03)" : "transparent",
@@ -193,10 +193,10 @@ function StaticDashboard() {
           </div>
 
           {/* 3-column layout */}
-          <div style={{ display: "grid", gridTemplateColumns: "240px 1fr 280px", minHeight: 520, borderRadius: "0 0 20px 20px", overflow: "hidden" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "240px 1fr 280px", minHeight: 520, gap: 10, padding: "10px 10px 10px 10px" }}>
 
             {/* Sidebar patients */}
-            <div style={{ background: "rgba(255,255,255,0.02)", borderRight: "1px solid rgba(255,255,255,0.06)", padding: 10, display: "flex", flexDirection: "column" }}>
+            <div style={{ background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 10, display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <div style={{ background: "#1a1a1a", borderRadius: 8, padding: "6px 10px", marginBottom: 8, display: "flex", alignItems: "center", gap: 6, border: "1px solid rgba(255,255,255,0.06)" }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <span style={{ fontSize: 10, color: "#4b5563" }}>Rechercher...</span>
@@ -228,7 +228,7 @@ function StaticDashboard() {
             </div>
 
             {/* Zone conversation */}
-            <div style={{ background: "rgba(255,255,255,0.02)", display: "flex", flexDirection: "column" }}>
+            <div style={{ background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "white", flexShrink: 0 }}>JP</div>
                 <div>
@@ -240,9 +240,9 @@ function StaticDashboard() {
                 {julieConversation.map((msg, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: msg.role === "patient" ? "flex-end" : "flex-start" }}>
                     <div style={{
-                      maxWidth: msg.role === "patient" ? "78%" : "92%",
+                      maxWidth: msg.role === "patient" ? "78%" : "100%",
                       borderRadius: msg.role === "patient" ? 14 : 0,
-                      padding: msg.role === "patient" ? "8px 12px" : "2px 0",
+                      padding: msg.role === "patient" ? "8px 12px" : "2px 4px",
                       fontSize: 11,
                       lineHeight: 1.65,
                       background: msg.role === "patient" ? "rgba(16,185,129,0.03)" : "transparent",
@@ -263,7 +263,7 @@ function StaticDashboard() {
             </div>
 
             {/* Fiche patient (droite) */}
-            <div style={{ background: "rgba(255,255,255,0.02)", borderLeft: "1px solid rgba(255,255,255,0.06)", padding: "16px 14px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div style={{ background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "16px 14px", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden" }}>
               {/* Identité */}
               <div style={{ textAlign: "center" }}>
                 <p style={{ margin: "0 0 1px", fontSize: 13, fontWeight: 700, color: "white" }}>Julie P.</p>
