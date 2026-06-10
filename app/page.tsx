@@ -198,7 +198,7 @@ function StaticDashboard() {
           <div style={{ display: "grid", gridTemplateColumns: "240px 1fr 280px", minHeight: 520, gap: 10, padding: "10px 10px 10px 10px" }}>
 
             {/* Sidebar patients */}
-            <div style={{ background: "#070B09", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 10, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ background: "#060908", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 10, display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <div style={{ background: "#1a1a1a", borderRadius: 8, padding: "6px 10px", marginBottom: 8, display: "flex", alignItems: "center", gap: 6, border: "1px solid rgba(255,255,255,0.06)" }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <span style={{ fontSize: 10, color: "#4b5563" }}>Rechercher...</span>
@@ -265,7 +265,7 @@ function StaticDashboard() {
             </div>
 
             {/* Fiche patient (droite) */}
-            <div style={{ background: "#070B09", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "16px 14px", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden" }}>
+            <div style={{ background: "#060908", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "16px 14px", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden" }}>
               {/* Identité */}
               <div style={{ textAlign: "center" }}>
                 <p style={{ margin: "0 0 1px", fontSize: 13, fontWeight: 700, color: "white" }}>Julie P.</p>
@@ -849,7 +849,6 @@ export default function Home() {
                 features={[
                   "Jusqu'à 10 patients suivis en simultané",
                   "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)",
-                  "Suivi patient et gestion des crises 24h/24 & 7j/7",
                   "Analyse en temps réel (détection des comportements et alertes de crises)",
                   "Préparation automatisée de vos consultations et bilans",
                   "Espace de stockage sécurisé pour vos protocoles et documents",
@@ -861,17 +860,16 @@ export default function Home() {
                 name="Professionnel"
                 price="249€"
                 badge="Recommandé"
-                description="Le jumeau le plus fidèle à votre expertise."
+                description="Idéal pour les praticiens indépendants qui gèrent un suivi actif au quotidien."
                 features={[
                   "Jusqu'à 50 patients suivis en simultané",
                   "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)",
-                  "Suivi patient et gestion des crises 24h/24 & 7j/7",
                   "Analyse en temps réel (détection des comportements et alertes de crises)",
                   "Préparation automatisée de vos consultations et bilans",
                   "Espace de stockage sécurisé pour vos protocoles et documents",
                   "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients",
                   "Mémoire clinique long terme (le Jumeau conserve une synthèse permanente de tout le parcours)",
-                  "Plafond d'échanges quotidien étendu par patient (*)",
+                  "Plafond d'échanges quotidien étendu par patient (1)",
                 ]}
                 plan="pro"
                 featured={true}
@@ -881,31 +879,31 @@ export default function Home() {
                 price="599€"
                 description="Pour les cabinets multi-praticiens et centres de santé."
                 features={[
-                  "3 comptes praticiens indépendants inclus",
                   "Jusqu'à 150 patients suivis au global au sein du cabinet",
                   "Votre Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)",
-                  "Suivi patient et gestion des crises 24h/24 & 7j/7",
                   "Analyse en temps réel (détection des comportements et alertes de crises)",
                   "Préparation automatisée de vos consultations et bilans",
                   "Espace de stockage sécurisé pour vos protocoles et documents",
                   "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients",
                   "Mémoire clinique long terme (le Jumeau conserve une synthèse permanente de tout le parcours)",
                   "Espace collaboratif : Possibilité de transférer ou de partager un dossier entre confrères",
-                  "Plafond d'échanges quotidien étendu par patient (*)",
+                  "Plafond d'échanges quotidien étendu par patient (1)",
                 ]}
                 plan="cabinet"
                 featured={false}
+                footnoteMark="2"
               />
             </div>
 
-            {/* Note de bas de grille tarifaire */}
-            <p className="mx-auto mt-8 max-w-3xl text-center text-[11px] leading-relaxed text-zinc-500">
-              (*) Gestion des volumes et sécurité : L&apos;enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel
+            {/* Notes de bas de grille tarifaire */}
+            <div className="mx-auto mt-8 max-w-3xl text-left text-[11px] leading-relaxed text-zinc-500 flex flex-col gap-2">
+              <p>(1) Gestion des volumes et sécurité : L&apos;enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel
               et élargie à 100 messages/jour sur le plan Professionnel et Cabinet afin de garantir la stabilité technique de la
               plateforme et de maintenir un cadre d&apos;échange structuré pour le patient. Conformément à la réglementation,
               toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais
-              utilisées pour entraîner des modèles d&apos;IA publics.
-            </p>
+              utilisées pour entraîner des modèles d&apos;IA publics.</p>
+              <p>(2) Le plan Cabinet inclut 3 comptes praticiens indépendants. Chaque praticien supplémentaire est facturé 99&nbsp;€/mois.</p>
+            </div>
           </div>
         </section>
 
@@ -1021,8 +1019,8 @@ function FounderSection() {
   );
 }
 
-function PricingCard({ name, price, badge, description, features, plan, featured }: {
-  name: string; price: string; badge?: string; description: string; features: string[]; plan: string; featured: boolean;
+function PricingCard({ name, price, badge, description, features, plan, featured, footnoteMark }: {
+  name: string; price: string; badge?: string; description: string; features: string[]; plan: string; featured: boolean; footnoteMark?: string;
 }) {
   return (
     <div className="relative flex flex-col rounded-2xl p-6 sm:p-8 transition-all duration-300 group" style={{
@@ -1059,47 +1057,47 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       <p className="mb-1 text-[14px] font-bold text-white">{name}</p>
       <div className="mb-3 flex items-baseline gap-1">
         <span className="text-[42px] font-black tracking-tight text-white">{price}</span>
+        {footnoteMark && <sup className="text-[13px] font-normal text-zinc-500 ml-0.5">({footnoteMark})</sup>}
         <span className="text-[12px] text-zinc-600">/mois</span>
       </div>
       <p className="mb-5 text-[12px] leading-relaxed text-zinc-500">{description}</p>
       <ul className="mb-6 flex flex-1 flex-col gap-2.5">
         {features.map((f, i) => (
           <li key={i} className="flex items-start gap-2">
-            <svg className="mt-0.5 size-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+            <svg className={`mt-0.5 size-4 shrink-0 ${i < 5 ? "text-zinc-600" : "text-emerald-500"}`} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
             </svg>
-            <span className={`text-[12px] leading-snug ${i < 3 ? "text-zinc-200" : "text-zinc-500"}`}>{f}</span>
+            <span className={`text-[12px] leading-snug ${i < 5 ? "text-zinc-500" : "text-zinc-200"}`}>{f}</span>
           </li>
         ))}
       </ul>
       <button
-       onClick={() => {
-        if (typeof window !== "undefined" && document.cookie.includes("changing_plan=true")) {
-          document.cookie = `selected_plan=${plan}; path=/; max-age=300`;
-          window.location.assign(`/checkout?plan=${plan}`);
-        } else {
-          window.location.assign(`/signup?plan=${plan}`);
+        onClick={() => {
+          if (typeof window !== "undefined" && document.cookie.includes("changing_plan=true")) {
+            document.cookie = `selected_plan=${plan}; path=/; max-age=300`;
+            window.location.assign(`/checkout?plan=${plan}`);
+          } else {
+            window.location.assign(`/signup?plan=${plan}`);
+          }
+        }}
+        className="inline-flex h-[50px] w-full items-center justify-center rounded-xl text-[13px] font-semibold active:scale-95 mt-2 cursor-pointer"
+        style={featured
+          ? { background: "linear-gradient(135deg, #10b981, #059669)", color: "#000000", border: "none", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }
+          : { border: "1.5px solid rgba(255,255,255,0.12)", color: "#d1d5db", background: "rgba(255,255,255,0.03)", transition: "all 0.25s ease" }
         }
-      }}   
-    className="inline-flex h-[50px] w-full items-center justify-center rounded-xl text-[13px] font-semibold transition active:scale-95 mt-2 cursor-pointer"
-      style={featured
-    ? { backgroundColor: emerald, color: "black", border: "1px solid rgba(255,255,255,0.2)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.12), 0 4px 14px rgba(16,185,129,0.3)" }
-    : { border: "1.5px solid rgba(255,255,255,0.12)", color: "#d1d5db", background: "rgba(255,255,255,0.03)" }
-  }
-  onMouseEnter={(e) => {
-    e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
-    e.currentTarget.style.boxShadow = featured
-      ? "0 0 0 1px rgba(16,185,129,0.5), 0 8px 30px rgba(16,185,129,0.4)"
-      : "0 0 0 1px rgba(255,255,255,0.2), 0 8px 20px rgba(255,255,255,0.05)";
-  }}
-  onMouseLeave={(e) => {
-    e.currentTarget.style.transform = "translateY(0) scale(1)";
-    e.currentTarget.style.boxShadow = featured ? "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.12), 0 4px 14px rgba(16,185,129,0.3)" : "none";
-  }}
->
-
-  Commencer l'essai gratuit
-</button>
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = "translateY(-1px)";
+          e.currentTarget.style.boxShadow = featured
+            ? "0 8px 32px rgba(16,185,129,0.4)"
+            : "0 8px 20px rgba(255,255,255,0.05)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.boxShadow = featured ? "0 4px 24px rgba(16,185,129,0.25)" : "none";
+        }}
+      >
+        Commencer l'essai gratuit
+      </button>
 
     </div>
   );
