@@ -674,16 +674,12 @@ export default function Home() {
                   </svg>
                 )},
                 { num: "02", title: "L'apprentissage", desc: "Ajustez le ton, le style, les valeurs de votre double. Pour qu'il réponde exactement comme vous le feriez.", icon: (
-                  <svg width="22" height="20" viewBox="0 0 44 38" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 34 C22 34 8 31 5 21 C2 11 9 3 16 3 C19 3 21 5 22 7"/>
-                    <path d="M22 7 C21 5 19 3 16 3 C9 3 2 11 5 21 C8 31 22 34 22 34"/>
-                    <path d="M22 34 C22 34 36 31 39 21 C42 11 35 3 28 3 C25 3 23 5 22 7"/>
-                    <path d="M22 7 C23 5 25 3 28 3 C35 3 42 11 39 21 C36 31 22 34 22 34"/>
-                    <line x1="22" y1="7" x2="22" y2="34"/>
-                    <path d="M12 11 Q15 9 14 14"/>
-                    <path d="M9 19 Q13 17 12 22"/>
-                    <path d="M32 11 Q29 9 30 14"/>
-                    <path d="M35 19 Q31 17 32 22"/>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18.9 7a8 8 0 0 1 1.1 5v1a6 6 0 0 0 .8 3"/>
+                    <path d="M8 11a4 4 0 0 1 8 0v1a10 10 0 0 0 2 6"/>
+                    <path d="M12 11v2a14 14 0 0 0 2.5 8"/>
+                    <path d="M8 15a18 18 0 0 0 1.8 6"/>
+                    <path d="M4.9 19a22 22 0 0 1-.9-7v-1a8 8 0 0 1 12-6.95"/>
                   </svg>
                 )},
                 { num: "03", title: "Le relais", desc: "Donnez le lien à vos patients. Ils sont désormais épaulés 24h/24, toujours sous votre contrôle.", icon: (
