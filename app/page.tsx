@@ -49,7 +49,9 @@ function AnimatedChat() {
   }, [done]);
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
   }, [visibleMessages, isTyping]);
 
   return (
@@ -196,7 +198,7 @@ function StaticDashboard() {
           <div style={{ display: "grid", gridTemplateColumns: "240px 1fr 280px", minHeight: 520, gap: 10, padding: "10px 10px 10px 10px" }}>
 
             {/* Sidebar patients */}
-            <div style={{ background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 10, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ background: "#070B09", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 10, display: "flex", flexDirection: "column", overflow: "hidden" }}>
               <div style={{ background: "#1a1a1a", borderRadius: 8, padding: "6px 10px", marginBottom: 8, display: "flex", alignItems: "center", gap: 6, border: "1px solid rgba(255,255,255,0.06)" }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <span style={{ fontSize: 10, color: "#4b5563" }}>Rechercher...</span>
@@ -236,7 +238,7 @@ function StaticDashboard() {
                   <p style={{ margin: 0, fontSize: 9, color: "#6b7280" }}>julie.p@email.fr</p>
                 </div>
               </div>
-              <div style={{ flex: 1, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 10, overflow: "hidden", background: "#070707" }}>
+              <div style={{ flex: 1, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 10, overflow: "hidden", background: "#0b0f0d" }}>
                 {julieConversation.map((msg, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: msg.role === "patient" ? "flex-end" : "flex-start" }}>
                     <div style={{
@@ -263,7 +265,7 @@ function StaticDashboard() {
             </div>
 
             {/* Fiche patient (droite) */}
-            <div style={{ background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "16px 14px", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden" }}>
+            <div style={{ background: "#070B09", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "16px 14px", display: "flex", flexDirection: "column", justifyContent: "space-between", overflow: "hidden" }}>
               {/* Identité */}
               <div style={{ textAlign: "center" }}>
                 <p style={{ margin: "0 0 1px", fontSize: 13, fontWeight: 700, color: "white" }}>Julie P.</p>

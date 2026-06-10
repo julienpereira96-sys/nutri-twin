@@ -2021,7 +2021,7 @@ export default function DashboardPage() {
                       );
                     })()}
                   </div>
-                  <div ref={conversationContainerRef} style={{ flex: 1, overflowY: "auto", padding: "16px 20px", background: "#070707", display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div ref={conversationContainerRef} style={{ flex: 1, overflowY: "auto", padding: "16px 20px", background: "#0b0f0d", display: "flex", flexDirection: "column", gap: 12 }}>
                     {displayedConversations.length === 0 ? (
                       <p style={{ textAlign: "center", fontSize: 13, color: "#64748b", marginTop: 40 }}>Aucune conversation</p>
                     ) : displayedConversations.map((message) => {
