@@ -22,13 +22,13 @@ function useInView(threshold = 0.2) {
 
 function AnimatedChat() {
   const messages = [
-    { role: "patient", text: "Bonsoir, j'ai encore craqué ce soir. Je me sens nulle 😔", delay: 1500 },
-    { role: "ai", text: "Bonsoir Justine, un écart ça arrive, et ça ne définit pas votre parcours.", delay: 4500 },
-    { role: "ai", text: "Vous aviez mangé quoi ce midi ?", delay: 6800 },
-    { role: "patient", text: "Pas grand chose, un sandwich en vitesse.", delay: 10000 },
-    { role: "ai", text: "Voilà, tout s'explique. Ce n'est pas de la faiblesse, c'est de la biologie.", delay: 13500 },
-    { role: "ai", text: "Demain, on vise un vrai déjeuner avec des protéines. D'accord ?", delay: 16500 },
-    { role: "patient", text: "Oui. Merci, ça me soulage d'avoir quelqu'un à qui écrire 💚", delay: 20000 },
+    { role: "patient", text: "Bonsoir, j'ai encore craqué sur du chocolat ce soir. Je me sens vraiment nulle 😔", delay: 1500 },
+    { role: "ai", text: "Bonsoir Justine. Un écart, ça fait partie du chemin — ça ne remet pas en cause tout ce que vous avez construit. Vous avez mangé quoi aujourd'hui ?", delay: 5000 },
+    { role: "patient", text: "Un café ce matin et un sandwich rapide à midi...", delay: 8500 },
+    { role: "ai", text: "Tout s'explique. Votre corps manquait de carburant depuis des heures — ce n'est pas de la faiblesse, c'est de la biologie. Ces fringales du soir ont presque toujours une cause en début de journée.", delay: 13000 },
+    { role: "patient", text: "C'est vrai que j'ai rarement faim le matin. C'est grave ?", delay: 17000 },
+    { role: "ai", text: "Non, mais ça s'apprend. On va commencer par un petit-déjeuner léger mais protéiné demain — juste quelques noix ou un œuf. Et on en reparle.", delay: 21500 },
+    { role: "patient", text: "Oui. Merci, ça me soulage d'avoir quelqu'un à qui écrire 💚", delay: 25000 },
   ];
 
   const [visibleMessages, setVisibleMessages] = useState<number[]>([]);
@@ -110,10 +110,11 @@ function AnimatedChat() {
                 </div>
               )}
               {isTyping && typingRole === "patient" && (
-                <div style={{ display: "flex", gap: 4, alignItems: "center", padding: "6px 12px", borderRadius: 14, borderBottomRightRadius: 4, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.18)" }}>
-                  {[0, 180, 360].map((delay, idx) => (
-                    <div key={idx} style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.3)", animation: `typingBounce 1.2s ${delay}ms infinite` }} />
-                  ))}
+                <div style={{ position: "relative", width: 16, height: 16, flexShrink: 0 }}>
+                  <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", animation: "spin 1.8s linear infinite" }} viewBox="0 0 20 20" fill="none">
+                    <circle cx="10" cy="10" r="8" stroke="rgba(16,185,129,0.08)" strokeWidth="1.5"/>
+                    <circle cx="10" cy="10" r="8" stroke="#10b981" strokeWidth="1.5" strokeDasharray="16 35" strokeLinecap="round"/>
+                  </svg>
                 </div>
               )}
             </div>
@@ -123,8 +124,8 @@ function AnimatedChat() {
         <div className="border-t border-white/[0.06] px-4 py-3">
           <div style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 24, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "8px 14px 8px 16px" }}>
             <span style={{ flex: 1, fontSize: 12, color: "rgba(255,255,255,0.2)" }}>Écrire un message...</span>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: "transparent", border: "1.5px solid rgba(16,185,129,0.55)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <div style={{ width: 24, height: 24, borderRadius: 7, background: "transparent", border: "1.5px solid rgba(16,185,129,0.55)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
                 <path d="M12 19V5M5 12l7-7 7 7" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
@@ -132,10 +133,6 @@ function AnimatedChat() {
         </div>
       </div>
       <style>{`
-        @keyframes typingBounce {
-          0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
-          30% { transform: translateY(-4px); opacity: 1; }
-        }
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes nt-analyse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.65; } }
       `}</style>
