@@ -22,40 +22,14 @@ function useInView(threshold = 0.2) {
 
 function AnimatedChat() {
   const messages = [
-    { role: "patient", text: "Bonsoir, j'ai encore craqué sur du chocolat. Je me sens vraiment nulle 😔", delay: 1500 },
-    { role: "ai", text: "Bonsoir Justine. Un écart, ça fait partie du chemin, ça ne remet pas en cause tout ce que vous avez construit. Vous avez mangé quoi aujourd'hui ?", delay: 4500 },
-    { role: "patient", text: "Un café le matin, un sandwich à midi... pas grand chose.", delay: 7500 },
-    { role: "ai", text: "Tout s'explique. Ces fringales du soir ont presque toujours une cause en début de journée.", delay: 11500 },
-    { role: "patient", text: "J'ai rarement faim le matin. C'est grave ?", delay: 14500 },
-    { role: "ai", text: "Pas du tout. On va construire quelque chose qui vous ressemble vraiment, pas un plan standard qu'on applique à tout le monde.", delay: 18500 },
-    { role: "patient", text: "Merci, ça me soulage d'avoir quelqu'un à qui écrire 💚", delay: 22000 },
+    { role: "patient", text: "Bonsoir, j'ai encore craqué sur du chocolat. Je me sens vraiment nulle 😔" },
+    { role: "ai", text: "Bonsoir Justine. Un écart, ça fait partie du chemin, ça ne remet pas en cause tout ce que vous avez construit. Vous avez mangé quoi aujourd'hui ?" },
+    { role: "patient", text: "Un café le matin, un sandwich à midi... pas grand chose." },
+    { role: "ai", text: "Tout s'explique. Ces fringales du soir ont presque toujours une cause en début de journée." },
+    { role: "patient", text: "J'ai rarement faim le matin. C'est grave ?" },
+    { role: "ai", text: "Pas du tout. On va construire quelque chose qui vous ressemble vraiment, pas un plan standard qu'on applique à tout le monde." },
+    { role: "patient", text: "Merci, ça me soulage d'avoir quelqu'un à qui écrire 💚" },
   ];
-
-  const [visibleMessages, setVisibleMessages] = useState<number[]>([]);
-  const [isTyping, setIsTyping] = useState(false);
-  const [done, setDone] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const endRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (done) return;
-    const timers: NodeJS.Timeout[] = [];
-    messages.forEach((msg, i) => {
-      if (msg.role === "ai") {
-        timers.push(setTimeout(() => setIsTyping(true), msg.delay - 1000));
-      }
-      timers.push(setTimeout(() => {
-        setIsTyping(false);
-        setVisibleMessages(prev => [...prev, i]);
-      }, msg.delay));
-    });
-    timers.push(setTimeout(() => setDone(true), messages[messages.length - 1].delay + 2000));
-    return () => timers.forEach(t => clearTimeout(t));
-  }, [done]);
-
-  useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [visibleMessages, isTyping]);
 
   return (
     <div className="relative mx-auto lg:ml-8 w-full lg:w-[460px]">
@@ -75,48 +49,26 @@ function AnimatedChat() {
           <div className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-500 ring-1 ring-emerald-500/20">21h14</div>
         </div>
 
-        <div ref={scrollRef} className="px-4 pt-4 pb-2" style={{ height: 420, overflowY: "auto", display: "flex", flexDirection: "column", justifyContent: "flex-start", scrollbarWidth: "none" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {visibleMessages.map(i => {
-              const msg = messages[i];
-              return (
-                <div key={i} style={{
-                  display: "flex",
-                  justifyContent: msg.role === "patient" ? "flex-end" : "flex-start",
-                  animation: "chatFadeIn 0.35s ease forwards",
-                }}>
-                  <div style={{
-                    maxWidth: "82%",
-                    borderRadius: 14,
-                    borderBottomRightRadius: msg.role === "patient" ? 4 : 14,
-                    borderBottomLeftRadius: msg.role === "ai" ? 4 : 14,
-                    padding: "7px 12px",
-                    fontSize: 12.5,
-                    lineHeight: 1.5,
-                    background: msg.role === "patient" ? "rgba(16,185,129,0.06)" : "transparent",
-                    border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.18)" : "none",
-                    color: msg.role === "patient" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.75)",
-                  }}>
-                    {msg.text}
-                  </div>
-                </div>
-              );
-            })}
-            <div style={{ height: 20, display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
-              {isTyping && (
-                <div style={{ position: "relative", width: 16, height: 16, flexShrink: 0 }}>
-                  <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", animation: "spin 1.8s linear infinite" }} viewBox="0 0 20 20" fill="none">
-                    <circle cx="10" cy="10" r="8" stroke="rgba(16,185,129,0.08)" strokeWidth="1.5"/>
-                    <circle cx="10" cy="10" r="8" stroke="#10b981" strokeWidth="1.5" strokeDasharray="16 35" strokeLinecap="round"/>
-                  </svg>
-                </div>
-              )}
+        <div className="pl-4 pr-2 pt-4 pb-2" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {messages.map((msg, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: msg.role === "patient" ? "flex-end" : "flex-start" }}>
+              <div style={{
+                maxWidth: msg.role === "patient" ? "82%" : "100%",
+                borderRadius: msg.role === "patient" ? 18 : 0,
+                padding: msg.role === "patient" ? "7px 12px" : "2px 0",
+                fontSize: 12.5,
+                lineHeight: msg.role === "patient" ? 1.5 : 1.7,
+                background: msg.role === "patient" ? "rgba(16,185,129,0.03)" : "transparent",
+                border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.2)" : "none",
+                color: msg.role === "patient" ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)",
+              }}>
+                {msg.text}
+              </div>
             </div>
-            <div ref={endRef} />
-          </div>
+          ))}
         </div>
 
-        <div className="border-t border-white/[0.06] px-4 py-3">
+        <div className="border-t border-white/[0.06] px-4 py-3 mt-2">
           <div style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 24, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "8px 14px 8px 16px" }}>
             <span style={{ flex: 1, fontSize: 12, color: "rgba(255,255,255,0.2)" }}>Écrire un message...</span>
             <div style={{ width: 24, height: 24, borderRadius: 7, background: "transparent", border: "1.5px solid rgba(16,185,129,0.55)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -127,10 +79,6 @@ function AnimatedChat() {
           </div>
         </div>
       </div>
-      <style>{`
-        @keyframes chatFadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }
@@ -152,7 +100,7 @@ function StaticDashboard() {
     { initials: "SM", name: "Sophie M.", insight: "Merci pour les conseils hier !", time: "Lun", color: "#f43f5e", status: "green", active: false, trophy: false },
     { initials: "MD", name: "Marc D.", insight: "Ça se passe bien cette semaine", time: "Mar", color: "#f59e0b", status: "green", active: false, trophy: false },
     { initials: "CL", name: "Claire L.", insight: "J'ai essayé votre recette 😊", time: "Dim", color: "#ec4899", status: "green", active: false, trophy: false },
-    { initials: "AV", name: "Antoine V.", insight: "RDV confirmé pour jeudi", time: "Dim", color: "#06b6d4", status: "green", active: false, trophy: false },
+    { initials: "AV", name: "Antoine V.", insight: "Moins de grignotage le soir", time: "Dim", color: "#06b6d4", status: "green", active: false, trophy: false },
   ];
 
   return (
@@ -183,16 +131,21 @@ function StaticDashboard() {
               </div>
               <span style={{ fontSize: 9, color: "#4b5563" }}>6 patients</span>
             </div>
-            <div style={{ display: "flex", gap: 4 }}>
-              {["Suivi", "Vue d'ensemble"].map((tab, i) => (
-                <div key={i} style={{ padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, background: i === 0 ? "rgba(16,185,129,0.12)" : "transparent", color: i === 0 ? "#10b981" : "#4b5563", border: i === 0 ? "1px solid rgba(16,185,129,0.25)" : "1px solid transparent" }}>{tab}</div>
-              ))}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, borderRadius: 8, background: "#10b981", padding: "5px 10px" }}>
-              <div style={{ width: 16, height: 16, borderRadius: 4, background: "rgba(0,0,0,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ display: "flex", gap: 4 }}>
+                {["Suivi", "Vue d'ensemble"].map((tab, i) => (
+                  <div key={i} style={{ padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, background: i === 0 ? "rgba(16,185,129,0.12)" : "transparent", color: i === 0 ? "#10b981" : "#4b5563", border: i === 0 ? "1px solid rgba(16,185,129,0.25)" : "1px solid transparent" }}>{tab}</div>
+                ))}
               </div>
-              <span style={{ fontSize: 10, fontWeight: 700, color: "black" }}>Mon Jumeau</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderRadius: 10, background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)" }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM17.5 14v7M14 17.5h7" stroke="black" strokeWidth="2" strokeLinecap="round"/></svg>
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: 11, fontWeight: 600, color: "#10b981" }}>Mon Jumeau</p>
+                  <p style={{ margin: 0, fontSize: 9, color: "#64748b" }}>Gérer mes documents</p>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -207,10 +160,10 @@ function StaticDashboard() {
               </div>
               <div style={{ flex: 1 }}>
                 {patients.map((p, i) => (
-                  <div key={i} style={{ marginBottom: 2, borderRadius: 10, padding: "8px 10px", background: p.active ? "rgba(16,185,129,0.08)" : "transparent", border: p.active ? "1px solid rgba(16,185,129,0.2)" : "1px solid transparent" }}>
+                  <div key={i} style={{ marginBottom: 2, borderRadius: 10, padding: "8px 10px", background: p.active ? "rgba(245,158,11,0.06)" : "transparent", border: p.active ? "1px solid rgba(245,158,11,0.25)" : "1px solid transparent" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
                       <div style={{ width: 28, height: 28, borderRadius: "50%", background: p.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "white", flexShrink: 0 }}>{p.initials}</div>
-                      <span style={{ fontSize: 11, fontWeight: 600, flex: 1, color: p.active ? "#10b981" : "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, flex: 1, color: p.active ? "#f59e0b" : "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
                       <span style={{ fontSize: 9, color: "#4b5563", flexShrink: 0 }}>{p.time}</span>
                     </div>
                     <p style={{ margin: 0, fontSize: 10, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 35, display: "flex", alignItems: "center", gap: 3 }}>
@@ -220,7 +173,7 @@ function StaticDashboard() {
                   </div>
                 ))}
               </div>
-              <div style={{ borderRadius: 10, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", padding: "8px 10px", display: "flex", alignItems: "center", gap: 8, marginTop: 6, cursor: "pointer" }}>
+              <div style={{ borderRadius: 10, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", padding: "8px 10px", display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
                 <div style={{ width: 28, height: 28, borderRadius: 8, background: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
                 </div>
@@ -260,7 +213,7 @@ function StaticDashboard() {
               </div>
               <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: 10 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 10, background: "#161616", padding: "8px 12px", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <span style={{ flex: 1, fontSize: 10, color: "#4b5563" }}>Conversation en lecture seule — accessible uniquement par le patient</span>
+                  <span style={{ flex: 1, fontSize: 10, color: "#4b5563" }}>Conversation en lecture seule, accessible uniquement par le patient</span>
                   <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#10b981" }} />
                 </div>
               </div>
@@ -269,10 +222,10 @@ function StaticDashboard() {
             {/* Fiche patient (droite) */}
             <div style={{ background: "#0f0f0f", borderLeft: "1px solid rgba(255,255,255,0.06)", padding: 14, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
               {/* Identité */}
-              <div>
+              <div style={{ textAlign: "center" }}>
                 <p style={{ margin: "0 0 1px", fontSize: 13, fontWeight: 700, color: "white" }}>Julie P.</p>
-                <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563" }}>julie.p@email.fr</p>
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 20, padding: "3px 10px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                <p style={{ margin: "0 0 8px", fontSize: 10, color: "#4b5563" }}>julie.p@email.fr</p>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 20, padding: "3px 10px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }} />
                   <span style={{ fontSize: 10, fontWeight: 600, color: "#f59e0b" }}>Fatigue professionnelle</span>
                 </div>
@@ -329,8 +282,8 @@ function StaticDashboard() {
               </div>
 
               {/* Supprimer */}
-              <div style={{ marginTop: "auto", paddingTop: 6 }}>
-                <span style={{ fontSize: 10, color: "#f43f5e", cursor: "pointer" }}>Supprimer le patient</span>
+              <div style={{ textAlign: "center", paddingTop: 4 }}>
+                <span style={{ fontSize: 10, color: "rgba(244,63,94,0.5)" }}>Supprimer le patient</span>
               </div>
             </div>
           </div>
@@ -695,10 +648,8 @@ export default function Home() {
               {[
                 { num: "01", title: "La transmission", desc: "Incorporez vos protocoles, vos guides et vos méthodes. Complétez son savoir par un échange guidé pour capturer chaque nuance de votre expertise.", icon: (
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M19 4v16H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                    <path d="M5 18a2 2 0 0 0 2 2"/>
-                    <path d="M12 9v5"/>
-                    <path d="M10 11l2-2 2 2"/>
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
                   </svg>
                 )},
                 { num: "02", title: "L'apprentissage", desc: "Ajustez le ton, le style, les valeurs de votre double. Pour qu'il réponde exactement comme vous le feriez.", icon: (
