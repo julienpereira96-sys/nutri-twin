@@ -76,7 +76,7 @@ function AnimatedChat() {
             return (
               <div key={i} style={{ display: "flex", justifyContent: msg.role === "patient" ? "flex-end" : "flex-start", animation: "chatFadeIn 0.35s ease forwards" }}>
                 <div style={{
-                  maxWidth: msg.role === "patient" ? "82%" : "100%",
+                  maxWidth: msg.role === "patient" ? "82%" : "95%",
                   borderRadius: msg.role === "patient" ? 14 : 0,
                   padding: msg.role === "patient" ? "7px 12px" : "2px 0",
                   fontSize: 12.5,
@@ -129,8 +129,11 @@ function StaticDashboard() {
     { role: "patient", text: "Un sandwich froid en réunion... et là je grignote devant mon écran." },
     { role: "ai", text: "C'est votre corps qui cherche de l'énergie, pas un manque de volonté. Ce que vous portez en ce moment, c'est beaucoup." },
     { role: "patient", text: "Oui. Et je culpabilise en plus de tout ça." },
-    { role: "ai", text: "Ne rajoutez pas ça. Vous gérez énormément, et vous êtes là quand même. Demain, on commence par un vrai petit-déjeuner — même 15 minutes, c'est un signal fort envoyé à votre corps." },
-    { role: "patient", text: "J'essaierai. Merci d'être là 💚" },
+    { role: "ai", text: "Ne rajoutez pas ça. Vous gérez énormément, et vous êtes là quand même. Demain, on commence par un vrai petit-déjeuner, même 15 minutes, c'est un signal fort envoyé à votre corps." },
+    { role: "patient", text: "J'ai des œufs je crois. Je peux faire quelque chose de rapide." },
+    { role: "ai", text: "Parfait. Deux œufs brouillés et une tranche de pain, c'est déjà une vraie base. Votre corps vous remerciera dès midi." },
+    { role: "patient", text: "Merci d'être là 💚" },
+    { role: "ai", text: "Toujours. Bonne nuit Julie, prenez soin de vous." },
   ];
 
   const patients = [
@@ -232,11 +235,11 @@ function StaticDashboard() {
                   <p style={{ margin: 0, fontSize: 9, color: "#6b7280" }}>julie.p@email.fr</p>
                 </div>
               </div>
-              <div style={{ flex: 1, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 16, overflow: "hidden" }}>
+              <div style={{ flex: 1, padding: "10px 14px", display: "flex", flexDirection: "column", gap: 10, overflow: "hidden" }}>
                 {julieConversation.map((msg, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: msg.role === "patient" ? "flex-end" : "flex-start" }}>
                     <div style={{
-                      maxWidth: "78%",
+                      maxWidth: msg.role === "patient" ? "78%" : "95%",
                       borderRadius: msg.role === "patient" ? 14 : 0,
                       padding: msg.role === "patient" ? "8px 12px" : "2px 0",
                       fontSize: 11,
@@ -383,7 +386,7 @@ function StaticDashboard() {
         <div className="mt-4 overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0f0f0f] p-4">
           <div className="mb-3 flex items-center justify-between">
             <div>
-              <p className="text-[13px] font-bold text-white">Rapport IA — Julie P.</p>
+              <p className="text-[13px] font-bold text-white">Rapport IA, Julie P.</p>
               <p className="text-[10px] text-zinc-600">Mai 2026</p>
             </div>
             <div className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-[10px] font-semibold text-violet-400">Mensuel</div>
