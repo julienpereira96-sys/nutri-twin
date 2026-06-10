@@ -22,14 +22,35 @@ function useInView(threshold = 0.2) {
 
 function AnimatedChat() {
   const messages = [
-    { role: "patient", text: "Bonsoir, j'ai encore craqué sur du chocolat. Je me sens vraiment nulle 😔" },
-    { role: "ai", text: "Bonsoir Justine. Un écart, ça fait partie du chemin, ça ne remet pas en cause tout ce que vous avez construit. Vous avez mangé quoi aujourd'hui ?" },
-    { role: "patient", text: "Un café le matin, un sandwich à midi... pas grand chose." },
-    { role: "ai", text: "Tout s'explique. Ces fringales du soir ont presque toujours une cause en début de journée." },
-    { role: "patient", text: "J'ai rarement faim le matin. C'est grave ?" },
-    { role: "ai", text: "Pas du tout. On va construire quelque chose qui vous ressemble vraiment, pas un plan standard qu'on applique à tout le monde." },
-    { role: "patient", text: "Merci, ça me soulage d'avoir quelqu'un à qui écrire 💚" },
+    { role: "patient", text: "Bonsoir, j'ai encore craqué sur du chocolat. Je me sens vraiment nulle 😔", delay: 1500 },
+    { role: "ai", text: "Bonsoir Justine. Un écart, ça fait partie du chemin, ça ne remet pas en cause tout ce que vous avez construit. Vous avez mangé quoi aujourd'hui ?", delay: 4500 },
+    { role: "patient", text: "Un café le matin, un sandwich à midi... pas grand chose.", delay: 7500 },
+    { role: "ai", text: "Tout s'explique. Ces fringales du soir ont presque toujours une cause en début de journée.", delay: 11500 },
+    { role: "patient", text: "J'ai rarement faim le matin. C'est grave ?", delay: 14500 },
+    { role: "ai", text: "Pas du tout. On va construire quelque chose qui vous ressemble vraiment, pas un plan standard qu'on applique à tout le monde.", delay: 18500 },
+    { role: "patient", text: "Merci, ça me soulage d'avoir quelqu'un à qui écrire 💚", delay: 22000 },
   ];
+
+  const [visibleMessages, setVisibleMessages] = useState<number[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
+  const [done, setDone] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (done) return;
+    const timers: NodeJS.Timeout[] = [];
+    messages.forEach((msg, i) => {
+      if (msg.role === "ai") timers.push(setTimeout(() => setIsTyping(true), msg.delay - 1000));
+      timers.push(setTimeout(() => { setIsTyping(false); setVisibleMessages(prev => [...prev, i]); }, msg.delay));
+    });
+    timers.push(setTimeout(() => setDone(true), messages[messages.length - 1].delay + 2000));
+    return () => timers.forEach(t => clearTimeout(t));
+  }, [done]);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [visibleMessages, isTyping]);
 
   return (
     <div className="relative mx-auto lg:ml-8 w-full lg:w-[460px]">
@@ -49,26 +70,40 @@ function AnimatedChat() {
           <div className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-500 ring-1 ring-emerald-500/20">21h14</div>
         </div>
 
-        <div className="pl-4 pr-2 pt-4 pb-2" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {messages.map((msg, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: msg.role === "patient" ? "flex-end" : "flex-start" }}>
-              <div style={{
-                maxWidth: msg.role === "patient" ? "82%" : "100%",
-                borderRadius: msg.role === "patient" ? 18 : 0,
-                padding: msg.role === "patient" ? "7px 12px" : "2px 0",
-                fontSize: 12.5,
-                lineHeight: msg.role === "patient" ? 1.5 : 1.7,
-                background: msg.role === "patient" ? "rgba(16,185,129,0.03)" : "transparent",
-                border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.2)" : "none",
-                color: msg.role === "patient" ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)",
-              }}>
-                {msg.text}
+        <div ref={scrollRef} className="pl-4 pr-2 pt-4 pb-2" style={{ height: 420, overflowY: "auto", scrollbarWidth: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+          {visibleMessages.map(i => {
+            const msg = messages[i];
+            return (
+              <div key={i} style={{ display: "flex", justifyContent: msg.role === "patient" ? "flex-end" : "flex-start", animation: "chatFadeIn 0.35s ease forwards" }}>
+                <div style={{
+                  maxWidth: msg.role === "patient" ? "82%" : "100%",
+                  borderRadius: msg.role === "patient" ? 14 : 0,
+                  padding: msg.role === "patient" ? "7px 12px" : "2px 0",
+                  fontSize: 12.5,
+                  lineHeight: msg.role === "patient" ? 1.5 : 1.7,
+                  background: msg.role === "patient" ? "rgba(16,185,129,0.03)" : "transparent",
+                  border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.2)" : "none",
+                  color: msg.role === "patient" ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)",
+                }}>
+                  {msg.text}
+                </div>
+              </div>
+            );
+          })}
+          {isTyping && (
+            <div style={{ display: "flex", justifyContent: "flex-start" }}>
+              <div style={{ position: "relative", width: 16, height: 16, flexShrink: 0, marginTop: 2 }}>
+                <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", animation: "spin 1.8s linear infinite" }} viewBox="0 0 20 20" fill="none">
+                  <circle cx="10" cy="10" r="8" stroke="rgba(16,185,129,0.08)" strokeWidth="1.5"/>
+                  <circle cx="10" cy="10" r="8" stroke="#10b981" strokeWidth="1.5" strokeDasharray="16 35" strokeLinecap="round"/>
+                </svg>
               </div>
             </div>
-          ))}
+          )}
+          <div ref={endRef} />
         </div>
 
-        <div className="border-t border-white/[0.06] px-4 py-3 mt-2">
+        <div className="border-t border-white/[0.06] px-4 py-3">
           <div style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 24, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "8px 14px 8px 16px" }}>
             <span style={{ flex: 1, fontSize: 12, color: "rgba(255,255,255,0.2)" }}>Écrire un message...</span>
             <div style={{ width: 24, height: 24, borderRadius: 7, background: "transparent", border: "1.5px solid rgba(16,185,129,0.55)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -79,6 +114,10 @@ function AnimatedChat() {
           </div>
         </div>
       </div>
+      <style>{`
+        @keyframes chatFadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
