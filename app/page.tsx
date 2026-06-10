@@ -853,9 +853,7 @@ export default function Home() {
                   { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
                   { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
                   { text: "Vision IA : Analyse et décodage des photos de repas", included: false, exclusive: true },
-                  { text: "Mémoire clinique long terme", included: false, exclusive: true },
-                  { text: "Espace collaboratif entre confrères", included: false, exclusive: true },
-                  { text: "Plafond d'échanges quotidien étendu par patient (1)", included: false, exclusive: true },
+                  { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: false, exclusive: true },
                 ]}
                 plan="essentiel"
                 featured={false}
@@ -872,7 +870,7 @@ export default function Home() {
                   { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
                   { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
                   { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true, exclusive: true },
-                  { text: "Mémoire clinique long terme (le Jumeau conserve une synthèse permanente de tout le parcours)", included: true, exclusive: true },
+                  { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true, exclusive: true },
                   { text: "Espace collaboratif entre confrères", included: false, exclusive: true },
                   { text: "Plafond d'échanges quotidien étendu par patient (1)", included: true, exclusive: true },
                 ]}
@@ -884,15 +882,15 @@ export default function Home() {
                 price="599€"
                 description="Pour les cabinets multi-praticiens et centres de santé."
                 features={[
-                  { text: "Jusqu'à 150 patients suivis au global au sein du cabinet", included: true, exclusive: false },
-                  { text: "Votre Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)", included: true, exclusive: false },
+                  { text: "Jusqu'à 150 patients suivis au sein du cabinet", included: true, exclusive: false },
+                  { text: "Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)", included: true, exclusive: false },
                   { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
                   { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
                   { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
                   { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true, exclusive: true },
-                  { text: "Mémoire clinique long terme (le Jumeau conserve une synthèse permanente de tout le parcours)", included: true, exclusive: true },
-                  { text: "Espace collaboratif : Possibilité de transférer ou de partager un dossier entre confrères", included: true, exclusive: true },
+                  { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true, exclusive: true },
                   { text: "Plafond d'échanges quotidien étendu par patient (1)", included: true, exclusive: true },
+                  { text: "Espace collaboratif : Possibilité de transférer ou de partager un dossier entre confrères", included: true, exclusive: true },
                 ]}
                 plan="cabinet"
                 featured={false}
@@ -902,12 +900,12 @@ export default function Home() {
 
             {/* Notes de bas de grille tarifaire */}
             <div className="mx-auto mt-8 max-w-3xl text-left text-[11px] leading-relaxed text-zinc-500 flex flex-col gap-2">
-              <p>(1) Gestion des volumes et sécurité : L&apos;enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel
+              <p><sup>(1)</sup> Gestion des volumes et sécurité : L&apos;enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel
               et élargie à 100 messages/jour sur le plan Professionnel et Cabinet afin de garantir la stabilité technique de la
               plateforme et de maintenir un cadre d&apos;échange structuré pour le patient. Conformément à la réglementation,
               toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais
               utilisées pour entraîner des modèles d&apos;IA publics.</p>
-              <p>(2) Le plan Cabinet inclut 3 comptes praticiens indépendants. Chaque praticien supplémentaire est facturé 99&nbsp;€/mois.</p>
+              <p><sup>(2)</sup> Le plan Cabinet inclut 3 comptes praticiens indépendants. Chaque praticien supplémentaire est facturé 99&nbsp;€/mois.</p>
             </div>
           </div>
         </section>
@@ -1002,15 +1000,15 @@ function FounderSection() {
         window.location.assign(`/signup?plan=fondateur`);
       }
     }}    
-  className="inline-flex h-[48px] sm:h-[52px] items-center justify-center rounded-xl px-8 sm:px-10 text-[14px] sm:text-[15px] font-semibold text-black transition active:scale-95 cursor-pointer"
-  style={{ backgroundColor: amber, border: "1px solid rgba(255,255,255,0.35)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.12)" }}
+  className="inline-flex h-[48px] sm:h-[52px] items-center justify-center rounded-xl px-8 sm:px-10 text-[14px] sm:text-[15px] font-semibold text-black active:scale-95 cursor-pointer"
+  style={{ background: `linear-gradient(135deg, ${amber}, #d97706)`, color: "#000000", border: "none", boxShadow: "0 4px 24px rgba(245,158,11,0.25)", transition: "all 0.25s ease" }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.12), 0 0 0 1px rgba(245,158,11,0.5), 0 8px 30px rgba(245,158,11,0.4)";
-    e.currentTarget.style.transform = "translateY(-2px) scale(1.02)";
+    e.currentTarget.style.boxShadow = "0 8px 32px rgba(245,158,11,0.4)";
+    e.currentTarget.style.transform = "translateY(-1px)";
   }}
   onMouseLeave={(e) => {
-    e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.15)";
-    e.currentTarget.style.transform = "translateY(0) scale(1)";
+    e.currentTarget.style.boxShadow = "0 4px 24px rgba(245,158,11,0.25)";
+    e.currentTarget.style.transform = "translateY(0)";
   }}
 >
   Je veux devenir Fondateur
@@ -1071,15 +1069,19 @@ function PricingCard({ name, price, badge, description, features, plan, featured
         {features.map((f, i) => (
           <li key={i} className="flex items-start gap-2">
             {f.included ? (
-              <svg className={`mt-0.5 size-4 shrink-0 ${f.exclusive ? "text-emerald-500" : "text-zinc-600"}`} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+              <svg className={`mt-0.5 size-4 shrink-0 ${i < 5 ? "text-zinc-500" : "text-emerald-500"}`} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
               </svg>
             ) : (
-              <svg className="mt-0.5 size-4 shrink-0 text-zinc-800" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <svg className="mt-0.5 size-4 shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             )}
-            <span className={`text-[12px] leading-snug ${f.included ? (f.exclusive ? "text-zinc-200" : "text-zinc-500") : "text-zinc-700 line-through"}`}>{f.text}</span>
+            <span className={`text-[12px] leading-snug ${!f.included ? "text-zinc-700 line-through" : i < 5 ? "text-zinc-200" : "text-zinc-500"}`}>
+              {f.text.split(/(\([12]\))/).map((part, j) =>
+                /^\([12]\)$/.test(part) ? <sup key={j} style={{ fontSize: "0.75em" }}>{part}</sup> : part
+              )}
+            </span>
           </li>
         ))}
       </ul>
