@@ -70,7 +70,7 @@ function AnimatedChat() {
           <div className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-500 ring-1 ring-emerald-500/20">21h14</div>
         </div>
 
-        <div ref={scrollRef} className="pl-4 pr-2 pt-4 pb-2" style={{ height: 450, overflowY: "auto", scrollbarWidth: "none", display: "flex", flexDirection: "column", gap: 13 }}>
+        <div ref={scrollRef} className="px-4 pt-4 pb-2" style={{ height: 450, overflowY: "auto", scrollbarWidth: "none", display: "flex", flexDirection: "column", gap: 13 }}>
           {visibleMessages.map(i => {
             const msg = messages[i];
             return (
@@ -84,7 +84,6 @@ function AnimatedChat() {
                   background: msg.role === "patient" ? "rgba(16,185,129,0.03)" : "transparent",
                   border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.2)" : "none",
                   color: msg.role === "patient" ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)",
-                  textAlign: "center",
                 }}>
                   {msg.text}
                 </div>
@@ -248,7 +247,6 @@ function StaticDashboard() {
                       background: msg.role === "patient" ? "rgba(16,185,129,0.03)" : "transparent",
                       border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.2)" : "none",
                       color: msg.role === "patient" ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)",
-                      textAlign: "center",
                     }}>
                       {msg.text}
                     </div>
