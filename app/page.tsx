@@ -871,8 +871,7 @@ export default function Home() {
                   { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
                   { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true, exclusive: true },
                   { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true, exclusive: true },
-                  { text: "Espace collaboratif entre confrères", included: false, exclusive: true },
-                  { text: "Plafond d'échanges quotidien étendu par patient (1)", included: true, exclusive: true },
+                  { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true, exclusive: true },
                 ]}
                 plan="pro"
                 featured={true}
@@ -882,30 +881,27 @@ export default function Home() {
                 price="599€"
                 description="Pour les cabinets multi-praticiens et centres de santé."
                 features={[
-                  { text: "Jusqu'à 150 patients suivis au sein du cabinet", included: true, exclusive: false },
+                  { text: "Jusqu'à 150 patients suivis au sein du cabinet (2)", included: true, exclusive: false },
                   { text: "Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)", included: true, exclusive: false },
                   { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
                   { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
                   { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
                   { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true, exclusive: true },
                   { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true, exclusive: true },
-                  { text: "Plafond d'échanges quotidien étendu par patient (1)", included: true, exclusive: true },
+                  { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true, exclusive: true },
                   { text: "Espace collaboratif : Possibilité de transférer ou de partager un dossier entre confrères", included: true, exclusive: true },
                 ]}
                 plan="cabinet"
                 featured={false}
-                footnoteMark="2"
+                footnoteMark="1"
               />
             </div>
 
             {/* Notes de bas de grille tarifaire */}
             <div className="mx-auto mt-8 max-w-3xl text-left text-[11px] leading-relaxed text-zinc-500 flex flex-col gap-2">
-              <p><sup>(1)</sup> Gestion des volumes et sécurité : L&apos;enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel
-              et élargie à 100 messages/jour sur le plan Professionnel et Cabinet afin de garantir la stabilité technique de la
-              plateforme et de maintenir un cadre d&apos;échange structuré pour le patient. Conformément à la réglementation,
-              toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais
-              utilisées pour entraîner des modèles d&apos;IA publics.</p>
-              <p><sup>(2)</sup> Le plan Cabinet inclut 3 comptes praticiens indépendants. Chaque praticien supplémentaire est facturé 99&nbsp;€/mois.</p>
+              <p><sup>(1)</sup> Le plan Cabinet inclut 3 comptes praticiens indépendants. Chaque praticien supplémentaire est facturé 99&nbsp;€/mois.</p>
+              <p><sup>(2)</sup> 50 patients par praticien. Les 3 praticiens inclus cumulent 150 patients ; chaque praticien supplémentaire bénéficie de 50 patients additionnels.</p>
+              <p><sup>(3)</sup> Gestion des volumes et sécurité : L&apos;enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel et élargie à 100 messages/jour sur les plans Professionnel et Cabinet afin de garantir la stabilité technique de la plateforme et de maintenir un cadre d&apos;échange structuré pour le patient. Conformément à la réglementation, toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais utilisées pour entraîner des modèles d&apos;IA publics.</p>
             </div>
           </div>
         </section>
@@ -1069,7 +1065,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
         {features.map((f, i) => (
           <li key={i} className="flex items-start gap-2">
             {f.included ? (
-              <svg className={`mt-0.5 size-4 shrink-0 ${i < 5 ? "text-zinc-500" : "text-emerald-500"}`} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+              <svg className="mt-0.5 size-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
               </svg>
             ) : (
@@ -1078,8 +1074,8 @@ function PricingCard({ name, price, badge, description, features, plan, featured
               </svg>
             )}
             <span className={`text-[12px] leading-snug ${!f.included ? "text-zinc-700 line-through" : i < 5 ? "text-zinc-200" : "text-zinc-500"}`}>
-              {f.text.split(/(\([12]\))/).map((part, j) =>
-                /^\([12]\)$/.test(part) ? <sup key={j} style={{ fontSize: "0.75em" }}>{part}</sup> : part
+              {f.text.split(/(\([123]\))/).map((part, j) =>
+                /^\([123]\)$/.test(part) ? <sup key={j} style={{ fontSize: "0.75em" }}>{part}</sup> : part
               )}
             </span>
           </li>
