@@ -69,7 +69,7 @@ function AnimatedChat() {
           <div className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-500 ring-1 ring-emerald-500/20">21h14</div>
         </div>
 
-        <div className="px-4 pt-4 pb-2" style={{ height: 420, overflowY: "hidden", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+        <div className="px-4 pt-4 pb-2" style={{ height: 420, overflowY: "hidden", display: "flex", flexDirection: "column", justifyContent: "flex-start" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {visibleMessages.map(i => {
               const msg = messages[i];
@@ -224,10 +224,19 @@ function StaticDashboard() {
                   <span style={{ fontSize: 9, fontWeight: 600, color: "#f59e0b" }}>Fatigue pro</span>
                 </div>
               </div>
-              <div style={{ flex: 1, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10, overflow: "hidden" }}>
+              <div style={{ flex: 1, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 16, overflow: "hidden" }}>
                 {julieConversation.map((msg, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: msg.role === "ai" ? "flex-end" : "flex-start" }}>
-                    <div style={{ maxWidth: "74%", borderRadius: 14, borderBottomRightRadius: msg.role === "ai" ? 4 : 14, borderBottomLeftRadius: msg.role === "patient" ? 4 : 14, padding: "8px 12px", fontSize: 11, lineHeight: 1.55, backgroundColor: msg.role === "ai" ? "#10b981" : "#1e1e1e", color: msg.role === "ai" ? "black" : "rgba(255,255,255,0.85)" }}>
+                  <div key={i} style={{ display: "flex", justifyContent: msg.role === "patient" ? "flex-end" : "flex-start" }}>
+                    <div style={{
+                      maxWidth: "78%",
+                      borderRadius: msg.role === "patient" ? 14 : 0,
+                      padding: msg.role === "patient" ? "8px 12px" : "2px 0",
+                      fontSize: 11,
+                      lineHeight: 1.65,
+                      background: msg.role === "patient" ? "rgba(16,185,129,0.03)" : "transparent",
+                      border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.2)" : "none",
+                      color: msg.role === "patient" ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)",
+                    }}>
                       {msg.text}
                     </div>
                   </div>
@@ -328,10 +337,19 @@ function StaticDashboard() {
                 <span style={{ fontSize: 9, fontWeight: 600, color: "#f59e0b" }}>Fatigue pro</span>
               </div>
             </div>
-            <div className="space-y-2 mb-3">
+            <div className="space-y-3 mb-3">
               {julieConversation.map((msg, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: msg.role === "ai" ? "flex-end" : "flex-start" }}>
-                  <div style={{ maxWidth: "82%", borderRadius: 12, borderBottomRightRadius: msg.role === "ai" ? 4 : 12, borderBottomLeftRadius: msg.role === "patient" ? 4 : 12, padding: "7px 11px", fontSize: 12, lineHeight: 1.5, backgroundColor: msg.role === "ai" ? "#10b981" : "#1e1e1e", color: msg.role === "ai" ? "black" : "rgba(255,255,255,0.8)" }}>
+                <div key={i} style={{ display: "flex", justifyContent: msg.role === "patient" ? "flex-end" : "flex-start" }}>
+                  <div style={{
+                    maxWidth: "82%",
+                    borderRadius: msg.role === "patient" ? 14 : 0,
+                    padding: msg.role === "patient" ? "8px 12px" : "2px 0",
+                    fontSize: 12,
+                    lineHeight: 1.65,
+                    background: msg.role === "patient" ? "rgba(16,185,129,0.03)" : "transparent",
+                    border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.2)" : "none",
+                    color: msg.role === "patient" ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)",
+                  }}>
                     {msg.text}
                   </div>
                 </div>
