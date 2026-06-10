@@ -2033,7 +2033,7 @@ export default function DashboardPage() {
                       return (
                         <div key={message.id} data-message-id={message.id} data-message-date={message.created_at}
                           style={{ display: "flex", justifyContent: isPatient ? "flex-end" : "flex-start", transition: "all 0.3s" }}>
-                          <div style={{ maxWidth: "78%" }}>
+                          <div style={{ maxWidth: isPatient ? "78%" : "92%" }}>
                             <div style={{ borderRadius: isPatient ? 14 : 0, borderBottomRightRadius: isPatient ? 4 : 0, padding: isPatient ? "10px 14px" : "3px 0", fontSize: 14, lineHeight: 1.7, background: isHighlighted ? highlightColor : isPatient ? "rgba(16,185,129,0.03)" : "transparent", border: isPatient ? `1px solid ${isHighlighted ? highlightOutline : "rgba(16,185,129,0.2)"}` : "none", color: isPatient ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: isHighlighted && !isPatient ? `2px solid ${highlightOutline}` : "none" }}>
                               {message.content}
                             </div>

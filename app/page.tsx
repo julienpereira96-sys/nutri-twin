@@ -70,16 +70,16 @@ function AnimatedChat() {
           <div className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-500 ring-1 ring-emerald-500/20">21h14</div>
         </div>
 
-        <div ref={scrollRef} className="pl-4 pr-2 pt-4 pb-2" style={{ height: 420, overflowY: "auto", scrollbarWidth: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+        <div ref={scrollRef} className="pl-4 pr-2 pt-4 pb-2" style={{ height: 420, overflowY: "auto", scrollbarWidth: "none", display: "flex", flexDirection: "column", gap: 13 }}>
           {visibleMessages.map(i => {
             const msg = messages[i];
             return (
               <div key={i} style={{ display: "flex", justifyContent: msg.role === "patient" ? "flex-end" : "flex-start", animation: "chatFadeIn 0.35s ease forwards" }}>
                 <div style={{
-                  maxWidth: msg.role === "patient" ? "82%" : "95%",
+                  maxWidth: msg.role === "patient" ? "82%" : "92%",
                   borderRadius: msg.role === "patient" ? 14 : 0,
                   padding: msg.role === "patient" ? "7px 12px" : "2px 0",
-                  fontSize: 12.5,
+                  fontSize: 13,
                   lineHeight: msg.role === "patient" ? 1.5 : 1.7,
                   background: msg.role === "patient" ? "rgba(16,185,129,0.03)" : "transparent",
                   border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.2)" : "none",
@@ -239,7 +239,7 @@ function StaticDashboard() {
                 {julieConversation.map((msg, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: msg.role === "patient" ? "flex-end" : "flex-start" }}>
                     <div style={{
-                      maxWidth: msg.role === "patient" ? "78%" : "95%",
+                      maxWidth: msg.role === "patient" ? "78%" : "92%",
                       borderRadius: msg.role === "patient" ? 14 : 0,
                       padding: msg.role === "patient" ? "8px 12px" : "2px 0",
                       fontSize: 11,
@@ -262,11 +262,11 @@ function StaticDashboard() {
             </div>
 
             {/* Fiche patient (droite) */}
-            <div style={{ background: "#0f0f0f", borderLeft: "1px solid rgba(255,255,255,0.06)", padding: 14, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ background: "#0f0f0f", borderLeft: "1px solid rgba(255,255,255,0.06)", padding: "16px 14px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               {/* Identité */}
               <div style={{ textAlign: "center" }}>
                 <p style={{ margin: "0 0 1px", fontSize: 13, fontWeight: 700, color: "white" }}>Julie P.</p>
-                <p style={{ margin: "0 0 8px", fontSize: 10, color: "#4b5563" }}>julie.p@email.fr</p>
+                <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4b5563" }}>julie.p@email.fr</p>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 20, padding: "3px 10px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }} />
                   <span style={{ fontSize: 10, fontWeight: 600, color: "#f59e0b" }}>Fatigue professionnelle</span>
@@ -274,7 +274,7 @@ function StaticDashboard() {
               </div>
 
               {/* Stats */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {[
                   { label: "Dernière connexion", value: "Il y a 2h" },
                   { label: "Assiduité", value: "5 jours actifs" },
@@ -288,21 +288,21 @@ function StaticDashboard() {
               </div>
 
               {/* Murmure */}
-              <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "8px 10px" }}>
+              <div style={{ background: "rgba(16,185,129,0.05)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.2)", padding: "10px 12px" }}>
                 <p style={{ margin: "0 0 5px", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#10b981" }}>Murmures</p>
-                <p style={{ margin: 0, fontSize: 10, color: "#94a3b8", lineHeight: 1.5 }}>Rappelle-lui de prendre soin d'elle malgré la charge de travail.</p>
+                <p style={{ margin: 0, fontSize: 10, color: "#94a3b8", lineHeight: 1.6 }}>Rappelle-lui de prendre soin d'elle malgré la charge de travail.</p>
               </div>
 
               {/* Note privée */}
-              <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", padding: "8px 10px" }}>
+              <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", padding: "10px 12px" }}>
                 <p style={{ margin: "0 0 5px", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Notes privées</p>
-                <p style={{ margin: 0, fontSize: 10, color: "#64748b", lineHeight: 1.5 }}>Lien fort alimentation / stress pro. Explorer en consultation.</p>
+                <p style={{ margin: 0, fontSize: 10, color: "#64748b", lineHeight: 1.6 }}>Lien fort alimentation / stress pro. Explorer en consultation.</p>
               </div>
 
               {/* Documents */}
               <div>
-                <p style={{ margin: "0 0 6px", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#60a5fa" }}>Documents</p>
-                <div style={{ height: 30, borderRadius: 8, background: "rgba(96,165,250,0.05)", border: "1px solid rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <p style={{ margin: "0 0 7px", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#60a5fa" }}>Documents</p>
+                <div style={{ height: 32, borderRadius: 8, background: "rgba(96,165,250,0.05)", border: "1px solid rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                   <span style={{ fontSize: 10, fontWeight: 600, color: "#60a5fa" }}>Gérer mes documents</span>
                 </div>
@@ -310,13 +310,13 @@ function StaticDashboard() {
 
               {/* Analyses IA */}
               <div>
-                <p style={{ margin: "0 0 6px", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#818cf8" }}>Analyses IA</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  <div style={{ height: 30, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <p style={{ margin: "0 0 7px", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#818cf8" }}>Analyses IA</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ height: 32, borderRadius: 8, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
                     <span style={{ fontSize: 10, fontWeight: 600, color: "#818cf8" }}>Préparer ma séance</span>
                   </div>
-                  <div style={{ height: 30, borderRadius: 8, background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.15)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <div style={{ height: 32, borderRadius: 8, background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.15)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                     <span style={{ fontSize: 10, fontWeight: 600, color: "#818cf8" }}>Rapport IA</span>
                   </div>
@@ -324,7 +324,7 @@ function StaticDashboard() {
               </div>
 
               {/* Supprimer */}
-              <div style={{ textAlign: "center", paddingTop: 4 }}>
+              <div style={{ textAlign: "center" }}>
                 <span style={{ fontSize: 10, color: "rgba(244,63,94,0.5)" }}>Supprimer le patient</span>
               </div>
             </div>
