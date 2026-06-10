@@ -938,8 +938,11 @@ export default function ChatPage() {
           type PatientRow = {
             practitioner_pinned_message?: { text: string; sent_at: string; practitioner_id: string } | null;
             emotional_status?: string;
+            avatar_updated_at?: string | null;
+            user_id?: string;
           };
           const row = payload.new as PatientRow;
+          const oldRow = payload.old as PatientRow;
           // Message épinglé
           setPinnedMessage(row.practitioner_pinned_message ?? null);
           // Statut émotionnel (ex : praticien déverrouille depuis le dashboard)
@@ -948,6 +951,30 @@ export default function ChatPage() {
           } else if (row.emotional_status === "green") {
             setEmotionalStatus("green");
             setShowSasButtons(false);
+          }
+          // Photo — re-fetch si avatar_updated_at a changé (upload ou suppression depuis un autre appareil)
+          if (row.avatar_updated_at && row.avatar_updated_at !== oldRow?.avatar_updated_at) {
+            const uid = row.user_id ?? patientId;
+            const sup = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+            const { data: pd } = sup.storage.from("Avatars").getPublicUrl(`${uid}/avatar.jpg`);
+            if (pd) {
+              fetch(pd.publicUrl + "?t=" + Date.now())
+                .then(r => r.ok ? r.blob() : Promise.reject())
+                .then(blob => {
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const b64 = reader.result as string;
+                    setPatientPhoto(b64);
+                    localStorage.setItem(`avatar_b64_${uid}`, b64);
+                  };
+                  reader.readAsDataURL(blob);
+                })
+                .catch(() => {
+                  // Photo supprimée sur l'autre appareil
+                  setPatientPhoto(null);
+                  localStorage.removeItem(`avatar_b64_${uid}`);
+                });
+            }
           }
         }
       )
@@ -1546,6 +1573,8 @@ export default function ChatPage() {
               for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
               const blob = new Blob([ab], { type: "image/jpeg" });
               await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "no-store" });
+              // Déclenche le re-fetch sur les autres appareils via Realtime
+              await supabase.from("patients").update({ avatar_updated_at: new Date().toISOString() }).eq("user_id", patientId);
             } catch { /* silencieux */ }
             setUploadingPhoto(false);
             if (patientAvatarRef.current) patientAvatarRef.current.value = "";
@@ -1560,6 +1589,8 @@ export default function ChatPage() {
               await supabase.storage.from("Avatars").remove([`${patientId}/avatar.jpg`]);
               localStorage.removeItem(`avatar_b64_${patientId}`);
               setPatientPhoto(null);
+              // Déclenche la suppression sur les autres appareils via Realtime
+              await supabase.from("patients").update({ avatar_updated_at: new Date().toISOString() }).eq("user_id", patientId);
             }}
             style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: TEXT_MUTED, textDecoration: "underline", textDecorationStyle: "dotted", padding: "0 0 10px", display: "block", margin: "0 auto" }}
             onMouseEnter={e => e.currentTarget.style.color = TEXT_SECONDARY}
@@ -2052,10 +2083,14 @@ export default function ChatPage() {
                     return (
                       <div key={index} ref={el => { messageRefs.current[index] = el; }}
                         style={{ display: "flex", alignItems: "flex-start", animation: "fadeUp 0.3s ease", paddingLeft: 38 }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 2 }}>
-                          <div className="nt-skeleton" style={{ height: 12, width: isMobile ? 200 : 240, borderRadius: 6 }} />
-                          <div className="nt-skeleton nt-skeleton-2" style={{ height: 12, width: isMobile ? 155 : 185, borderRadius: 6 }} />
-                          <div className="nt-skeleton nt-skeleton-3" style={{ height: 12, width: isMobile ? 178 : 210, borderRadius: 6 }} />
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 2 }}>
+                          <div style={{ position: "relative", width: 20, height: 20, flexShrink: 0 }}>
+                            <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", animation: "spin 1.8s linear infinite" }} viewBox="0 0 20 20" fill="none">
+                              <circle cx="10" cy="10" r="8" stroke="rgba(16,185,129,0.08)" strokeWidth="1.5"/>
+                              <circle cx="10" cy="10" r="8" stroke="#10b981" strokeWidth="1.5" strokeDasharray="16 35" strokeLinecap="round"/>
+                            </svg>
+                          </div>
+                          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", fontStyle: "italic", animation: "nt-analyse 1.8s ease-in-out infinite" }}>Analyse en cours</span>
                         </div>
                       </div>
                     );
@@ -2195,10 +2230,7 @@ export default function ChatPage() {
         @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .nt-inputbar:focus-within { border-color: rgba(16,185,129,0.45) !important; box-shadow: 0 0 0 3px rgba(16,185,129,0.06), 0 0 16px rgba(16,185,129,0.06) !important; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes nt-pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.65; } }
-        .nt-skeleton { background: linear-gradient(90deg, rgba(16,185,129,0.08), rgba(30,50,38,0.55), rgba(16,185,129,0.06)); animation: nt-pulse 1.7s ease-in-out infinite; }
-        .nt-skeleton-2 { animation-delay: 0.18s; }
-        .nt-skeleton-3 { animation-delay: 0.36s; }
+        @keyframes nt-analyse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.65; } }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }
