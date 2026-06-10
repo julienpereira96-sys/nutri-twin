@@ -2032,12 +2032,12 @@ export default function DashboardPage() {
                       const highlightOutline = selIsRed ? "rgba(244,63,94,0.5)" : "rgba(245,158,11,0.4)";
                       return (
                         <div key={message.id} data-message-id={message.id} data-message-date={message.created_at}
-                          style={{ display: "flex", justifyContent: isPatient ? "flex-start" : "flex-end", transition: "all 0.3s" }}>
+                          style={{ display: "flex", justifyContent: isPatient ? "flex-end" : "flex-start", transition: "all 0.3s" }}>
                           <div style={{ maxWidth: "78%" }}>
-                            <div style={{ borderRadius: isPatient ? 0 : 14, borderBottomRightRadius: isPatient ? 0 : 4, padding: isPatient ? "3px 0" : "10px 14px", fontSize: 14, lineHeight: 1.7, background: isHighlighted ? highlightColor : isPatient ? "transparent" : "rgba(16,185,129,0.03)", border: isPatient ? "none" : `1px solid ${isHighlighted ? highlightOutline : "rgba(16,185,129,0.2)"}`, color: isPatient ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.75)", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: isHighlighted && isPatient ? `2px solid ${highlightOutline}` : "none" }}>
+                            <div style={{ borderRadius: isPatient ? 14 : 0, borderBottomRightRadius: isPatient ? 4 : 0, padding: isPatient ? "10px 14px" : "3px 0", fontSize: 14, lineHeight: 1.7, background: isHighlighted ? highlightColor : isPatient ? "rgba(16,185,129,0.03)" : "transparent", border: isPatient ? `1px solid ${isHighlighted ? highlightOutline : "rgba(16,185,129,0.2)"}` : "none", color: isPatient ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: isHighlighted && !isPatient ? `2px solid ${highlightOutline}` : "none" }}>
                               {message.content}
                             </div>
-                            <p style={{ margin: "4px 0 0", fontSize: 10, color: "#4b5563", textAlign: isPatient ? "left" : "right" }}>
+                            <p style={{ margin: "4px 0 0", fontSize: 10, color: "#4b5563", textAlign: isPatient ? "right" : "left" }}>
                               {new Date(message.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
                             </p>
                           </div>

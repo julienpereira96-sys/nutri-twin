@@ -34,6 +34,8 @@ function AnimatedChat() {
   const [visibleMessages, setVisibleMessages] = useState<number[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [done, setDone] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (done) return;
@@ -50,6 +52,10 @@ function AnimatedChat() {
     timers.push(setTimeout(() => setDone(true), messages[messages.length - 1].delay + 2000));
     return () => timers.forEach(t => clearTimeout(t));
   }, [done]);
+
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [visibleMessages, isTyping]);
 
   return (
     <div className="relative mx-auto lg:ml-8 w-full lg:w-[460px]">
@@ -69,8 +75,8 @@ function AnimatedChat() {
           <div className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-500 ring-1 ring-emerald-500/20">21h14</div>
         </div>
 
-        <div className="px-4 pt-4 pb-2" style={{ height: 420, overflowY: "hidden", display: "flex", flexDirection: "column", justifyContent: "flex-start" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div ref={scrollRef} className="px-4 pt-4 pb-2" style={{ height: 420, overflowY: "auto", display: "flex", flexDirection: "column", justifyContent: "flex-start", scrollbarWidth: "none" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {visibleMessages.map(i => {
               const msg = messages[i];
               return (
@@ -84,9 +90,9 @@ function AnimatedChat() {
                     borderRadius: 14,
                     borderBottomRightRadius: msg.role === "patient" ? 4 : 14,
                     borderBottomLeftRadius: msg.role === "ai" ? 4 : 14,
-                    padding: "8px 13px",
-                    fontSize: 13,
-                    lineHeight: 1.55,
+                    padding: "7px 12px",
+                    fontSize: 12.5,
+                    lineHeight: 1.5,
                     background: msg.role === "patient" ? "rgba(16,185,129,0.06)" : "transparent",
                     border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.18)" : "none",
                     color: msg.role === "patient" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.75)",
@@ -96,7 +102,7 @@ function AnimatedChat() {
                 </div>
               );
             })}
-            <div style={{ height: 24, display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
+            <div style={{ height: 20, display: "flex", alignItems: "center", justifyContent: "flex-start" }}>
               {isTyping && (
                 <div style={{ position: "relative", width: 16, height: 16, flexShrink: 0 }}>
                   <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", animation: "spin 1.8s linear infinite" }} viewBox="0 0 20 20" fill="none">
@@ -106,6 +112,7 @@ function AnimatedChat() {
                 </div>
               )}
             </div>
+            <div ref={endRef} />
           </div>
         </div>
 
@@ -130,22 +137,23 @@ function AnimatedChat() {
 
 function StaticDashboard() {
   const julieConversation = [
-    { role: "patient", text: "Bonsoir, j'ai encore eu une fringale ce soir. Je me sens vraiment nulle 😔" },
-    { role: "ai", text: "Bonsoir Julie. Un écart ça arrive — ça ne définit pas votre parcours. Vous aviez mangé quoi ce midi ?" },
-    { role: "patient", text: "Pas grand chose... un sandwich en vitesse entre deux réunions." },
-    { role: "ai", text: "Voilà tout s'explique. Ce n'est pas de la faiblesse, c'est de la biologie. Demain on vise un vrai déjeuner avec des protéines." },
-    { role: "patient", text: "Merci, ça me soulage d'avoir quelqu'un à qui écrire 💚" },
+    { role: "patient", text: "Encore une journée à n'en plus finir. Je n'ai presque rien mangé." },
+    { role: "ai", text: "Bonsoir Julie. Ces journées sans pause laissent peu de place pour prendre soin de soi. Vous avez pu dîner ce soir ?" },
+    { role: "patient", text: "Un sandwich froid en réunion... et là je grignote devant mon écran." },
+    { role: "ai", text: "C'est votre corps qui cherche de l'énergie, pas un manque de volonté. Ce que vous portez en ce moment, c'est beaucoup." },
+    { role: "patient", text: "Oui. Et je culpabilise en plus de tout ça." },
+    { role: "ai", text: "Ne rajoutez pas ça. Vous gérez énormément, et vous êtes là quand même. Demain, on commence par un vrai petit-déjeuner — même 15 minutes, c'est un signal fort envoyé à votre corps." },
+    { role: "patient", text: "J'essaierai. Merci d'être là 💚" },
   ];
 
   const patients = [
-    { initials: "SM", name: "Sophie M.", insight: "Rechute alimentaire", time: "21:14", color: "#f43f5e", status: "red", active: false },
-    { initials: "JP", name: "Julie P.", insight: "Fatigue pro", time: "19:47", color: "#8b5cf6", status: "orange", active: true },
-    { initials: "TR", name: "Thomas R.", insight: "Progression constante", time: "Hier", color: "#3b82f6", status: "green", active: false },
-    { initials: "MD", name: "Marc D.", insight: "Bon suivi", time: "Lun", color: "#f59e0b", status: "green", active: false },
-    { initials: "CL", name: "Claire L.", insight: "Stabilisation", time: "Dim", color: "#ec4899", status: "green", active: false },
+    { initials: "JP", name: "Julie P.", insight: "Fatigue professionnelle", time: "19:47", color: "#8b5cf6", status: "orange", active: true, trophy: false },
+    { initials: "TR", name: "Thomas R.", insight: "5 jours sans écart", time: "Hier", color: "#3b82f6", status: "green", active: false, trophy: true },
+    { initials: "SM", name: "Sophie M.", insight: "Merci pour les conseils hier !", time: "Lun", color: "#f43f5e", status: "green", active: false, trophy: false },
+    { initials: "MD", name: "Marc D.", insight: "Ça se passe bien cette semaine", time: "Mar", color: "#f59e0b", status: "green", active: false, trophy: false },
+    { initials: "CL", name: "Claire L.", insight: "J'ai essayé votre recette 😊", time: "Dim", color: "#ec4899", status: "green", active: false, trophy: false },
+    { initials: "AV", name: "Antoine V.", insight: "RDV confirmé pour jeudi", time: "Dim", color: "#06b6d4", status: "green", active: false, trophy: false },
   ];
-
-  const statusColor: Record<string, string> = { red: "#f43f5e", orange: "#f59e0b", green: "#10b981" };
 
   return (
     <div>
@@ -168,19 +176,23 @@ function StaticDashboard() {
 
           {/* Header */}
           <div style={{ background: "#0d0d0d", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "10px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/><path d="M12 8v4l3 3"/></svg>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>Dashboard</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "white", letterSpacing: "-0.02em" }}>NutriTwin</span>
+              <span style={{ fontSize: 9, color: "#4b5563" }}>6 patients</span>
             </div>
             <div style={{ display: "flex", gap: 4 }}>
-              {["Mes patients", "Vue d'ensemble"].map((tab, i) => (
+              {["Suivi", "Vue d'ensemble"].map((tab, i) => (
                 <div key={i} style={{ padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, background: i === 0 ? "rgba(16,185,129,0.12)" : "transparent", color: i === 0 ? "#10b981" : "#4b5563", border: i === 0 ? "1px solid rgba(16,185,129,0.25)" : "1px solid transparent" }}>{tab}</div>
               ))}
             </div>
-            <div style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, borderRadius: 8, background: "#10b981", padding: "5px 10px" }}>
+              <div style={{ width: 16, height: 16, borderRadius: 4, background: "rgba(0,0,0,0.18)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+              <span style={{ fontSize: 10, fontWeight: 700, color: "black" }}>Mon Jumeau</span>
             </div>
           </div>
 
@@ -189,39 +201,43 @@ function StaticDashboard() {
 
             {/* Sidebar patients */}
             <div style={{ background: "#111111", borderRight: "1px solid rgba(255,255,255,0.06)", padding: 10, display: "flex", flexDirection: "column" }}>
-              <div style={{ background: "#161616", borderRadius: 8, padding: "6px 10px", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ background: "#1a1a1a", borderRadius: 8, padding: "6px 10px", marginBottom: 8, display: "flex", alignItems: "center", gap: 6, border: "1px solid rgba(255,255,255,0.06)" }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4b5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <span style={{ fontSize: 10, color: "#4b5563" }}>Rechercher...</span>
               </div>
               <div style={{ flex: 1 }}>
                 {patients.map((p, i) => (
-                  <div key={i} style={{ marginBottom: 4, borderRadius: 10, padding: "8px 10px", background: p.active ? "rgba(16,185,129,0.08)" : "transparent", border: p.active ? "1px solid rgba(16,185,129,0.2)" : "1px solid transparent" }}>
+                  <div key={i} style={{ marginBottom: 2, borderRadius: 10, padding: "8px 10px", background: p.active ? "rgba(16,185,129,0.08)" : "transparent", border: p.active ? "1px solid rgba(16,185,129,0.2)" : "1px solid transparent" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 2 }}>
-                      <div style={{ position: "relative", flexShrink: 0 }}>
-                        <div style={{ width: 24, height: 24, borderRadius: "50%", background: p.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "white" }}>{p.initials}</div>
-                        <div style={{ position: "absolute", bottom: 0, right: 0, width: 7, height: 7, borderRadius: "50%", background: statusColor[p.status], border: "1.5px solid #111111" }} />
-                      </div>
+                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: p.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "white", flexShrink: 0 }}>{p.initials}</div>
                       <span style={{ fontSize: 11, fontWeight: 600, flex: 1, color: p.active ? "#10b981" : "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
                       <span style={{ fontSize: 9, color: "#4b5563", flexShrink: 0 }}>{p.time}</span>
                     </div>
-                    <p style={{ margin: 0, fontSize: 10, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 31 }}>{p.insight}</p>
+                    <p style={{ margin: 0, fontSize: 10, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 35, display: "flex", alignItems: "center", gap: 3 }}>
+                      {p.trophy && <span style={{ fontSize: 9 }}>🏆</span>}
+                      {p.insight}
+                    </p>
                   </div>
                 ))}
               </div>
-              <div style={{ borderRadius: 8, background: "#10b981", padding: "6px 0", textAlign: "center", fontSize: 10, fontWeight: 700, color: "black", marginTop: 6 }}>+ Inviter un patient</div>
+              <div style={{ borderRadius: 10, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", padding: "8px 10px", display: "flex", alignItems: "center", gap: 8, marginTop: 6, cursor: "pointer" }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "#10b981" }}>Inviter un patient</p>
+                  <p style={{ margin: 0, fontSize: 9, color: "#4b5563" }}>Envoyer un accès personnalisé</p>
+                </div>
+              </div>
             </div>
 
             {/* Zone conversation */}
             <div style={{ background: "#0d0d0d", display: "flex", flexDirection: "column" }}>
               <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "white" }}>JP</div>
+                <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#8b5cf6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "white", flexShrink: 0 }}>JP</div>
                 <div>
                   <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "white" }}>Julie P.</p>
                   <p style={{ margin: 0, fontSize: 9, color: "#6b7280" }}>julie.p@email.fr</p>
-                </div>
-                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, borderRadius: 20, padding: "3px 10px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b" }} />
-                  <span style={{ fontSize: 9, fontWeight: 600, color: "#f59e0b" }}>Fatigue pro</span>
                 </div>
               </div>
               <div style={{ flex: 1, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 16, overflow: "hidden" }}>
@@ -252,9 +268,9 @@ function StaticDashboard() {
 
             {/* Fiche patient (droite) */}
             <div style={{ background: "#0f0f0f", borderLeft: "1px solid rgba(255,255,255,0.06)", padding: 14, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-              {/* Identité — sans bulle avatar */}
-              <div style={{ textAlign: "center" }}>
-                <p style={{ margin: "0 0 2px", fontSize: 13, fontWeight: 700, color: "white" }}>Julie P.</p>
+              {/* Identité */}
+              <div>
+                <p style={{ margin: "0 0 1px", fontSize: 13, fontWeight: 700, color: "white" }}>Julie P.</p>
                 <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563" }}>julie.p@email.fr</p>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 20, padding: "3px 10px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }} />
@@ -262,10 +278,18 @@ function StaticDashboard() {
                 </div>
               </div>
 
-              {/* Victoire */}
-              <div style={{ background: "rgba(16,185,129,0.06)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.15)", padding: "8px 10px" }}>
-                <p style={{ margin: "0 0 3px", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#10b981" }}>Victoire récente</p>
-                <p style={{ margin: 0, fontSize: 10, color: "#94a3b8" }}>3 repas complets cette semaine</p>
+              {/* Stats */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {[
+                  { label: "Dernière connexion", value: "Il y a 2h" },
+                  { label: "Assiduité", value: "5 jours actifs" },
+                  { label: "Crises désamorcées", value: "Aucune" },
+                ].map((stat, i) => (
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 10, color: "#6b7280" }}>{stat.label}</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: "#d1d5db" }}>{stat.value}</span>
+                  </div>
+                ))}
               </div>
 
               {/* Murmure */}
@@ -280,16 +304,13 @@ function StaticDashboard() {
                 <p style={{ margin: 0, fontSize: 10, color: "#64748b", lineHeight: 1.5 }}>Lien fort alimentation / stress pro. Explorer en consultation.</p>
               </div>
 
-              {/* Documents — bleu */}
-              <div style={{ background: "rgba(96,165,250,0.04)", borderRadius: 10, border: "1px solid rgba(96,165,250,0.15)", padding: "8px 10px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 5 }}>
-                  <p style={{ margin: 0, fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#60a5fa" }}>Documents</p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 3, borderRadius: 5, padding: "2px 6px", background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)" }}>
-                    <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    <span style={{ fontSize: 8, fontWeight: 600, color: "#60a5fa" }}>Ajouter</span>
-                  </div>
+              {/* Documents */}
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#60a5fa" }}>Documents</p>
+                <div style={{ height: 30, borderRadius: 8, background: "rgba(96,165,250,0.05)", border: "1px solid rgba(96,165,250,0.15)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "#60a5fa" }}>Gérer mes documents</span>
                 </div>
-                <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Aucun document ajouté</p>
               </div>
 
               {/* Analyses IA */}
@@ -305,6 +326,11 @@ function StaticDashboard() {
                     <span style={{ fontSize: 10, fontWeight: 600, color: "#818cf8" }}>Rapport IA</span>
                   </div>
                 </div>
+              </div>
+
+              {/* Supprimer */}
+              <div style={{ marginTop: "auto", paddingTop: 6 }}>
+                <span style={{ fontSize: 10, color: "#f43f5e", cursor: "pointer" }}>Supprimer le patient</span>
               </div>
             </div>
           </div>
@@ -669,8 +695,10 @@ export default function Home() {
               {[
                 { num: "01", title: "La transmission", desc: "Incorporez vos protocoles, vos guides et vos méthodes. Complétez son savoir par un échange guidé pour capturer chaque nuance de votre expertise.", icon: (
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
-                    <line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/>
+                    <path d="M19 4v16H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                    <path d="M5 18a2 2 0 0 0 2 2"/>
+                    <path d="M12 9v5"/>
+                    <path d="M10 11l2-2 2 2"/>
                   </svg>
                 )},
                 { num: "02", title: "L'apprentissage", desc: "Ajustez le ton, le style, les valeurs de votre double. Pour qu'il réponde exactement comme vous le feriez.", icon: (
@@ -767,18 +795,13 @@ export default function Home() {
                   ), title: "Souveraineté & RGPD", desc: "Vos données et celles de vos patients sont stockées sur des serveurs basés à Paris, conformément au RGPD." },
                 { icon: (
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-                    {/* Pole */}
                     <line x1="12" y1="3" x2="12" y2="21"/>
-                    {/* Base */}
                     <path d="M8 21h8"/>
-                    {/* Crossbar */}
                     <line x1="3" y1="7" x2="21" y2="7"/>
-                    {/* Left chain and pan */}
-                    <line x1="5" y1="7" x2="5" y2="11"/>
-                    <path d="M3 11 Q5 13 7 11"/>
-                    {/* Right chain and pan */}
-                    <line x1="19" y1="7" x2="19" y2="13"/>
-                    <path d="M17 13 Q19 15 21 13"/>
+                    <line x1="5" y1="7" x2="5" y2="12"/>
+                    <path d="M3 12 Q5 14 7 12"/>
+                    <line x1="19" y1="7" x2="19" y2="12"/>
+                    <path d="M17 12 Q19 14 21 12"/>
                   </svg>
                 ), title: "Cadre Éthique", desc: "NutriTwin est un assistant de suivi, pas de diagnostic. Pour toute question médicale, vous serez systématiquement consulté." },
               ].map((item, i) => (
