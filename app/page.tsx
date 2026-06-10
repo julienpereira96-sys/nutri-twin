@@ -58,9 +58,8 @@ function AnimatedChat() {
       <div className="absolute inset-0 rounded-[2rem] bg-emerald-500/[0.07] blur-xl" />
       <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[#0d0d0d] shadow-2xl shadow-black/60">
         <div className="flex items-center gap-3 border-b border-white/[0.06] bg-[#111111] px-4 py-3">
-          <div className="relative shrink-0">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 text-xs font-bold text-black">JM</div>
-            <div className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#111111] bg-emerald-500" />
+          <div className="shrink-0">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-black" style={{ background: "#10b981" }}>JM</div>
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[13px] font-semibold text-white">Compagnon de suivi de Justine</p>
@@ -72,63 +71,61 @@ function AnimatedChat() {
           <div className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-500 ring-1 ring-emerald-500/20">21h14</div>
         </div>
 
-        <div className="px-4 pt-4 pb-2" style={{ height: 470, overflowY: "hidden" }}>
-          <div className="space-y-3">
+        <div className="px-4 pt-4 pb-2" style={{ height: 470, overflowY: "hidden", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {messages.map((msg, i) => (
               <div key={i} style={{
                 display: "flex",
                 justifyContent: msg.role === "patient" ? "flex-end" : "flex-start",
                 opacity: visibleMessages.includes(i) ? 1 : 0,
-                transform: visibleMessages.includes(i) ? "translateY(0)" : "translateY(6px)",
-                transition: "opacity 0.5s ease, transform 0.5s ease",
-                height: visibleMessages.includes(i) ? "auto" : 0,
-                overflow: "hidden",
+                transform: visibleMessages.includes(i) ? "translateY(0)" : "translateY(4px)",
+                transition: "opacity 0.4s ease, transform 0.4s ease",
               }}>
                 <div style={{
                   maxWidth: "82%",
-                  borderRadius: 16,
-                  borderBottomRightRadius: msg.role === "patient" ? 4 : 16,
-                  borderBottomLeftRadius: msg.role === "ai" ? 4 : 16,
-                  padding: "9px 14px",
+                  borderRadius: 14,
+                  borderBottomRightRadius: msg.role === "patient" ? 4 : 14,
+                  borderBottomLeftRadius: msg.role === "ai" ? 4 : 14,
+                  padding: "8px 13px",
                   fontSize: 13,
-                  lineHeight: 1.6,
-                  background: msg.role === "patient" ? "rgba(16,185,129,0.03)" : "transparent",
-                  border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.2)" : "none",
-                  color: "rgba(255,255,255,0.88)",
+                  lineHeight: 1.55,
+                  background: msg.role === "patient" ? "rgba(16,185,129,0.06)" : "transparent",
+                  border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.18)" : "none",
+                  color: msg.role === "patient" ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.75)",
                 }}>
                   {msg.text}
                 </div>
               </div>
             ))}
-          </div>
-          <div style={{ height: 40, display: "flex", alignItems: "center", justifyContent: typingRole === "patient" ? "flex-end" : "flex-start" }}>
-            {isTyping && typingRole === "ai" && (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ position: "relative", width: 16, height: 16, flexShrink: 0 }}>
-                  <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", animation: "spin 1.8s linear infinite" }} viewBox="0 0 20 20" fill="none">
-                    <circle cx="10" cy="10" r="8" stroke="rgba(16,185,129,0.08)" strokeWidth="1.5"/>
-                    <circle cx="10" cy="10" r="8" stroke="#10b981" strokeWidth="1.5" strokeDasharray="16 35" strokeLinecap="round"/>
-                  </svg>
+            <div style={{ height: 32, display: "flex", alignItems: "center", justifyContent: typingRole === "patient" ? "flex-end" : "flex-start" }}>
+              {isTyping && typingRole === "ai" && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ position: "relative", width: 16, height: 16, flexShrink: 0 }}>
+                    <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", animation: "spin 1.8s linear infinite" }} viewBox="0 0 20 20" fill="none">
+                      <circle cx="10" cy="10" r="8" stroke="rgba(16,185,129,0.08)" strokeWidth="1.5"/>
+                      <circle cx="10" cy="10" r="8" stroke="#10b981" strokeWidth="1.5" strokeDasharray="16 35" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", fontStyle: "italic", animation: "nt-analyse 1.8s ease-in-out infinite" }}>Analyse en cours</span>
                 </div>
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", fontStyle: "italic", animation: "nt-analyse 1.8s ease-in-out infinite" }}>Analyse en cours</span>
-              </div>
-            )}
-            {isTyping && typingRole === "patient" && (
-              <div style={{ display: "flex", gap: 4, alignItems: "center", padding: "8px 12px", borderRadius: 16, borderBottomRightRadius: 4, background: "rgba(16,185,129,0.03)", border: "1px solid rgba(16,185,129,0.2)" }}>
-                {[0, 180, 360].map((delay, idx) => (
-                  <div key={idx} style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.3)", animation: `typingBounce 1.2s ${delay}ms infinite` }} />
-                ))}
-              </div>
-            )}
+              )}
+              {isTyping && typingRole === "patient" && (
+                <div style={{ display: "flex", gap: 4, alignItems: "center", padding: "6px 12px", borderRadius: 14, borderBottomRightRadius: 4, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.18)" }}>
+                  {[0, 180, 360].map((delay, idx) => (
+                    <div key={idx} style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.3)", animation: `typingBounce 1.2s ${delay}ms infinite` }} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="border-t border-white/[0.06] px-4 py-3">
-          <div style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 24, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "8px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 24, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "8px 14px 8px 16px" }}>
             <span style={{ flex: 1, fontSize: 12, color: "rgba(255,255,255,0.2)" }}>Écrire un message...</span>
-            <div style={{ display: "flex", width: 24, height: 24, alignItems: "center", justifyContent: "center", borderRadius: "50%", backgroundColor: emerald, flexShrink: 0 }}>
-              <svg style={{ width: 12, height: 12, color: "black" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            <div style={{ width: 32, height: 32, borderRadius: 9, background: "transparent", border: "1.5px solid rgba(16,185,129,0.55)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M12 19V5M5 12l7-7 7 7" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
           </div>
@@ -533,7 +530,7 @@ export default function Home() {
               <div className="mt-8 flex flex-col items-center gap-3 lg:items-start lg:flex-row">
               <a
   href="#tarifs"
-  className="inline-flex h-[48px] items-center justify-center rounded-xl px-8 text-[14px] font-semibold text-black active:scale-95"
+  className="inline-flex h-[48px] items-center justify-center rounded-xl px-25 text-[14px] font-semibold text-black active:scale-95"
   style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "#000000", borderRadius: 12, boxShadow: "0 4px 20px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
   onMouseEnter={(e) => {
     e.currentTarget.style.boxShadow = "0 8px 28px rgba(16,185,129,0.45)";

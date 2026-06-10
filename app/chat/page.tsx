@@ -1547,7 +1547,7 @@ export default function ChatPage() {
           {patientPhoto ? (
             <img src={patientPhoto} alt="avatar" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(16,185,129,0.5)" }} onError={() => setPatientPhoto(null)} />
           ) : (
-            <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#0b0f0d", border: "1px solid rgba(16,185,129,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 700, color: ACCENT }}>{patientInitials}</div>
+            <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#10b981", border: "1px solid rgba(16,185,129,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 700, color: "#000" }}>{patientInitials}</div>
           )}
           {/* Bouton crayon — modifier la photo */}
           <button onClick={() => patientAvatarRef.current?.click()} disabled={uploadingPhoto}
@@ -1932,7 +1932,7 @@ export default function ChatPage() {
                 {patientPhoto ? (
                   <img src={patientPhoto} alt="avatar" style={{ width: 40, height: 40, objectFit: "cover" }} />
                 ) : (
-                  <div style={{ width: 40, height: 40, background: "#0b0f0d", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: ACCENT }}>{patientInitials}</div>
+                  <div style={{ width: 40, height: 40, background: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#000" }}>{patientInitials}</div>
                 )}
               </div>
             </button>
@@ -1996,7 +1996,7 @@ export default function ChatPage() {
                     {patientPhoto ? (
                       <img src={patientPhoto} alt="" style={{ width: 26, height: 26, objectFit: "cover" }} />
                     ) : (
-                      <div style={{ width: "100%", height: "100%", background: "#0b0f0d", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: ACCENT }}>{patientInitials}</div>
+                      <div style={{ width: "100%", height: "100%", background: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 8, fontWeight: 700, color: "#000" }}>{patientInitials}</div>
                     )}
                   </div>
                 </div>
