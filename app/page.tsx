@@ -847,11 +847,15 @@ export default function Home() {
                 price="149€"
                 description="Pour démarrer et accompagner vos patients prioritaires."
                 features={[
-                  "Jusqu'à 10 patients suivis en simultané",
-                  "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)",
-                  "Analyse en temps réel (détection des comportements et alertes de crises)",
-                  "Préparation automatisée de vos consultations et bilans",
-                  "Espace de stockage sécurisé pour vos protocoles et documents",
+                  { text: "Jusqu'à 10 patients suivis en simultané", included: true, exclusive: false },
+                  { text: "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)", included: true, exclusive: false },
+                  { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
+                  { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
+                  { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
+                  { text: "Vision IA : Analyse et décodage des photos de repas", included: false, exclusive: true },
+                  { text: "Mémoire clinique long terme", included: false, exclusive: true },
+                  { text: "Espace collaboratif entre confrères", included: false, exclusive: true },
+                  { text: "Plafond d'échanges quotidien étendu par patient (1)", included: false, exclusive: true },
                 ]}
                 plan="essentiel"
                 featured={false}
@@ -862,14 +866,15 @@ export default function Home() {
                 badge="Recommandé"
                 description="Idéal pour les praticiens indépendants qui gèrent un suivi actif au quotidien."
                 features={[
-                  "Jusqu'à 50 patients suivis en simultané",
-                  "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)",
-                  "Analyse en temps réel (détection des comportements et alertes de crises)",
-                  "Préparation automatisée de vos consultations et bilans",
-                  "Espace de stockage sécurisé pour vos protocoles et documents",
-                  "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients",
-                  "Mémoire clinique long terme (le Jumeau conserve une synthèse permanente de tout le parcours)",
-                  "Plafond d'échanges quotidien étendu par patient (1)",
+                  { text: "Jusqu'à 50 patients suivis en simultané", included: true, exclusive: false },
+                  { text: "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)", included: true, exclusive: false },
+                  { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
+                  { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
+                  { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
+                  { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true, exclusive: true },
+                  { text: "Mémoire clinique long terme (le Jumeau conserve une synthèse permanente de tout le parcours)", included: true, exclusive: true },
+                  { text: "Espace collaboratif entre confrères", included: false, exclusive: true },
+                  { text: "Plafond d'échanges quotidien étendu par patient (1)", included: true, exclusive: true },
                 ]}
                 plan="pro"
                 featured={true}
@@ -879,15 +884,15 @@ export default function Home() {
                 price="599€"
                 description="Pour les cabinets multi-praticiens et centres de santé."
                 features={[
-                  "Jusqu'à 150 patients suivis au global au sein du cabinet",
-                  "Votre Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)",
-                  "Analyse en temps réel (détection des comportements et alertes de crises)",
-                  "Préparation automatisée de vos consultations et bilans",
-                  "Espace de stockage sécurisé pour vos protocoles et documents",
-                  "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients",
-                  "Mémoire clinique long terme (le Jumeau conserve une synthèse permanente de tout le parcours)",
-                  "Espace collaboratif : Possibilité de transférer ou de partager un dossier entre confrères",
-                  "Plafond d'échanges quotidien étendu par patient (1)",
+                  { text: "Jusqu'à 150 patients suivis au global au sein du cabinet", included: true, exclusive: false },
+                  { text: "Votre Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)", included: true, exclusive: false },
+                  { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
+                  { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
+                  { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
+                  { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true, exclusive: true },
+                  { text: "Mémoire clinique long terme (le Jumeau conserve une synthèse permanente de tout le parcours)", included: true, exclusive: true },
+                  { text: "Espace collaboratif : Possibilité de transférer ou de partager un dossier entre confrères", included: true, exclusive: true },
+                  { text: "Plafond d'échanges quotidien étendu par patient (1)", included: true, exclusive: true },
                 ]}
                 plan="cabinet"
                 featured={false}
@@ -1020,10 +1025,12 @@ function FounderSection() {
 }
 
 function PricingCard({ name, price, badge, description, features, plan, featured, footnoteMark }: {
-  name: string; price: string; badge?: string; description: string; features: string[]; plan: string; featured: boolean; footnoteMark?: string;
+  name: string; price: string; badge?: string; description: string;
+  features: Array<{ text: string; included: boolean; exclusive: boolean }>;
+  plan: string; featured: boolean; footnoteMark?: string;
 }) {
   return (
-    <div className="relative flex flex-col rounded-2xl p-6 sm:p-8 transition-all duration-300 group" style={{
+    <div className="relative flex flex-col rounded-2xl p-6 sm:p-8 transition-all duration-300" style={{
       background: featured ? "linear-gradient(180deg, rgba(16,185,129,0.07), #080808)" : "#0d0d0d",
       border: featured ? "1px solid rgba(16,185,129,0.30)" : "1px solid rgba(255,255,255,0.08)",
       boxShadow: featured ? "0 20px 40px rgba(16,185,129,0.05)" : "none",
@@ -1044,7 +1051,6 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       e.currentTarget.style.transform = "translateY(0) scale(1)";
       e.currentTarget.style.background = featured ? "linear-gradient(180deg, rgba(16,185,129,0.07), #080808)" : "#0d0d0d";
     }}
-    
     >
       {featured && (
         <>
@@ -1064,10 +1070,16 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       <ul className="mb-6 flex flex-1 flex-col gap-2.5">
         {features.map((f, i) => (
           <li key={i} className="flex items-start gap-2">
-            <svg className={`mt-0.5 size-4 shrink-0 ${i < 5 ? "text-zinc-600" : "text-emerald-500"}`} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-            </svg>
-            <span className={`text-[12px] leading-snug ${i < 5 ? "text-zinc-500" : "text-zinc-200"}`}>{f}</span>
+            {f.included ? (
+              <svg className={`mt-0.5 size-4 shrink-0 ${f.exclusive ? "text-emerald-500" : "text-zinc-600"}`} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+              </svg>
+            ) : (
+              <svg className="mt-0.5 size-4 shrink-0 text-zinc-800" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
+            <span className={`text-[12px] leading-snug ${f.included ? (f.exclusive ? "text-zinc-200" : "text-zinc-500") : "text-zinc-700 line-through"}`}>{f.text}</span>
           </li>
         ))}
       </ul>
@@ -1087,9 +1099,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
         }
         onMouseEnter={(e) => {
           e.currentTarget.style.transform = "translateY(-1px)";
-          e.currentTarget.style.boxShadow = featured
-            ? "0 8px 32px rgba(16,185,129,0.4)"
-            : "0 8px 20px rgba(255,255,255,0.05)";
+          e.currentTarget.style.boxShadow = featured ? "0 8px 32px rgba(16,185,129,0.4)" : "0 8px 20px rgba(255,255,255,0.05)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.transform = "translateY(0)";
@@ -1098,7 +1108,6 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       >
         Commencer l'essai gratuit
       </button>
-
     </div>
   );
 }

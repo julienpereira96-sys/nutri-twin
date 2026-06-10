@@ -1044,6 +1044,12 @@ export default function DashboardPage() {
 
   const displayedConversations = onboardingDemoMode ? (DEMO_CONVERSATIONS_BY_PATIENT[selectedPatientId ?? "demo-1"] ?? DEMO_CONVERSATIONS) : conversations;
   const displayedPatients = onboardingDemoMode ? demoPatients as unknown as RealPatient[] : patients;
+
+  useEffect(() => {
+    if (conversationContainerRef.current && displayedConversations.length > 0) {
+      conversationContainerRef.current.scrollTop = conversationContainerRef.current.scrollHeight;
+    }
+  }, [displayedConversations, selectedPatientId]);
   const displayedSelectedPatient = onboardingDemoMode
     ? demoPatients.find(p => p.id === (selectedPatientId ?? "demo-1")) as unknown as RealPatient ?? demoPatients[0] as unknown as RealPatient
     : patients.find((p) => p.id === selectedPatientId);
