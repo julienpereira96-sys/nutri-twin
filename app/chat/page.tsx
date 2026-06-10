@@ -887,27 +887,32 @@ export default function ChatPage() {
         const userId = data.user.id;
         const cachedB64 = localStorage.getItem(`avatar_b64_${userId}`);
         if (cachedB64) setPatientPhoto(cachedB64);
-        // 2. Toujours vérifier Supabase en arrière-plan pour sync cross-device
-        try {
-          const { data: photoData } = supabase.storage.from("Avatars").getPublicUrl(`${userId}/avatar.jpg`);
-          if (photoData) {
-            const freshUrl = photoData.publicUrl + "?t=" + Date.now();
-            const res = await fetch(freshUrl);
-            if (res.ok) {
-              const blob = await res.blob();
-              const reader = new FileReader();
-              reader.onload = () => {
-                const b64 = reader.result as string;
-                setPatientPhoto(b64);
-                localStorage.setItem(`avatar_b64_${userId}`, b64);
-              };
-              reader.readAsDataURL(blob);
-            } else if (!cachedB64) {
-              setPatientPhoto(null);
+        // 2. Vérifier Supabase en arrière-plan pour sync cross-device
+        // Sauf si cet appareil vient d'uploader (CDN stale pendant ~30s)
+        const uploadTs = parseInt(localStorage.getItem(`avatar_upload_ts_${userId}`) ?? "0", 10);
+        const justUploaded = Date.now() - uploadTs < 30_000;
+        if (!justUploaded) {
+          try {
+            const { data: photoData } = supabase.storage.from("Avatars").getPublicUrl(`${userId}/avatar.jpg`);
+            if (photoData) {
+              const freshUrl = photoData.publicUrl + "?t=" + Date.now();
+              const res = await fetch(freshUrl);
+              if (res.ok) {
+                const blob = await res.blob();
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const b64 = reader.result as string;
+                  setPatientPhoto(b64);
+                  localStorage.setItem(`avatar_b64_${userId}`, b64);
+                };
+                reader.readAsDataURL(blob);
+              } else if (!cachedB64) {
+                setPatientPhoto(null);
+              }
             }
+          } catch {
+            // Erreur réseau — on garde le cache local
           }
-        } catch {
-          // Erreur réseau — on garde le cache local
         }
         // Charger victoires
         const victories = (p as { victories_history?: string[] }).victories_history ?? [];
@@ -955,8 +960,10 @@ export default function ChatPage() {
             setShowSasButtons(false);
           }
           // Photo — re-fetch si avatar_updated_at a changé (upload ou suppression depuis un autre appareil)
-          // On ignore si c'est cet appareil qui vient d'uploader (CDN encore stale pendant ~5s)
-          if (row.avatar_updated_at && row.avatar_updated_at !== oldRow?.avatar_updated_at && Date.now() - lastSelfUploadAtRef.current > 5000) {
+          // On ignore si cet appareil vient d'uploader (CDN stale pendant ~30s)
+          const realtimeUploadTs = parseInt(localStorage.getItem(`avatar_upload_ts_${row.user_id ?? patientId}`) ?? "0", 10);
+          const realtimeJustUploaded = Date.now() - realtimeUploadTs < 30_000;
+          if (row.avatar_updated_at && row.avatar_updated_at !== oldRow?.avatar_updated_at && !realtimeJustUploaded) {
             const uid = row.user_id ?? patientId;
             const sup = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
             const { data: pd } = sup.storage.from("Avatars").getPublicUrl(`${uid}/avatar.jpg`);
@@ -1584,8 +1591,9 @@ export default function ChatPage() {
               for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
               const blob = new Blob([ab], { type: "image/jpeg" });
               await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "no-store" });
-              // Marquer l'upload local pour que Realtime ne re-fetch pas depuis le CDN (encore stale)
+              // Marquer l'upload local (ref + localStorage) pour ignorer le CDN stale pendant 30s
               lastSelfUploadAtRef.current = Date.now();
+              localStorage.setItem(`avatar_upload_ts_${patientId}`, String(Date.now()));
               // Déclenche le re-fetch sur les autres appareils via Realtime
               await supabase.from("patients").update({ avatar_updated_at: new Date().toISOString() }).eq("user_id", patientId);
             } catch { /* silencieux */ }

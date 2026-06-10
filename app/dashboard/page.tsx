@@ -2044,7 +2044,16 @@ export default function DashboardPage() {
                               {message.content}
                             </div>
                             <p style={{ margin: "4px 0 0", fontSize: 10, color: "#4b5563", textAlign: isPatient ? "right" : "left" }}>
-                              {new Date(message.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+                              {(() => {
+                                const d = new Date(message.created_at);
+                                const now = new Date();
+                                const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+                                const sameDay = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                                if (sameDay) return time;
+                                const sameYear = d.getFullYear() === now.getFullYear();
+                                const dateStr = d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", ...(!sameYear ? { year: "numeric" } : {}) });
+                                return `${dateStr} · ${time}`;
+                              })()}
                             </p>
                           </div>
                         </div>
