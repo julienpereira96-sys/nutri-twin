@@ -1893,7 +1893,7 @@ export default function DashboardPage() {
           <div style={{ display: "grid", gridTemplateColumns: "280px minmax(0,1fr) 300px", gap: 16, height: "calc(100vh - 160px)" }}>
 
             {/* Sidebar patients */}
-            <div data-tour="patients" style={{ display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
+            <div data-tour="patients" style={{ display: "flex", flexDirection: "column", background: "rgba(7,7,7,0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
               <div style={{ padding: "16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 <input type="text" placeholder="Rechercher..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                   style={{ width: "100%", height: 36, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
@@ -2145,7 +2145,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Fiche patient */}
-            <div style={{ overflowY: "auto", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 16 }}>
+            <div style={{ overflowY: "auto", background: "rgba(7,7,7,0.8)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 16 }}>
               {selectedPatient ? (
                 <>
                   {/* Identité */}
