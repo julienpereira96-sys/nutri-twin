@@ -1609,6 +1609,9 @@ export default function ChatPage() {
               const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
               await supabase.storage.from("Avatars").remove([`${patientId}/avatar.jpg`]);
               localStorage.removeItem(`avatar_b64_${patientId}`);
+              // Garde 30s pour que le Realtime n'aille pas re-fetcher l'ancienne image depuis le CDN encore stale
+              lastSelfUploadAtRef.current = Date.now();
+              localStorage.setItem(`avatar_upload_ts_${patientId}`, String(Date.now()));
               setPatientPhoto(null);
               // Déclenche la suppression sur les autres appareils via Realtime
               await supabase.from("patients").update({ avatar_updated_at: new Date().toISOString() }).eq("user_id", patientId);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { buildMurmureExpiry } from "@/lib/murmure";
 
@@ -340,12 +340,12 @@ const OnboardingTour = ({ practitionerName, onSkip }: Omit<OnboardingProps, "ste
 type RealPatient = {
   id: string; firstName: string; lastName: string; initials: string; avatarColor: string; email: string;
   lastMessage: string; lastMessageTime: string; lastMessageRole: string; totalMessages: number;
-  admin_alerts?: { type: string; date: string; seen: boolean; alert_type?: string; murmure?: string }[];
+  admin_alerts?: { type: string; date: string; seen: boolean; alert_type?: string; murmure?: string; trigger_message_id?: string }[];
   age?: number; sexe?: string; taille?: number; poids?: number; objective?: string; pathologies?: string;
   allergies?: string; traitements?: string; objectif_clinique?: string; niveau_activite?: string;
   regime_specifique?: string;   practitioner_instruction?: { id: string; text: string; expires_at?: string | null; created_at: string }[];
   emotional_status?: string; emotional_insight?: string;
-  latest_victory?: string; victory_detected_at?: string | null; private_notes?: { id: string; text: string; created_at: string }[]; created_at?: string;
+  latest_victory?: string; victory_detected_at?: string | null; victory_message_id?: string; private_notes?: { id: string; text: string; created_at: string }[]; created_at?: string;
   lastActive?: string | null; streak?: number; sosResolved?: number; sosEvents?: { triggered_at: string; sos_context: string; tool_id?: string; status?: string | null }[]; red_behavioral_until?: string | null; onboardingCompleted?: boolean; onboardingStatus?: string | null;
   sharing_status?: string; cabinet_id?: string;
 };
@@ -359,7 +359,7 @@ type MonthlyStats = { messages_geres: number; crises_nocturnes: number; temps_ec
 const AVATAR_COLORS = ["#f43f5e", "#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#ec4899", "#06b6d4", "#f97316"];
 
 const CYAN_STATUS = "#06b6d4"; // réservé côté patient (Mon Soutien)
-const ORANGE_BEHAVIORAL = "#f97316"; // red_behavioral côté praticien (dashboard)
+const ORANGE_BEHAVIORAL = "#f59e0b"; // red_behavioral côté praticien → amber (spec clinique)
 const RED_CRITICAL_COLOR = "#ef4444";
 function getStatusColor(status?: string) {
   if (status === "red_critical" || status === "red") return RED_CRITICAL_COLOR;
@@ -429,14 +429,40 @@ const CheckCircleSent = () => (
   </span>
 );
 
-function LeverAlerteCritique({ alert, patientId, onResolved }: { alert: { type: string; alert_type?: string }; patientId: string; onResolved: () => void }) {
+function LeverAlerteCritique({ alert, patientId, practitionerId, onResolved }: { alert: { type: string; alert_type?: string; murmure?: string; date?: string; trigger_message_id?: string }; patientId: string; practitionerId?: string; onResolved: () => void }) {
   const [checked, setChecked] = useState(false);
   const [loading, setLoading] = useState(false);
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   const resolve = async () => {
     setLoading(true);
-    await supabase.from("patients").update({ emotional_status: "green", admin_alerts: [], red_behavioral_until: null }).eq("user_id", patientId);
+    const resolvedAt = new Date().toISOString();
+    // Piste d'audit immuable — obligations légales (responsabilité praticien)
+    const auditEntry = {
+      ...alert,
+      archived: true,
+      resolved_at: resolvedAt,
+      resolved_by: practitionerId ?? "unknown",
+      practitioner_signature: true,
+      resolution: "practitioner_certified",
+    };
+    const { data: cur } = await supabase.from("patients").select("admin_alerts, archived_alerts").eq("user_id", patientId).single();
+    const existingAlerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+    const existingArchived = (cur as { archived_alerts?: object[] } | null)?.archived_alerts ?? [];
+    // Marquer l'alerte spécifique comme seen: true — NE PAS effacer la liste (audit immutable)
+    const updatedAlerts = existingAlerts.map((a: object) => {
+      const al = a as { trigger_message_id?: string; date?: string };
+      const matches = alert.trigger_message_id
+        ? al.trigger_message_id === alert.trigger_message_id
+        : al.date === alert.date;
+      return matches ? { ...a, seen: true } : a;
+    });
+    await supabase.from("patients").update({
+      emotional_status: "green",
+      admin_alerts: updatedAlerts,
+      red_behavioral_until: null,
+      archived_alerts: [...existingArchived, auditEntry],
+    }).eq("user_id", patientId);
     await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId }) });
     onResolved();
     setLoading(false);
@@ -464,13 +490,37 @@ function LeverAlerteSimple({ alert, patientId, murmureSuggere, onResolved, showM
 
   const resolve = async () => {
     setLoading(true);
+    // Archiver l'alerte comportementale (garder pour le rapport IA)
+    const archivedEntry = { ...alert, archived: true, archived_at: new Date().toISOString(), resolution: "practitioner_resolved" };
+    const { data: cur } = await supabase.from("patients").select("admin_alerts, archived_alerts, practitioner_instruction").eq("user_id", patientId).single();
+    const existingAlerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+    const existingArchived = (cur as { archived_alerts?: object[] } | null)?.archived_alerts ?? [];
+    const existingInstructions = (cur as { practitioner_instruction?: { id: string; text: string; expires_at?: string | null; created_at: string }[] } | null)?.practitioner_instruction ?? [];
+    // Marquer l'alerte spécifique comme seen: true — NE PAS effacer la liste (audit immutable)
+    const alertTyped = alert as { trigger_message_id?: string; date?: string };
+    const updatedAlerts = existingAlerts.map((a: object) => {
+      const al = a as { trigger_message_id?: string; date?: string };
+      const matches = alertTyped.trigger_message_id
+        ? al.trigger_message_id === alertTyped.trigger_message_id
+        : al.date === alertTyped.date;
+      return matches ? { ...a, seen: true } : a;
+    });
+    // Murmure : injecter toujours en append — behavioral auto-injecte murmureSuggere même si !showMurmure
+    const murmureToInject = showMurmure ? murmure : murmureSuggere;
+    const newInstruction = murmureToInject ? {
+      id: crypto.randomUUID(),
+      text: murmureToInject,
+      expires_at: null,
+      created_at: new Date().toISOString(),
+    } : null;
     await supabase.from("patients").update({
       emotional_status: "green",
-      admin_alerts: [],
+      admin_alerts: updatedAlerts,
       red_behavioral_until: null,
-      ...(murmure && showMurmure ? { practitioner_instruction: [] } : {}),
+      archived_alerts: [...existingArchived, archivedEntry],
+      ...(newInstruction ? { practitioner_instruction: [...existingInstructions, newInstruction] } : {}),
     }).eq("user_id", patientId);
-    onResolved(murmure);
+    onResolved(murmureToInject ?? "");
     setLoading(false);
     setOpen(false);
   };
@@ -615,6 +665,8 @@ export default function DashboardPage() {
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
   const patientsRef = useRef<RealPatient[]>([]);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  // Scroll déterministe cross-tab : ID exact du message cible (alerte ou victoire)
+  const [pendingScrollMessageId, setPendingScrollMessageId] = useState<string | null>(null);
   const [vueEnsembleFilter, setVueEnsembleFilter] = useState<"tous" | "alertes" | "victoires" | "ras" | "partages">("tous");
   const [practitionerCabinetId, setPractitionerCabinetId] = useState<string | null>(null);
   const [cabinetSharedPatients, setCabinetSharedPatients] = useState<RealPatient[]>([]);
@@ -1050,6 +1102,20 @@ export default function DashboardPage() {
       conversationContainerRef.current.scrollTop = conversationContainerRef.current.scrollHeight;
     }
   }, [displayedConversations, selectedPatientId]);
+
+  // Scroll déterministe cross-tab : scroller pixel-perfect vers l'ID exact du message cible
+  useEffect(() => {
+    if (pendingScrollMessageId === null || displayedConversations.length === 0) return;
+    const targetId = pendingScrollMessageId;
+    setPendingScrollMessageId(null);
+    setTimeout(() => {
+      const el = document.querySelector(`[data-message-id="${targetId}"]`);
+      if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); }
+      setHighlightedMessageId(targetId);
+      setTimeout(() => setHighlightedMessageId(null), 2500);
+    }, 80);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayedConversations, pendingScrollMessageId]);
   const displayedSelectedPatient = onboardingDemoMode
     ? demoPatients.find(p => p.id === (selectedPatientId ?? "demo-1")) as unknown as RealPatient ?? demoPatients[0] as unknown as RealPatient
     : patients.find((p) => p.id === selectedPatientId);
@@ -1240,7 +1306,20 @@ export default function DashboardPage() {
   const dismissAlertFromHeader = async (patientId: string) => {
     setAlertBannerDismissed(prev => ({ ...prev, [patientId]: true }));
     if (!onboardingDemoMode) {
-      await supabase.from("patients").update({ emotional_status: "green", admin_alerts: [] }).eq("user_id", patientId);
+      // Archiver les alertes actives avant de les effacer (traçabilité comportementale)
+      const patient = patients.find(p => p.id === patientId);
+      const activeAlerts = patient?.admin_alerts ?? [];
+      if (activeAlerts.length > 0) {
+        const { data: cur } = await supabase.from("patients").select("archived_alerts").eq("user_id", patientId).single();
+        const existingArchived = (cur as { archived_alerts?: object[] } | null)?.archived_alerts ?? [];
+        const newArchived = activeAlerts.map(a => ({ ...a, archived: true, archived_at: new Date().toISOString(), resolution: "practitioner_dismissed" }));
+        await supabase.from("patients").update({
+          emotional_status: "green", admin_alerts: [], red_behavioral_until: null,
+          archived_alerts: [...existingArchived, ...newArchived],
+        }).eq("user_id", patientId);
+      } else {
+        await supabase.from("patients").update({ emotional_status: "green", admin_alerts: [], red_behavioral_until: null }).eq("user_id", patientId);
+      }
       await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId }) });
     }
     setPatients(prev => prev.map(p => p.id === patientId ? { ...p, emotional_status: "green", admin_alerts: [] } : p));
@@ -1913,18 +1992,20 @@ export default function DashboardPage() {
                   const isSelected = patient.id === (selectedPatientId ?? (onboardingDemoMode ? "demo-1" : null));
                   const isCritical = patient.emotional_status === "red_critical";
                   const isRed = patient.emotional_status === "red" || isCritical;
+                  const isBehavioralList = patient.emotional_status === "red_behavioral";
                   const isOrange = patient.emotional_status === "orange";
-                  const hasAlert = isRed || isOrange;
+                  const hasAlert = isRed || isOrange || isBehavioralList;
                   const alertDismissed = alertBannerDismissed[patient.id];
                   const activeAlert = hasAlert && !alertDismissed;
-                  // Couleurs des cartes — même logique que vue d'ensemble
-                  const alertColor2 = isRed ? coral : amber;
+                  // Couleurs des cartes — red_behavioral → amber
+                  const alertColor2 = isRed ? coral : amber; // behavioral et orange = amber
                   let cardBg = "transparent";
                   let cardBorder = "transparent";
                   let cardShadow = "none";
                   if (isSelected) {
                     if (isCritical) { cardBg = "rgba(244,63,94,0.07)"; cardBorder = "rgba(244,63,94,0.4)"; cardShadow = "0 0 16px rgba(244,63,94,0.1)"; }
                     else if (isRed) { cardBg = "rgba(244,63,94,0.05)"; cardBorder = "rgba(244,63,94,0.3)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
+                    else if (isBehavioralList) { cardBg = "rgba(245,158,11,0.04)"; cardBorder = "rgba(245,158,11,0.28)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
                     else if (isOrange) { cardBg = "rgba(245,158,11,0.04)"; cardBorder = "rgba(245,158,11,0.28)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
                     else { cardBg = "rgba(16,185,129,0.04)"; cardBorder = "rgba(16,185,129,0.22)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
                   }
@@ -1946,7 +2027,14 @@ export default function DashboardPage() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{patient.firstName} {patient.lastName}</p>
                           <p style={{ margin: "2px 0 0", fontSize: 11, color: subColor, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s", display: "flex", alignItems: "center", gap: 4 }}>
-                            {!activeAlert && victoryFresh && <span style={{ fontSize: 11, flexShrink: 0 }} title={patient.latest_victory}>🏆</span>}
+                            {!activeAlert && victoryFresh && (
+                              <span
+                                style={{ fontSize: 11, flexShrink: 0, cursor: "pointer" }}
+                                title={patient.latest_victory}
+                                onClick={(e) => { e.stopPropagation(); if (patient.victory_message_id) setPendingScrollMessageId(patient.victory_message_id); else if (patient.victory_detected_at) setPendingScrollMessageId(patient.victory_detected_at); }}>
+                                🏆
+                              </span>
+                            )}
                             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subText}</span>
                           </p>
                         </div>
@@ -1991,8 +2079,9 @@ export default function DashboardPage() {
                       const alerts = selectedPatient.admin_alerts?.filter(a => !a.seen) ?? [];
                       const isCritical = selectedPatient.emotional_status === "red_critical";
                       const isRed = selectedPatient.emotional_status === "red" || isCritical;
+                      const isBehavioralBanner = selectedPatient.emotional_status === "red_behavioral";
                       const isOrange = selectedPatient.emotional_status === "orange";
-                      const hasAlert = isRed || isOrange;
+                      const hasAlert = isRed || isOrange || isBehavioralBanner;
                       if (!hasAlert || alertBannerDismissed[selectedPatient.id]) return null;
                       const alertText = alerts.length > 0 ? (
                         alerts[0].type === "crisis" ? (
@@ -2026,37 +2115,76 @@ export default function DashboardPage() {
                         </div>
                       );
                     })()}
+
+                    {/* Bandeau victoire — affiché si victoire fraîche (< 48h) et pas d'alerte active */}
+                    {(() => {
+                      const hasActiveAlert = (selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical" || selectedPatient.emotional_status === "orange" || selectedPatient.emotional_status === "red_behavioral") && !alertBannerDismissed[selectedPatient.id];
+                      const victoryFreshBanner = !!(selectedPatient.latest_victory && selectedPatient.victory_detected_at && (Date.now() - new Date(selectedPatient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
+                      if (!victoryFreshBanner || hasActiveAlert) return null;
+                      const bState = bravoState[selectedPatient.id];
+                      return (
+                        <div style={{ background: "rgba(16,185,129,0.05)", borderTop: "1px solid rgba(16,185,129,0.18)", padding: "8px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                          <TrophyIcon size={13} color={emerald} />
+                          <button
+                            onClick={() => { if (selectedPatient.victory_message_id) setPendingScrollMessageId(selectedPatient.victory_message_id); else if (selectedPatient.victory_detected_at) setPendingScrollMessageId(selectedPatient.victory_detected_at); }}
+                            style={{ fontSize: 12, fontWeight: 600, color: emerald, background: "none", border: "none", cursor: "pointer", flex: 1, textAlign: "left", padding: 0 }}>
+                            {selectedPatient.firstName} · {selectedPatient.latest_victory}
+                          </button>
+                          {bState?.sent ? (
+                            <CheckCircleSent />
+                          ) : (
+                            <button onClick={() => void generateBravo(selectedPatient.id, selectedPatient.latest_victory ?? "")}
+                              style={{ height: 28, borderRadius: 8, padding: "0 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: "1px solid rgba(16,185,129,0.35)", background: "rgba(16,185,129,0.1)", color: emerald, whiteSpace: "nowrap" }}>
+                              Envoyer un Bravo ✦
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                   <div ref={conversationContainerRef} style={{ flex: 1, overflowY: "auto", padding: "16px 20px", background: "#0b0f0d", display: "flex", flexDirection: "column", gap: 12 }}>
                     {displayedConversations.length === 0 ? (
                       <p style={{ textAlign: "center", fontSize: 13, color: "#64748b", marginTop: 40 }}>Aucune conversation</p>
-                    ) : displayedConversations.map((message) => {
+                    ) : displayedConversations.map((message, idx) => {
                       const isPatient = message.role === "user";
                       const isHighlighted = message.id === highlightedMessageId;
                       const selIsRed = selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical";
                       const highlightColor = selIsRed ? "rgba(244,63,94,0.22)" : "rgba(245,158,11,0.18)";
                       const highlightOutline = selIsRed ? "rgba(244,63,94,0.5)" : "rgba(245,158,11,0.4)";
+                      const d = new Date(message.created_at);
+                      const now = new Date();
+                      const msgDay = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+                      const prevMsg = idx > 0 ? displayedConversations[idx - 1] : null;
+                      const prevD = prevMsg ? new Date(prevMsg.created_at) : null;
+                      const prevDay = prevD ? `${prevD.getFullYear()}-${prevD.getMonth()}-${prevD.getDate()}` : null;
+                      const showDateSep = msgDay !== prevDay;
+                      const todayDay = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+                      const yest = new Date(now); yest.setDate(now.getDate() - 1);
+                      const yesterdayDay = `${yest.getFullYear()}-${yest.getMonth()}-${yest.getDate()}`;
+                      const sameYear = d.getFullYear() === now.getFullYear();
+                      const dateSepLabel = msgDay === todayDay ? "Aujourd'hui" : msgDay === yesterdayDay ? "Hier" : d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", ...(!sameYear ? { year: "numeric" } : {}) });
+                      const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
                       return (
-                        <div key={message.id} data-message-id={message.id} data-message-date={message.created_at}
-                          style={{ display: "flex", justifyContent: isPatient ? "flex-end" : "flex-start", transition: "all 0.3s" }}>
-                          <div style={{ maxWidth: isPatient ? "78%" : "100%" }}>
-                            <div style={{ borderRadius: isPatient ? 14 : 0, borderBottomRightRadius: isPatient ? 4 : 0, padding: isPatient ? "10px 14px" : "3px 4px", fontSize: 14, lineHeight: 1.7, background: isHighlighted ? highlightColor : isPatient ? "rgba(16,185,129,0.03)" : "transparent", border: isPatient ? `1px solid ${isHighlighted ? highlightOutline : "rgba(16,185,129,0.2)"}` : "none", color: isPatient ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: isHighlighted && !isPatient ? `2px solid ${highlightOutline}` : "none" }}>
-                              {message.content}
+                        <Fragment key={message.id}>
+                          {showDateSep && (
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 0" }}>
+                              <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
+                              <span style={{ fontSize: 10, color: "#4b5563", fontWeight: 500, whiteSpace: "nowrap" }}>{dateSepLabel}</span>
+                              <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
                             </div>
-                            <p style={{ margin: "4px 0 0", fontSize: 10, color: "#4b5563", textAlign: isPatient ? "right" : "left" }}>
-                              {(() => {
-                                const d = new Date(message.created_at);
-                                const now = new Date();
-                                const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-                                const sameDay = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-                                if (sameDay) return time;
-                                const sameYear = d.getFullYear() === now.getFullYear();
-                                const dateStr = d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", ...(!sameYear ? { year: "numeric" } : {}) });
-                                return `${dateStr} · ${time}`;
-                              })()}
-                            </p>
+                          )}
+                          <div data-message-id={message.id} data-message-date={message.created_at}
+                            style={{ display: "flex", justifyContent: isPatient ? "flex-end" : "flex-start", transition: "all 0.3s" }}>
+                            <div style={{ maxWidth: isPatient ? "78%" : "100%" }}>
+                              <div style={{ borderRadius: isPatient ? 14 : 0, padding: isPatient ? "10px 14px" : "3px 4px", fontSize: 14, lineHeight: 1.7, background: isHighlighted ? highlightColor : isPatient ? "rgba(16,185,129,0.03)" : "transparent", border: isPatient ? `1px solid ${isHighlighted ? highlightOutline : "rgba(16,185,129,0.2)"}` : "none", color: isPatient ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: isHighlighted && !isPatient ? `2px solid ${highlightOutline}` : "none" }}>
+                                {message.content}
+                              </div>
+                              <p style={{ margin: "4px 0 0", fontSize: 10, color: "#4b5563", textAlign: isPatient ? "right" : "left" }}>
+                                {time}
+                              </p>
+                            </div>
                           </div>
-                        </div>
+                        </Fragment>
                       );
                     })}
                   </div>
@@ -2066,10 +2194,10 @@ export default function DashboardPage() {
                     const patIsBehavioral = selectedPatient.emotional_status === "red_behavioral";
                     // Behavioral → orange, critical/red → rouge, sinon amber
                     const actionColor = patIsRed ? coral : patIsBehavioral ? ORANGE_BEHAVIORAL : amber;
-                    const actionBorder = patIsRed ? "rgba(244,63,94,0.2)" : patIsBehavioral ? "rgba(249,115,22,0.2)" : "rgba(245,158,11,0.18)";
-                    const actionBtnBorder = patIsRed ? "rgba(244,63,94,0.35)" : patIsBehavioral ? "rgba(249,115,22,0.35)" : "rgba(245,158,11,0.3)";
-                    const actionBtnHover = patIsRed ? "rgba(244,63,94,0.22)" : patIsBehavioral ? "rgba(249,115,22,0.22)" : "rgba(245,158,11,0.2)";
-                    const actionBtnSolidBg = patIsRed ? "rgba(244,63,94,0.18)" : patIsBehavioral ? "rgba(249,115,22,0.14)" : "rgba(245,158,11,0.14)";
+                    const actionBorder = patIsRed ? "rgba(244,63,94,0.2)" : patIsBehavioral ? "rgba(245,158,11,0.2)" : "rgba(245,158,11,0.18)";
+                    const actionBtnBorder = patIsRed ? "rgba(244,63,94,0.35)" : patIsBehavioral ? "rgba(245,158,11,0.35)" : "rgba(245,158,11,0.3)";
+                    const actionBtnHover = patIsRed ? "rgba(244,63,94,0.22)" : patIsBehavioral ? "rgba(245,158,11,0.22)" : "rgba(245,158,11,0.2)";
+                    const actionBtnSolidBg = patIsRed ? "rgba(244,63,94,0.18)" : patIsBehavioral ? "rgba(245,158,11,0.14)" : "rgba(245,158,11,0.14)";
                     return (
                       <div style={{ borderTop: `1px solid ${actionBorder}`, background: "rgba(10,10,12,0.97)", backdropFilter: "blur(12px)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 12, color: "#64748b", flex: 1, minWidth: 140 }}>
@@ -2294,7 +2422,7 @@ export default function DashboardPage() {
                             {alert.type === "admin_alert" && alert.alert_type === "identity_correction" && "Le patient signale une erreur dans son nom."}
                           </p>
                           {alert.type === "crisis" ? (
-                            <LeverAlerteCritique alert={alert} patientId={selectedPatient.id} onResolved={() => {
+                            <LeverAlerteCritique alert={alert} patientId={selectedPatient.id} practitionerId={practitionerId ?? undefined} onResolved={() => {
                               setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", admin_alerts: [] } : p));
                             }} />
                           ) : (
@@ -2671,7 +2799,7 @@ export default function DashboardPage() {
                     let cardShadow = "none";
                     if (isCritical) { cardBg = "rgba(239,68,68,0.04)"; cardBorder = "rgba(239,68,68,0.25)"; cardShadow = "0 0 16px rgba(239,68,68,0.10)"; }
                     else if (isRed) { cardBg = "rgba(239,68,68,0.03)"; cardBorder = "rgba(239,68,68,0.18)"; }
-                    else if (isBehavioral) { cardBg = "rgba(249,115,22,0.03)"; cardBorder = "rgba(249,115,22,0.22)"; cardShadow = "0 0 12px rgba(249,115,22,0.08)"; }
+                    else if (isBehavioral) { cardBg = "rgba(245,158,11,0.03)"; cardBorder = "rgba(245,158,11,0.22)"; cardShadow = "0 0 12px rgba(245,158,11,0.08)"; }
                     else if (isOrange) { cardBg = "rgba(245,158,11,0.02)"; cardBorder = "rgba(245,158,11,0.15)"; }
                     else if (hasVictory) { cardBg = "rgba(16,185,129,0.02)"; cardBorder = "rgba(16,185,129,0.15)"; }
 
@@ -2703,7 +2831,18 @@ export default function DashboardPage() {
                         {/* Contenu selon statut */}
                         {hasAlert && (
                           <>
-                            <p style={{ margin: "0 0 10px", fontSize: 12, color: alertColor, lineHeight: 1.5, filter: discretMode ? "blur(4px)" : "none" }}>
+                            {/* Motif de crise — cliquable pour les behavioral → scroll vers message déclencheur */}
+                            <p
+                              onClick={isBehavioral ? (e) => {
+                                e.stopPropagation();
+                                const alert = patient.admin_alerts?.[0];
+                                setSelectedPatientId(patient.id);
+                                setActiveTab("patients");
+                                setShowInterventionBubble(false);
+                                if (alert?.trigger_message_id) setPendingScrollMessageId(alert.trigger_message_id);
+                                else if (alert?.date) setPendingScrollMessageId(alert.date);
+                              } : undefined}
+                              style={{ margin: "0 0 10px", fontSize: 12, color: alertColor, lineHeight: 1.5, filter: discretMode ? "blur(4px)" : "none", cursor: isBehavioral ? "pointer" : "default", textDecoration: isBehavioral ? "underline dotted" : "none" }}>
                               {patient.emotional_insight || (isCritical ? "Intervention immédiate requise" : "Point de vigilance détecté")}
                             </p>
                             <button onClick={(e) => { e.stopPropagation(); setSelectedPatientId(patient.id); setActiveTab("patients"); setShowInterventionBubble(false); }}
@@ -2717,9 +2856,18 @@ export default function DashboardPage() {
 
                         {hasVictory && (
                           <>
-                            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                            {/* Victoire — cliquable → scroll vers le message du succès */}
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPatientId(patient.id);
+                                setActiveTab("patients");
+                                if (patient.victory_message_id) setPendingScrollMessageId(patient.victory_message_id);
+                                else if (patient.victory_detected_at) setPendingScrollMessageId(patient.victory_detected_at);
+                              }}
+                              style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, cursor: "pointer" }}>
                               <TrophyIcon size={12} color={emerald} />
-                              <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.5, filter: discretMode ? "blur(4px)" : "none" }}>{patient.latest_victory}</p>
+                              <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.5, filter: discretMode ? "blur(4px)" : "none", textDecoration: "underline dotted" }}>{patient.latest_victory}</p>
                             </div>
 
                             {bState?.sent ? (

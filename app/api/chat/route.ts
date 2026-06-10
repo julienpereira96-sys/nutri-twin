@@ -83,6 +83,33 @@ function isCriticalKeyword(message: string): boolean {
   return CRISIS_CRITICAL_KEYWORDS.some(kw => lower.includes(kw));
 }
 
+// ═══ PRE-FILTRE REGEX — signaux comportementaux / TCA ═══
+// Première barrière locale (O(n) string scan) avant tout appel LLM.
+// Si aucun signal détecté → bypass de analyzeCrisisWithLLM.
+function hasBehavioralSignal(message: string): boolean {
+  const lower = message.toLowerCase();
+  return [
+    // Détresse émotionnelle active
+    "j'en peux plus", "je craque", "c'est trop dur", "à bout", "plus la force",
+    "j'ai tout foiré", "j'ai échoué", "je me dégoûte", "honte de moi",
+    "j'arrive plus", "je n'arrive plus", "déprimée", "déprimé",
+    "je pleure", "je n'en peux plus", "c'est trop difficile",
+    // TCA / perte de contrôle alimentaire
+    "crise de boulimie", "binge", "hyperphagie", "j'ai tout mangé",
+    "j'ai craqué", "je contrôle plus", "j'ai mangé en cachette",
+    "pu m'arrêter", "plus m'arrêter", "j'ai vomi", "j'ai tout vomi",
+    "laxatif", "je veux pas manger", "j'arrive pas à manger",
+    "je mange plus", "je mange rien", "je mange pas",
+    "je me purge",
+    // Automutilation / comportemental
+    "je me fais du mal", "me couper", "me blesser",
+    // Désespoir / abandon
+    "à quoi ça sert", "rien ne sert", "aucun espoir",
+    "tout abandonner", "j'abandonne", "je renonce",
+    "dégoût de moi", "je suis nulle", "je suis nul",
+  ].some(kw => lower.includes(kw));
+}
+
 function getCriticalResponseType(message: string): string {
   const lower = message.toLowerCase();
   if (["suicide", "mourir", "en finir", "tuer", "disparaître", "disparaitre"].some(kw => lower.includes(kw))) return "suicide";
@@ -849,9 +876,15 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
       && redBehavioralUntil !== null
       && redBehavioralUntil <= new Date();
 
+    // ID stable généré ici — utilisé pour lier les admin_alerts et victoires au message patient
+    const userMsgId = crypto.randomUUID();
+    // Flag pour éviter de créer deux admin_alerts comportementaux (détection précoce + Gemini JSON)
+    let earlyBehavioralDetected = false;
+
     // Paralléliser : profil patient + documents + analyse crise LLM
     const profileResult = patientId ? getPatientProfile(patientId) : Promise.resolve({ context: "", pathologies: undefined });
-    const crisisPromise = (message && patientId && !behavioralLocked && !behavioralPostLock)
+    // Pre-filtre regex : bypass analyzeCrisisWithLLM si aucun signal comportemental détecté
+    const crisisPromise = (message && patientId && !behavioralLocked && !behavioralPostLock && hasBehavioralSignal(message))
       ? profileResult.then(p => analyzeCrisisWithLLM(message, p.context))
       : Promise.resolve<CrisisAnalysis>({ level: "none", murmure: "" });
 
@@ -870,7 +903,7 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
       const { data: cur } = await supabaseMain.from("patients").select("admin_alerts").eq("user_id", patientId).single();
       const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
       await supabaseMain.from("patients").update({
-        admin_alerts: [...alerts, { type: "admin_alert", alert_type: "critical_llm", date: new Date().toISOString(), seen: false, murmure: crisisAnalysis.murmure }]
+        admin_alerts: [...alerts, { type: "admin_alert", alert_type: "critical_llm", date: new Date().toISOString(), seen: false, murmure: crisisAnalysis.murmure, trigger_message_id: userMsgId }]
       }).eq("user_id", patientId);
       try {
         await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
@@ -882,6 +915,7 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
     }
 
     if (crisisAnalysis.level === "red_behavioral" && patientId && practitionerId && !behavioralLocked && !behavioralPostLock) {
+      earlyBehavioralDetected = true;
       const lockUntil = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
       await supabaseMain.from("patients").update({
         emotional_status: "red_behavioral",
@@ -892,7 +926,7 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
       const { data: cur } = await supabaseMain.from("patients").select("admin_alerts").eq("user_id", patientId).single();
       const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
       await supabaseMain.from("patients").update({
-        admin_alerts: [...alerts, { type: "admin_alert", alert_type: "behavioral", date: new Date().toISOString(), seen: false, murmure: crisisAnalysis.murmure }]
+        admin_alerts: [...alerts, { type: "admin_alert", alert_type: "behavioral", date: new Date().toISOString(), seen: false, murmure: crisisAnalysis.murmure, trigger_message_id: userMsgId }]
       }).eq("user_id", patientId);
     }
 
@@ -1006,15 +1040,13 @@ Max 150 mots. Sans markdown.`;
         if (isRedCritical) {
           // red_critical ne change jamais automatiquement — verrou praticien absolu
           emotionalStatus = "red_critical";
-          emotionalInsight = "Verrou praticien actif";
+          // emotional_insight JAMAIS écrasé par un libellé technique — on garde la météo de Gemini
         } else if (shouldResolveApaisement) {
           // Apaisement validé → résolution immédiate même si verrou 6h encore actif
           emotionalStatus = "green";
-          // emotionalInsight garde la météo positive de Gemini
         } else if (isRedBehavioralLocked && emotionalStatus !== "red_critical") {
-          // Verrou 6h actif : Gemini ne peut PAS repasser en green ou orange
+          // Verrou 6h actif : forcer red_behavioral mais laisser la météo humaine de Gemini intacte
           emotionalStatus = "red_behavioral";
-          emotionalInsight = "Accompagnement actif en cours";
         }
         // isPostLock (6h expiré) → Gemini détermine librement (expiration auto côté dashboard)
 
@@ -1059,9 +1091,10 @@ Max 150 mots. Sans markdown.`;
             (currentEmotionalStatus !== "green" && emotionalStatus === "green");
 
           const patientStatusUpdate: Record<string, unknown> = {
-            // emotional_insight (météo) peut toujours se mettre à jour — c'est cosmétique
-            emotional_insight: emotionalInsight,
-            ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString() } : {}),
+            // emotional_insight : toujours la météo humaine de Gemini — jamais de libellé technique
+            // Uniquement mis à jour si non-vide pour ne pas écraser un insight existant
+            ...(emotionalInsight ? { emotional_insight: emotionalInsight } : {}),
+            ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString(), victory_message_id: userMsgId } : {}),
           };
           // emotional_status uniquement sur changements majeurs
           if (isSignificantStatusChange) {
@@ -1090,11 +1123,12 @@ Max 150 mots. Sans markdown.`;
             } catch { /* silencieux — pas d'event en attente */ }
           }
 
-          if (adminAlert.action === "admin_alert" && !isRedCritical) {
+          // Créer admin_alert via JSON Gemini — seulement si pas déjà créée par détection précoce
+          if (adminAlert.action === "admin_alert" && !isRedCritical && !earlyBehavioralDetected) {
             const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
             const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
             await supabase.from("patients").update({
-              admin_alerts: [...alerts, { type: adminAlert.alert_type, date: new Date().toISOString(), seen: false }]
+              admin_alerts: [...alerts, { type: adminAlert.alert_type, date: new Date().toISOString(), seen: false, trigger_message_id: userMsgId }]
             }).eq("user_id", patientId);
           }
 
