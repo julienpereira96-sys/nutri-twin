@@ -445,7 +445,7 @@ export default function Home() {
       <a href="/" className="flex items-center gap-2.5">
         <div style={{ position: "relative", flexShrink: 0, width: 34, height: 34 }}>
           <div style={{ position: "absolute", inset: -8, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.2), transparent 70%)", pointerEvents: "none" }} />
-          <div style={{ width: 34, height: 34, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.6)", boxShadow: "0 0 12px rgba(16,185,129,0.35), 0 0 24px rgba(16,185,129,0.12)", display: "flex", alignItems: "center", justifyContent: "center", background: "#070707", position: "relative" }}>
+          <div style={{ width: 34, height: 34, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.6)", display: "flex", alignItems: "center", justifyContent: "center", background: "#070707", position: "relative" }}>
             <img src="/logo-new.svg" alt="" style={{ width: 18, height: 18 }} />
           </div>
         </div>
