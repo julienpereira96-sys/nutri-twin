@@ -70,7 +70,7 @@ function AnimatedChat() {
           <div className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold text-emerald-500 ring-1 ring-emerald-500/20">21h14</div>
         </div>
 
-        <div ref={scrollRef} className="pl-4 pr-2 pt-4 pb-2" style={{ height: 420, overflowY: "auto", scrollbarWidth: "none", display: "flex", flexDirection: "column", gap: 13 }}>
+        <div ref={scrollRef} className="pl-4 pr-2 pt-4 pb-2" style={{ height: 480, overflowY: "auto", scrollbarWidth: "none", display: "flex", flexDirection: "column", gap: 13 }}>
           {visibleMessages.map(i => {
             const msg = messages[i];
             return (
@@ -512,7 +512,9 @@ export default function Home() {
               href="#tarifs"
               onClick={() => setMobileMenuOpen(false)}
               className="mt-3 mb-2 flex h-11 w-full items-center justify-center rounded-xl text-[14px] font-semibold text-black active:scale-95"
-              style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "#000000", borderRadius: 12, boxShadow: "0 4px 20px rgba(16,185,129,0.25)" }}
+              style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "#000000", borderRadius: 12, boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}
             >
               Commencer ici
             </a>
@@ -555,13 +557,13 @@ export default function Home() {
               <a
   href="#tarifs"
   className="inline-flex h-[48px] items-center justify-center rounded-xl px-25 text-[14px] font-semibold text-black active:scale-95"
-  style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "#000000", borderRadius: 12, boxShadow: "0 4px 20px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
+  style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "#000000", borderRadius: 12, boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
   onMouseEnter={(e) => {
-    e.currentTarget.style.boxShadow = "0 8px 28px rgba(16,185,129,0.45)";
+    e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)";
     e.currentTarget.style.transform = "translateY(-1px)";
   }}
   onMouseLeave={(e) => {
-    e.currentTarget.style.boxShadow = "0 4px 20px rgba(16,185,129,0.25)";
+    e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)";
     e.currentTarget.style.transform = "translateY(0)";
   }}
 >
