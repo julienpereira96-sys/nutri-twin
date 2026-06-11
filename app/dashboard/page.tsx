@@ -1997,7 +1997,10 @@ export default function DashboardPage() {
                   const hasAlert = isRed || isOrange || isBehavioralList;
                   const alertDismissed = alertBannerDismissed[patient.id];
                   const activeAlert = hasAlert && !alertDismissed;
-                  // Couleurs des cartes — red_behavioral → amber
+                  // Victoire récente : seulement si < 48h — déclarée avant les styles de carte
+                  const victoryFresh = !!(patient.latest_victory && patient.victory_detected_at
+                    && (Date.now() - new Date(patient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
+                  // Couleurs des cartes — red_behavioral → amber, vert sans victoire → neutre
                   const alertColor2 = isRed ? coral : amber; // behavioral et orange = amber
                   let cardBg = "transparent";
                   let cardBorder = "transparent";
@@ -2007,11 +2010,14 @@ export default function DashboardPage() {
                     else if (isRed) { cardBg = "rgba(244,63,94,0.05)"; cardBorder = "rgba(244,63,94,0.3)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
                     else if (isBehavioralList) { cardBg = "rgba(245,158,11,0.04)"; cardBorder = "rgba(245,158,11,0.28)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
                     else if (isOrange) { cardBg = "rgba(245,158,11,0.04)"; cardBorder = "rgba(245,158,11,0.28)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
-                    else { cardBg = "rgba(16,185,129,0.04)"; cardBorder = "rgba(16,185,129,0.22)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
+                    else if (victoryFresh) {
+                      // Victoire fraîche → lueur émeraude réservée
+                      cardBg = "rgba(16,185,129,0.04)"; cardBorder = "rgba(16,185,129,0.22)"; cardShadow = "0 0 12px rgba(16,185,129,0.12)";
+                    } else {
+                      // Vert sans victoire → fond et bordure 100% neutres
+                      cardBg = "rgba(255,255,255,0.04)"; cardBorder = "rgba(255,255,255,0.08)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)";
+                    }
                   }
-                  // Victoire récente : seulement si < 48h
-                  const victoryFresh = !!(patient.latest_victory && patient.victory_detected_at
-                    && (Date.now() - new Date(patient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
                   // Sous-texte : alerte > victoire > dernier message
                   const subText = (activeAlert && patient.emotional_insight)
                     ? patient.emotional_insight
@@ -2116,28 +2122,22 @@ export default function DashboardPage() {
                       );
                     })()}
 
-                    {/* Bandeau victoire — affiché si victoire fraîche (< 48h) et pas d'alerte active */}
+                    {/* Bandeau victoire HAUT — texte + "Aller au message" uniquement */}
                     {(() => {
                       const hasActiveAlert = (selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical" || selectedPatient.emotional_status === "orange" || selectedPatient.emotional_status === "red_behavioral") && !alertBannerDismissed[selectedPatient.id];
                       const victoryFreshBanner = !!(selectedPatient.latest_victory && selectedPatient.victory_detected_at && (Date.now() - new Date(selectedPatient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
                       if (!victoryFreshBanner || hasActiveAlert) return null;
-                      const bState = bravoState[selectedPatient.id];
                       return (
                         <div style={{ background: "rgba(16,185,129,0.05)", borderTop: "1px solid rgba(16,185,129,0.18)", padding: "8px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                           <TrophyIcon size={13} color={emerald} />
+                          <span style={{ fontSize: 12, fontWeight: 600, color: emerald, flex: 1 }}>
+                            🏆 {selectedPatient.firstName} a validé une victoire : {selectedPatient.latest_victory}
+                          </span>
                           <button
                             onClick={() => { if (selectedPatient.victory_message_id) setPendingScrollMessageId(selectedPatient.victory_message_id); else if (selectedPatient.victory_detected_at) setPendingScrollMessageId(selectedPatient.victory_detected_at); }}
-                            style={{ fontSize: 12, fontWeight: 600, color: emerald, background: "none", border: "none", cursor: "pointer", flex: 1, textAlign: "left", padding: 0 }}>
-                            {selectedPatient.firstName} · {selectedPatient.latest_victory}
+                            style={{ fontSize: 11, fontWeight: 600, color: emerald, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, whiteSpace: "nowrap" }}>
+                            Aller au message
                           </button>
-                          {bState?.sent ? (
-                            <CheckCircleSent />
-                          ) : (
-                            <button onClick={() => void generateBravo(selectedPatient.id, selectedPatient.latest_victory ?? "")}
-                              style={{ height: 28, borderRadius: 8, padding: "0 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: "1px solid rgba(16,185,129,0.35)", background: "rgba(16,185,129,0.1)", color: emerald, whiteSpace: "nowrap" }}>
-                              Envoyer un Bravo ✦
-                            </button>
-                          )}
                         </div>
                       );
                     })()}
@@ -2176,7 +2176,7 @@ export default function DashboardPage() {
                           <div data-message-id={message.id} data-message-date={message.created_at}
                             style={{ display: "flex", justifyContent: isPatient ? "flex-end" : "flex-start", transition: "all 0.3s" }}>
                             <div style={{ maxWidth: isPatient ? "78%" : "100%" }}>
-                              <div style={{ borderRadius: isPatient ? 14 : 0, padding: isPatient ? "10px 14px" : "3px 4px", fontSize: 14, lineHeight: 1.7, background: isHighlighted ? highlightColor : isPatient ? "rgba(16,185,129,0.03)" : "transparent", border: isPatient ? `1px solid ${isHighlighted ? highlightOutline : "rgba(16,185,129,0.2)"}` : "none", color: isPatient ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: isHighlighted && !isPatient ? `2px solid ${highlightOutline}` : "none" }}>
+                              <div style={{ borderRadius: isPatient ? 14 : 0, padding: isPatient ? "10px 14px" : "3px 4px", fontSize: isPatient ? 16 : 18, lineHeight: 1.7, background: isHighlighted ? highlightColor : isPatient ? "rgba(16,185,129,0.03)" : "transparent", border: isPatient ? `1px solid ${isHighlighted ? highlightOutline : "rgba(16,185,129,0.2)"}` : "none", color: isPatient ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: isHighlighted && !isPatient ? `2px solid ${highlightOutline}` : "none" }}>
                                 {message.content}
                               </div>
                               <p style={{ margin: "4px 0 0", fontSize: 10, color: "#4b5563", textAlign: isPatient ? "right" : "left" }}>
@@ -2201,23 +2201,14 @@ export default function DashboardPage() {
                     return (
                       <div style={{ borderTop: `1px solid ${actionBorder}`, background: "rgba(10,10,12,0.97)", backdropFilter: "blur(12px)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 12, color: "#64748b", flex: 1, minWidth: 140 }}>
-                          {patIsBehavioral ? "Envoyer un message de soutien au patient" : "Souhaitez-vous envoyer un mot de soutien ?"}
+                          {"Écrire un message de soutien au patient"}
                         </span>
-                        {/* Bouton "Générer avec mon Jumeau" — masqué pour red_behavioral */}
-                        {!patIsBehavioral && (
-                          <button onClick={() => void generateSoutien()}
-                            style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: actionBtnSolidBg, border: `1px solid ${actionBtnBorder}`, color: actionColor, transition: "all 0.2s", whiteSpace: "nowrap" }}
-                            onMouseEnter={e => { e.currentTarget.style.background = actionBtnHover; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = actionBtnSolidBg; }}>
-                            Générer avec mon Jumeau
-                          </button>
-                        )}
-                        {/* Bouton message manuel — toujours visible */}
+                        {/* Soutien en crise : réponse humaine uniquement — pas de génération IA */}
                         <button onClick={() => { setShowInterventionBubble(false); setReplyMode(true); setReplyText(""); setReplyIsFromJumeau(false); setTimeout(() => replyInputRef.current?.focus(), 50); }}
-                          style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: patIsBehavioral ? actionBtnSolidBg : "transparent", border: `1px solid ${actionBtnBorder}`, color: actionColor, transition: "all 0.2s", whiteSpace: "nowrap" }}
+                          style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: actionBtnSolidBg, border: `1px solid ${actionBtnBorder}`, color: actionColor, transition: "all 0.2s", whiteSpace: "nowrap" }}
                           onMouseEnter={e => { e.currentTarget.style.background = actionBtnHover; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = patIsBehavioral ? actionBtnSolidBg : "transparent"; }}>
-                          {patIsBehavioral ? "Écrire un message →" : "Répondre manuellement"}
+                          onMouseLeave={e => { e.currentTarget.style.background = actionBtnSolidBg; }}>
+                          Écrire un message de soutien ➔
                         </button>
                         <button onClick={() => setShowInterventionBubble(false)}
                           style={{ height: 30, padding: "0 8px", background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#4b5563", lineHeight: 1 }}
@@ -2225,6 +2216,29 @@ export default function DashboardPage() {
                           onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
                           ×
                         </button>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Bandeau victoire BAS — "Envoyer un Bravo ✦" au-dessus de la saisie */}
+                  {!showInterventionBubble && !replyMode && (() => {
+                    const hasActiveAlert = (selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical" || selectedPatient.emotional_status === "orange" || selectedPatient.emotional_status === "red_behavioral") && !alertBannerDismissed[selectedPatient.id];
+                    const victoryFreshBottom = !!(selectedPatient.latest_victory && selectedPatient.victory_detected_at && (Date.now() - new Date(selectedPatient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
+                    if (!victoryFreshBottom || hasActiveAlert) return null;
+                    const bState = bravoState[selectedPatient.id];
+                    return (
+                      <div style={{ borderTop: "1px solid rgba(16,185,129,0.18)", background: "rgba(10,10,12,0.97)", backdropFilter: "blur(12px)", padding: "10px 20px", display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 12, color: "#64748b", flex: 1 }}>Féliciter {selectedPatient.firstName} pour cette victoire</span>
+                        {bState?.sent ? (
+                          <CheckCircleSent />
+                        ) : (
+                          <button onClick={() => void generateBravo(selectedPatient.id, selectedPatient.latest_victory ?? "")}
+                            style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: "1px solid rgba(16,185,129,0.35)", background: "rgba(16,185,129,0.1)", color: emerald, whiteSpace: "nowrap", transition: "all 0.2s" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}>
+                            Envoyer un Bravo ✦
+                          </button>
+                        )}
                       </div>
                     );
                   })()}
@@ -2423,12 +2437,13 @@ export default function DashboardPage() {
                           </p>
                           {alert.type === "crisis" ? (
                             <LeverAlerteCritique alert={alert} patientId={selectedPatient.id} practitionerId={practitionerId ?? undefined} onResolved={() => {
-                              setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", admin_alerts: [] } : p));
+                              setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a) } : p));
                             }} />
                           ) : (
-                            <LeverAlerteSimple alert={alert} patientId={selectedPatient.id} murmureSuggere={(alert as { murmure?: string }).murmure ?? ""} showMurmure={(alert as { alert_type?: string }).alert_type !== "behavioral"} onResolved={(murmure) => {
-                              setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", practitioner_instruction: murmure ? [...(p.practitioner_instruction ?? []), { id: crypto.randomUUID(), text: murmure, expires_at: null, created_at: new Date().toISOString() }] : p.practitioner_instruction, admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a) } : p));
-                            }} />
+                            // Alertes comportementales : classement exclusivement depuis le bandeau "Marquer comme vu"
+                            <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b", fontStyle: "italic" }}>
+                              Utilisez « Marquer comme vu / Classer » dans le bandeau du chat pour traiter cette alerte.
+                            </p>
                           )}
                         </div>
                       ))}

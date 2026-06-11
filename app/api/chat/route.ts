@@ -649,8 +649,8 @@ export async function POST(request: Request) {
       const responseType = getCriticalResponseType(message);
       const criticalResponse = CRISIS_CRITICAL_RESPONSES[responseType];
 
-      // Vérification Gemini avant alerte (évite faux positifs)
-      const verifyModel = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: { maxOutputTokens: 10, temperature: 0 } });
+      // Vérification via modèle lourd — urgences vitales absolues (zéro faux négatif acceptable)
+      const verifyModel = genAI.getGenerativeModel({ model: "gemini-3-flash-preview", generationConfig: { maxOutputTokens: 10, temperature: 0 } });
       const verifyResult = await verifyModel.generateContent(`Ce message exprime-t-il un danger de mort immédiat pour le patient ou pour autrui ? Réponds uniquement par "oui" ou "non". Message : "${message}"`);
       const verifyText = verifyResult.response.text().trim().toLowerCase();
 
@@ -659,7 +659,8 @@ export async function POST(request: Request) {
         const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
         const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
         await supabase.from("patients").update({
-          admin_alerts: [...alerts, { type: "admin_alert", alert_type: "critical", date: new Date().toISOString(), seen: false, message: message.slice(0, 200) }]
+          // type: "crisis" — clé saturée pour traçabilité audit et rendu Dashboard (LeverAlerteCritique)
+          admin_alerts: [...alerts, { type: "crisis", alert_type: "critical", date: new Date().toISOString(), seen: false, message: message.slice(0, 200) }]
         }).eq("user_id", patientId);
 
         try {
@@ -930,10 +931,11 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
       }).eq("user_id", patientId);
     }
 
+    // Post-lock : verrou expiré → Jumeau libéré de l'ancrage strict (peut converser normalement)
+    // Mais le statut reste ambre côté Dashboard jusqu'à action manuelle du praticien
     const forceAncrage = behavioralLocked
-      || behavioralPostLock
       || crisisAnalysis.level === "red_behavioral"
-      || currentEmotionalStatus === "red_behavioral";
+      || (currentEmotionalStatus === "red_behavioral" && !behavioralPostLock);
 
     const practitionerPrompt = systemPrompt ||
       buildSystemPrompt(practitionerData.profile, patientContext, documentsContext, forceAncrage, behavioralPostLock);
@@ -1027,28 +1029,32 @@ Max 150 mots. Sans markdown.`;
 
         // ═══ VERROU red_behavioral 6h — logique de résolution ═══
         // Priorités : 1) red_critical (verrou praticien absolu)
-        //             2) Apaisement confirmé par Gemini → résolution immédiate, même verrou actif
+        //             2) Apaisement confirmé par Gemini ET verrou 6h encore actif → résolution immédiate
         //             3) Verrou 6h actif → maintien red_behavioral
-        //             4) Post-lock (6h expiré) → Gemini décide librement (expiration auto)
+        //             4) Post-lock (6h expiré) → Jumeau libéré, mais statut reste ambre jusqu'au praticien
         const isRedCritical = currentEmotionalStatus === "red_critical";
         const isRedBehavioralLocked = behavioralLocked;
         const isPostLock = behavioralPostLock;
 
-        const shouldResolveApaisement = apaisementConfirme && !isRedCritical
-          && (isRedBehavioralLocked || isPostLock || currentEmotionalStatus === "red_behavioral");
+        // En post-lock : le praticien seul peut passer au vert → blocage de l'auto-résolution Gemini
+        const shouldResolveApaisement = apaisementConfirme && !isRedCritical && !isPostLock
+          && (isRedBehavioralLocked || currentEmotionalStatus === "red_behavioral");
 
         if (isRedCritical) {
           // red_critical ne change jamais automatiquement — verrou praticien absolu
           emotionalStatus = "red_critical";
           // emotional_insight JAMAIS écrasé par un libellé technique — on garde la météo de Gemini
         } else if (shouldResolveApaisement) {
-          // Apaisement validé → résolution immédiate même si verrou 6h encore actif
+          // Apaisement validé pendant le verrou actif → résolution immédiate
           emotionalStatus = "green";
         } else if (isRedBehavioralLocked && emotionalStatus !== "red_critical") {
           // Verrou 6h actif : forcer red_behavioral mais laisser la météo humaine de Gemini intacte
           emotionalStatus = "red_behavioral";
+        } else if (isPostLock) {
+          // 6h expirées sans action praticien → statut reste ambre, insight = "Statut indéterminé"
+          emotionalStatus = "red_behavioral";
+          if (!emotionalInsight) emotionalInsight = "Statut indéterminé (Sans nouvelles depuis la crise)";
         }
-        // isPostLock (6h expiré) → Gemini détermine librement (expiration auto côté dashboard)
 
         // Nouveau red_behavioral détecté → initialiser verrou 6h
         if (emotionalStatus === "red_behavioral" && !isRedBehavioralLocked && !isRedCritical && !isPostLock) {
