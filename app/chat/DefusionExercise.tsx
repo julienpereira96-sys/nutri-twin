@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { IconThoughtBubble, IconBalloon, IconStars, IconBurst, IconCheckRing } from "./SosIcons";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
+import { makeBoundaryHandler } from "@/lib/therapeuticVoice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Stage =
@@ -100,7 +101,7 @@ export default function DefusionExercise({
     };
   }, [cancelSpeech]);
 
-  // ── INTRO: word-by-word karaoke ─────────────────────────────────────────────
+  // ── INTRO: karaoke (boundary-driven, timer fallback for iOS) ────────────────
   useEffect(() => {
     if (stage !== "INTRO") return;
     const text  = getIntroSpeech(firstName);
@@ -108,8 +109,14 @@ export default function DefusionExercise({
     const wt = words.map((_, i) =>
       setTimeout(() => setHighlightWord(i), 400 + i * WORD_MS)
     );
-    // skipPrep: true — karaoke timers are calibrated to raw text length
-    const tts = setTimeout(() => speakTherapeutic(text, { skipPrep: true, rate: 0.80, volume: 0.82 }), 250);
+    const cancelFallback = () => { wt.forEach(clearTimeout); };
+    // skipPrep: true — karaoke timers calibrated to raw text length
+    const tts = setTimeout(() => speakTherapeutic(text, {
+      skipPrep: true,
+      rate: 0.80,
+      volume: 0.82,
+      onBoundary: makeBoundaryHandler(words, setHighlightWord, cancelFallback),
+    }), 250);
     timerRefs.current = [...wt, tts];
     return () => {
       wt.forEach(clearTimeout); clearTimeout(tts);

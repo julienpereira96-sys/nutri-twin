@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { IconSparkle, IconSprout, IconCheckRing, IconX } from "./SosIcons";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
+import { makeBoundaryHandler } from "@/lib/therapeuticVoice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Stage = "INTRO" | "CHAT_STEP" | "COMMITMENT" | "COMPLETED";
@@ -46,7 +47,13 @@ function useKaraoke(text: string, active: boolean) {
     };
   }, [text, active]);
 
-  return highlightWord;
+  // Expose state setter + timer cancel so the boundary handler can take over
+  const cancelTimers = useCallback(() => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+  }, []);
+
+  return { highlightWord, setHighlightWord, cancelTimers };
 }
 
 // ─── Typing indicator dots ────────────────────────────────────────────────────
@@ -226,7 +233,7 @@ export default function AdaptiveCoachingExercise({
   }, [cancelSpeech]);
 
   // ─── Karaoke for intro message ────────────────────────────────────────────
-  const highlightWord = useKaraoke(INTRO_SPEECH, introActive);
+  const { highlightWord, setHighlightWord: setKaraokeWord, cancelTimers: cancelKaraokeTimers } = useKaraoke(INTRO_SPEECH, introActive);
 
   // ─── Start CHAT_STEP: show greeting + fetch objective ─────────────────────
   const startChat = useCallback(async () => {
@@ -391,8 +398,16 @@ export default function AdaptiveCoachingExercise({
           <button
             onClick={() => {
               unlockAudio();
-              speakTherapeutic(INTRO_SPEECH, { skipPrep: true, rate: 0.82 });
-              setIntroActive(true);
+              setIntroActive(true); // starts timer fallback immediately
+              speakTherapeutic(INTRO_SPEECH, {
+                skipPrep: true,
+                rate: 0.82,
+                onBoundary: makeBoundaryHandler(
+                  INTRO_SPEECH.split(" "),
+                  setKaraokeWord,
+                  cancelKaraokeTimers,
+                ),
+              });
               // After intro speech (~10s), proceed
               const wordCount = INTRO_SPEECH.split(" ").length;
               setTimeout(() => {

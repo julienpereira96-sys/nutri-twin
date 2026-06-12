@@ -5,6 +5,7 @@ import {
   IconAnchor, IconCheckRing, IconEye, IconTouch, IconEar, IconWind, IconDroplet,
 } from "./SosIcons";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
+import { makeBoundaryHandler } from "@/lib/therapeuticVoice";
 
 // ─── Tiny inline SVG check for validated states ───────────────────────────────
 function SvgCheck({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
@@ -225,7 +226,7 @@ export default function AncrageExercise({
 
   useEffect(() => () => cleanupAll(), [cleanupAll]);
 
-  // ─── INTRO: karaoke timers + TTS ─────────────────────────────────────────
+  // ─── INTRO: karaoke (boundary-driven, timer fallback for iOS) ───────────────
   useEffect(() => {
     if (stage !== "INTRO") return;
     const bootstrap = setTimeout(() => {
@@ -237,7 +238,18 @@ export default function AncrageExercise({
         setIntroReady(true);
       }, introWords.length * 420 + 400);
       wordTimersRef.current.push(endTimer);
-      speakTherapeutic(introText, { skipPrep: true, rate: 0.82, volume: 0.8 });
+
+      const cancelFallback = () => {
+        wordTimersRef.current.forEach(clearTimeout);
+        wordTimersRef.current = [];
+      };
+
+      speakTherapeutic(introText, {
+        skipPrep: true,
+        rate: 0.82,
+        volume: 0.8,
+        onBoundary: makeBoundaryHandler(introWords, setWordIdx, cancelFallback),
+      });
     }, 380);
 
     return () => {

@@ -45,6 +45,11 @@ export interface UseTherapeuticVoiceReturn {
   setSelectedVoice: (voice: SpeechSynthesisVoice) => void;
   /** Speak the given text with therapeutic settings. */
   speakTherapeutic: (text: string, opts?: TherapeuticVoiceOptions) => void;
+  /**
+   * Speak a short preview with a *specific* voice object (bypasses state so it
+   * works immediately in the same event handler that calls setSelectedVoice).
+   */
+  previewVoice: (voice: SpeechSynthesisVoice, text: string) => void;
   /** Cancel any ongoing speech. */
   cancelSpeech: () => void;
   /** Unlock iOS audio context with a silent utterance (call on first user gesture). */
@@ -145,31 +150,77 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
       window.speechSynthesis.cancel();
 
       const prepared = opts.skipPrep ? text : prepareTextForTherapeuticSpeech(text);
-      const utter = new SpeechSynthesisUtterance(prepared);
 
-      utter.lang   = "fr-FR";
-      utter.rate   = opts.rate   ?? THERAPEUTIC_RATE;
-      utter.pitch  = THERAPEUTIC_PITCH;
-      utter.volume = opts.volume ?? THERAPEUTIC_VOLUME;
+      // Chrome/Android bug: cancel() is async under the hood — speak() called
+      // synchronously after cancel() is silently swallowed. A minimal delay fixes it.
+      // Also call resume() first: Chrome pauses synthesis when the tab goes to background.
+      const doSpeak = () => {
+        if (typeof window === "undefined" || !window.speechSynthesis) return;
+        window.speechSynthesis.resume();
 
-      if (selectedVoice) {
-        utter.voice = selectedVoice;
-      }
+        const utter = new SpeechSynthesisUtterance(prepared);
 
-      if (opts.onEnd)      utter.onend      = opts.onEnd;
-      if (opts.onBoundary) utter.onboundary = opts.onBoundary;
+        utter.lang   = "fr-FR";
+        utter.rate   = opts.rate   ?? THERAPEUTIC_RATE;
+        utter.pitch  = THERAPEUTIC_PITCH;
+        utter.volume = opts.volume ?? THERAPEUTIC_VOLUME;
 
-      activeUtterRef.current = utter;
-      window.speechSynthesis.speak(utter);
+        // selectedVoice may still be null if voices haven't fired voiceschanged yet
+        // (e.g. user tapped button very quickly after exercise mount).
+        // Fall back to a fresh localStorage lookup at speak-time so we never
+        // silently drop the patient's persisted preference.
+        const voiceToUse = selectedVoice ?? (() => {
+          try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+              const all = window.speechSynthesis.getVoices();
+              return all.find((v) => v.name === saved) ?? null;
+            }
+          } catch { /* localStorage unavailable */ }
+          return null;
+        })();
+
+        if (voiceToUse) {
+          utter.voice = voiceToUse;
+        }
+
+        if (opts.onEnd)      utter.onend      = opts.onEnd;
+        if (opts.onBoundary) utter.onboundary = opts.onBoundary;
+
+        activeUtterRef.current = utter;
+        window.speechSynthesis.speak(utter);
+      };
+
+      setTimeout(doSpeak, 50);
     },
     [selectedVoice]
   );
+
+  // ─── Voice preview ─────────────────────────────────────────────────────────
+  // Takes the voice as a direct argument so it works in the same event handler
+  // that calls setSelectedVoice (React state hasn't updated yet at that point).
+  const previewVoice = useCallback((voice: SpeechSynthesisVoice, text: string) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
+    setTimeout(() => {
+      if (typeof window === "undefined" || !window.speechSynthesis) return;
+      window.speechSynthesis.resume();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang   = "fr-FR";
+      utter.rate   = THERAPEUTIC_RATE;
+      utter.pitch  = THERAPEUTIC_PITCH;
+      utter.volume = THERAPEUTIC_VOLUME;
+      utter.voice  = voice;
+      window.speechSynthesis.speak(utter);
+    }, 50);
+  }, []);
 
   return {
     voices,
     selectedVoice,
     setSelectedVoice,
     speakTherapeutic,
+    previewVoice,
     cancelSpeech,
     unlockAudio,
   };

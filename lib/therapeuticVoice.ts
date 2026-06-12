@@ -65,3 +65,49 @@ export function scoreVoiceQuality(name: string): number {
 export const THERAPEUTIC_RATE   = 0.82;
 export const THERAPEUTIC_PITCH  = 0.91;
 export const THERAPEUTIC_VOLUME = 0.78;
+
+/**
+ * Creates an onboundary handler that drives karaoke word highlighting.
+ *
+ * Strategy:
+ *  - Primary: use SpeechSynthesisUtterance boundary events (perfectly synced to audio)
+ *  - Fallback: the timer array passed in keeps running undisturbed on platforms
+ *    that don't fire onboundary (iOS Safari). On the first boundary event the timers
+ *    are cancelled and event-driven highlighting takes over exclusively.
+ *
+ * @param words         The display text pre-split on spaces
+ * @param setHighlight  React state setter for the current word index
+ * @param cancelFallback  Called once on first boundary event to cancel timer fallback
+ */
+export function makeBoundaryHandler(
+  words: string[],
+  setHighlight: (idx: number) => void,
+  cancelFallback: () => void,
+): (event: SpeechSynthesisEvent) => void {
+  // Pre-compute the character start position of every word
+  const starts: number[] = [];
+  let pos = 0;
+  for (const word of words) {
+    starts.push(pos);
+    pos += word.length + 1; // +1 for the space separator
+  }
+
+  let active = false;
+
+  return (event: SpeechSynthesisEvent) => {
+    if (!active) {
+      active = true;
+      cancelFallback(); // kill timer-based fallback on first real event
+    }
+
+    // Find the last word whose start position ≤ charIndex
+    let idx = 0;
+    for (let i = starts.length - 1; i >= 0; i--) {
+      if (starts[i] <= event.charIndex) {
+        idx = i;
+        break;
+      }
+    }
+    setHighlight(idx);
+  };
+}

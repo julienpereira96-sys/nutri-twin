@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { IconWave, IconCheckRing } from "./SosIcons";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
+import { makeBoundaryHandler } from "@/lib/therapeuticVoice";
 
 // ─── Design tokens (mirroring page.tsx) ──────────────────────────────────────
 const CYAN = "#06b6d4";
@@ -123,26 +124,32 @@ export default function BreathingExercise({
     };
   }, [cancelSpeech]);
 
-  // ─── INTRO: TTS + timer-based karaoke (~420ms/word) ────────────────────────
+  // ─── INTRO: TTS + karaoke (boundary-driven, timer fallback for iOS) ─────────
   useEffect(() => {
     if (stage !== "INTRO") return;
 
-    // Small delay so voices are loaded
     const init = setTimeout(() => {
-      // Karaoke timers
+      // Timer-based fallback (iOS Safari doesn't fire onboundary)
       wordTimersRef.current = words.map((_, i) =>
         setTimeout(() => setCurrentWordIdx(i), i * 420)
       );
-      // Last word timeout — then transition
       const endTimeout = setTimeout(() => {
         setCurrentWordIdx(-1);
         setTimeout(() => setStage("READY_CHECK"), 500);
       }, words.length * 420 + 400);
       wordTimersRef.current.push(endTimeout);
 
-      // TTS — parallel, slightly slower than karaoke so words stay in sync
-      // skipPrep: true — karaoke timers are calibrated to raw text length
-      speakTherapeutic(introText, { skipPrep: true, rate: 0.8, volume: 0.8 });
+      const cancelFallback = () => {
+        wordTimersRef.current.forEach(clearTimeout);
+        wordTimersRef.current = [];
+      };
+
+      speakTherapeutic(introText, {
+        skipPrep: true,
+        rate: 0.8,
+        volume: 0.8,
+        onBoundary: makeBoundaryHandler(words, setCurrentWordIdx, cancelFallback),
+      });
     }, 400);
 
     return () => {

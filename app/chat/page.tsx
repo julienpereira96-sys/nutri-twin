@@ -790,7 +790,7 @@ export default function ChatPage() {
   const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // ─── Voix thérapeutique ────────────────────────────────────────────────────
-  const { voices: therapeuticVoices, selectedVoice: selectedTherapeuticVoice, setSelectedVoice: setTherapeuticVoice } = useTherapeuticVoice();
+  const { voices: therapeuticVoices, selectedVoice: selectedTherapeuticVoice, setSelectedVoice: setTherapeuticVoice, previewVoice: previewTherapeuticVoice } = useTherapeuticVoice();
 
   const ancrageSteps = [
     { count: 5, sense: "voyez", icon: <IconEye size={34} color={CYAN} /> },
@@ -1935,7 +1935,11 @@ export default function ChatPage() {
               return (
                 <button
                   key={v.name}
-                  onClick={() => setTherapeuticVoice(v)}
+                  onClick={() => {
+                    setTherapeuticVoice(v);
+                    const preview = `Bonjour ${patientFirstName || "toi"}, je suis là pour t'accompagner.`;
+                    previewTherapeuticVoice(v, preview);
+                  }}
                   style={{
                     width: "100%",
                     padding: "9px 12px",

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { IconBodyScan, IconHeadZone, IconChestZone, IconBellyZone } from "./SosIcons";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
+import { makeBoundaryHandler } from "@/lib/therapeuticVoice";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const ACCENT = "#10b981";
@@ -373,7 +374,7 @@ export default function BodyScanExercise({
   // ─── Reset slider on stage change ─────────────────────────────────────────
   useEffect(() => { setSliderOpen(false); }, [stage]);
 
-  // ─── INTRO: karaoke + TTS ─────────────────────────────────────────────────
+  // ─── INTRO: karaoke (boundary-driven, timer fallback for iOS) ───────────────
   useEffect(() => {
     if (stage !== "INTRO") return;
     const boot = setTimeout(() => {
@@ -385,7 +386,18 @@ export default function BodyScanExercise({
         setIntroReady(true);
       }, introWords.length * 420 + 400);
       wordTimersRef.current.push(done);
-      speakTherapeutic(introText, { skipPrep: true, rate: 0.82, volume: 0.8 });
+
+      const cancelFallback = () => {
+        wordTimersRef.current.forEach(clearTimeout);
+        wordTimersRef.current = [];
+      };
+
+      speakTherapeutic(introText, {
+        skipPrep: true,
+        rate: 0.82,
+        volume: 0.8,
+        onBoundary: makeBoundaryHandler(introWords, setWordIdx, cancelFallback),
+      });
     }, 350);
     return () => {
       clearTimeout(boot);
