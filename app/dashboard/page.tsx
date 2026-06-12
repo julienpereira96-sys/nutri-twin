@@ -2019,7 +2019,7 @@ export default function DashboardPage() {
 
         {/* ═══ VUE SUIVI ═══ */}
         {activeTab === "patients" && (
-          <div style={{ display: "grid", gridTemplateColumns: "280px minmax(0,1fr) 300px", gap: 16, height: "calc(100vh - 160px)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "280px minmax(0,1fr) 300px", gap: 16, height: "calc(100vh - 113px)" }}>
 
             {/* Sidebar patients */}
             <div data-tour="patients" style={{ display: "flex", flexDirection: "column", background: "#060908", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
