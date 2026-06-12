@@ -11,6 +11,7 @@ import EcritureExercise from "./EcritureExercise";
 import DefusionExercise from "./DefusionExercise";
 import MarcheExercise from "./MarcheExercise";
 import AdaptiveCoachingExercise from "./AdaptiveCoachingExercise";
+import PwaInstallPrompt from "./PwaInstallPrompt";
 import {
   IconCheckRing,
   IconWave,
@@ -2507,6 +2508,9 @@ export default function ChatPage() {
         @media (max-width: 767px) { .chat-input { font-size: 16px !important; } }
       `}</style>
     </div>
+
+    {/* ── PWA Install Prompt — cycle de vie totalement indépendant ── */}
+    <PwaInstallPrompt />
     </>
   );
 }
