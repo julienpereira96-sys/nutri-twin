@@ -3,6 +3,22 @@
 import { KeyboardEvent, useState, useEffect, useRef, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import JournalModal from "./JournalModal";
+import BreathingExercise from "./BreathingExercise";
+import AncrageExercise from "./AncrageExercise";
+import BodyScanExercise from "./BodyScanExercise";
+import MangerExercise from "./MangerExercise";
+import EcritureExercise from "./EcritureExercise";
+import DefusionExercise from "./DefusionExercise";
+import MarcheExercise from "./MarcheExercise";
+import AdaptiveCoachingExercise from "./AdaptiveCoachingExercise";
+import {
+  IconCheckRing,
+  IconWave,
+  IconAward,
+  IconSiren,
+  IconPin,
+  IconLock,
+} from "./SosIcons";
 
 type WidgetMeta = {
   toolId: string;
@@ -234,7 +250,7 @@ const ArcSpinner = ({ size = 28 }: { size?: number }) => {
           strokeDasharray={`${circ * 0.65} ${circ * 0.35}`}
           style={{ filter: `drop-shadow(0 0 4px ${ACCENT})` }}/>
       </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.5 }}>🌿</div>
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}><LeafIcon size={Math.round(size * 0.42)} /></div>
     </div>
   );
 };
@@ -306,11 +322,19 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
 };
 
 // ═══ ONBOARDING TOUR ═══
-const onboardingSteps = [
+const onboardingSteps: {
+  id: string;
+  highlight: string | null;
+  icon: React.ReactNode;
+  title: string;
+  text: string;
+  position: "center" | "sidebar" | "bottom";
+  glowColor?: string;
+}[] = [
   {
     id: "welcome",
     highlight: null,
-    icon: "🌿",
+    icon: <LeafIcon size={18} color={ACCENT} />,
     title: "Bienvenue",
     text: "Je suis votre compagnon de suivi, créé à partir de l'expertise de votre praticien. Laissez-moi vous montrer vos outils en quelques secondes.",
     position: "center" as const,
@@ -318,7 +342,7 @@ const onboardingSteps = [
   {
     id: "sos",
     highlight: "sos",
-    icon: "💙",
+    icon: <IconActivity size={18} color={ACCENT} />,
     title: "Mon Soutien",
     text: "Ce bouton est votre ancre immédiate en cas de tempête. Fringale, stress, coup de mou — une aide guidée vous attend en un clic. Je ne vous laisserai jamais seul(e).",
     position: "sidebar" as const,
@@ -327,7 +351,7 @@ const onboardingSteps = [
   {
     id: "camera",
     highlight: "camera",
-    icon: "📸",
+    icon: <CameraIcon size={18} color={ACCENT} />,
     title: "Analyse de repas",
     text: "Prenez votre assiette en photo. Je l'analyserai instantanément pour vérifier si elle respecte nos objectifs de la semaine.",
     position: "bottom" as const,
@@ -336,7 +360,7 @@ const onboardingSteps = [
   {
     id: "chat",
     highlight: null,
-    icon: "💬",
+    icon: <IconThought size={18} color={ACCENT} />,
     title: "La conversation",
     text: "Ici, nous discutons de tout, comme si vous étiez au cabinet. Posez vos questions, partagez vos doutes. Je reste là, disponible pour vous.",
     position: "center" as const,
@@ -382,13 +406,13 @@ const OnboardingTour = ({ step, firstName, onNext, onSkip, isMobile }: Onboardin
 
         {/* Icône + titre */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             {current.icon}
           </div>
           <div>
             <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: TEXT_PRIMARY }}>{current.title}</p>
             {isFirst && firstName && (
-              <p style={{ margin: 0, fontSize: 11, color: ACCENT }}>Bonjour {firstName} 👋</p>
+              <p style={{ margin: 0, fontSize: 11, color: ACCENT }}>Bonjour {firstName}</p>
             )}
           </div>
         </div>
@@ -417,7 +441,7 @@ const OnboardingTour = ({ step, firstName, onNext, onSkip, isMobile }: Onboardin
             style={{ flex: 2, height: 38, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: `1px solid ${ACCENT_BORDER}`, color: ACCENT, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.4)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = ACCENT_BORDER; }}>
-            {isLast ? "C'est parti 🌿" : "Suivant →"}
+            {isLast ? "C'est parti →" : "Suivant →"}
           </button>
         </div>
       </div>
@@ -455,9 +479,9 @@ function generateCelebration(firstName: string, toolId: string): string {
   const tool = toolNames[toolId] ?? "cet exercice";
   const name = firstName || "toi";
   const msgs = [
-    `Bien joué, ${name}. Tu as pris un moment pour toi avec ${tool}. Chaque geste de soin compte énormément. 🌿`,
-    `Tu l'as fait, ${name}. ${tool.charAt(0).toUpperCase() + tool.slice(1)}, c'est une vraie preuve de bienveillance envers toi-même. 🌿`,
-    `${name}, tu viens de choisir le calme plutôt que la réaction. C'est une compétence qui se renforce à chaque fois. 🌿`,
+    `Bien joué, ${name}. Tu as pris un moment pour toi avec ${tool}. Chaque geste de soin compte énormément.`,
+    `Tu l'as fait, ${name}. ${tool.charAt(0).toUpperCase() + tool.slice(1)}, c'est une vraie preuve de bienveillance envers toi-même.`,
+    `${name}, tu viens de choisir le calme plutôt que la réaction. C'est une compétence qui se renforce à chaque fois.`,
   ];
   return msgs[Math.floor(Math.random() * msgs.length)];
 }
@@ -517,11 +541,11 @@ const InlineWidget = ({ toolId, toolData, firstName, frozen, onComplete }: Inlin
   })();
 
   const ancrageSteps = [
-    { count: 5, sense: "voyez", icon: "👀" },
-    { count: 4, sense: "touchez", icon: "🤲" },
-    { count: 3, sense: "entendez", icon: "👂" },
-    { count: 2, sense: "sentez", icon: "👃" },
-    { count: 1, sense: "goûtez", icon: "👅" },
+    { count: 5, sense: "voyez", icon: <IconEye size={34} color={CYAN} /> },
+    { count: 4, sense: "touchez", icon: <IconActivity size={34} color={CYAN} /> },
+    { count: 3, sense: "entendez", icon: <IconWave size={34} color={CYAN} /> },
+    { count: 2, sense: "sentez", icon: <IconWind size={34} color={CYAN} /> },
+    { count: 1, sense: "goûtez", icon: <IconLeaf2 size={34} color={CYAN} /> },
   ];
   const marcheSteps = [
     "Levez-vous doucement. Sentez vos pieds sur le sol.",
@@ -529,7 +553,7 @@ const InlineWidget = ({ toolId, toolData, firstName, frozen, onComplete }: Inlin
     "Observez votre environnement. Couleurs, formes, lumières.",
     "Sentez l'air sur votre peau. La température autour de vous.",
     "Synchronisez respiration et pas. Vous êtes présent.",
-    "Vous êtes ancré dans le moment présent. 🌿",
+    "Vous êtes ancré dans le moment présent.",
   ];
   const scriptSteps = Object.values(toolData?.tool_script ?? {});
 
@@ -544,7 +568,7 @@ const InlineWidget = ({ toolId, toolData, firstName, frozen, onComplete }: Inlin
             <span style={{ fontSize: 26, fontWeight: 700, color: breathColor[breathStep] }}>{breathTimer}</span>
           </div>
           <p style={{ fontSize: 18, fontWeight: 600, color: breathColor[breathStep], marginBottom: 12 }}>{breathLabel[breathStep]}</p></>)}
-        {breathStep === "done" && <><p style={{ fontSize: 36, margin: "0 0 10px" }}>🎉</p><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 16 }}>Excellent ! Votre corps vous remercie. 🌿</p><button onClick={finishExercise} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Continuer →</button></>}
+        {breathStep === "done" && <><div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><IconCheckRing size={40} color={CYAN} strokeWidth={1.3} /></div><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 16 }}>Excellent ! Votre corps vous remercie.</p><button onClick={finishExercise} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Continuer →</button></>}
       </div>
     );
 
@@ -558,7 +582,7 @@ const InlineWidget = ({ toolId, toolData, firstName, frozen, onComplete }: Inlin
             <p style={{ margin: "4px 0 0", fontSize: 14, color: TEXT_PRIMARY }}>chose{ancrageSteps[exStep].count > 1 ? "s" : ""} que vous <strong>{ancrageSteps[exStep].sense}</strong></p>
           </div>
           <button onClick={() => { if (exStep < 4) setExStep(s => s + 1); else finishExercise(); }} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{exStep < 4 ? "Suivant →" : "Terminer"}</button></>
-        ) : (<><p style={{ fontSize: 36, margin: "0 0 10px" }}>✨</p><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 14 }}>Ancré(e) dans le moment présent. 🌿</p><button onClick={finishExercise} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Continuer →</button></>)}
+        ) : (<><div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><IconCheckRing size={40} color={CYAN} strokeWidth={1.3} /></div><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 14 }}>Ancré(e) dans le moment présent.</p><button onClick={finishExercise} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Continuer →</button></>)}
       </div>
     );
 
@@ -572,7 +596,7 @@ const InlineWidget = ({ toolId, toolData, firstName, frozen, onComplete }: Inlin
           </div>
           <div style={{ height: 2, background: SURFACE, borderRadius: 1, marginBottom: 14 }}><div style={{ height: "100%", borderRadius: 1, background: CYAN, width: `${((exStep + 1) / marcheSteps.length) * 100}%`, transition: "width 0.3s" }} /></div>
           <button onClick={() => { if (exStep < marcheSteps.length - 1) setExStep(s => s + 1); else finishExercise(); }} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{exStep < marcheSteps.length - 1 ? "Suivant →" : "Terminer"}</button></>
-        ) : (<><p style={{ fontSize: 36, margin: "0 0 10px" }}>🌿</p><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 14 }}>Belle promenade ! Chaque pas conscient est une victoire.</p><button onClick={finishExercise} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Continuer →</button></>)}
+        ) : (<><div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><IconCheckRing size={40} color={CYAN} strokeWidth={1.3} /></div><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 14 }}>Belle promenade ! Chaque pas conscient est une victoire.</p><button onClick={finishExercise} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Continuer →</button></>)}
       </div>
     );
 
@@ -592,7 +616,7 @@ const InlineWidget = ({ toolId, toolData, firstName, frozen, onComplete }: Inlin
       <div>
         {toolId === "ecriture" && (
           <div style={{ background: CYAN_DIM, border: `1px solid ${CYAN_BORDER}`, borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
-            <p style={{ margin: 0, fontSize: 12, color: CYAN, lineHeight: 1.6 }}>🔒 Ce que tu écris ici ne sera pas sauvegardé. C'est juste pour toi.</p>
+            <p style={{ margin: 0, fontSize: 12, color: CYAN, lineHeight: 1.6, display: "flex", alignItems: "center", gap: 6 }}><IconLock size={12} color={CYAN} strokeWidth={1.5} /> Ce que tu écris ici ne sera pas sauvegardé. C'est juste pour toi.</p>
           </div>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
@@ -610,7 +634,7 @@ const InlineWidget = ({ toolId, toolData, firstName, frozen, onComplete }: Inlin
             style={{ width: "100%", borderRadius: 10, border: `1px solid ${CYAN_BORDER}`, background: "rgba(6,182,212,0.03)", color: TEXT_PRIMARY, padding: "12px", fontSize: 13, outline: "none", resize: "none", fontFamily: "inherit", lineHeight: 1.6, boxSizing: "border-box", marginBottom: 14 }} />
         )}
         <button onClick={finishExercise} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-          {toolId === "manger" ? "Bon appétit 🌿" : toolId === "ecriture" ? "J'ai vidé mon sac 🌿" : "Terminer 🌿"}
+          {toolId === "manger" ? "Bon appétit" : toolId === "ecriture" ? "J'ai vidé mon sac" : "Terminer"}
         </button>
       </div>
     );
@@ -641,7 +665,7 @@ const InlineWidget = ({ toolId, toolData, firstName, frozen, onComplete }: Inlin
   return (
     <div style={{ ...containerStyle, cursor: "default" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: celebrationMsg ? 12 : 0 }}>
-        <div style={{ width: 36, height: 36, borderRadius: "50%", background: CYAN_DIM, border: `1px solid ${CYAN_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>🌟</div>
+        <div style={{ width: 36, height: 36, borderRadius: "50%", background: CYAN_DIM, border: `1px solid ${CYAN_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconAward size={18} color={CYAN} strokeWidth={1.5} /></div>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: TEXT_PRIMARY }}>Exercice terminé</p>
       </div>
       {celebrationMsg && <p style={{ margin: 0, fontSize: 13, color: TEXT_SECONDARY, lineHeight: 1.7 }}>{celebrationMsg}</p>}
@@ -681,6 +705,30 @@ export default function ChatPage() {
   const [breathingCycle, setBreathingCycle] = useState(0);
   const [breathingTimer, setBreathingTimer] = useState(0);
   const breathingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // ─── Full-screen breathing overlay (new immersive exercise) ───
+  const [showBreathingExercise, setShowBreathingExercise] = useState(false);
+  const [breathingSosContext, setBreathingSosContext] = useState("");
+  // ─── Full-screen ancrage overlay ───
+  const [showAncrageExercise, setShowAncrageExercise] = useState(false);
+  const [ancrageSosContext, setAncrageSosContext] = useState("");
+  // ─── Full-screen body scan overlay ───
+  const [showBodyScanExercise, setShowBodyScanExercise] = useState(false);
+  const [bodyScanSosContext, setBodyScanSosContext] = useState("");
+  // ─── Full-screen manger pleine conscience overlay ───
+  const [showMangerExercise, setShowMangerExercise] = useState(false);
+  const [mangerSosContext, setMangerSosContext] = useState("");
+  // ─── Full-screen écriture cathartique overlay ───
+  const [showEcritureExercise, setShowEcritureExercise] = useState(false);
+  const [ecrirtureSosContext, setEcritureSosContext] = useState("");
+  // ─── Full-screen défusion cognitive overlay ───
+  const [showDefusionExercise, setShowDefusionExercise] = useState(false);
+  const [defusionSosContext, setDefusionSosContext] = useState("");
+  // ─── Full-screen marche consciente overlay ───
+  const [showMarcheExercise, setShowMarcheExercise] = useState(false);
+  const [marcheSosContext, setMarcheSosContext] = useState("");
+  // ─── Full-screen coaching adaptatif overlay ───
+  const [showAdaptiveCoachingExercise, setShowAdaptiveCoachingExercise] = useState(false);
+  const [adaptiveCoachingSosContext, setAdaptiveCoachingSosContext] = useState("");
   const [ancrageStep, setAncrageStep] = useState(0);
   const [marcheStep, setMarcheStep] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -741,11 +789,11 @@ export default function ChatPage() {
 
 
   const ancrageSteps = [
-    { count: 5, sense: "voyez", icon: "👀" },
-    { count: 4, sense: "touchez", icon: "🤲" },
-    { count: 3, sense: "entendez", icon: "👂" },
-    { count: 2, sense: "sentez", icon: "👃" },
-    { count: 1, sense: "goûtez", icon: "👅" },
+    { count: 5, sense: "voyez", icon: <IconEye size={34} color={CYAN} /> },
+    { count: 4, sense: "touchez", icon: <IconActivity size={34} color={CYAN} /> },
+    { count: 3, sense: "entendez", icon: <IconWave size={34} color={CYAN} /> },
+    { count: 2, sense: "sentez", icon: <IconWind size={34} color={CYAN} /> },
+    { count: 1, sense: "goûtez", icon: <IconLeaf2 size={34} color={CYAN} /> },
   ];
 
   const marcheSteps = [
@@ -754,7 +802,7 @@ export default function ChatPage() {
     "Observez votre environnement. Couleurs, formes, lumières.",
     "Sentez l'air sur votre peau. La température autour de vous.",
     "Synchronisez respiration et pas. Vous êtes présent.",
-    "Vous êtes ancré dans le moment présent. 🌿",
+    "Vous êtes ancré dans le moment présent.",
   ];
 
   // Scroll vers le bas : instantané pendant le stream (60fps typewriter), smooth quand loading s'arrête
@@ -827,7 +875,7 @@ export default function ChatPage() {
     // Message de clôture dans le chat
     setMessages([{
       role: "assistant",
-      content: "Voilà, vous avez vos outils en main. Je reste ici, dans le chat, pour répondre à vos questions. 🌿",
+      content: "Voilà, vous avez vos outils en main. Je reste ici, dans le chat, pour répondre à vos questions.",
     }]);
   }, []);
 
@@ -1061,6 +1109,65 @@ export default function ChatPage() {
     setPostExerciseStep({ toolId, answer: "" });
   }, []);
 
+  // ─── Breathing overlay complete ─────────────────────────────────────────────
+  // Ferme l'overlay immersif + ouvre la question post-exercice dans la modale
+  // existante (même UX que les autres exercices)
+  const handleBreathingComplete = useCallback(() => {
+    setShowBreathingExercise(false);
+    // Réutilise la modale post-exercice existante via activeTool fictif
+    setActiveTool({ id: "breathing", data: null });
+    setPostExerciseStep({ toolId: "breathing", answer: "" });
+  }, []);
+
+  // ─── Ancrage overlay complete ────────────────────────────────────────────────
+  const handleAncrageComplete = useCallback(() => {
+    setShowAncrageExercise(false);
+    setActiveTool({ id: "ancrage", data: null });
+    setPostExerciseStep({ toolId: "ancrage", answer: "" });
+  }, []);
+
+  // ─── Body scan overlay complete ──────────────────────────────────────────────
+  const handleBodyScanComplete = useCallback(() => {
+    setShowBodyScanExercise(false);
+    setActiveTool({ id: "body_scan", data: null });
+    setPostExerciseStep({ toolId: "body_scan", answer: "" });
+  }, []);
+
+  // ─── Manger pleine conscience overlay complete ───────────────────────────────
+  const handleMangerComplete = useCallback(() => {
+    setShowMangerExercise(false);
+    setActiveTool({ id: "manger", data: null });
+    setPostExerciseStep({ toolId: "manger", answer: "" });
+  }, []);
+
+  // ─── Écriture cathartique overlay complete ────────────────────────────────────
+  const handleEcritureComplete = useCallback(() => {
+    setShowEcritureExercise(false);
+    setActiveTool({ id: "ecriture", data: null });
+    setPostExerciseStep({ toolId: "ecriture", answer: "" });
+  }, []);
+
+  // ─── Défusion cognitive overlay complete ─────────────────────────────────────
+  const handleDefusionComplete = useCallback(() => {
+    setShowDefusionExercise(false);
+    setActiveTool({ id: "defusion", data: null });
+    setPostExerciseStep({ toolId: "defusion", answer: "" });
+  }, []);
+
+  // ─── Marche consciente overlay complete ──────────────────────────────────────
+  const handleMarcheComplete = useCallback(() => {
+    setShowMarcheExercise(false);
+    setActiveTool({ id: "marche", data: null });
+    setPostExerciseStep({ toolId: "marche", answer: "" });
+  }, []);
+
+  // ─── Coaching adaptatif overlay complete ─────────────────────────────────────
+  const handleAdaptiveCoachingComplete = useCallback(() => {
+    setShowAdaptiveCoachingExercise(false);
+    setActiveTool({ id: "adaptive_coaching", data: null });
+    setPostExerciseStep({ toolId: "adaptive_coaching", answer: "" });
+  }, []);
+
   // Soumission de la réponse post-exercice depuis la modale
   const handlePostExerciseSubmit = useCallback(async () => {
     if (!postExerciseStep) return;
@@ -1094,6 +1201,63 @@ export default function ChatPage() {
   // ─── Sélection d'un outil dans le duo → modale plein écran ───
   const handleToolSelect = useCallback(async (toolId: string, sosContext: string) => {
     setShowToolDuo(false);
+
+    // Breathing → overlay immersif dédié (bypass activeTool)
+    if (toolId === "breathing") {
+      setBreathingSosContext(sosContext);
+      setShowBreathingExercise(true);
+      return;
+    }
+
+    // Ancrage 5-4-3-2-1 → overlay immersif dédié (bypass activeTool)
+    if (toolId === "ancrage") {
+      setAncrageSosContext(sosContext);
+      setShowAncrageExercise(true);
+      return;
+    }
+
+    // Body scan → overlay immersif dédié (bypass activeTool)
+    if (toolId === "body_scan") {
+      setBodyScanSosContext(sosContext);
+      setShowBodyScanExercise(true);
+      return;
+    }
+
+    // Manger en pleine conscience → overlay immersif dédié (bypass activeTool)
+    if (toolId === "manger") {
+      setMangerSosContext(sosContext);
+      setShowMangerExercise(true);
+      return;
+    }
+
+    // Écriture cathartique → overlay immersif dédié (bypass activeTool)
+    if (toolId === "ecriture") {
+      setEcritureSosContext(sosContext);
+      setShowEcritureExercise(true);
+      return;
+    }
+
+    // Défusion cognitive → overlay immersif dédié (bypass activeTool)
+    if (toolId === "defusion") {
+      setDefusionSosContext(sosContext);
+      setShowDefusionExercise(true);
+      return;
+    }
+
+    // Marche consciente → overlay immersif dédié
+    if (toolId === "marche") {
+      setMarcheSosContext(sosContext);
+      setShowMarcheExercise(true);
+      return;
+    }
+
+    // Coaching adaptatif → overlay immersif dédié
+    if (toolId === "adaptive_coaching") {
+      setAdaptiveCoachingSosContext(sosContext);
+      setShowAdaptiveCoachingExercise(true);
+      return;
+    }
+
     const defaultData: ToolData = { tool_id: toolId, twin_message: getVariant(toolId), tool_script: {} };
     setActiveTool({ id: toolId, data: defaultData });
     // Fetch en arrière-plan pour personnaliser
@@ -1313,7 +1477,7 @@ export default function ChatPage() {
           {postExerciseStep ? (
             /* ─── Step post-exercice : question de ressenti à l'intérieur de la modale ─── */
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 40, marginBottom: 16 }}>🌿</div>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}><IconCheckRing size={48} color="#10b981" strokeWidth={1.3} style={{ filter: "drop-shadow(0 0 8px rgba(16,185,129,0.4))" }} /></div>
               <h2 style={{ margin: "0 0 8px", fontSize: 20, fontWeight: 700, color: "#e2e8f0" }}>
                 Bravo pour ce moment de soin
               </h2>
@@ -1463,7 +1627,7 @@ export default function ChatPage() {
       {showSasButtons && !activeTool && (
         <div style={{ position: "fixed", bottom: hasMessages ? 110 : 190, left: "50%", transform: "translateX(-50%)", zIndex: 91, width: "calc(100% - 32px)", maxWidth: 520, background: "#0a0f0c", borderRadius: 18, border: `1px solid ${ACCENT_BORDER}`, padding: "16px 18px", boxShadow: "0 8px 36px rgba(16,185,129,0.08), 0 8px 32px rgba(0,0,0,0.5)", animation: "fadeUp 0.3s ease" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
-            <div style={{ width: 34, height: 34, borderRadius: "50%", border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 17 }}>🌊</div>
+            <div style={{ width: 34, height: 34, borderRadius: "50%", border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconWave size={16} color={ACCENT} strokeWidth={1.5} /></div>
             <p style={{ margin: 0, fontSize: 13, color: TEXT_PRIMARY, lineHeight: 1.55 }}>
               On se retrouve après notre discussion d'hier. Comment tu souhaites avancer aujourd'hui ?
             </p>
@@ -1490,12 +1654,12 @@ export default function ChatPage() {
       {/* Bannière préemptive */}
       {showPreemptiveSOS && !activeTool && (
         <div style={{ position: "fixed", bottom: hasMessages ? 100 : 180, left: "50%", transform: "translateX(-50%)", zIndex: 90, width: "calc(100% - 40px)", maxWidth: 500, background: "#0a0f0c", borderRadius: 16, border: `1px solid ${ACCENT_BORDER}`, padding: "14px 16px", boxShadow: "0 8px 32px rgba(0,0,0,0.5)", display: "flex", alignItems: "center", gap: 12, animation: "fadeUp 0.3s ease" }}>
-          <div style={{ width: 36, height: 36, borderRadius: "50%", border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 18 }}>🌿</div>
+          <div style={{ width: 36, height: 36, borderRadius: "50%", border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconWave size={18} color={ACCENT} strokeWidth={1.5} /></div>
           <p style={{ margin: 0, fontSize: 13, color: TEXT_PRIMARY, flex: 1, lineHeight: 1.5 }}>On dirait que la pression monte. On prend 2 minutes ensemble pour souffler ?</p>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
             <button onClick={() => { setShowPreemptiveSOS(false); void handleSOS(); }}
               style={{ height: 34, borderRadius: 8, padding: "0 14px", background: ACCENT, border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-              Oui 🌿
+              Oui
             </button>
             <button onClick={() => setShowPreemptiveSOS(false)}
               style={{ height: 34, borderRadius: 8, padding: "0 12px", background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 13, cursor: "pointer" }}>
@@ -1545,6 +1709,86 @@ export default function ChatPage() {
       )}
 
         {renderTool()}
+
+      {/* ─── Breathing exercise full-screen overlay ─── */}
+      {showBreathingExercise && (
+        <BreathingExercise
+          sosContext={breathingSosContext}
+          firstName={patientFirstName}
+          onCompleted={handleBreathingComplete}
+          onClose={() => setShowBreathingExercise(false)}
+        />
+      )}
+
+      {/* ─── Ancrage 5-4-3-2-1 full-screen overlay ─── */}
+      {showAncrageExercise && (
+        <AncrageExercise
+          sosContext={ancrageSosContext}
+          firstName={patientFirstName}
+          onCompleted={handleAncrageComplete}
+          onClose={() => setShowAncrageExercise(false)}
+        />
+      )}
+
+      {/* ─── Body scan full-screen overlay ─── */}
+      {showBodyScanExercise && (
+        <BodyScanExercise
+          sosContext={bodyScanSosContext}
+          firstName={patientFirstName}
+          onCompleted={handleBodyScanComplete}
+          onClose={() => setShowBodyScanExercise(false)}
+        />
+      )}
+
+      {/* ─── Manger en pleine conscience full-screen overlay ─── */}
+      {showMangerExercise && (
+        <MangerExercise
+          sosContext={mangerSosContext}
+          firstName={patientFirstName}
+          onCompleted={handleMangerComplete}
+          onClose={() => setShowMangerExercise(false)}
+        />
+      )}
+
+      {/* ─── Écriture cathartique full-screen overlay ─── */}
+      {showEcritureExercise && (
+        <EcritureExercise
+          sosContext={ecrirtureSosContext}
+          firstName={patientFirstName}
+          onCompleted={handleEcritureComplete}
+          onClose={() => setShowEcritureExercise(false)}
+        />
+      )}
+
+      {/* ─── Défusion cognitive full-screen overlay ─── */}
+      {showDefusionExercise && (
+        <DefusionExercise
+          sosContext={defusionSosContext}
+          firstName={patientFirstName}
+          onCompleted={handleDefusionComplete}
+          onClose={() => setShowDefusionExercise(false)}
+        />
+      )}
+
+      {/* ─── Marche consciente full-screen overlay ─── */}
+      {showMarcheExercise && (
+        <MarcheExercise
+          sosContext={marcheSosContext}
+          firstName={patientFirstName}
+          onCompleted={handleMarcheComplete}
+          onClose={() => setShowMarcheExercise(false)}
+        />
+      )}
+
+      {/* ─── Coaching adaptatif full-screen overlay ─── */}
+      {showAdaptiveCoachingExercise && (
+        <AdaptiveCoachingExercise
+          sosContext={adaptiveCoachingSosContext}
+          firstName={patientFirstName}
+          onCompleted={handleAdaptiveCoachingComplete}
+          onClose={() => setShowAdaptiveCoachingExercise(false)}
+        />
+      )}
 
      {/* Modale profil */}
 {showProfileModal && (
@@ -1646,7 +1890,7 @@ export default function ChatPage() {
             }]
           }).eq("user_id", patientId);
           setShowProfileModal(false);
-          alert("Votre praticien a été notifié. Il corrigera votre dossier prochainement. 🌿");
+          alert("Votre praticien a été notifié. Il corrigera votre dossier prochainement.");
         } catch {
           alert("Une erreur est survenue. Veuillez réessayer.");
         }
@@ -1662,11 +1906,11 @@ export default function ChatPage() {
       {/* Mes Victoires */}
       {patientVictories.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.1em", textTransform: "uppercase" }}>🏆 Mes Victoires</p>
+          <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}><IconAward size={13} color={TEXT_MUTED} strokeWidth={1.5} /> Mes Victoires</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {patientVictories.slice(-5).reverse().map((v, i) => (
               <div key={i} style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 14 }}>🏆</span>
+                <IconAward size={14} color={ACCENT} strokeWidth={1.5} style={{ flexShrink: 0 }} />
                 <p style={{ margin: 0, fontSize: 12, color: TEXT_SECONDARY, lineHeight: 1.5 }}>{v}</p>
               </div>
             ))}
@@ -1721,7 +1965,7 @@ export default function ChatPage() {
 {showLogoutPatientModal && (
   <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", zIndex: 110, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
     <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 340, border: `1px solid ${BORDER}`, textAlign: "center" }}>
-      <p style={{ fontSize: 32, marginBottom: 12 }}>👋</p>
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}><IconCheckRing size={36} color={TEXT_MUTED} strokeWidth={1.3} /></div>
       <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 600, color: TEXT_PRIMARY }}>Se déconnecter ?</h3>
       <p style={{ margin: "0 0 24px", fontSize: 13, color: TEXT_SECONDARY }}>Vous devrez vous reconnecter pour accéder à votre espace.</p>
       <div style={{ display: "flex", gap: 10 }}>
@@ -2040,7 +2284,7 @@ export default function ChatPage() {
           {/* ═══ BANDEAU POST-IT PRATICIEN ═══ */}
           {pinnedMessage && (
             <div style={{ position: "sticky", top: 0, zIndex: 30, margin: "0 0 0 0", background: "rgba(16,185,129,0.06)", borderBottom: "1px solid rgba(16,185,129,0.2)", backdropFilter: "blur(12px)", padding: "10px 16px", display: "flex", alignItems: "flex-start", gap: 10 }}>
-              <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>📌</span>
+              <IconPin size={16} color="rgba(16,185,129,0.7)" strokeWidth={1.5} style={{ flexShrink: 0, marginTop: 1 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 600, color: "rgba(16,185,129,0.7)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Message de votre praticien</p>
                 <p style={{ margin: 0, fontSize: 14, color: "#e2e8f0", lineHeight: 1.6 }}>{pinnedMessage.text}</p>
@@ -2071,10 +2315,10 @@ export default function ChatPage() {
                   {/* Halo vert interne — existant */}
                   <div style={{ position: "absolute", inset: -12, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.18), transparent 70%)", animation: "glow-idle 3s ease-in-out infinite" }} />
                   {/* Cercle principal avec bordure dégradée vert→cyan */}
-                  <div style={{ width: 64, height: 64, borderRadius: "50%", border: "1.5px solid transparent", background: "linear-gradient(#080e0b, #080e0b) padding-box, linear-gradient(135deg, rgba(16,185,129,0.65), rgba(52,211,153,0.45)) border-box", boxShadow: "0 0 20px rgba(16,185,129,0.12), 0 0 36px rgba(16,185,129,0.06)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", fontSize: 28 }}>🌿</div>
+                  <div style={{ width: 64, height: 64, borderRadius: "50%", border: "1.5px solid transparent", background: "linear-gradient(#080e0b, #080e0b) padding-box, linear-gradient(135deg, rgba(16,185,129,0.65), rgba(52,211,153,0.45)) border-box", boxShadow: "0 0 20px rgba(16,185,129,0.12), 0 0 36px rgba(16,185,129,0.06)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}><LeafIcon size={28} /></div>
                 </div>
                 <h1 style={{ margin: "0 0 8px", fontSize: isMobile ? 26 : 30, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.5px" }}>
-                  {patientFirstName ? `Bonjour ${patientFirstName} 👋` : "Bonjour 👋"}
+                  {patientFirstName ? `Bonjour ${patientFirstName}` : "Bonjour"}
                 </h1>
                 <p style={{ margin: "0 0 28px", fontSize: isMobile ? 15 : 16, color: TEXT_SECONDARY, lineHeight: 1.7 }}>
                   Je suis votre compagnon de suivi, créé à partir de l'expertise de votre praticien.
@@ -2165,7 +2409,7 @@ export default function ChatPage() {
           <div style={{ background: "rgba(127,0,0,0.18)", backdropFilter: "blur(20px)", borderTop: "1px solid rgba(244,63,94,0.35)", padding: isMobile ? "14px 16px" : "16px 24px", flexShrink: 0 }}>
             <div style={{ maxWidth: 700, margin: "0 auto" }}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 14, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.3)", borderRadius: 16, padding: "16px 18px" }}>
-                <span style={{ fontSize: 22, flexShrink: 0 }}>🚨</span>
+                <IconSiren size={22} color="#f87171" strokeWidth={1.5} style={{ flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
                   <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#f87171" }}>Une alerte a été transmise à votre praticien</p>
                   <p style={{ margin: "0 0 12px", fontSize: 13, color: "#fca5a5", lineHeight: 1.6 }}>Si vous traversez une situation d'urgence, contactez immédiatement un professionnel.</p>
@@ -2173,12 +2417,12 @@ export default function ChatPage() {
                     <a href="tel:15" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 10, background: "rgba(244,63,94,0.15)", border: "1px solid rgba(244,63,94,0.4)", color: "#f87171", fontSize: 15, fontWeight: 700, textDecoration: "none", transition: "all 0.2s" }}
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(244,63,94,0.25)"}
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "rgba(244,63,94,0.15)"}>
-                      📞 <span>SAMU · 15</span>
+                      <span>SAMU · 15</span>
                     </a>
                     <a href="tel:3114" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 18px", borderRadius: 10, background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.3)", color: "#fca5a5", fontSize: 15, fontWeight: 700, textDecoration: "none", transition: "all 0.2s" }}
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = "rgba(244,63,94,0.2)"}
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = "rgba(244,63,94,0.1)"}>
-                      💙 <span>Numéro national · 3114</span>
+                      <span>Numéro national · 3114</span>
                     </a>
                   </div>
                 </div>
