@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { IconBodyScan, IconHeadZone, IconChestZone, IconBellyZone } from "./SosIcons";
+import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const ACCENT = "#10b981";
@@ -76,36 +77,6 @@ function getIntroText(ctx: string, name: string): string {
   if (c.includes("culpabilité") || c.includes("coupable") || c.includes("craqué"))
     return `${name}, avant de te juger, écoute ton corps. Ce scanner t'aidera à comprendre ce qui s'est passé biologiquement et émotionnellement — sans jugement.`;
   return `${name}, ton corps te parle. Ce scanner de 30 secondes va t'aider à distinguer la faim physique des besoins émotionnels pour que tu puisses répondre justement.`;
-}
-
-// ─── Speech helpers ───────────────────────────────────────────────────────────
-function frVoice(): SpeechSynthesisVoice | null {
-  if (typeof window === "undefined" || !window.speechSynthesis) return null;
-  const voices = window.speechSynthesis.getVoices();
-  return (
-    voices.find((v) => v.lang === "fr-FR") ??
-    voices.find((v) => v.lang.startsWith("fr")) ??
-    null
-  );
-}
-
-function speakNow(
-  text: string,
-  opts?: { rate?: number; volume?: number; onEnd?: () => void }
-) {
-  if (typeof window === "undefined" || !window.speechSynthesis) {
-    opts?.onEnd?.();
-    return;
-  }
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "fr-FR";
-  u.rate = opts?.rate ?? 0.85;
-  u.volume = opts?.volume ?? 0.75;
-  const v = frVoice();
-  if (v) u.voice = v;
-  if (opts?.onEnd) u.onend = opts.onEnd;
-  window.speechSynthesis.speak(u);
 }
 
 // ─── Client-side fallback verdict ─────────────────────────────────────────────
@@ -365,6 +336,8 @@ export default function BodyScanExercise({
   onCompleted,
   onClose,
 }: BodyScanExerciseProps) {
+  const { speakTherapeutic, cancelSpeech } = useTherapeuticVoice();
+
   const [stage, setStage] = useState<BodyScanStage>("INTRO");
 
   // INTRO karaoke
@@ -392,8 +365,8 @@ export default function BodyScanExercise({
   // ─── Full cleanup ──────────────────────────────────────────────────────────
   const cleanupAll = useCallback(() => {
     wordTimersRef.current.forEach(clearTimeout);
-    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
-  }, []);
+    cancelSpeech();
+  }, [cancelSpeech]);
 
   useEffect(() => () => cleanupAll(), [cleanupAll]);
 
@@ -412,16 +385,16 @@ export default function BodyScanExercise({
         setIntroReady(true);
       }, introWords.length * 420 + 400);
       wordTimersRef.current.push(done);
-      speakNow(introText, { rate: 0.82, volume: 0.8 });
+      speakTherapeutic(introText, { skipPrep: true, rate: 0.82, volume: 0.8 });
     }, 350);
     return () => {
       clearTimeout(boot);
       wordTimersRef.current.forEach(clearTimeout);
       wordTimersRef.current = [];
-      if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage]);
+  }, [stage, speakTherapeutic, cancelSpeech]);
 
   // ─── Stage transition + speech ────────────────────────────────────────────
   const goTo = useCallback((next: BodyScanStage) => {
@@ -429,11 +402,11 @@ export default function BodyScanExercise({
     const zone = STAGE_TO_ZONE[next];
     if (zone) {
       setTimeout(
-        () => speakNow(ZONE_META[zone].speech, { rate: 0.82, volume: 0.75 }),
+        () => speakTherapeutic(ZONE_META[zone].speech, { rate: 0.82, volume: 0.75 }),
         300
       );
     }
-  }, []);
+  }, [speakTherapeutic]);
 
   // ─── Zone state helper ────────────────────────────────────────────────────
   const zoneStateFor = useCallback((zone: BodyZone): ZoneState => {
@@ -472,15 +445,15 @@ export default function BodyScanExercise({
         const v = data.verdict?.trim() || localFallback(head, chest, stomach);
         setVerdictText(v);
         setStage("VERDICT_DISPLAY");
-        setTimeout(() => speakNow(v, { rate: 0.82, volume: 0.8 }), 600);
+        setTimeout(() => speakTherapeutic(v, { rate: 0.82, volume: 0.8 }), 600);
       } catch {
         const v = localFallback(head, chest, stomach);
         setVerdictText(v);
         setStage("VERDICT_DISPLAY");
-        setTimeout(() => speakNow(v, { rate: 0.82, volume: 0.8 }), 600);
+        setTimeout(() => speakTherapeutic(v, { rate: 0.82, volume: 0.8 }), 600);
       }
     },
-    []
+    [speakTherapeutic]
   );
 
   // ─── Validate current zone score ──────────────────────────────────────────

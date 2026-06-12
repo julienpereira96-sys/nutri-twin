@@ -589,6 +589,12 @@ export default function DashboardPage() {
   const [practitionerPhoto, setPractitionerPhoto] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [practitionerPlan, setPractitionerPlan] = useState<string | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
+  const [showBillingModal, setShowBillingModal] = useState(false);
+  const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
+  const [planUpdateError, setPlanUpdateError] = useState("");
+  const [planUpdateSuccess, setPlanUpdateSuccess] = useState(false);
   const [reportError, setReportError] = useState("");
   const [showBilanModal, setShowBilanModal] = useState(false);
   const [bilanContent, setBilanContent] = useState("");
@@ -987,14 +993,16 @@ export default function DashboardPage() {
       }
       const pid = data.user.id;
       setPractitionerId(pid);
-      const { data: practitioner } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin, cabinet_id").eq("user_id", pid).single();
+      const { data: practitioner } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin, cabinet_id, plan, subscription_status").eq("user_id", pid).single();
       if (practitioner) {
-        const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string; cabinet_id?: string | null };
+        const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string; cabinet_id?: string | null; plan?: string | null; subscription_status?: string | null };
         setPractitionerName(`${p.first_name} ${p.last_name}`);
         setPractitionerEmail(p.email ?? "");
         setPractitionerSpecialty(p.specialty ?? "");
         setSavedPin(p.discrete_pin ?? "");
         if (p.cabinet_id) setPractitionerCabinetId(p.cabinet_id);
+        setPractitionerPlan(p.plan ?? null);
+        setSubscriptionStatus(p.subscription_status ?? null);
       }
       // Tour check séparé pour ne pas bloquer le chargement si la colonne n'existe pas encore
       const { data: tourData, error: tourError } = await supabase.from("practitioners").select("dashboard_tour_done").eq("user_id", pid).single();
@@ -1639,6 +1647,42 @@ export default function DashboardPage() {
     setTimeout(() => setSettingsSaved(false), 2000);
   };
 
+  // ─── Changement de plan abonnement ───────────────────────────────────────────
+  const handlePlanSwitch = async (newPlan: string) => {
+    setPlanUpdateError("");
+
+    // Guard mode démo — simulation locale sans appel API
+    if (onboardingDemoMode) {
+      setPractitionerPlan(newPlan);
+      setPlanUpdateSuccess(true);
+      setShowBillingModal(false);
+      setTimeout(() => setPlanUpdateSuccess(false), 3000);
+      return;
+    }
+
+    setIsUpdatingPlan(true);
+    try {
+      const res = await fetch("/api/billing/update-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPlan }),
+      });
+      const json = await res.json() as { success?: boolean; error?: string };
+      if (!res.ok) {
+        setPlanUpdateError(json.error ?? "Erreur lors du changement de plan.");
+      } else {
+        setPractitionerPlan(newPlan);
+        setPlanUpdateSuccess(true);
+        setShowBillingModal(false);
+        setTimeout(() => setPlanUpdateSuccess(false), 3000);
+      }
+    } catch {
+      setPlanUpdateError("Erreur réseau. Veuillez réessayer.");
+    } finally {
+      setIsUpdatingPlan(false);
+    }
+  };
+
   const handleDiscretClick = () => {
     if (discretMode) { if (savedPin) { setPinInput(""); setPinError(""); setShowPinModal(true); } else { setDiscretMode(false); } }
     else { setDiscretMode(true); }
@@ -2176,7 +2220,7 @@ export default function DashboardPage() {
                           <div data-message-id={message.id} data-message-date={message.created_at}
                             style={{ display: "flex", justifyContent: isPatient ? "flex-end" : "flex-start", transition: "all 0.3s" }}>
                             <div style={{ maxWidth: isPatient ? "78%" : "100%" }}>
-                              <div style={{ borderRadius: isPatient ? 14 : 0, padding: isPatient ? "10px 14px" : "3px 4px", fontSize: isPatient ? 16 : 18, lineHeight: 1.7, background: isHighlighted ? highlightColor : isPatient ? "rgba(16,185,129,0.03)" : "transparent", border: isPatient ? `1px solid ${isHighlighted ? highlightOutline : "rgba(16,185,129,0.2)"}` : "none", color: isPatient ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: isHighlighted && !isPatient ? `2px solid ${highlightOutline}` : "none" }}>
+                              <div style={{ borderRadius: isPatient ? 14 : 0, padding: isPatient ? "10px 14px" : "3px 4px", fontSize: isPatient ? 13 : 14, lineHeight: 1.7, background: isHighlighted ? highlightColor : isPatient ? "rgba(16,185,129,0.03)" : "transparent", border: isPatient ? `1px solid ${isHighlighted ? highlightOutline : "rgba(16,185,129,0.2)"}` : "none", color: isPatient ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: isHighlighted && !isPatient ? `2px solid ${highlightOutline}` : "none" }}>
                                 {message.content}
                               </div>
                               <p style={{ margin: "4px 0 0", fontSize: 10, color: "#4b5563", textAlign: isPatient ? "right" : "left" }}>
@@ -3137,10 +3181,148 @@ export default function DashboardPage() {
               <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Sécurité</p>
               <button onClick={() => setShowPasswordModal(true)} style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", fontSize: 14, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#94a3b8"; }}>Changer mon mot de passe</button>
             </div>
+
+            {/* ─── Abonnement & Facturation ─── */}
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Abonnement</p>
+              <div style={{ background: "rgba(16,185,129,0.04)", borderRadius: 12, border: "1px solid rgba(16,185,129,0.12)", padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {/* Icône plan */}
+                    <div style={{ width: 34, height: 34, borderRadius: 9, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "white", lineHeight: 1.2 }}>
+                        {practitionerPlan === "fondateur" ? "Fondateur"
+                          : practitionerPlan === "essentiel" ? "Essentiel"
+                          : practitionerPlan === "pro" ? "Professionnel"
+                          : practitionerPlan === "cabinet" ? "Cabinet"
+                          : "–"}
+                      </p>
+                      <p style={{ margin: "2px 0 0", fontSize: 11, color: subscriptionStatus === "active" ? emerald : subscriptionStatus === "trialing" ? amber : "#64748b" }}>
+                        {subscriptionStatus === "active" ? "Actif"
+                          : subscriptionStatus === "trialing" ? "Période d'essai"
+                          : subscriptionStatus === "past_due" ? "Paiement en retard"
+                          : subscriptionStatus === "cancelled" ? "Résilié"
+                          : subscriptionStatus ?? "–"}
+                      </p>
+                    </div>
+                  </div>
+                  {/* Bouton changer — masqué si fondateur */}
+                  {practitionerPlan !== "fondateur" && (
+                    <button
+                      onClick={() => { setPlanUpdateError(""); setShowBillingModal(true); }}
+                      style={{ flexShrink: 0, height: 34, padding: "0 14px", borderRadius: 8, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: emerald, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}
+                    >
+                      Changer de plan
+                    </button>
+                  )}
+                  {practitionerPlan === "fondateur" && (
+                    <span style={{ fontSize: 11, color: "#64748b", fontStyle: "italic" }}>Plan verrouillé</span>
+                  )}
+                </div>
+                {planUpdateSuccess && (
+                  <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <span style={{ fontSize: 12, color: emerald }}>Plan mis à jour avec succès.</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div>
               <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Session</p>
               <button onClick={() => setShowLogoutModal(true)} style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; }}>Se déconnecter</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modale changement de plan ── */}
+      {showBillingModal && (
+        <div onClick={e => { if (e.target === e.currentTarget) setShowBillingModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 520, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
+            {/* Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Changer de plan</h2>
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>
+                  Plan actuel&nbsp;:&nbsp;
+                  <span style={{ color: emerald, fontWeight: 600 }}>
+                    {practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Professionnel" : practitionerPlan === "cabinet" ? "Cabinet" : "–"}
+                  </span>
+                </p>
+              </div>
+              <button onClick={() => setShowBillingModal(false)} style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+            </div>
+
+            {/* Cards plans */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {([
+                { plan: "essentiel", label: "Essentiel",      price: "149€", desc: "Jusqu'à 10 patients · 1 praticien · Chat 24h/24",            features: ["Jusqu'à 10 patients", "Dashboard praticien", "Chat patient 24h/24", "Support par email"] },
+                { plan: "pro",       label: "Professionnel",  price: "249€", desc: "Jusqu'à 100 patients · Upload protocoles · Rapport IA",       features: ["Jusqu'à 100 patients", "Upload documents & protocoles", "Rapport IA mensuel par patient", "Support prioritaire"] },
+                { plan: "cabinet",   label: "Cabinet",        price: "499€", desc: "Patients illimités · 3 praticiens · Support dédié",           features: ["Patients illimités", "3 praticiens inclus", "Upload illimité", "Support dédié"] },
+              ] as { plan: string; label: string; price: string; desc: string; features: string[] }[]).map(({ plan, label, price, desc, features }) => {
+                const isCurrent = plan === practitionerPlan;
+                return (
+                  <div key={plan} style={{ borderRadius: 14, border: isCurrent ? `1px solid ${emerald}` : "1px solid rgba(255,255,255,0.08)", background: isCurrent ? "rgba(16,185,129,0.05)" : "rgba(255,255,255,0.02)", padding: "16px 18px", transition: "all 0.2s" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: isCurrent ? emerald : "white" }}>{label}</span>
+                          {isCurrent && <span style={{ fontSize: 10, fontWeight: 700, color: emerald, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 4, padding: "1px 7px", letterSpacing: "0.06em", textTransform: "uppercase" }}>Actuel</span>}
+                        </div>
+                        <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{desc}</p>
+                        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 3 }}>
+                          {features.map(f => (
+                            <li key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#94a3b8" }}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              {f}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div style={{ flexShrink: 0, textAlign: "right" }}>
+                        <p style={{ margin: "0 0 10px", fontSize: 20, fontWeight: 800, color: "white", lineHeight: 1 }}>{price}</p>
+                        <p style={{ margin: "0 0 10px", fontSize: 10, color: "#64748b" }}>/ mois</p>
+                        {!isCurrent && (
+                          <button
+                            disabled={isUpdatingPlan}
+                            onClick={() => void handlePlanSwitch(plan)}
+                            style={{ height: 34, padding: "0 16px", borderRadius: 8, background: "rgba(16,185,129,0.1)", border: `1px solid rgba(16,185,129,0.25)`, color: emerald, fontSize: 12, fontWeight: 600, cursor: isUpdatingPlan ? "not-allowed" : "pointer", opacity: isUpdatingPlan ? 0.6 : 1, transition: "all 0.2s", whiteSpace: "nowrap" }}
+                            onMouseEnter={e => { if (!isUpdatingPlan) e.currentTarget.style.background = "rgba(16,185,129,0.18)"; }}
+                            onMouseLeave={e => { if (!isUpdatingPlan) e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}
+                          >
+                            {isUpdatingPlan ? (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>
+                                En cours
+                              </span>
+                            ) : "Choisir ce plan"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Erreur */}
+            {planUpdateError && (
+              <p style={{ margin: "14px 0 0", fontSize: 12, color: "#f87171", textAlign: "center" }}>{planUpdateError}</p>
+            )}
+
+            {/* Note prorata */}
+            <p style={{ margin: "16px 0 0", fontSize: 11, color: "#475569", textAlign: "center", lineHeight: 1.5 }}>
+              Le changement est effectif immédiatement. Le prorata est facturé ou crédité sur votre prochaine facture Stripe.
+              {onboardingDemoMode && <span style={{ display: "block", color: amber, marginTop: 4 }}>Mode démo — aucun paiement réel.</span>}
+            </p>
           </div>
         </div>
       )}

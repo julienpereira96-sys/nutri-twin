@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { IconWave, IconCheckRing } from "./SosIcons";
+import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 
 // ─── Design tokens (mirroring page.tsx) ──────────────────────────────────────
 const CYAN = "#06b6d4";
@@ -71,37 +72,6 @@ function getIntroText(sosContext: string, firstName: string): string {
   );
 }
 
-// ─── French voice loader ──────────────────────────────────────────────────────
-function getFrenchVoice(): SpeechSynthesisVoice | null {
-  if (typeof window === "undefined" || !window.speechSynthesis) return null;
-  const voices = window.speechSynthesis.getVoices();
-  return (
-    voices.find((v) => v.lang === "fr-FR") ??
-    voices.find((v) => v.lang.startsWith("fr")) ??
-    null
-  );
-}
-
-function speak(
-  text: string,
-  opts?: { rate?: number; volume?: number; onEnd?: () => void }
-) {
-  if (typeof window === "undefined" || !window.speechSynthesis) {
-    opts?.onEnd?.();
-    return;
-  }
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "fr-FR";
-  u.rate = opts?.rate ?? 0.85;
-  u.volume = opts?.volume ?? 0.75;
-  u.pitch = 1.0;
-  const voice = getFrenchVoice();
-  if (voice) u.voice = voice;
-  if (opts?.onEnd) u.onend = opts.onEnd;
-  window.speechSynthesis.speak(u);
-}
-
 // ─── Haptic crescendo on inhale ───────────────────────────────────────────────
 function hapticInhale() {
   if (typeof navigator === "undefined" || !navigator.vibrate) return;
@@ -139,6 +109,8 @@ export default function BreathingExercise({
   const onCompletedRef = useRef(onCompleted);
   useEffect(() => { onCompletedRef.current = onCompleted; }, [onCompleted]);
 
+  const { speakTherapeutic, cancelSpeech, unlockAudio } = useTherapeuticVoice();
+
   const introText = getIntroText(sosContext, firstName);
   const words = introText.split(" ");
 
@@ -147,9 +119,9 @@ export default function BreathingExercise({
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       wordTimersRef.current.forEach(clearTimeout);
-      if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
-  }, []);
+  }, [cancelSpeech]);
 
   // ─── INTRO: TTS + timer-based karaoke (~420ms/word) ────────────────────────
   useEffect(() => {
@@ -169,27 +141,17 @@ export default function BreathingExercise({
       wordTimersRef.current.push(endTimeout);
 
       // TTS — parallel, slightly slower than karaoke so words stay in sync
-      speak(introText, {
-        rate: 0.8,
-        volume: 0.8,
-      });
+      // skipPrep: true — karaoke timers are calibrated to raw text length
+      speakTherapeutic(introText, { skipPrep: true, rate: 0.8, volume: 0.8 });
     }, 400);
 
     return () => {
       clearTimeout(init);
       wordTimersRef.current.forEach(clearTimeout);
       wordTimersRef.current = [];
-      if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
-  }, [stage]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ─── iOS audio unlock — call synchronously before SpeechSynthesis ──────────
-  const unlockAudio = useCallback(() => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
-    const silent = new SpeechSynthesisUtterance("");
-    silent.volume = 0;
-    window.speechSynthesis.speak(silent);
-  }, []);
+  }, [stage, speakTherapeutic, cancelSpeech]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Start breathing loop ────────────────────────────────────────────────────
   const startLoop = useCallback(() => {
@@ -205,7 +167,7 @@ export default function BreathingExercise({
     setExpanded(true);
 
     // First inhale prompt
-    speak("Inspirez...", { rate: 0.7, volume: 0.55 });
+    speakTherapeutic("Inspirez...", { skipPrep: true, rate: 0.7, volume: 0.55 });
     hapticInhale();
 
     intervalRef.current = setInterval(() => {
@@ -224,7 +186,7 @@ export default function BreathingExercise({
           setPhase("exhale");
           setPhaseTimer(5);
           setExpanded(false);
-          speak("Expirez...", { rate: 0.65, volume: 0.55 });
+          speakTherapeutic("Expirez...", { skipPrep: true, rate: 0.65, volume: 0.55 });
           // No haptic on exhale
         } else {
           phaseRef.current = "inhale";
@@ -232,7 +194,7 @@ export default function BreathingExercise({
           setPhase("inhale");
           setPhaseTimer(5);
           setExpanded(true);
-          speak("Inspirez...", { rate: 0.7, volume: 0.55 });
+          speakTherapeutic("Inspirez...", { skipPrep: true, rate: 0.7, volume: 0.55 });
           hapticInhale();
         }
       }
@@ -243,8 +205,9 @@ export default function BreathingExercise({
           clearInterval(intervalRef.current);
           intervalRef.current = null;
         }
-        if (typeof window !== "undefined") window.speechSynthesis?.cancel();
-        speak("Très bien. Restez dans cet espace un instant.", {
+        cancelSpeech();
+        speakTherapeutic("Très bien. Restez dans cet espace un instant.", {
+          skipPrep: true,
           rate: 0.78,
           volume: 0.7,
         });
@@ -252,15 +215,15 @@ export default function BreathingExercise({
         setTimeout(() => onCompletedRef.current(), 3200);
       }
     }, 1000);
-  }, []);
+  }, [speakTherapeutic, cancelSpeech]);
 
   // ─── Close with full cleanup ─────────────────────────────────────────────────
   const handleClose = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     wordTimersRef.current.forEach(clearTimeout);
-    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    cancelSpeech();
     onClose();
-  }, [onClose]);
+  }, [onClose, cancelSpeech]);
 
   // ─── Circle style — CSS transition drives the animation ──────────────────────
   const circleSize = expanded ? 230 : 140;

@@ -71,9 +71,39 @@ export async function POST(request: Request) {
     const customerId = subscription.customer as string;
     const status = subscription.status;
 
+    // Inversion du mapping price_id → plan
+    // Les env vars peuvent être undefined si la variable n'est pas définie — on filtre.
+    const priceToplan: Record<string, string> = Object.fromEntries(
+      (
+        [
+          [process.env.STRIPE_PRICE_ESSENTIEL, "essentiel"],
+          [process.env.STRIPE_PRICE_PRO,       "pro"],
+          [process.env.STRIPE_PRICE_CABINET,   "cabinet"],
+          [process.env.STRIPE_PRICE_FONDATEUR, "fondateur"],
+        ] as [string | undefined, string][]
+      ).filter((entry): entry is [string, string] => Boolean(entry[0]))
+    );
+
+    const priceId = subscription.items.data[0]?.price.id;
+    const resolvedPlan = priceId ? priceToplan[priceId] : undefined;
+
+    // Guard fondateur — on récupère le plan actuel pour ne jamais l'écraser
+    const { data: practitioner } = await supabase
+      .from("practitioners")
+      .select("plan")
+      .eq("stripe_customer_id", customerId)
+      .single();
+
+    const updatePayload: Record<string, string> = { subscription_status: status };
+
+    // Met à jour le plan seulement si on peut le résoudre ET que l'actuel n'est pas fondateur
+    if (resolvedPlan && practitioner?.plan !== "fondateur") {
+      updatePayload.plan = resolvedPlan;
+    }
+
     await supabase
       .from("practitioners")
-      .update({ subscription_status: status })
+      .update(updatePayload)
       .eq("stripe_customer_id", customerId);
   }
 

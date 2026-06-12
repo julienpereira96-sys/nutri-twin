@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { IconPen, IconFlame, IconScissors, IconCheckRing } from "./SosIcons";
+import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Stage =
@@ -49,28 +50,6 @@ const Q_DATA: Record<QKey, QData> = {
     hint: "Parle-lui avec toute la douceur que tu mérites.",
   },
 };
-
-// ─── TTS helpers ──────────────────────────────────────────────────────────────
-function speakNow(text: string, opts: { rate?: number; volume?: number } = {}) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = "fr-FR";
-  utter.rate = opts.rate ?? 0.82;
-  utter.volume = opts.volume ?? 0.75;
-  const voices = window.speechSynthesis.getVoices();
-  const fr = voices.find((v) => v.lang.startsWith("fr"));
-  if (fr) utter.voice = fr;
-  window.speechSynthesis.speak(utter);
-}
-
-function unlockAudio() {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  const u = new SpeechSynthesisUtterance(" ");
-  u.volume = 0;
-  u.lang = "fr-FR";
-  window.speechSynthesis.speak(u);
-}
 
 function getIntroSpeech(firstName: string): string {
   const name = firstName ? `, ${firstName}` : "";
@@ -186,6 +165,8 @@ export default function EcritureExercise({
   onCompleted,
   onClose,
 }: Props) {
+  const { speakTherapeutic, cancelSpeech, unlockAudio } = useTherapeuticVoice();
+
   const [stage, setStage] = useState<Stage>("INTRO");
   const [q1Text, setQ1Text] = useState("");
   const [q2Text, setQ2Text] = useState("");
@@ -208,12 +189,12 @@ export default function EcritureExercise({
   // ── Global unmount cleanup ───────────────────────────────────────────────────
   useEffect(() => {
     return () => {
-      window.speechSynthesis?.cancel();
-      navigator.vibrate?.(0);
+      cancelSpeech();
+      if (typeof navigator !== "undefined") navigator.vibrate?.(0);
       timerRefs.current.forEach(clearTimeout);
       if (burnIntervalRef.current) clearInterval(burnIntervalRef.current);
     };
-  }, []);
+  }, [cancelSpeech]);
 
   // ── INTRO: word-by-word karaoke TTS ─────────────────────────────────────────
   useEffect(() => {
@@ -223,15 +204,16 @@ export default function EcritureExercise({
     const wordTimers = words.map((_, i) =>
       setTimeout(() => setHighlightWord(i), 400 + i * WORD_MS)
     );
-    const tts = setTimeout(() => speakNow(text, { rate: 0.80, volume: 0.82 }), 250);
+    // skipPrep: true — karaoke timers are calibrated to raw text length
+    const tts = setTimeout(() => speakTherapeutic(text, { skipPrep: true, rate: 0.80, volume: 0.82 }), 250);
     timerRefs.current = [...wordTimers, tts];
     return () => {
       wordTimers.forEach(clearTimeout);
       clearTimeout(tts);
-      window.speechSynthesis?.cancel();
+      cancelSpeech();
       setHighlightWord(-1);
     };
-  }, [stage, firstName]);
+  }, [stage, firstName, speakTherapeutic, cancelSpeech]);
 
   // ── Q stages: auto-focus textarea ───────────────────────────────────────────
   useEffect(() => {
@@ -243,16 +225,16 @@ export default function EcritureExercise({
   // ── COMPLETED: TTS + auto-dismiss ───────────────────────────────────────────
   useEffect(() => {
     if (stage !== "COMPLETED") return;
-    speakNow(
+    speakTherapeutic(
       "Très bien. Ces pensées sont sorties, tu peux avancer maintenant.",
       { rate: 0.82, volume: 0.70 }
     );
     const t = setTimeout(() => onCompletedRef.current(), 3200);
     return () => {
       clearTimeout(t);
-      window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
-  }, [stage]);
+  }, [stage, speakTherapeutic, cancelSpeech]);
 
   // ── Fire: start burn ─────────────────────────────────────────────────────────
   const startBurn = useCallback(() => {
@@ -312,12 +294,12 @@ export default function EcritureExercise({
   }, []);
 
   const handleClose = useCallback(() => {
-    window.speechSynthesis?.cancel();
-    navigator.vibrate?.(0);
+    cancelSpeech();
+    if (typeof navigator !== "undefined") navigator.vibrate?.(0);
     timerRefs.current.forEach(clearTimeout);
     if (burnIntervalRef.current) clearInterval(burnIntervalRef.current);
     onClose();
-  }, [onClose]);
+  }, [onClose, cancelSpeech]);
 
   // ── Derived values ───────────────────────────────────────────────────────────
   const isQStage = Q_ORDER.includes(stage as QKey);

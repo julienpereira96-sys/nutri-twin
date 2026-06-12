@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { IconForkKnife, IconCheckRing, IconEye, IconMouth, IconSpiral, IconDroplet, IconRefresh } from "./SosIcons";
+import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Stage =
@@ -132,27 +133,6 @@ function CountdownCircle({
   );
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function speakNow(text: string, opts: { rate?: number; volume?: number } = {}) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang = "fr-FR";
-  utter.rate = opts.rate ?? 0.82;
-  utter.volume = opts.volume ?? 0.75;
-  const voices = window.speechSynthesis.getVoices();
-  const frVoice = voices.find((v) => v.lang.startsWith("fr"));
-  if (frVoice) utter.voice = frVoice;
-  window.speechSynthesis.speak(utter);
-}
-
-function unlockAudio() {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  const u = new SpeechSynthesisUtterance(" ");
-  u.volume = 0;
-  u.lang = "fr-FR";
-  window.speechSynthesis.speak(u);
-}
 
 function getIntroText(sosContext: string, firstName: string): string {
   const name = firstName ? `, ${firstName}` : "";
@@ -172,6 +152,8 @@ export default function MangerExercise({
   onCompleted,
   onClose,
 }: Props) {
+  const { speakTherapeutic, cancelSpeech, unlockAudio } = useTherapeuticVoice();
+
   const [stage, setStage] = useState<Stage>("INTRO");
   const [timeLeft, setTimeLeft] = useState(0);
   const [chewProgress, setChewProgress] = useState(0); // 0–100
@@ -185,21 +167,19 @@ export default function MangerExercise({
   // ── Global cleanup on unmount ────────────────────────────────────────────────
   useEffect(() => {
     return () => {
-      if (typeof window !== "undefined") {
-        window.speechSynthesis?.cancel();
-        navigator.vibrate?.(0);
-      }
+      cancelSpeech();
+      if (typeof navigator !== "undefined") navigator.vibrate?.(0);
     };
-  }, []);
+  }, [cancelSpeech]);
 
   // ── INTRO: play TTS after short delay ───────────────────────────────────────
   useEffect(() => {
     if (stage !== "INTRO") return;
     const introText = getIntroText(sosContext, firstName);
-    const t = setTimeout(() => speakNow(introText, { rate: 0.80 }), 500);
+    const t = setTimeout(() => speakTherapeutic(introText, { rate: 0.80 }), 500);
     return () => {
       clearTimeout(t);
-      window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
   }, [stage, sosContext, firstName]);
 
@@ -207,11 +187,11 @@ export default function MangerExercise({
   useEffect(() => {
     if (stage !== "ALIMENT_CHECK") return;
     const t = setTimeout(() => {
-      speakNow("Prends ton aliment dans les mains. Regarde-le un instant.", { rate: 0.80 });
+      speakTherapeutic("Prends ton aliment dans les mains. Regarde-le un instant.", { rate: 0.80 });
     }, 300);
     return () => {
       clearTimeout(t);
-      window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
   }, [stage]);
 
@@ -221,7 +201,7 @@ export default function MangerExercise({
     const cfg = PHASE_CONFIG.PHASE_LOOK;
     setTimeLeft(cfg.duration);
     setChewProgress(0);
-    const tSpeech = setTimeout(() => speakNow(cfg.speech, { rate: 0.82 }), 200);
+    const tSpeech = setTimeout(() => speakTherapeutic(cfg.speech, { rate: 0.82 }), 200);
 
     let tick = cfg.duration;
     const iv = setInterval(() => {
@@ -236,7 +216,7 @@ export default function MangerExercise({
     return () => {
       clearTimeout(tSpeech);
       clearInterval(iv);
-      window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
   }, [stage]);
 
@@ -245,7 +225,7 @@ export default function MangerExercise({
     if (stage !== "PHASE_MOUTH") return;
     const cfg = PHASE_CONFIG.PHASE_MOUTH;
     setTimeLeft(cfg.duration);
-    const tSpeech = setTimeout(() => speakNow(cfg.speech, { rate: 0.82 }), 200);
+    const tSpeech = setTimeout(() => speakTherapeutic(cfg.speech, { rate: 0.82 }), 200);
 
     let tick = cfg.duration;
     const ivCountdown = setInterval(() => {
@@ -267,7 +247,7 @@ export default function MangerExercise({
       clearInterval(ivCountdown);
       clearInterval(ivHaptic);
       navigator.vibrate?.(0);
-      window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
   }, [stage]);
 
@@ -276,7 +256,7 @@ export default function MangerExercise({
     if (stage !== "PHASE_CHEW") return;
     const cfg = PHASE_CONFIG.PHASE_CHEW;
     setChewProgress(0);
-    const tSpeech = setTimeout(() => speakNow(cfg.speech, { rate: 0.82 }), 200);
+    const tSpeech = setTimeout(() => speakTherapeutic(cfg.speech, { rate: 0.82 }), 200);
 
     const TICK_MS = 80;
     const totalTicks = Math.round((cfg.duration * 1000) / TICK_MS); // 250
@@ -299,7 +279,7 @@ export default function MangerExercise({
       clearTimeout(tSpeech);
       clearInterval(iv);
       navigator.vibrate?.(0);
-      window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
   }, [stage]);
 
@@ -308,7 +288,7 @@ export default function MangerExercise({
     if (stage !== "PHASE_SWALLOW") return;
     const cfg = PHASE_CONFIG.PHASE_SWALLOW;
     setTimeLeft(cfg.duration);
-    const tSpeech = setTimeout(() => speakNow(cfg.speech, { rate: 0.82 }), 200);
+    const tSpeech = setTimeout(() => speakTherapeutic(cfg.speech, { rate: 0.82 }), 200);
 
     let tick = cfg.duration;
     const iv = setInterval(() => {
@@ -323,7 +303,7 @@ export default function MangerExercise({
     return () => {
       clearTimeout(tSpeech);
       clearInterval(iv);
-      window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
   }, [stage]);
 
@@ -332,24 +312,24 @@ export default function MangerExercise({
     if (stage !== "EVALUATION") return;
     setEvalShowOptions(false);
     const t = setTimeout(() => {
-      speakNow("Comment te sens-tu maintenant ?", { rate: 0.82 });
+      speakTherapeutic("Comment te sens-tu maintenant ?", { rate: 0.82 });
     }, 400);
     return () => {
       clearTimeout(t);
-      window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
   }, [stage]);
 
   // ── COMPLETED: TTS + auto-dismiss ────────────────────────────────────────────
   useEffect(() => {
     if (stage !== "COMPLETED") return;
-    speakNow("Très bien. Tu as pris soin de toi.", { rate: 0.82, volume: 0.7 });
+    speakTherapeutic("Très bien. Tu as pris soin de toi.", { rate: 0.82, volume: 0.7 });
     const t = setTimeout(() => {
       onCompletedRef.current();
     }, 2800);
     return () => {
       clearTimeout(t);
-      window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
   }, [stage]);
 
@@ -357,7 +337,7 @@ export default function MangerExercise({
   const handleAlimentReady = useCallback(() => {
     unlockAudio();
     setStage("PHASE_LOOK");
-  }, []);
+  }, [unlockAudio]);
 
   const handleEvalDone = useCallback(() => {
     setStage("COMPLETED");
@@ -377,10 +357,10 @@ export default function MangerExercise({
   }, []);
 
   const handleClose = useCallback(() => {
-    window.speechSynthesis?.cancel();
-    navigator.vibrate?.(0);
+    cancelSpeech();
+    if (typeof navigator !== "undefined") navigator.vibrate?.(0);
     onClose();
-  }, [onClose]);
+  }, [onClose, cancelSpeech]);
 
   // ── Derived values ────────────────────────────────────────────────────────────
   const isTimedPhase =

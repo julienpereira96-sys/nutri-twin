@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { IconSparkle, IconSprout, IconCheckRing, IconX } from "./SosIcons";
+import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Stage = "INTRO" | "CHAT_STEP" | "COMMITMENT" | "COMPLETED";
@@ -20,27 +21,6 @@ type Props = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const WORD_MS = 390;
-
-// ─── TTS helpers ──────────────────────────────────────────────────────────────
-function speakNow(text: string, opts: { rate?: number; volume?: number } = {}) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang   = "fr-FR";
-  utter.rate   = opts.rate   ?? 0.82;
-  utter.volume = opts.volume ?? 0.75;
-  const fr = window.speechSynthesis.getVoices().find((v) => v.lang.startsWith("fr"));
-  if (fr) utter.voice = fr;
-  window.speechSynthesis.speak(utter);
-}
-
-function unlockAudio() {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  const u = new SpeechSynthesisUtterance(" ");
-  u.volume = 0;
-  u.lang = "fr-FR";
-  window.speechSynthesis.speak(u);
-}
 
 // ─── Karaoke word highlight ───────────────────────────────────────────────────
 function useKaraoke(text: string, active: boolean) {
@@ -221,6 +201,8 @@ export default function AdaptiveCoachingExercise({
   onCompleted,
   onClose,
 }: Props) {
+  const { speakTherapeutic, cancelSpeech, unlockAudio } = useTherapeuticVoice();
+
   const [stage, setStage]             = useState<Stage>("INTRO");
   const [messages, setMessages]       = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping]       = useState(false);
@@ -239,9 +221,9 @@ export default function AdaptiveCoachingExercise({
   // ─── Cleanup TTS ──────────────────────────────────────────────────────────
   useEffect(() => {
     return () => {
-      window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
-  }, []);
+  }, [cancelSpeech]);
 
   // ─── Karaoke for intro message ────────────────────────────────────────────
   const highlightWord = useKaraoke(INTRO_SPEECH, introActive);
@@ -276,7 +258,7 @@ export default function AdaptiveCoachingExercise({
       setMessages((prev) => [...prev, { role: "coach", text: coachMsg }]);
 
       setTimeout(() => {
-        speakNow(obj, { rate: 0.80 });
+        speakTherapeutic(obj, { rate: 0.80 });
         setStage("COMMITMENT");
       }, 600);
     } catch {
@@ -288,17 +270,17 @@ export default function AdaptiveCoachingExercise({
         { role: "coach", text: "Voici ce que je te propose pour aujourd'hui :" },
       ]);
       setTimeout(() => {
-        speakNow(fallback, { rate: 0.80 });
+        speakTherapeutic(fallback, { rate: 0.80 });
         setStage("COMMITMENT");
       }, 600);
     }
-  }, [firstName, sosContext]);
+  }, [firstName, sosContext, speakTherapeutic]);
 
   // ─── Commit handler ────────────────────────────────────────────────────────
   const handleCommit = useCallback(async () => {
     setCommitted(true);
     navigator.vibrate?.(30);
-    speakNow(`C'est noté ${firstName}. Ce petit geste compte vraiment. Prends soin de toi.`);
+    speakTherapeutic(`C'est noté ${firstName}. Ce petit geste compte vraiment. Prends soin de toi.`);
 
     // Best-effort fire-and-forget
     fetch("/api/adaptive-coaching", {
@@ -311,7 +293,7 @@ export default function AdaptiveCoachingExercise({
       setStage("COMPLETED");
       setTimeout(onCompleted, 3500);
     }, 2200);
-  }, [firstName, objective, onCompleted]);
+  }, [firstName, objective, onCompleted, speakTherapeutic]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -409,7 +391,7 @@ export default function AdaptiveCoachingExercise({
           <button
             onClick={() => {
               unlockAudio();
-              speakNow(INTRO_SPEECH, { rate: 0.82 });
+              speakTherapeutic(INTRO_SPEECH, { skipPrep: true, rate: 0.82 });
               setIntroActive(true);
               // After intro speech (~10s), proceed
               const wordCount = INTRO_SPEECH.split(" ").length;

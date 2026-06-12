@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 import {
   IconWalker,
   IconHeadphones,
@@ -60,27 +61,6 @@ const PHASES: PhaseConfig[] = [
       "Dernière étape. Grandis-toi, détends tes épaules. Regarde autour de toi — une couleur, un son, une texture. Tu es ici, maintenant.",
   },
 ];
-
-// ─── TTS helpers ──────────────────────────────────────────────────────────────
-function speakNow(text: string, opts: { rate?: number; volume?: number } = {}) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang   = "fr-FR";
-  utter.rate   = opts.rate   ?? 0.80;
-  utter.volume = opts.volume ?? 0.75;
-  const fr = window.speechSynthesis.getVoices().find((v) => v.lang.startsWith("fr"));
-  if (fr) utter.voice = fr;
-  window.speechSynthesis.speak(utter);
-}
-
-function unlockAudio() {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  const u = new SpeechSynthesisUtterance(" ");
-  u.volume = 0;
-  u.lang = "fr-FR";
-  window.speechSynthesis.speak(u);
-}
 
 // ─── SVG arc progress ─────────────────────────────────────────────────────────
 function ArcProgress({
@@ -200,6 +180,8 @@ export default function MarcheExercise({
   onCompleted,
   onClose,
 }: Props) {
+  const { speakTherapeutic, cancelSpeech, unlockAudio } = useTherapeuticVoice();
+
   const [stage, setStage]       = useState<Stage>("INTRO");
   const [steps, setSteps]       = useState(0);
   const [stepFlash, setStepFlash] = useState(false);
@@ -238,21 +220,21 @@ export default function MarcheExercise({
     for (const phase of PHASES) {
       if (next === phase.startStep && !spokenPhasesRef.current.has(phase.startStep)) {
         spokenPhasesRef.current.add(phase.startStep);
-        speakNow(phase.speech);
+        speakTherapeutic(phase.speech);
       }
     }
 
     // Complete at TOTAL_STEPS
     if (next >= TOTAL_STEPS) {
       setTimeout(() => {
-        speakNow(
+        speakTherapeutic(
           `Bravo ${firstName} ! Tu as complété tes ${TOTAL_STEPS} pas de marche consciente. Porte cette présence avec toi.`,
         );
         setStage("COMPLETED");
         setTimeout(onCompleted, 4000);
       }, 300);
     }
-  }, [firstName, onCompleted]);
+  }, [firstName, onCompleted, speakTherapeutic]);
 
   // ─── DeviceMotion listener ──────────────────────────────────────────────────
   const startDeviceMotion = useCallback(() => {
@@ -281,14 +263,14 @@ export default function MarcheExercise({
       if (motionListenerRef.current) {
         window.removeEventListener("devicemotion", motionListenerRef.current);
       }
-      window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
-  }, []);
+  }, [cancelSpeech]);
 
   // ─── Request DeviceMotion permission (iOS) ──────────────────────────────────
   const requestMotionAndStart = useCallback(async () => {
     unlockAudio();
-    speakNow(PHASES[0].speech, { rate: 0.80 });
+    speakTherapeutic(PHASES[0].speech, { rate: 0.80 });
     spokenPhasesRef.current.add(1);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -319,7 +301,7 @@ export default function MarcheExercise({
       setUsingManual(true);
       setStage("WALKING_LOOP");
     }
-  }, [startDeviceMotion]);
+  }, [startDeviceMotion, unlockAudio, speakTherapeutic]);
 
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (

@@ -12,6 +12,7 @@ import DefusionExercise from "./DefusionExercise";
 import MarcheExercise from "./MarcheExercise";
 import AdaptiveCoachingExercise from "./AdaptiveCoachingExercise";
 import PwaInstallPrompt from "./PwaInstallPrompt";
+import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 import {
   IconCheckRing,
   IconWave,
@@ -788,6 +789,8 @@ export default function ChatPage() {
   const [chatSearchIdx, setChatSearchIdx] = useState(0);
   const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  // ─── Voix thérapeutique ────────────────────────────────────────────────────
+  const { voices: therapeuticVoices, selectedVoice: selectedTherapeuticVoice, setSelectedVoice: setTherapeuticVoice } = useTherapeuticVoice();
 
   const ancrageSteps = [
     { count: 5, sense: "voyez", icon: <IconEye size={34} color={CYAN} /> },
@@ -1915,6 +1918,51 @@ export default function ChatPage() {
                 <p style={{ margin: 0, fontSize: 12, color: TEXT_SECONDARY, lineHeight: 1.5 }}>{v}</p>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Sélecteur de voix thérapeutique */}
+      {therapeuticVoices.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            Voix thérapeutique
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {therapeuticVoices.slice(0, 6).map((v) => {
+              const isSelected = selectedTherapeuticVoice?.name === v.name;
+              return (
+                <button
+                  key={v.name}
+                  onClick={() => setTherapeuticVoice(v)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 10,
+                    background: isSelected ? "rgba(16,185,129,0.10)" : "rgba(255,255,255,0.03)",
+                    border: isSelected ? `1px solid rgba(16,185,129,0.40)` : `1px solid ${BORDER}`,
+                    color: isSelected ? ACCENT : TEXT_SECONDARY,
+                    fontSize: 12,
+                    fontWeight: isSelected ? 600 : 400,
+                    cursor: "pointer",
+                    textAlign: "left",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.name}</span>
+                  {isSelected && (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

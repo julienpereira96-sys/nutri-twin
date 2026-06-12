@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { IconThoughtBubble, IconBalloon, IconStars, IconBurst, IconCheckRing } from "./SosIcons";
+import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Stage =
@@ -32,26 +33,6 @@ type Props = {
 const WORD_MS = 390;
 const INFLATE_STEPS = 5;
 
-// ─── TTS helpers ──────────────────────────────────────────────────────────────
-function speakNow(text: string, opts: { rate?: number; volume?: number } = {}) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(text);
-  utter.lang   = "fr-FR";
-  utter.rate   = opts.rate   ?? 0.82;
-  utter.volume = opts.volume ?? 0.75;
-  const fr = window.speechSynthesis.getVoices().find((v) => v.lang.startsWith("fr"));
-  if (fr) utter.voice = fr;
-  window.speechSynthesis.speak(utter);
-}
-
-function unlockAudio() {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  const u = new SpeechSynthesisUtterance(" ");
-  u.volume = 0; u.lang = "fr-FR";
-  window.speechSynthesis.speak(u);
-}
-
 function getIntroSpeech(firstName: string): string {
   const name = firstName ? `, ${firstName}` : "";
   return `Ta tête te raconte une histoire sombre${name}. On va regarder cette pensée d'un peu plus loin ensemble.`;
@@ -65,6 +46,8 @@ export default function DefusionExercise({
   onCompleted,
   onClose,
 }: Props) {
+  const { speakTherapeutic, cancelSpeech, unlockAudio } = useTherapeuticVoice();
+
   // ── Core state ──────────────────────────────────────────────────────────────
   const [stage,        setStage]        = useState<Stage>("INTRO");
   const [thoughtText,  setThoughtText]  = useState("");
@@ -111,11 +94,11 @@ export default function DefusionExercise({
   // ── Global unmount cleanup ──────────────────────────────────────────────────
   useEffect(() => {
     return () => {
-      window.speechSynthesis?.cancel();
-      navigator.vibrate?.(0);
+      cancelSpeech();
+      if (typeof navigator !== "undefined") navigator.vibrate?.(0);
       timerRefs.current.forEach(clearTimeout);
     };
-  }, []);
+  }, [cancelSpeech]);
 
   // ── INTRO: word-by-word karaoke ─────────────────────────────────────────────
   useEffect(() => {
@@ -125,13 +108,14 @@ export default function DefusionExercise({
     const wt = words.map((_, i) =>
       setTimeout(() => setHighlightWord(i), 400 + i * WORD_MS)
     );
-    const tts = setTimeout(() => speakNow(text, { rate: 0.80, volume: 0.82 }), 250);
+    // skipPrep: true — karaoke timers are calibrated to raw text length
+    const tts = setTimeout(() => speakTherapeutic(text, { skipPrep: true, rate: 0.80, volume: 0.82 }), 250);
     timerRefs.current = [...wt, tts];
     return () => {
       wt.forEach(clearTimeout); clearTimeout(tts);
-      window.speechSynthesis?.cancel(); setHighlightWord(-1);
+      cancelSpeech(); setHighlightWord(-1);
     };
-  }, [stage, firstName]);
+  }, [stage, firstName, speakTherapeutic, cancelSpeech]);
 
   // ── CAPTURE: auto-focus ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -144,32 +128,32 @@ export default function DefusionExercise({
   useEffect(() => {
     if (stage !== "REFRAME_1") return;
     const t = setTimeout(() =>
-      speakNow(`J'ai la pensée que ${thoughtText}`, { rate: 0.82, volume: 0.75 }),
+      speakTherapeutic(`J'ai la pensée que ${thoughtText}`, { rate: 0.82, volume: 0.75 }),
     400);
-    return () => { clearTimeout(t); window.speechSynthesis?.cancel(); };
-  }, [stage, thoughtText]);
+    return () => { clearTimeout(t); cancelSpeech(); };
+  }, [stage, thoughtText, speakTherapeutic, cancelSpeech]);
 
   // ── REFRAME_2: TTS clinique ──────────────────────────────────────────────────
   useEffect(() => {
     if (stage !== "REFRAME_2") return;
     const t = setTimeout(() =>
-      speakNow(
+      speakTherapeutic(
         "Vois-tu ? Ce n'est plus une vérité absolue, c'est juste une activité de ton esprit que tu observes.",
         { rate: 0.82, volume: 0.78 }
       ),
     700);
-    return () => { clearTimeout(t); window.speechSynthesis?.cancel(); };
-  }, [stage]);
+    return () => { clearTimeout(t); cancelSpeech(); };
+  }, [stage, speakTherapeutic, cancelSpeech]);
 
   // ── COMPLETED: TTS + auto-dismiss ───────────────────────────────────────────
   useEffect(() => {
     if (stage !== "COMPLETED") return;
-    speakNow("Parfait. On laisse cette pensée s'éloigner. On revient au présent.", {
+    speakTherapeutic("Parfait. On laisse cette pensée s'éloigner. On revient au présent.", {
       rate: 0.82, volume: 0.70,
     });
     const t = setTimeout(() => onCompletedRef.current(), 3200);
-    return () => { clearTimeout(t); window.speechSynthesis?.cancel(); };
-  }, [stage]);
+    return () => { clearTimeout(t); cancelSpeech(); };
+  }, [stage, speakTherapeutic, cancelSpeech]);
 
   // ── Balloon click ────────────────────────────────────────────────────────────
   const handleBalloonClick = useCallback(() => {
@@ -224,11 +208,11 @@ export default function DefusionExercise({
   }, []);
 
   const handleClose = useCallback(() => {
-    window.speechSynthesis?.cancel();
-    navigator.vibrate?.(0);
+    cancelSpeech();
+    if (typeof navigator !== "undefined") navigator.vibrate?.(0);
     timerRefs.current.forEach(clearTimeout);
     onClose();
-  }, [onClose]);
+  }, [onClose, cancelSpeech]);
 
   // ── Derived ──────────────────────────────────────────────────────────────────
   const canCapture   = thoughtText.trim().length >= 3;

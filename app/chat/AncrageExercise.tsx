@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   IconAnchor, IconCheckRing, IconEye, IconTouch, IconEar, IconWind, IconDroplet,
 } from "./SosIcons";
+import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 
 // ─── Tiny inline SVG check for validated states ───────────────────────────────
 function SvgCheck({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
@@ -67,36 +68,6 @@ function getIntroText(ctx: string, name: string): string {
   if (c.includes("culpabilité") || c.includes("coupable") || c.includes("craqué"))
     return `${name}, la culpabilité t'emporte dans les pensées. Revenons dans ton corps, dans le présent, là où tu es en sécurité.`;
   return `${name}, prenons le temps de revenir dans l'instant. L'ancrage sensoriel va interrompre la spirale et te reconnecter à toi.`;
-}
-
-// ─── Speech helpers ───────────────────────────────────────────────────────────
-function frVoice(): SpeechSynthesisVoice | null {
-  if (typeof window === "undefined" || !window.speechSynthesis) return null;
-  const voices = window.speechSynthesis.getVoices();
-  return (
-    voices.find((v) => v.lang === "fr-FR") ??
-    voices.find((v) => v.lang.startsWith("fr")) ??
-    null
-  );
-}
-
-function speakNow(
-  text: string,
-  opts?: { rate?: number; volume?: number; onEnd?: () => void }
-) {
-  if (typeof window === "undefined" || !window.speechSynthesis) {
-    opts?.onEnd?.();
-    return;
-  }
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = "fr-FR";
-  u.rate = opts?.rate ?? 0.85;
-  u.volume = opts?.volume ?? 0.75;
-  const v = frVoice();
-  if (v) u.voice = v;
-  if (opts?.onEnd) u.onend = opts.onEnd;
-  window.speechSynthesis.speak(u);
 }
 
 // ─── Circular progress gauge ─────────────────────────────────────────────────
@@ -202,6 +173,8 @@ export default function AncrageExercise({
   onCompleted,
   onClose,
 }: AncrageExerciseProps) {
+  const { speakTherapeutic, cancelSpeech } = useTherapeuticVoice();
+
   const [stage, setStage] = useState<AncrageStage>("INTRO");
 
   // INTRO
@@ -246,9 +219,9 @@ export default function AncrageExercise({
     wordTimersRef.current.forEach(clearTimeout);
     holdIntervalsRef.current.forEach((id) => id && clearInterval(id));
     vibIntervalsRef.current.forEach((id) => id && clearInterval(id));
-    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+    cancelSpeech();
     if (typeof navigator !== "undefined") navigator.vibrate?.(0);
-  }, []);
+  }, [cancelSpeech]);
 
   useEffect(() => () => cleanupAll(), [cleanupAll]);
 
@@ -264,26 +237,26 @@ export default function AncrageExercise({
         setIntroReady(true);
       }, introWords.length * 420 + 400);
       wordTimersRef.current.push(endTimer);
-      speakNow(introText, { rate: 0.82, volume: 0.8 });
+      speakTherapeutic(introText, { skipPrep: true, rate: 0.82, volume: 0.8 });
     }, 380);
 
     return () => {
       clearTimeout(bootstrap);
       wordTimersRef.current.forEach(clearTimeout);
       wordTimersRef.current = [];
-      if (typeof window !== "undefined") window.speechSynthesis?.cancel();
+      cancelSpeech();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage]);
+  }, [stage, speakTherapeutic, cancelSpeech]);
 
   // ─── Stage transition + speech ────────────────────────────────────────────
   const goTo = useCallback((next: AncrageStage) => {
     setStage(next);
     const speech = STEP_SPEECH[next];
     if (speech) {
-      setTimeout(() => speakNow(speech, { rate: 0.82, volume: 0.75 }), 280);
+      setTimeout(() => speakTherapeutic(speech, { rate: 0.82, volume: 0.75 }), 280);
     }
-  }, []);
+  }, [speakTherapeutic]);
 
   // ─── Auto-advance effects ─────────────────────────────────────────────────
   useEffect(() => {
@@ -313,14 +286,14 @@ export default function AncrageExercise({
   // STEP_1_TASTE → COMPLETED
   useEffect(() => {
     if (!tasteDone) return;
-    speakNow("Excellent. Tu es ancré. Ton esprit est revenu au présent.", {
+    speakTherapeutic("Excellent. Tu es ancré. Ton esprit est revenu au présent.", {
       rate: 0.8,
       volume: 0.75,
     });
     setStage("COMPLETED");
     const t = setTimeout(() => onCompletedRef.current(), 3200);
     return () => clearTimeout(t);
-  }, [tasteDone]);
+  }, [tasteDone, speakTherapeutic]);
 
   // ─── SEE: tap handler ─────────────────────────────────────────────────────
   const handleSeeClick = useCallback((i: number) => {
