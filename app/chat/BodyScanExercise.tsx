@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { IconBodyScan, IconHeadZone, IconChestZone, IconBellyZone } from "./SosIcons";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
-import { makeBoundaryHandler } from "@/lib/therapeuticVoice";
+import { makeBoundaryHandler, scheduleWordTimers } from "@/lib/therapeuticVoice";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const ACCENT = "#10b981";
@@ -397,6 +397,16 @@ export default function BodyScanExercise({
         rate: 0.82,
         volume: 0.8,
         onBoundary: makeBoundaryHandler(introWords, setWordIdx, cancelFallback),
+        onDurationReady: (durationMs: number) => {
+          wordTimersRef.current.forEach(clearTimeout);
+          wordTimersRef.current = [];
+          const timers = scheduleWordTimers(introWords, durationMs, setWordIdx);
+          const endTimer = setTimeout(() => {
+            setWordIdx(-1);
+            setIntroReady(true);
+          }, durationMs + 400);
+          wordTimersRef.current = [...timers, endTimer];
+        },
       });
     }, 350);
     return () => {

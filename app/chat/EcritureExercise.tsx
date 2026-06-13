@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { IconPen, IconFlame, IconScissors, IconCheckRing } from "./SosIcons";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
-import { makeBoundaryHandler } from "@/lib/therapeuticVoice";
+import { makeBoundaryHandler, scheduleWordTimers } from "@/lib/therapeuticVoice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Stage =
@@ -214,6 +214,11 @@ export default function EcritureExercise({
       rate: 0.80,
       volume: 0.82,
       onBoundary: makeBoundaryHandler(words, setHighlightWord, cancelFallback),
+      onDurationReady: (durationMs: number) => {
+        cancelFallback();
+        const newTimers = scheduleWordTimers(words, durationMs, setHighlightWord);
+        timerRefs.current.push(...newTimers);
+      },
     }), 250);
     timerRefs.current = [...wordTimers, tts];
     return () => {

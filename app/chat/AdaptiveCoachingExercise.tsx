@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { IconSparkle, IconSprout, IconCheckRing, IconX } from "./SosIcons";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
-import { makeBoundaryHandler } from "@/lib/therapeuticVoice";
+import { makeBoundaryHandler, scheduleWordTimers } from "@/lib/therapeuticVoice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Stage = "INTRO" | "CHAT_STEP" | "COMMITMENT" | "COMPLETED";
@@ -53,7 +53,19 @@ function useKaraoke(text: string, active: boolean) {
     timersRef.current = [];
   }, []);
 
-  return { highlightWord, setHighlightWord, cancelTimers };
+  // Reschedule timers using actual audio duration (Google TTS path)
+  const rescheduleWithDuration = useCallback((durationMs: number) => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+    const words = text.split(" ");
+    const msPerWord = durationMs / words.length;
+    words.forEach((_, i) => {
+      const t = setTimeout(() => setHighlightWord(i), i * msPerWord);
+      timersRef.current.push(t);
+    });
+  }, [text]);
+
+  return { highlightWord, setHighlightWord, cancelTimers, rescheduleWithDuration };
 }
 
 // ─── Typing indicator dots ────────────────────────────────────────────────────
@@ -233,7 +245,7 @@ export default function AdaptiveCoachingExercise({
   }, [cancelSpeech]);
 
   // ─── Karaoke for intro message ────────────────────────────────────────────
-  const { highlightWord, setHighlightWord: setKaraokeWord, cancelTimers: cancelKaraokeTimers } = useKaraoke(INTRO_SPEECH, introActive);
+  const { highlightWord, setHighlightWord: setKaraokeWord, cancelTimers: cancelKaraokeTimers, rescheduleWithDuration: rescheduleKaraokeWithDuration } = useKaraoke(INTRO_SPEECH, introActive);
 
   // ─── Start CHAT_STEP: show greeting + fetch objective ─────────────────────
   const startChat = useCallback(async () => {
@@ -407,6 +419,7 @@ export default function AdaptiveCoachingExercise({
                   setKaraokeWord,
                   cancelKaraokeTimers,
                 ),
+                onDurationReady: rescheduleKaraokeWithDuration,
               });
               // After intro speech (~10s), proceed
               const wordCount = INTRO_SPEECH.split(" ").length;

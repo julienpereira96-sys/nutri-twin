@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { IconThoughtBubble, IconBalloon, IconStars, IconBurst, IconCheckRing } from "./SosIcons";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
-import { makeBoundaryHandler } from "@/lib/therapeuticVoice";
+import { makeBoundaryHandler, scheduleWordTimers } from "@/lib/therapeuticVoice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Stage =
@@ -116,6 +116,11 @@ export default function DefusionExercise({
       rate: 0.80,
       volume: 0.82,
       onBoundary: makeBoundaryHandler(words, setHighlightWord, cancelFallback),
+      onDurationReady: (durationMs: number) => {
+        cancelFallback();
+        const newTimers = scheduleWordTimers(words, durationMs, setHighlightWord);
+        timerRefs.current.push(...newTimers);
+      },
     }), 250);
     timerRefs.current = [...wt, tts];
     return () => {

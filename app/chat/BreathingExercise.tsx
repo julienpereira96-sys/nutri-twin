@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { IconWave, IconCheckRing } from "./SosIcons";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
-import { makeBoundaryHandler } from "@/lib/therapeuticVoice";
+import { makeBoundaryHandler, scheduleWordTimers } from "@/lib/therapeuticVoice";
 
 // ─── Design tokens (mirroring page.tsx) ──────────────────────────────────────
 const CYAN = "#06b6d4";
@@ -149,6 +149,16 @@ export default function BreathingExercise({
         rate: 0.8,
         volume: 0.8,
         onBoundary: makeBoundaryHandler(words, setCurrentWordIdx, cancelFallback),
+        onDurationReady: (durationMs: number) => {
+          wordTimersRef.current.forEach(clearTimeout);
+          wordTimersRef.current = [];
+          const timers = scheduleWordTimers(words, durationMs, setCurrentWordIdx);
+          const endTimer = setTimeout(() => {
+            setCurrentWordIdx(-1);
+            setTimeout(() => setStage("READY_CHECK"), 500);
+          }, durationMs + 400);
+          wordTimersRef.current = [...timers, endTimer];
+        },
       });
     }, 400);
 

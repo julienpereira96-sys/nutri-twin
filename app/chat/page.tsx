@@ -1982,11 +1982,11 @@ export default function ChatPage() {
             Voix thérapeutique
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {therapeuticVoices.slice(0, 6).map((v) => {
-              const isSelected = selectedTherapeuticVoice?.name === v.name;
+            {therapeuticVoices.map((v) => {
+              const isSelected = selectedTherapeuticVoice?.id === v.id;
               return (
                 <button
-                  key={v.name}
+                  key={v.id}
                   onClick={() => {
                     setTherapeuticVoice(v);
                     const preview = `Bonjour ${patientFirstName || "toi"}, je suis là pour t'accompagner.`;
@@ -2010,7 +2010,15 @@ export default function ChatPage() {
                     transition: "all 0.15s",
                   }}
                 >
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{v.name}</span>
+                  <span style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {v.name}
+                      <span style={{ marginLeft: 6, fontSize: 10, opacity: 0.5, fontWeight: 400 }}>
+                        {v.gender === "FEMALE" ? "♀" : "♂"}
+                      </span>
+                    </span>
+                    <span style={{ fontSize: 10, opacity: 0.45, fontWeight: 400 }}>{v.description}</span>
+                  </span>
                   {isSelected && (
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                       <polyline points="20 6 9 17 4 12"/>

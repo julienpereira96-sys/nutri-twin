@@ -5,7 +5,7 @@ import {
   IconAnchor, IconCheckRing, IconEye, IconTouch, IconEar, IconWind, IconDroplet,
 } from "./SosIcons";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
-import { makeBoundaryHandler } from "@/lib/therapeuticVoice";
+import { makeBoundaryHandler, scheduleWordTimers } from "@/lib/therapeuticVoice";
 
 // ─── Tiny inline SVG check for validated states ───────────────────────────────
 function SvgCheck({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
@@ -249,6 +249,16 @@ export default function AncrageExercise({
         rate: 0.82,
         volume: 0.8,
         onBoundary: makeBoundaryHandler(introWords, setWordIdx, cancelFallback),
+        onDurationReady: (durationMs: number) => {
+          wordTimersRef.current.forEach(clearTimeout);
+          wordTimersRef.current = [];
+          const timers = scheduleWordTimers(introWords, durationMs, setWordIdx);
+          const endTimer = setTimeout(() => {
+            setWordIdx(-1);
+            setIntroReady(true);
+          }, durationMs + 400);
+          wordTimersRef.current = [...timers, endTimer];
+        },
       });
     }, 380);
 
