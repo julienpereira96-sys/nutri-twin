@@ -54,6 +54,7 @@ type ChatRequest = {
   isSOS?: boolean;
   sosContext?: string; // contexte de triage SOS (fringale / stress / culpabilité / coup de mou)
   isPostExercise?: boolean; // follow-up chaud post-exercice — bypass total des effets de bord
+  toolId?: string; // outil SOS utilisé (breathing, ancrage, etc.) — transmis avec isPostExercise
 };
 
 // ═══ GARDE-FOU BRUT — urgences vitales absolues uniquement ═══
@@ -594,7 +595,14 @@ JSON TECHNIQUE OBLIGATOIRE - À ajouter en toute fin de réponse, invisible pour
   Exemples orange : "Anxieux(se) mais motivé(e)", "Frustré(e) face aux écarts", "Fatigué(e) / En restriction", "Découragé(e) par le plateau"
   Exemples red : "Détresse émotionnelle active", "Perte de contrôle alimentaire", "Dégoût de soi exprimé"
   Ne jamais laisser vide. Ne jamais écrire "patient va bien" ou "aucune alerte".
-- victory : UNE phrase courte UNIQUEMENT si le patient rapporte une réussite TCC concrète (ex: résister à une fringale, écouter sa satiété, gérer une envie de crise sans craquer, reprendre après un écart sans culpabilité). Exemples : "A écouté sa satiété ce soir", "A résisté à la fringale du soir", "A repris sans culpabilité après l'écart". Vide "" sinon.`;
+- victory : UNE phrase courte UNIQUEMENT si le patient rapporte une réussite TCC concrète (ex: résister à une fringale, écouter sa satiété, gérer une envie de crise sans craquer, reprendre après un écart sans culpabilité). Exemples : "A écouté sa satiété ce soir", "A résisté à la fringale du soir", "A repris sans culpabilité après l'écart". Vide "" sinon.
+
+RÈGLE TRIGGER_SOS (post-chat uniquement) :
+Si et seulement si le patient exprime une détresse aiguë (compulsion alimentaire en cours et incontrôlable, crise d'anxiété sévère, pensées intrusives incontrôlables, sentiment de perte de contrôle imminente), ajoute à la toute fin de ta réponse, après le JSON technique, ce tag EXACTEMENT :
+[TRIGGER_SOS: exo_1, exo_2]
+Remplace exo_1 et exo_2 par les deux exercices les plus adaptés à la situation parmi : breathing, ancrage, manger, marche, body_scan, defusion, ecriture, adaptive_coaching
+N'utilise ce tag QUE pour une détresse aiguë réelle — JAMAIS pour une simple pensée négative, une frustration passagère, un écart alimentaire sans crise, ou une difficulté ordinaire.
+Le tag ne doit jamais apparaître dans le texte visible de ta réponse — place-le uniquement après le bloc |||json|||.`;
 }
 
 function getDefaultPrompt(): string {
@@ -634,6 +642,7 @@ export async function POST(request: Request) {
       isSOS,
       sosContext,
       isPostExercise,
+      toolId,
     } = await request.json() as ChatRequest;
 
     // Auth
@@ -796,7 +805,6 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
     if (isPostExercise && patientId && practitionerId) {
       const supabase = createSupabaseClient();
 
-      // Récupérer le prénom pour personnaliser
       const { data: patientRow } = await supabase
         .from("patients")
         .select("first_name")
@@ -804,21 +812,61 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
         .single();
 
       const firstName = (patientRow as { first_name?: string } | null)?.first_name?.trim() ?? "";
-      const greeting = firstName ? `${firstName}, j` : "J";
-      const followupText =
-        `${greeting}'ai déposé ce moment de soin dans ton carnet de bord. ` +
-        `Dis-moi avec tes propres mots, comment tu te sens dans ton corps et dans ta tête là, tout de suite ?`;
 
-      // Persister uniquement la question (pas le message système interne)
-      await supabase.from("conversations").insert({
-        patient_id: patientId,
-        practitioner_id: practitionerId,
-        role: "assistant",
-        content: followupText,
-        session_id: null,
-      });
+      // Noms lisibles des exercices
+      const toolNames: Record<string, string> = {
+        breathing: "la cohérence cardiaque", ancrage: "l'ancrage sensoriel",
+        manger: "la pleine conscience alimentaire", marche: "la marche consciente",
+        body_scan: "le body scan", defusion: "la défusion cognitive",
+        ecriture: "l'écriture cathartique", adaptive_coaching: "le coaching TCC",
+      };
+      const exerciseName = toolId ? (toolNames[toolId] ?? "l'exercice") : "l'exercice";
 
-      return new Response(followupText, {
+      // Si le patient a partagé son ressenti, générer un message de clôture Gemini
+      if (message?.trim()) {
+        try {
+          const closingPrompt = `Tu es le Jumeau Numérique bienveillant d'un nutritionniste.
+${firstName ? `Le patient s'appelle ${firstName}.` : ""}
+Le patient vient de terminer ${exerciseName} et partage son ressenti : "${message.trim()}"
+
+Génère UN seul message de clôture chaleureux de 1 à 2 phrases courtes. Il doit :
+- Valider ce ressenti avec sincérité, sans effusion excessive
+- Renforcer le geste positif accompli (prendre soin de soi)
+- Aucun conseil, aucune question, aucun sujet nutritionnel
+- Jamais plus de 40 mots
+- Pas de markdown, texte brut uniquement
+
+Réponds uniquement avec le message de clôture, rien d'autre.`;
+
+          const closingModel = genAI.getGenerativeModel({
+            model: "gemini-3.1-flash-lite",
+            generationConfig: { maxOutputTokens: 120, temperature: 0.75 },
+          });
+
+          const closingResult = await closingModel.generateContent(closingPrompt);
+          const closingText = closingResult.response.text().trim();
+
+          if (closingText) {
+            await supabase.from("conversations").insert({
+              patient_id: patientId,
+              practitioner_id: practitionerId,
+              role: "assistant",
+              content: closingText,
+              session_id: null,
+            });
+
+            return new Response(closingText, {
+              headers: { "Content-Type": "text/plain; charset=utf-8" },
+            });
+          }
+        } catch { /* fallback ci-dessous */ }
+      }
+
+      // Fallback : message de clôture fixe si pas de ressenti ou erreur Gemini
+      const greeting = firstName ? `${firstName}, c` : "C";
+      const fallbackText = `${greeting}'est noté. Chaque moment de soin que tu t'accordes compte.`;
+
+      return new Response(fallbackText, {
         headers: { "Content-Type": "text/plain; charset=utf-8" },
       });
     }

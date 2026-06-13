@@ -68,16 +68,10 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     const all = window.speechSynthesis.getVoices();
     if (all.length === 0) return;
 
-    // Prefer French voices, then all others, sorted by quality score descending
-    const french = all
+    // French voices only, sorted by quality score descending
+    const ranked = all
       .filter((v) => v.lang.startsWith("fr"))
       .sort((a, b) => scoreVoiceQuality(b.name) - scoreVoiceQuality(a.name));
-
-    const others = all
-      .filter((v) => !v.lang.startsWith("fr"))
-      .sort((a, b) => scoreVoiceQuality(b.name) - scoreVoiceQuality(a.name));
-
-    const ranked = [...french, ...others];
     setVoices(ranked);
 
     // Restore persisted choice or fall back to best available
