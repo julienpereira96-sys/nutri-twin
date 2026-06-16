@@ -1,939 +1,926 @@
 "use client";
 
+/**
+ * EcritureExercise — Catharsis textuelle (Niveau 1)
+ *
+ * Architecture double-canal :
+ *   1. intro_live  — WebSocket Gemini Live : accueil personnalisé, fermeture propre sur turn_complete
+ *   2. writing     — Silence total. Textarea libre. Flou rétroactif par paragraphe.
+ *                    Dictée vocale locale (Web Speech API, si détectée).
+ *   3. analyzing   — Requête HTTP REST vers Gemini Flash (structuration TCC)
+ *   4. tcc_mirror  — Affichage 3 blocs : Validation / Prise de distance / Pivot
+ *   5. transition  — Injection dans le fil chat (1 bulle patient + 3 bulles Twin)
+ *
+ * Pas de token Gemini gaspillé pendant l'écriture : silence = intentionnel.
+ */
+
 import { useState, useEffect, useRef, useCallback } from "react";
-import { IconPen, IconFlame, IconScissors, IconCheckRing } from "./SosIcons";
-import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
-import { makeBoundaryHandler, scheduleWordTimers } from "@/lib/therapeuticVoice";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-type Stage =
-  | "INTRO"
-  | "Q1_EMOTION"
-  | "Q2_NEED"
-  | "Q3_PARDON"
-  | "RITUAL_CHOICE"
-  | "RITUAL_ANIMATION"
-  | "COMPLETED";
+// ─── Design tokens ─────────────────────────────────────────────────────────────
+const BG_PAPER       = "rgba(245,242,235,1)";      // beige papier premium
+const BG_PAPER_DARK  = "rgba(238,234,224,1)";      // beige légèrement plus sombre
+const ACCENT         = "#8B6F4E";                   // terre/sable — ancrage
+const ACCENT_LIGHT   = "rgba(139,111,78,0.12)";
+const ACCENT_BORDER  = "rgba(139,111,78,0.28)";
+const ACCENT_GLOW    = "rgba(139,111,78,0.45)";
+const TEXT_INK       = "rgba(30,22,12,0.85)";      // encre foncée
+const TEXT_MUTED     = "rgba(30,22,12,0.38)";
+const TEXT_FADED     = "rgba(30,22,12,0.22)";
+const WAVE_COLOR     = ACCENT;
 
-type RitualChoice = "fire" | "shred" | null;
+// ─── Gemini Live ───────────────────────────────────────────────────────────────
+const GEMINI_WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent";
+const GEMINI_MODEL  = "models/gemini-2.0-flash-live-001";
+const GEMINI_REST   = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
-type QKey = "Q1_EMOTION" | "Q2_NEED" | "Q3_PARDON";
+// ─── Types ─────────────────────────────────────────────────────────────────────
+type Status = "intro_live" | "writing" | "analyzing" | "tcc_mirror" | "transition";
 
-type Props = {
-  sosContext: string;
-  firstName: string;
-  onCompleted: () => void;
-  onClose: () => void;
-};
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-const WORD_MS = 390;  // ms per word for karaoke pacing
-const STRIPS_N = 9;   // vertical shredder strips
-
-const Q_ORDER: QKey[] = ["Q1_EMOTION", "Q2_NEED", "Q3_PARDON"];
-
-type QData = { step: string; question: string; hint: string };
-
-const Q_DATA: Record<QKey, QData> = {
-  Q1_EMOTION: {
-    step: "1 / 3",
-    question: "Qu'est-ce qui pèse le plus lourd dans ta poitrine là, tout de suite ?",
-    hint: "Décris ta colère, ta déception, ta honte… sans filtre.",
-  },
-  Q2_NEED: {
-    step: "2 / 3",
-    question: "De quoi ton corps ou ton esprit avait cruellement besoin au moment où tu as craqué ?",
-    hint: "Du réconfort, du repos, de la sécurité…",
-  },
-  Q3_PARDON: {
-    step: "3 / 3",
-    question: "Si ta meilleure amie venait de faire exactement la même chose, que lui dirais-tu pour la consoler ?",
-    hint: "Parle-lui avec toute la douceur que tu mérites.",
-  },
-};
-
-function getIntroSpeech(firstName: string): string {
-  const name = firstName ? `, ${firstName}` : "";
-  return `Ce qui est fait est fait${name}, aucun jugement ici. Sortons ces pensées de ta tête pour les regarder en face, et les laisser partir.`;
+interface TccBlock {
+  label: string;   // "Validation", "Prise de distance", "Pivot"
+  emoji: string;
+  text: string;
 }
 
-// ─── LetterCard ───────────────────────────────────────────────────────────────
-function LetterCard({ q1, q2, q3 }: { q1: string; q2: string; q3: string }) {
+export interface EcritureExerciseProps {
+  patientId: string;
+  practitionerId: string;
+  firstName: string;
+  sosContext?: string;
+  onTransitionToChat: (patientText: string, tccBlocks: TccBlock[]) => void;
+  onClose: () => void;
+}
+
+// ─── System prompt Gemini Live (intro) ────────────────────────────────────────
+function buildIntroPrompt(firstName: string, sosContext: string): string {
+  return `Tu es le Jumeau Numérique thérapeutique de ${firstName}. Tu vas prononcer UNE SEULE prise de parole, courte et enveloppante, pour ouvrir un espace d'écriture libre.
+
+CONTEXTE : ${sosContext || "Le patient a besoin de déposer ses pensées."}
+
+TON MESSAGE (réciter tel quel, adapté au contexte) :
+Commence par accueillir ${firstName} par son prénom avec une voix douce et lente.
+Explique que ce qu'il va écrire reste strictement entre lui et toi.
+Invite-le à poser ses mains sur le clavier et à déposer tout ce qui lui pèse, sans filtre, sans jugement sur la qualité des phrases.
+Conclus par une invitation au lâcher-prise.
+
+RÈGLES ABSOLUES :
+1. Une seule prise de parole — tu ne parleras plus après.
+2. 3 à 4 phrases maximum. Voix lente, douce, rassurante.
+3. Parle en français uniquement.
+4. Après cette phrase, tu te tais. Le silence sera le cadre.
+5. Réponse AUDIO uniquement — aucun texte visible.`;
+}
+
+// ─── Prompt TCC (REST) ────────────────────────────────────────────────────────
+function buildTccPrompt(firstName: string, text: string): string {
+  return `Tu es un thérapeute spécialisé en TCC (Thérapie Cognitive et Comportementale) et en troubles du comportement alimentaire.
+
+${firstName} vient de faire un exercice de catharsis textuelle. Voici ce qu'il/elle a écrit :
+
+---
+${text}
+---
+
+Génère une réponse structurée en exactement 3 parties. Réponds UNIQUEMENT en JSON avec ce format :
+{
+  "validation": "...",
+  "distance": "...",
+  "pivot": "..."
+}
+
+Règles pour chaque partie :
+- "validation" : Nomme et légitime l'émotion principale de manière chaleureuse et non-jugeante. 2-3 phrases. Cite des éléments concrets du texte sans les recopier mot pour mot.
+- "distance" : Identifie la distorsion cognitive ou le schéma TCA sous-jacent. Propose une reformulation bienveillante qui crée de la distance avec la pensée automatique. 2-3 phrases.
+- "pivot" : Propose UNE seule action concrète, petite et immédiate, déconnectée de la nourriture. Pose une question ouverte sur ce qui ferait du bien maintenant. 2-3 phrases.
+
+Ton = thérapeute bienveillant, chaleureux, jamais condescendant. Tutoie ${firstName}.`;
+}
+
+// ─── Waveform animée (intro + analyse) ───────────────────────────────────────
+function WaveBar({ active, color }: { active: boolean; color: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 3, height: 28 }}>
+      {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+        <div
+          key={i}
+          style={{
+            width: 3,
+            borderRadius: 2,
+            background: color,
+            opacity: active ? 0.7 : 0.2,
+            height: active ? undefined : 6,
+            animation: active ? `wave-bar 1.1s ease-in-out infinite` : "none",
+            animationDelay: `${i * 0.13}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ─── TCC block card ───────────────────────────────────────────────────────────
+function TccCard({ block, delay }: { block: TccBlock; delay: number }) {
   return (
     <div
       style={{
-        background: "linear-gradient(160deg, #fdf3e3 0%, #f5e6c8 55%, #efd8b0 100%)",
-        borderRadius: 10,
-        padding: "22px 20px 20px",
-        border: "1px solid rgba(180,140,80,0.32)",
-        boxShadow: "0 3px 28px rgba(0,0,0,0.38), inset 0 0 50px rgba(180,140,80,0.10)",
-        color: "#3d2b1a",
-        fontFamily: "Georgia, 'Times New Roman', serif",
-        fontSize: 13.5,
-        lineHeight: 1.72,
-        position: "relative",
+        background: "#fff",
+        border: `1.5px solid ${ACCENT_BORDER}`,
+        borderRadius: 18,
+        padding: "20px 22px",
+        animation: `fadeUp 0.5s ease both`,
+        animationDelay: `${delay}ms`,
+        boxShadow: `0 2px 16px rgba(139,111,78,0.08)`,
       }}
     >
-      {/* Header */}
       <div
         style={{
-          fontSize: 10,
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: "1.6px",
-          color: "#8b6a3e",
-          opacity: 0.65,
-          marginBottom: 16,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 10,
         }}
       >
-        Lettre de culpabilité
+        <span style={{ fontSize: 20 }}>{block.emoji}</span>
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            letterSpacing: 1.2,
+            color: ACCENT,
+            textTransform: "uppercase",
+          }}
+        >
+          {block.label}
+        </span>
       </div>
-
-      {/* Q1 */}
-      <p style={{ marginBottom: 14 }}>
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "1.1px",
-            color: "#6b4a2a",
-            display: "block",
-            marginBottom: 4,
-          }}
-        >
-          Ce qui pesait
-        </span>
-        {q1}
-      </p>
-
-      {/* Q2 */}
-      <p style={{ marginBottom: 14 }}>
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "1.1px",
-            color: "#6b4a2a",
-            display: "block",
-            marginBottom: 4,
-          }}
-        >
-          Ce dont j&apos;avais besoin
-        </span>
-        {q2}
-      </p>
-
-      {/* Q3 */}
-      <p>
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: "1.1px",
-            color: "#6b4a2a",
-            display: "block",
-            marginBottom: 4,
-          }}
-        >
-          Ce que je me dis
-        </span>
-        {q3}
-      </p>
-
-      {/* Decorative bottom rule */}
-      <div
+      <p
         style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: 2,
-          borderRadius: "0 0 10px 10px",
-          background: "linear-gradient(to right, transparent, rgba(180,140,80,0.3), transparent)",
+          margin: 0,
+          fontSize: 15,
+          lineHeight: 1.75,
+          color: TEXT_INK,
         }}
-      />
+      >
+        {block.text}
+      </p>
     </div>
   );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function EcritureExercise({
-  sosContext: _sosContext,
+  patientId,
+  practitionerId,
   firstName,
-  onCompleted,
+  sosContext = "",
+  onTransitionToChat,
   onClose,
-}: Props) {
-  const { speakTherapeutic, cancelSpeech, unlockAudio } = useTherapeuticVoice();
+}: EcritureExerciseProps) {
+  const [status, setStatus] = useState<Status>("intro_live");
+  const [waveActive, setWaveActive] = useState(true);
 
-  const [stage, setStage] = useState<Stage>("INTRO");
-  const [q1Text, setQ1Text] = useState("");
-  const [q2Text, setQ2Text] = useState("");
-  const [q3Text, setQ3Text] = useState("");
-  const [highlightWord, setHighlightWord] = useState(-1);
-  const [ritualChoice, setRitualChoice] = useState<RitualChoice>(null);
-  const [burnProgress, setBurnProgress] = useState(0); // 0–100
-  const [isBurningActive, setIsBurningActive] = useState(false);
-  const [shredTriggered, setShredTriggered] = useState(false);
-
-  const onCompletedRef = useRef(onCompleted);
-  useEffect(() => { onCompletedRef.current = onCompleted; }, [onCompleted]);
-
-  const burnIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isBurningRef = useRef(false);
-  const burnProgressRef = useRef(0);
-  const timerRefs = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // Writing state
+  const [rawText, setRawText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // ── Global unmount cleanup ───────────────────────────────────────────────────
-  useEffect(() => {
-    return () => {
-      cancelSpeech();
-      if (typeof navigator !== "undefined") navigator.vibrate?.(0);
-      timerRefs.current.forEach(clearTimeout);
-      if (burnIntervalRef.current) clearInterval(burnIntervalRef.current);
-    };
-  }, [cancelSpeech]);
+  // TCC result
+  const [tccBlocks, setTccBlocks] = useState<TccBlock[]>([]);
+  const [tccError, setTccError] = useState(false);
 
-  // ── INTRO: karaoke (boundary-driven, timer fallback for iOS) ────────────────
-  useEffect(() => {
-    if (stage !== "INTRO") return;
-    const text  = getIntroSpeech(firstName);
-    const words = text.split(" ");
-    const wordTimers = words.map((_, i) =>
-      setTimeout(() => setHighlightWord(i), 400 + i * WORD_MS)
-    );
-    const cancelFallback = () => {
-      wordTimers.forEach(clearTimeout);
-    };
-    // skipPrep: true — karaoke timers calibrated to raw text length
-    const tts = setTimeout(() => speakTherapeutic(text, {
-      skipPrep: true,
-      rate: 0.80,
-      volume: 0.82,
-      onBoundary: makeBoundaryHandler(words, setHighlightWord, cancelFallback),
-      onDurationReady: (durationMs: number) => {
-        cancelFallback();
-        const newTimers = scheduleWordTimers(words, durationMs, setHighlightWord);
-        timerRefs.current.push(...newTimers);
-      },
-    }), 250);
-    timerRefs.current = [...wordTimers, tts];
-    return () => {
-      wordTimers.forEach(clearTimeout);
-      clearTimeout(tts);
-      cancelSpeech();
-      setHighlightWord(-1);
-    };
-  }, [stage, firstName, speakTherapeutic, cancelSpeech]);
+  // Speech recognition
+  const [hasSpeechAPI, setHasSpeechAPI] = useState(false);
+  const [isDictating, setIsDictating] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
 
-  // ── Q stages: auto-focus textarea ───────────────────────────────────────────
-  useEffect(() => {
-    if (!Q_ORDER.includes(stage as QKey)) return;
-    const t = setTimeout(() => textareaRef.current?.focus(), 120);
-    return () => clearTimeout(t);
-  }, [stage]);
+  // Gemini Live WS
+  const wsRef        = useRef<WebSocket | null>(null);
+  const audioCtxRef  = useRef<AudioContext | null>(null);
+  const audioQueue   = useRef<ArrayBuffer[]>([]);
+  const isPlaying    = useRef(false);
 
-  // ── COMPLETED: TTS + auto-dismiss ───────────────────────────────────────────
-  useEffect(() => {
-    if (stage !== "COMPLETED") return;
-    speakTherapeutic(
-      "Très bien. Ces pensées sont sorties, tu peux avancer maintenant.",
-      { rate: 0.82, volume: 0.70 }
-    );
-    const t = setTimeout(() => onCompletedRef.current(), 3200);
-    return () => {
-      clearTimeout(t);
-      cancelSpeech();
-    };
-  }, [stage, speakTherapeutic, cancelSpeech]);
+  // Stale-closure safe ref for transition callback
+  const onTransitionRef = useRef(onTransitionToChat);
+  useEffect(() => { onTransitionRef.current = onTransitionToChat; }, [onTransitionToChat]);
 
-  // ── Fire: start burn ─────────────────────────────────────────────────────────
-  const startBurn = useCallback(() => {
-    if (burnProgressRef.current >= 100) return;
-    isBurningRef.current = true;
-    setIsBurningActive(true);
-    burnIntervalRef.current = setInterval(() => {
-      if (!isBurningRef.current) return;
-      navigator.vibrate?.(50);
-      burnProgressRef.current = Math.min(100, burnProgressRef.current + 2);
-      setBurnProgress(burnProgressRef.current);
-      if (burnProgressRef.current >= 100) {
-        if (burnIntervalRef.current) clearInterval(burnIntervalRef.current);
-        isBurningRef.current = false;
-        setIsBurningActive(false);
-        navigator.vibrate?.(0);
-        const t = setTimeout(() => setStage("COMPLETED"), 500);
-        timerRefs.current.push(t);
+  // ─── Detect Speech API ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    setHasSpeechAPI(!!SpeechRec);
+  }, []);
+
+  // ─── Audio queue for Gemini Live output ───────────────────────────────────
+  const playNext = useCallback(async () => {
+    if (isPlaying.current || audioQueue.current.length === 0) return;
+    isPlaying.current = true;
+    const chunk = audioQueue.current.shift()!;
+
+    try {
+      if (!audioCtxRef.current || audioCtxRef.current.state === "closed") {
+        audioCtxRef.current = new AudioContext({ sampleRate: 24000 });
       }
-    }, 60); // 50 ticks × 60ms = 3 s to fully burn
+      const ctx = audioCtxRef.current;
+      const pcm = new Int16Array(chunk);
+      const float32 = new Float32Array(pcm.length);
+      for (let i = 0; i < pcm.length; i++) float32[i] = pcm[i] / 32768;
+
+      const buf = ctx.createBuffer(1, float32.length, 24000);
+      buf.copyToChannel(float32, 0);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.onended = () => {
+        isPlaying.current = false;
+        playNext();
+      };
+      src.start();
+    } catch {
+      isPlaying.current = false;
+      playNext();
+    }
   }, []);
 
-  // ── Fire: stop burn ──────────────────────────────────────────────────────────
-  const stopBurn = useCallback(() => {
-    isBurningRef.current = false;
-    setIsBurningActive(false);
-    if (burnIntervalRef.current) clearInterval(burnIntervalRef.current);
-    navigator.vibrate?.(0);
+  const enqueueAudio = useCallback((b64: string) => {
+    const bin = atob(b64);
+    const buf = new ArrayBuffer(bin.length);
+    const view = new Uint8Array(buf);
+    for (let i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+    audioQueue.current.push(buf);
+    playNext();
+  }, [playNext]);
+
+  // ─── Close WS cleanly ─────────────────────────────────────────────────────
+  const closeWs = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.close();
+    }
+    wsRef.current = null;
   }, []);
 
-  // ── Shred: trigger ───────────────────────────────────────────────────────────
-  const handleShred = useCallback(() => {
-    setShredTriggered(true);
-    navigator.vibrate?.([40, 20, 40, 20, 40, 20, 40, 20, 40]);
-    const t = setTimeout(() => setStage("COMPLETED"), 1700);
-    timerRefs.current.push(t);
-  }, []);
+  // ─── Transition to writing after intro ────────────────────────────────────
+  const goToWriting = useCallback(() => {
+    closeWs();
+    setWaveActive(false);
+    setTimeout(() => {
+      setStatus("writing");
+      setTimeout(() => textareaRef.current?.focus(), 200);
+    }, 400);
+  }, [closeWs]);
 
-  // ── Stage navigation ─────────────────────────────────────────────────────────
-  const handleNextFromQ = useCallback((current: Stage) => {
-    const map: Partial<Record<Stage, Stage>> = {
-      Q1_EMOTION: "Q2_NEED",
-      Q2_NEED: "Q3_PARDON",
-      Q3_PARDON: "RITUAL_CHOICE",
+  // ─── Open Gemini Live WebSocket (intro only) ──────────────────────────────
+  useEffect(() => {
+    if (status !== "intro_live") return;
+
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!apiKey) { goToWriting(); return; }
+
+    const ws = new WebSocket(`${GEMINI_WS_URL}?key=${apiKey}`);
+    wsRef.current = ws;
+    setWaveActive(true);
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        setup: {
+          model: GEMINI_MODEL,
+          generation_config: {
+            response_modalities: ["AUDIO"],
+            speech_config: {
+              voice_config: { prebuilt_voice_config: { voice_name: "Aoede" } },
+            },
+          },
+          system_instruction: {
+            parts: [{ text: buildIntroPrompt(firstName, sosContext) }],
+          },
+        },
+      }));
     };
-    const next = map[current];
-    if (next) setStage(next);
-  }, []);
 
-  const handleChooseRitual = useCallback((choice: RitualChoice) => {
-    setRitualChoice(choice);
-    setBurnProgress(0);
-    burnProgressRef.current = 0;
-    setShredTriggered(false);
-    setIsBurningActive(false);
-    setStage("RITUAL_ANIMATION");
-  }, []);
+    ws.onmessage = (evt) => {
+      let msg: Record<string, unknown>;
+      try { msg = JSON.parse(evt.data as string); } catch { return; }
 
-  const handleClose = useCallback(() => {
-    cancelSpeech();
-    if (typeof navigator !== "undefined") navigator.vibrate?.(0);
-    timerRefs.current.forEach(clearTimeout);
-    if (burnIntervalRef.current) clearInterval(burnIntervalRef.current);
-    onClose();
-  }, [onClose, cancelSpeech]);
-
-  // ── Derived values ───────────────────────────────────────────────────────────
-  const isQStage = Q_ORDER.includes(stage as QKey);
-  const qKey = isQStage ? (stage as QKey) : null;
-  const qData: QData | null = qKey ? Q_DATA[qKey] : null;
-  const qCurrentIndex = qKey ? Q_ORDER.indexOf(qKey) : -1;
-
-  const currentText =
-    stage === "Q1_EMOTION" ? q1Text :
-    stage === "Q2_NEED"    ? q2Text :
-    q3Text;
-
-  const setCurrentText: (v: string) => void =
-    stage === "Q1_EMOTION" ? setQ1Text :
-    stage === "Q2_NEED"    ? setQ2Text :
-    setQ3Text;
-
-  const canProceed = currentText.trim().length >= 5;
-
-  const introWords = getIntroSpeech(firstName).split(" ");
-
-  // Fire mask: burns from bottom up. At burnProgress=X%, bottom X% is transparent.
-  const fireMaskStyle: React.CSSProperties =
-    burnProgress > 0
-      ? {
-          WebkitMaskImage: `linear-gradient(to top, transparent ${Math.max(0, burnProgress - 3)}%, black ${Math.min(100, burnProgress + 3)}%)`,
-          maskImage: `linear-gradient(to top, transparent ${Math.max(0, burnProgress - 3)}%, black ${Math.min(100, burnProgress + 3)}%)`,
+      // Audio chunks
+      const sc = (msg.serverContent as Record<string, unknown> | undefined);
+      if (sc) {
+        const parts = (sc.modelTurn as { parts?: { inlineData?: { data?: string } }[] } | undefined)?.parts ?? [];
+        for (const p of parts) {
+          if (p.inlineData?.data) enqueueAudio(p.inlineData.data);
         }
-      : {};
+        // Turn complete → fermeture propre + bascule writing
+        if (sc.turnComplete === true) {
+          // Let audio drain before switching
+          const drainCheck = setInterval(() => {
+            if (!isPlaying.current && audioQueue.current.length === 0) {
+              clearInterval(drainCheck);
+              goToWriting();
+            }
+          }, 200);
+          // Safety fallback: force switch after 8s anyway
+          setTimeout(() => { clearInterval(drainCheck); goToWriting(); }, 8000);
+        }
+      }
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+      // setupComplete → trigger intro speech
+      if (msg.setupComplete !== undefined) {
+        ws.send(JSON.stringify({
+          client_content: {
+            turns: [{ role: "user", parts: [{ text: "Commence l'introduction maintenant." }] }],
+            turn_complete: true,
+          },
+        }));
+      }
+    };
+
+    ws.onerror = () => goToWriting();
+    ws.onclose = () => {};
+
+    return () => { ws.close(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Full cleanup on unmount ───────────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      closeWs();
+      recognitionRef.current?.stop();
+      audioCtxRef.current?.close().catch(() => {});
+    };
+  }, [closeWs]);
+
+  // ─── Paragraphs for blur effect ───────────────────────────────────────────
+  // Split by newline. Last paragraph = current (no blur). All previous = blurred.
+  const paragraphs = rawText.split("\n");
+  const lastIdx    = paragraphs.length - 1;
+
+  // ─── Dictation (Web Speech API) ───────────────────────────────────────────
+  const toggleDictation = useCallback(() => {
+    if (!hasSpeechAPI) return;
+
+    if (isDictating) {
+      recognitionRef.current?.stop();
+      setIsDictating(false);
+      return;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRec) return;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rec = new SpeechRec() as any;
+    rec.lang = "fr-FR";
+    rec.continuous = true;
+    rec.interimResults = false;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const transcript = Array.from(e.results as any[])
+        .slice(e.resultIndex as number)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .map((r: any) => r[0].transcript as string)
+        .join(" ");
+      setRawText((prev) => prev + (prev.endsWith("\n") || prev === "" ? "" : " ") + transcript);
+    };
+
+    rec.onerror = () => setIsDictating(false);
+    rec.onend   = () => setIsDictating(false);
+
+    rec.start();
+    recognitionRef.current = rec;
+    setIsDictating(true);
+  }, [hasSpeechAPI, isDictating]);
+
+  // ─── Analyze text (REST HTTP → Gemini Flash) ──────────────────────────────
+  const analyzeText = useCallback(async () => {
+    const trimmed = rawText.trim();
+    if (!trimmed) return;
+
+    setStatus("analyzing");
+
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      const res = await fetch(`${GEMINI_REST}?key=${apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: buildTccPrompt(firstName, trimmed) }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024,
+            responseMimeType: "application/json",
+          },
+        }),
+      });
+
+      if (!res.ok) throw new Error("API error");
+
+      const data = await res.json() as {
+        candidates?: { content?: { parts?: { text?: string }[] } }[];
+      };
+
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      let parsed: { validation?: string; distance?: string; pivot?: string } = {};
+      try {
+        // Strip markdown code fences if present
+        const cleaned = raw.replace(/^```json\s*/i, "").replace(/```\s*$/, "").trim();
+        parsed = JSON.parse(cleaned) as typeof parsed;
+      } catch {
+        throw new Error("parse_error");
+      }
+
+      const blocks: TccBlock[] = [
+        {
+          label: "Validation",
+          emoji: "🫶",
+          text: parsed.validation ?? "Je lis beaucoup dans ces mots. Ce que tu ressens est réel et légitime.",
+        },
+        {
+          label: "Prise de distance",
+          emoji: "🔍",
+          text: parsed.distance ?? "Cette pensée est une réaction de ton système d'alarme, pas la réalité.",
+        },
+        {
+          label: "Pivot",
+          emoji: "✨",
+          text: parsed.pivot ?? "Tu as fait quelque chose de courageux. Qu'est-ce qui te ferait du bien là, maintenant ?",
+        },
+      ];
+
+      setTccBlocks(blocks);
+      setStatus("tcc_mirror");
+    } catch {
+      setTccError(true);
+      // Fallback blocks on error
+      setTccBlocks([
+        { label: "Validation", emoji: "🫶", text: "Tu viens de faire quelque chose de courageux : mettre des mots sur ce qui te pèse. Ça compte vraiment." },
+        { label: "Prise de distance", emoji: "🔍", text: "Ce que tu as écrit, c'est le reflet d'une tempête intérieure — pas la réalité permanente. Les pensées passent." },
+        { label: "Pivot", emoji: "✨", text: "Ta seule mission maintenant : t'accorder 10 minutes sans écran. Qu'est-ce qui te ferait du bien là, tout de suite ?" },
+      ]);
+      setStatus("tcc_mirror");
+    }
+  }, [rawText, firstName]);
+
+  // ─── Transition → inject in chat ──────────────────────────────────────────
+  const handleTransition = useCallback(() => {
+    setStatus("transition");
+    onTransitionRef.current(rawText.trim(), tccBlocks);
+  }, [rawText, tccBlocks]);
+
+  // ─── Simulate intro (dev bypass) ──────────────────────────────────────────
+  // Uncomment to skip WS in local dev:
+  // useEffect(() => { setTimeout(goToWriting, 1500); }, []);
+
+  // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div
       style={{
         position: "fixed",
         inset: 0,
-        background: "#060a08",
         zIndex: 200,
+        background: BG_PAPER,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        padding: "24px 20px",
-        overflow: "hidden",
+        overflowY: "auto",
       }}
     >
+      {/* ── Keyframes ──────────────────────────────────────────────────────── */}
       <style>{`
-        @keyframes ec-fadein {
+        @keyframes fadeUp {
           from { opacity: 0; transform: translateY(14px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        @keyframes ec-blink {
-          0%, 100% { opacity: 0.45; }
-          50%       { opacity: 1; }
+        @keyframes wave-bar {
+          0%, 100% { height: 6px;  }
+          50%       { height: 24px; }
         }
-        @keyframes ec-fire-flicker {
-          0%, 100% { opacity: 0.75; transform: scaleX(1);    skewX(0deg); }
-          25%      { opacity: 1;    transform: scaleX(1.04); skewX(1deg); }
-          75%      { opacity: 0.85; transform: scaleX(0.97); skewX(-1deg); }
+        @keyframes cursor-blink {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0; }
         }
-        @keyframes ec-shred-fall {
-          0%   { transform: translateY(0)    scaleX(1);    opacity: 1; }
-          30%  { transform: translateY(20px) scaleX(0.92); opacity: 0.95; }
-          100% { transform: translateY(150%) scaleX(0.75); opacity: 0.4; }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
-        @keyframes ec-complete-glow {
-          0%   { box-shadow: 0 0 0 0    rgba(16,185,129,0.5); }
-          70%  { box-shadow: 0 0 0 20px rgba(16,185,129,0); }
-          100% { box-shadow: 0 0 0 0    rgba(16,185,129,0); }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
-        .ec-btn {
-          cursor: pointer;
-          font-family: inherit;
-          transition: opacity 0.2s, transform 0.15s;
-        }
-        .ec-btn:hover  { opacity: 0.82; transform: translateY(-1px); }
-        .ec-btn:active { transform: scale(0.97); }
-        .ec-q-enter { animation: ec-fadein 0.42s ease; }
       `}</style>
 
-      {/* ── Close ── */}
-      {stage !== "COMPLETED" && (
+      {/* ── Close button ───────────────────────────────────────────────────── */}
+      {status !== "transition" && (
         <button
-          onClick={handleClose}
+          onClick={() => { closeWs(); recognitionRef.current?.stop(); onClose(); }}
+          aria-label="Fermer"
           style={{
             position: "absolute",
-            top: 20,
-            right: 20,
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.09)",
-            color: "rgba(255,255,255,0.4)",
-            fontSize: 18,
+            top: 18,
+            right: 18,
+            width: 34,
+            height: 34,
+            borderRadius: "50%",
+            background: ACCENT_LIGHT,
+            border: `1px solid ${ACCENT_BORDER}`,
+            color: ACCENT,
+            fontSize: 20,
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            zIndex: 10,
           }}
         >
           ×
         </button>
       )}
 
-      {/* ══ INTRO ══ */}
-      {stage === "INTRO" && (
+      {/* ════════════════════════════════════════════════════════════════════════
+          INTRO_LIVE — écran épuré + waveform
+      ════════════════════════════════════════════════════════════════════════ */}
+      {status === "intro_live" && (
         <div
           style={{
+            flex: 1,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 28,
-            maxWidth: 380,
-            width: "100%",
-            animation: "ec-fadein 0.6s ease",
+            justifyContent: "center",
+            gap: 32,
+            padding: "40px 24px",
+            animation: "fadeIn 0.6s ease",
           }}
         >
-          <IconPen size={48} color="#f59e0b" strokeWidth={1.3} style={{ filter: "drop-shadow(0 0 10px rgba(245,158,11,0.35))" }} />
-
-          <div style={{ textAlign: "center" }}>
-            <div
-              style={{
-                fontSize: 21,
-                fontWeight: 700,
-                color: "rgba(255,255,255,0.9)",
-                marginBottom: 20,
-                letterSpacing: "-0.3px",
-              }}
-            >
-              Écriture cathartique
-            </div>
-
-            {/* Karaoke words */}
-            <div
-              style={{
-                fontSize: 15,
-                lineHeight: 1.78,
-                maxWidth: 330,
-              }}
-            >
-              {introWords.map((word, i) => (
-                <span
-                  key={i}
-                  style={{
-                    marginRight: "0.28em",
-                    color:
-                      i === highlightWord
-                        ? "rgba(255,255,255,0.95)"
-                        : i < highlightWord
-                        ? "rgba(255,255,255,0.58)"
-                        : "rgba(255,255,255,0.32)",
-                    fontWeight: i === highlightWord ? 600 : 400,
-                    transition: "color 0.18s ease",
-                  }}
-                >
-                  {word}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <button
-            className="ec-btn"
-            onClick={() => {
-              unlockAudio();
-              setStage("Q1_EMOTION");
-            }}
+          {/* Curseur clignotant symbolique */}
+          <div
             style={{
-              background: "rgba(16,185,129,0.11)",
-              border: "1px solid rgba(16,185,129,0.32)",
-              borderRadius: 16,
-              padding: "14px 36px",
-              color: "#10b981",
+              width: 2,
+              height: 44,
+              background: ACCENT,
+              borderRadius: 2,
+              animation: "cursor-blink 1.2s ease-in-out infinite",
+              opacity: 0.6,
+            }}
+          />
+
+          <p
+            style={{
+              margin: 0,
               fontSize: 15,
-              fontWeight: 600,
-              letterSpacing: "0.2px",
+              color: TEXT_MUTED,
+              letterSpacing: 0.4,
+              textAlign: "center",
             }}
           >
-            J&apos;y suis →
+            Ton Jumeau prend la parole…
+          </p>
+
+          {/* Waveform */}
+          <WaveBar active={waveActive} color={WAVE_COLOR} />
+
+          {/* Bouton bypass (dev / fallback) */}
+          <button
+            onClick={goToWriting}
+            style={{
+              marginTop: 24,
+              padding: "10px 24px",
+              borderRadius: 12,
+              background: "transparent",
+              border: `1.5px solid ${ACCENT_BORDER}`,
+              color: TEXT_MUTED,
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+          >
+            Passer l'intro →
           </button>
         </div>
       )}
 
-      {/* ══ QUESTION STAGES ══ */}
-      {isQStage && qData && qKey && (
+      {/* ════════════════════════════════════════════════════════════════════════
+          WRITING — textarea + flou rétroactif
+      ════════════════════════════════════════════════════════════════════════ */}
+      {status === "writing" && (
         <div
-          key={stage}
-          className="ec-q-enter"
           style={{
+            flex: 1,
+            width: "100%",
+            maxWidth: 680,
             display: "flex",
             flexDirection: "column",
-            gap: 20,
-            maxWidth: 420,
-            width: "100%",
+            padding: "60px 28px 24px",
+            animation: "fadeIn 0.5s ease",
           }}
         >
-          {/* Step label + question */}
-          <div>
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "1.6px",
-                color: "rgba(255,255,255,0.28)",
-                marginBottom: 10,
-              }}
-            >
-              {qData.step}
-            </div>
-            <div
-              style={{
-                fontSize: 18,
-                fontWeight: 700,
-                color: "rgba(255,255,255,0.88)",
-                lineHeight: 1.45,
-                letterSpacing: "-0.2px",
-              }}
-            >
-              {qData.question}
-            </div>
-          </div>
-
-          {/* Notebook textarea */}
+          {/* ── Paragraphs avec flou rétroactif ──────────────────────────── */}
           <div
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.09)",
-              borderRadius: 14,
-              padding: "16px 16px 36px",
+              flex: 1,
               position: "relative",
+              minHeight: 200,
             }}
           >
+            {/* Rendu visuel des paragraphes floutés */}
+            {paragraphs.length > 1 && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  pointerEvents: "none",
+                  userSelect: "none",
+                }}
+              >
+                {paragraphs.slice(0, lastIdx).map((para, i) => {
+                  // Plus le paragraphe est ancien, plus il est flouté
+                  const age      = lastIdx - i;            // 1 = juste avant le courant
+                  const maxAge   = Math.min(age, 5);       // cap à 5 niveaux
+                  const opacity  = Math.max(0.08, 0.3 - (maxAge - 1) * 0.04);
+                  const blur     = Math.min(4, 1.5 + (age - 1) * 0.5);
+
+                  return (
+                    <p
+                      key={i}
+                      style={{
+                        margin: "0 0 8px",
+                        fontSize: 18,
+                        lineHeight: 1.85,
+                        fontFamily: "'Georgia', serif",
+                        color: TEXT_INK,
+                        opacity,
+                        filter: `blur(${blur}px)`,
+                        transition: "opacity 0.8s ease, filter 0.8s ease",
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {para || " "}
+                    </p>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Textarea transparent superposé */}
             <textarea
               ref={textareaRef}
-              value={currentText}
-              onChange={(e) => setCurrentText(e.target.value)}
-              placeholder={qData.hint}
-              rows={5}
+              value={rawText}
+              onChange={(e) => setRawText(e.target.value)}
+              placeholder={`${firstName}, dépose ici tout ce qui tourne en boucle…`}
+              autoFocus
+              spellCheck={false}
               style={{
+                position: "relative",
+                zIndex: 1,
                 width: "100%",
+                minHeight: "60vh",
                 background: "transparent",
                 border: "none",
                 outline: "none",
-                color: "rgba(255,255,255,0.85)",
-                fontSize: 15,
-                lineHeight: 1.7,
                 resize: "none",
-                fontFamily: "inherit",
-                caretColor: "#10b981",
-                display: "block",
+                fontSize: 18,
+                lineHeight: 1.85,
+                fontFamily: "'Georgia', serif",
+                color: TEXT_INK,
+                caretColor: ACCENT,
+                // Texte courant visible, le reste masqué par l'overlay flouté
+                // On affiche uniquement le dernier paragraphe en clair
+                // Le textarea affiche TOUT, mais les para précédents sont
+                // visuellement écrasés par l'overlay qui est au-dessus (pointerEvents: none)
+                // Trick : on colore toutes les lignes en transparent sauf la dernière
+                // → Impossible en textarea natif : on montre le tout mais l'overlay masque le passé
+                paddingTop: paragraphs.length > 1
+                  ? `${(paragraphs.length - 1) * 1.85 * 18 + (paragraphs.length - 1) * 8}px`
+                  : 0,
               }}
             />
-            {/* Char counter */}
-            <div
-              style={{
-                position: "absolute",
-                bottom: 10,
-                right: 14,
-                fontSize: 11,
-                color:
-                  currentText.trim().length >= 5
-                    ? "rgba(16,185,129,0.55)"
-                    : "rgba(255,255,255,0.18)",
-                transition: "color 0.3s",
-              }}
-            >
-              {currentText.trim().length} car.
-            </div>
           </div>
 
-          {/* Progress dots */}
-          <div style={{ display: "flex", gap: 7, justifyContent: "center" }}>
-            {Q_ORDER.map((k, i) => (
-              <div
-                key={k}
-                style={{
-                  width: k === qKey ? 24 : 7,
-                  height: 7,
-                  borderRadius: 3.5,
-                  background:
-                    i < qCurrentIndex
-                      ? "rgba(16,185,129,0.45)"
-                      : k === qKey
-                      ? "#10b981"
-                      : "rgba(255,255,255,0.12)",
-                  boxShadow: k === qKey ? "0 0 7px rgba(16,185,129,0.5)" : "none",
-                  transition: "all 0.3s ease",
-                }}
-              />
-            ))}
-          </div>
-
-          {/* Next / Create button */}
-          <button
-            className="ec-btn"
-            disabled={!canProceed}
-            onClick={() => handleNextFromQ(stage)}
+          {/* ── Barre basse ───────────────────────────────────────────────── */}
+          <div
             style={{
-              background: canProceed
-                ? "rgba(16,185,129,0.12)"
-                : "rgba(255,255,255,0.04)",
-              border: `1px solid ${
-                canProceed ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.08)"
-              }`,
-              borderRadius: 14,
-              padding: "14px 28px",
-              color: canProceed ? "#10b981" : "rgba(255,255,255,0.22)",
-              fontSize: 15,
-              fontWeight: 600,
-              cursor: canProceed ? "pointer" : "default",
-              transition: "all 0.25s",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 16,
+              paddingTop: 16,
+              borderTop: `1px solid ${ACCENT_BORDER}`,
+              marginTop: 16,
             }}
           >
-            {stage === "Q3_PARDON" ? "Créer la lettre →" : "Suivant →"}
-          </button>
-        </div>
-      )}
-
-      {/* ══ RITUAL_CHOICE ══ */}
-      {stage === "RITUAL_CHOICE" && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 20,
-            maxWidth: 420,
-            width: "100%",
-            animation: "ec-fadein 0.5s ease",
-            overflowY: "auto",
-            maxHeight: "calc(100dvh - 80px)",
-          }}
-        >
-          <div style={{ textAlign: "center" }}>
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "1.5px",
-                color: "rgba(255,255,255,0.28)",
-                marginBottom: 8,
-              }}
-            >
-              Ta lettre de culpabilité
-            </div>
-            <div
-              style={{
-                fontSize: 17,
-                fontWeight: 700,
-                color: "rgba(255,255,255,0.85)",
-                marginBottom: 18,
-              }}
-            >
-              Comment veux-tu la détruire ?
-            </div>
-          </div>
-
-          {/* Letter preview */}
-          <LetterCard q1={q1Text} q2={q2Text} q3={q3Text} />
-
-          {/* Ritual choice buttons */}
-          <div style={{ display: "flex", gap: 12 }}>
-            <button
-              className="ec-btn"
-              onClick={() => handleChooseRitual("fire")}
-              style={{
-                flex: 1,
-                background: "rgba(239,68,68,0.09)",
-                border: "1px solid rgba(239,68,68,0.27)",
-                borderRadius: 14,
-                padding: "16px 10px",
-                color: "#fca5a5",
-                fontSize: 15,
-                fontWeight: 600,
-                textAlign: "center",
-              }}
-            >
-              <IconFlame size={16} color="#fca5a5" strokeWidth={1.4} style={{ display: "inline", verticalAlign: "middle", marginRight: 5 }} />
-              Brûler
-            </button>
-            <button
-              className="ec-btn"
-              onClick={() => handleChooseRitual("shred")}
-              style={{
-                flex: 1,
-                background: "rgba(99,102,241,0.09)",
-                border: "1px solid rgba(99,102,241,0.27)",
-                borderRadius: 14,
-                padding: "16px 10px",
-                color: "#a5b4fc",
-                fontSize: 15,
-                fontWeight: 600,
-                textAlign: "center",
-              }}
-            >
-              <IconScissors size={16} color="#a5b4fc" strokeWidth={1.4} style={{ display: "inline", verticalAlign: "middle", marginRight: 5 }} />
-              Broyer
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ══ RITUAL_ANIMATION ══ */}
-      {stage === "RITUAL_ANIMATION" && (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 18,
-            maxWidth: 420,
-            width: "100%",
-            animation: "ec-fadein 0.4s ease",
-          }}
-        >
-          {/* ── FIRE ritual ── */}
-          {ritualChoice === "fire" && (
-            <>
-              {/* Instruction */}
-              <div style={{ textAlign: "center", minHeight: 22 }}>
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: isBurningActive
-                      ? "#fca5a5"
-                      : "rgba(255,255,255,0.45)",
-                    animation: isBurningActive
-                      ? "none"
-                      : "ec-blink 1.6s ease-in-out infinite",
-                    transition: "color 0.25s",
-                  }}
-                >
-                  {burnProgress === 0
-                    ? "Maintiens ton doigt appuyé pour brûler"
-                    : burnProgress >= 100
-                    ? "Consumée…"
-                    : `En cours… ${Math.round(burnProgress)} %`}
-                </span>
-              </div>
-
-              {/* Letter with fire mask + pointer interaction */}
-              <div
+            {/* Dictée vocale (si disponible) */}
+            {hasSpeechAPI && (
+              <button
+                onClick={toggleDictation}
                 style={{
-                  position: "relative",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 18px",
+                  borderRadius: 10,
+                  background: isDictating ? ACCENT_LIGHT : "transparent",
+                  border: `1.5px solid ${isDictating ? ACCENT : ACCENT_BORDER}`,
+                  color: isDictating ? ACCENT : TEXT_MUTED,
+                  fontSize: 13,
                   cursor: "pointer",
-                  WebkitUserSelect: "none",
-                  userSelect: "none",
-                  touchAction: "none",
+                  transition: "all 0.2s",
                 }}
-                onPointerDown={(e) => {
-                  e.currentTarget.setPointerCapture(e.pointerId);
-                  startBurn();
-                }}
-                onPointerUp={stopBurn}
-                onPointerLeave={stopBurn}
-                onPointerCancel={stopBurn}
               >
-                {/* Masked letter */}
-                <div style={{ borderRadius: 10, ...fireMaskStyle }}>
-                  <LetterCard q1={q1Text} q2={q2Text} q3={q3Text} />
-                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+                {isDictating ? "Dicter… (tap pour arrêter)" : "Dicter à la voix"}
+              </button>
+            )}
 
-                {/* Fire glow at the burn line */}
-                {burnProgress > 0 && burnProgress < 100 && (
-                  <div
-                    aria-hidden="true"
-                    style={{
-                      position: "absolute",
-                      left: -6,
-                      right: -6,
-                      bottom: `${Math.max(0, burnProgress - 2)}%`,
-                      height: 22,
-                      background:
-                        "linear-gradient(to bottom, rgba(255,120,0,0), rgba(255,120,0,0.75), rgba(255,210,0,0.95), rgba(255,120,0,0.75), rgba(255,50,0,0))",
-                      filter: "blur(3px)",
-                      pointerEvents: "none",
-                      animation: "ec-fire-flicker 0.28s ease-in-out infinite",
-                      zIndex: 2,
-                    }}
-                  />
-                )}
-              </div>
-            </>
-          )}
+            {/* CTA principal */}
+            <button
+              onClick={analyzeText}
+              disabled={rawText.trim().length < 10}
+              style={{
+                padding: "15px 40px",
+                borderRadius: 16,
+                background: rawText.trim().length >= 10 ? ACCENT : BG_PAPER_DARK,
+                border: "none",
+                color: rawText.trim().length >= 10 ? "#fff" : TEXT_FADED,
+                fontSize: 16,
+                fontWeight: 700,
+                cursor: rawText.trim().length >= 10 ? "pointer" : "default",
+                transition: "all 0.25s ease",
+                letterSpacing: 0.3,
+              }}
+            >
+              J'ai tout sorti
+            </button>
 
-          {/* ── SHRED ritual ── */}
-          {ritualChoice === "shred" && (
-            <>
-              {/* Instruction */}
-              <div style={{ textAlign: "center", minHeight: 22 }}>
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: shredTriggered
-                      ? "#a5b4fc"
-                      : "rgba(255,255,255,0.45)",
-                    transition: "color 0.2s",
-                  }}
-                >
-                  {shredTriggered
-                    ? "Déchiquetage en cours…"
-                    : "Prêt à détruire cette lettre ?"}
-                </span>
-              </div>
-
-              {/* Letter + shred strips overlay */}
-              <div style={{ position: "relative" }}>
-                {/* Original letter fades out when shredding */}
-                <div
-                  style={{
-                    opacity: shredTriggered ? 0 : 1,
-                    transition: "opacity 0.22s ease",
-                  }}
-                >
-                  <LetterCard q1={q1Text} q2={q2Text} q3={q3Text} />
-                </div>
-
-                {/* Strips rendered on shred trigger — they animate and fall */}
-                {shredTriggered &&
-                  Array.from({ length: STRIPS_N }, (_, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: `${(i / STRIPS_N) * 100}%`,
-                        width: `${100 / STRIPS_N}%`,
-                        height: "100%",
-                        background:
-                          i % 2 === 0 ? "#fdf3e3" : "#efd8b5",
-                        borderRight:
-                          i < STRIPS_N - 1
-                            ? "1px solid rgba(180,140,80,0.2)"
-                            : "none",
-                        animation: `ec-shred-fall 0.85s ease-in ${i * 0.056}s both`,
-                        pointerEvents: "none",
-                      }}
-                    />
-                  ))}
-              </div>
-
-              {/* Broyer button — disappears when triggered */}
-              {!shredTriggered && (
-                <button
-                  className="ec-btn"
-                  onClick={handleShred}
-                  style={{
-                    background: "rgba(99,102,241,0.10)",
-                    border: "1px solid rgba(99,102,241,0.28)",
-                    borderRadius: 14,
-                    padding: "14px 28px",
-                    color: "#a5b4fc",
-                    fontSize: 15,
-                    fontWeight: 600,
-                    textAlign: "center",
-                  }}
-                >
-                  <IconScissors size={16} color="#a5b4fc" strokeWidth={1.4} style={{ display: "inline", verticalAlign: "middle", marginRight: 5 }} />
-                  Déchiqueter maintenant
-                </button>
-              )}
-            </>
-          )}
+            <p style={{ margin: 0, fontSize: 12, color: TEXT_FADED, textAlign: "center" }}>
+              Aucun compteur de mots. Écris autant que tu en as besoin.
+            </p>
+          </div>
         </div>
       )}
 
-      {/* ══ COMPLETED ══ */}
-      {stage === "COMPLETED" && (
+      {/* ════════════════════════════════════════════════════════════════════════
+          ANALYZING — loader premium
+      ════════════════════════════════════════════════════════════════════════ */}
+      {status === "analyzing" && (
         <div
           style={{
+            flex: 1,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: 24,
-            animation: "ec-fadein 0.7s ease",
+            justifyContent: "center",
+            gap: 28,
+            padding: "40px 24px",
+            animation: "fadeIn 0.4s ease",
+          }}
+        >
+          {/* Spinner organique */}
+          <div
+            style={{
+              width: 52,
+              height: 52,
+              borderRadius: "50%",
+              border: `3px solid ${ACCENT_LIGHT}`,
+              borderTopColor: ACCENT,
+              animation: "spin 1s linear infinite",
+            }}
+          />
+          <p
+            style={{
+              margin: 0,
+              fontSize: 16,
+              color: TEXT_MUTED,
+              textAlign: "center",
+              lineHeight: 1.7,
+            }}
+          >
+            Ton Jumeau lit ce que tu as écrit…
+            <br />
+            <span style={{ fontSize: 13, color: TEXT_FADED }}>
+              Quelques secondes de patience
+            </span>
+          </p>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════════
+          TCC_MIRROR — 3 blocs structurés
+      ════════════════════════════════════════════════════════════════════════ */}
+      {status === "tcc_mirror" && (
+        <div
+          style={{
+            flex: 1,
+            width: "100%",
+            maxWidth: 640,
+            display: "flex",
+            flexDirection: "column",
+            padding: "52px 24px 32px",
+            gap: 0,
+          }}
+        >
+          <p
+            style={{
+              margin: "0 0 28px",
+              fontSize: 13,
+              fontWeight: 700,
+              letterSpacing: 1.4,
+              color: TEXT_MUTED,
+              textTransform: "uppercase",
+              textAlign: "center",
+              animation: "fadeUp 0.4s ease",
+            }}
+          >
+            Ce que ton Jumeau a entendu
+          </p>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {tccError && (
+              <p style={{ textAlign: "center", fontSize: 13, color: TEXT_FADED }}>
+                (réponse de secours — connexion limitée)
+              </p>
+            )}
+            {tccBlocks.map((block, i) => (
+              <TccCard key={i} block={block} delay={i * 180} />
+            ))}
+          </div>
+
+          {/* CTA transition → chat */}
+          <button
+            onClick={handleTransition}
+            style={{
+              marginTop: 36,
+              padding: "15px 40px",
+              borderRadius: 16,
+              background: ACCENT,
+              border: "none",
+              color: "#fff",
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: "pointer",
+              animation: "fadeUp 0.5s ease 0.7s both",
+              alignSelf: "center",
+              letterSpacing: 0.3,
+            }}
+          >
+            Continuer avec mon Jumeau →
+          </button>
+
+          <p
+            style={{
+              marginTop: 14,
+              fontSize: 12,
+              color: TEXT_FADED,
+              textAlign: "center",
+              animation: "fadeUp 0.5s ease 0.9s both",
+            }}
+          >
+            Ce que tu as écrit et cette réponse seront ajoutés à ton journal.
+          </p>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════════
+          TRANSITION — bref feedback visuel
+      ════════════════════════════════════════════════════════════════════════ */}
+      {status === "transition" && (
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 20,
+            animation: "fadeIn 0.4s ease",
           }}
         >
           <div
             style={{
+              width: 52,
+              height: 52,
+              borderRadius: "50%",
+              background: ACCENT_LIGHT,
+              border: `2px solid ${ACCENT_BORDER}`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              animation: "ec-complete-glow 1.6s ease infinite",
             }}
           >
-            <IconCheckRing size={76} color="#10b981" strokeWidth={1.2} style={{ filter: "drop-shadow(0 0 12px rgba(16,185,129,0.5))" }} />
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
           </div>
-          <div style={{ textAlign: "center" }}>
-            <div
-              style={{
-                fontSize: 23,
-                fontWeight: 700,
-                color: "rgba(255,255,255,0.92)",
-                letterSpacing: "-0.3px",
-                marginBottom: 8,
-              }}
-            >
-              C&apos;est du passé.
-            </div>
-            <div
-              style={{
-                fontSize: 21,
-                fontWeight: 600,
-                color: "#10b981",
-                marginBottom: 14,
-              }}
-            >
-              On repart à zéro.
-            </div>
-            <div
-              style={{
-                fontSize: 14,
-                color: "rgba(255,255,255,0.44)",
-                lineHeight: 1.65,
-              }}
-            >
-              Ces pensées sont sorties. Tu peux avancer maintenant.
-            </div>
-          </div>
+          <p style={{ margin: 0, fontSize: 16, color: TEXT_MUTED }}>
+            Ajouté à ton journal…
+          </p>
         </div>
       )}
     </div>

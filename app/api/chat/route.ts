@@ -53,6 +53,7 @@ type ChatRequest = {
   imageMimeType?: string;
   isSOS?: boolean;
   sosContext?: string; // contexte de triage SOS (fringale / stress / culpabilité / coup de mou)
+  origin?: "crise" | "pratique"; // forcé par le client (ex: bibliothèque d'exercices → toujours "pratique")
   isPostExercise?: boolean; // follow-up chaud post-exercice — bypass total des effets de bord
   toolId?: string; // outil SOS utilisé (breathing, ancrage, etc.) — transmis avec isPostExercise
 };
@@ -489,8 +490,7 @@ function buildSystemPrompt(
   profile: Record<string, string> | null,
   patientContext: string,
   documentsContext: string,
-  forceAncrage = false,
-  sasDecompression = false
+  forceAncrage = false
 ): string {
   if (!profile) return getDefaultPrompt();
 
@@ -502,11 +502,6 @@ RÈGLES STRICTES pour ce mode :
 - 100% écoute active, validation émotionnelle, ancrage TCC.
 - Si le patient demande un conseil alimentaire, dis doucement que vous y reviendrez quand il se sentira prêt.
 - Ton praticien est informé et prendra le relais à la prochaine séance.
-${sasDecompression ? `
-📍 SAS DE DÉCOMPRESSION (ce message uniquement) :
-Réponds normalement au message du patient avec ta posture bienveillante.
-Puis ajoute à la toute fin de ta réponse, après un saut de ligne, exactement cette question :
-"Comment tu te sens aujourd'hui après notre discussion d'hier ? On reprend doucement le fil de nos objectifs de fond, ou tu as encore besoin qu'on avance sans pression ?"` : ""}
 ` : "";
 
   return `Tu ES le Jumeau Numérique de ce nutritionniste expert. Le patient ne doit jamais sentir qu'il parle à une machine, mais à une extension directe de l'esprit et de la méthode de son praticien.
@@ -588,19 +583,22 @@ Si le message commence par [ADMIN:identity_correction] :
 - Ajoute obligatoirement : |||{"status":"green","reason":"demande correction identité","victory":"","action":"admin_alert","alert_type":"identity_correction"}|||
 
 JSON TECHNIQUE OBLIGATOIRE - À ajouter en toute fin de réponse, invisible pour le patient :
-|||{"status":"green","reason":"météo émotionnelle en 4-8 mots","victory":"","apaisement":"non"}|||
-- status : "red_critical" si urgence vitale implicite détectée, "red_behavioral" si détresse comportementale/TCA/psychologique sévère, "orange" si difficulté modérée, "green" si tout va bien
+|||{"status":"green","reason":"météo émotionnelle en 4-8 mots","notable":false,"victory":"","apaisement":"non"}|||
+- status : "red_critical" si urgence vitale implicite détectée, "red_behavioral" si détresse comportementale/TCA/psychologique sévère, "green" si tout va bien
 - reason : TOUJOURS rempli — météo émotionnelle du patient en 4-8 mots, dynamique et précise.
-  Exemples green : "En confiance", "Motivé(e) malgré la fatigue", "Serein(e) et régulier(e)", "Curieux(se) de progresser"
-  Exemples orange : "Anxieux(se) mais motivé(e)", "Frustré(e) face aux écarts", "Fatigué(e) / En restriction", "Découragé(e) par le plateau"
-  Exemples red : "Détresse émotionnelle active", "Perte de contrôle alimentaire", "Dégoût de soi exprimé"
+  Exemples green : "En confiance", "Motivé(e) malgré la fatigue", "Serein(e) et régulier(e)", "Curieux(se) de progresser", "Anxieux(se) mais motivé(e)", "Frustré(e) face aux écarts"
+  Exemples red_behavioral : "Détresse émotionnelle active", "Perte de contrôle alimentaire", "Dégoût de soi exprimé"
+  Exemples red_critical : "Urgence vitale exprimée", "Pensées de passage à l'acte"
   Ne jamais laisser vide. Ne jamais écrire "patient va bien" ou "aucune alerte".
+- notable : true si ce message révèle quelque chose cliniquement utile à signaler au praticien (émotion significative, tension, progression, régression, victoire, changement de dynamique). false si échange de routine (question nutritionnelle banale, logistique, rappel de règles). En cas de doute, préfère false.
 - victory : UNE phrase courte UNIQUEMENT si le patient rapporte une réussite TCC concrète (ex: résister à une fringale, écouter sa satiété, gérer une envie de crise sans craquer, reprendre après un écart sans culpabilité). Exemples : "A écouté sa satiété ce soir", "A résisté à la fringale du soir", "A repris sans culpabilité après l'écart". Vide "" sinon.
+  IMPORTANT : le simple fait d'avoir terminé un exercice de relaxation/respiration/marche/ancrage en routine ou en prévention n'est PAS une victoire, même si le patient se dit content ou apaisé. Ne remplis "victory" que si l'exercice (ou l'échange) a permis d'éviter, d'interrompre ou de traverser une crise réelle (alimentaire, anxieuse, compulsive) qui était en cours ou imminente. Engagement/régularité ≠ victoire clinique.
+- apaisement : "oui" UNIQUEMENT si le patient exprime un retour au calme réel après une détresse exprimée dans cette même conversation (ex : "je me sens mieux", "ça va mieux", "j'ai soufflé", "je suis plus calme", "ça m'a aidé"). Ne jamais mettre "oui" si aucune détresse n'a été exprimée avant dans la conversation, ni sur un simple "ça va" sans contexte de crise, ni si l'amélioration reste incertaine ou partielle. "non" par défaut.
 
 RÈGLE TRIGGER_SOS (post-chat uniquement) :
 Si et seulement si le patient exprime une détresse aiguë (compulsion alimentaire en cours et incontrôlable, crise d'anxiété sévère, pensées intrusives incontrôlables, sentiment de perte de contrôle imminente), ajoute à la toute fin de ta réponse, après le JSON technique, ce tag EXACTEMENT :
 [TRIGGER_SOS: exo_1, exo_2]
-Remplace exo_1 et exo_2 par les deux exercices les plus adaptés à la situation parmi : breathing, ancrage, manger, marche, body_scan, defusion, ecriture, adaptive_coaching
+Remplace exo_1 et exo_2 par les deux exercices les plus adaptés à la situation parmi : breathing, ancrage, manger, ecriture, defusion
 N'utilise ce tag QUE pour une détresse aiguë réelle — JAMAIS pour une simple pensée négative, une frustration passagère, un écart alimentaire sans crise, ou une difficulté ordinaire.
 Le tag ne doit jamais apparaître dans le texte visible de ta réponse — place-le uniquement après le bloc |||json|||.`;
 }
@@ -641,6 +639,7 @@ export async function POST(request: Request) {
       imageMimeType,
       isSOS,
       sosContext,
+      origin,
       isPostExercise,
       toolId,
     } = await request.json() as ChatRequest;
@@ -691,14 +690,26 @@ export async function POST(request: Request) {
 
       const { data: patientRaw } = await supabase
         .from("patients")
-        .select("first_name, practitioner_instruction, pathologies, defi, motivation")
+        .select("first_name, practitioner_instruction, pathologies, defi, motivation, emotional_status")
         .eq("user_id", patientId)
         .single();
 
       const patient = patientRaw as {
         first_name?: string; practitioner_instruction?: string;
-        pathologies?: string; defi?: string; motivation?: string;
+        pathologies?: string; defi?: string; motivation?: string; emotional_status?: string;
       } | null;
+
+      // ═══ ORIGIN — "crise" (situation rouge) vs "pratique" (exercice initié calmement) ═══
+      // Cas A (détection auto [TRIGGER_SOS]) : sosContext préfixé "[contexte chat récent]" → toujours "crise".
+      // Auto-déclenché ("Mon Soutien") : "crise" uniquement si le patient était déjà en red / red_behavioral
+      // au moment du déclenchement, sinon "pratique".
+      // Bibliothèque d'exercices : origin forcé "pratique" par le client, quel que soit l'état émotionnel
+      // (geste proactif délibéré, même en période rouge).
+      const isAiDetected = !!sosContext?.startsWith("[contexte chat récent]");
+      const wasInCrisis = patient?.emotional_status === "red" || patient?.emotional_status === "red_behavioral";
+      const sosOrigin: "crise" | "pratique" = origin === "pratique"
+        ? "pratique"
+        : (isAiDetected || wasInCrisis) ? "crise" : "pratique";
 
       const moodLabels: Record<string, string> = {
         abloc: "Très motivé(e)", optimiste: "Optimiste", anxieux: "Un peu anxieux(se)",
@@ -787,6 +798,7 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
           raw_response: sosText,
           sos_context: sosContext ?? null,
           status: "pending",
+          origin: sosOrigin,
         });
       } catch { /* silencieux */ }
 
@@ -897,33 +909,20 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       showWarning = dailyCount >= warningThreshold && dailyCount < config.dailyMessageLimit;
     }
 
-    // Récupérer statut actuel du patient (pour verrou red_behavioral)
+    // Récupérer statut actuel du patient
     const supabaseMain = createSupabaseClient();
     let currentEmotionalStatus = "green";
-    let redBehavioralUntil: Date | null = null;
 
     if (patientId) {
       const { data: patientStatus } = await supabaseMain
         .from("patients")
-        .select("emotional_status, red_behavioral_until")
+        .select("emotional_status")
         .eq("user_id", patientId)
         .single();
       if (patientStatus) {
         currentEmotionalStatus = (patientStatus as { emotional_status?: string }).emotional_status ?? "green";
-        const until = (patientStatus as { red_behavioral_until?: string }).red_behavioral_until;
-        redBehavioralUntil = until ? new Date(until) : null;
       }
     }
-
-    const behavioralLocked = currentEmotionalStatus === "red_behavioral"
-      && redBehavioralUntil !== null
-      && redBehavioralUntil > new Date();
-
-    // Post-lock : le verrou 12h est expiré mais le statut est encore red_behavioral
-    // → le patient n'a pas encore répondu au sas de décompression
-    const behavioralPostLock = currentEmotionalStatus === "red_behavioral"
-      && redBehavioralUntil !== null
-      && redBehavioralUntil <= new Date();
 
     // ID stable généré ici — utilisé pour lier les admin_alerts et victoires au message patient
     const userMsgId = crypto.randomUUID();
@@ -933,7 +932,7 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     // Paralléliser : profil patient + documents + analyse crise LLM
     const profileResult = patientId ? getPatientProfile(patientId) : Promise.resolve({ context: "", pathologies: undefined });
     // Pre-filtre regex : bypass analyzeCrisisWithLLM si aucun signal comportemental détecté
-    const crisisPromise = (message && patientId && !behavioralLocked && !behavioralPostLock && hasBehavioralSignal(message))
+    const crisisPromise = (message && patientId && hasBehavioralSignal(message))
       ? profileResult.then(p => analyzeCrisisWithLLM(message, p.context))
       : Promise.resolve<CrisisAnalysis>({ level: "none", murmure: "" });
 
@@ -963,13 +962,11 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       } catch { /* silencieux */ }
     }
 
-    if (crisisAnalysis.level === "red_behavioral" && patientId && practitionerId && !behavioralLocked && !behavioralPostLock) {
+    if (crisisAnalysis.level === "red_behavioral" && patientId && practitionerId) {
       earlyBehavioralDetected = true;
-      const lockUntil = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
       await supabaseMain.from("patients").update({
         emotional_status: "red_behavioral",
         emotional_insight: crisisAnalysis.murmure || "Alerte comportementale détectée",
-        red_behavioral_until: lockUntil,
       }).eq("user_id", patientId);
       // Alerte discrète sur le Dashboard uniquement (pas d'email pour éviter le spam praticien)
       const { data: cur } = await supabaseMain.from("patients").select("admin_alerts").eq("user_id", patientId).single();
@@ -979,14 +976,11 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       }).eq("user_id", patientId);
     }
 
-    // Post-lock : verrou expiré → Jumeau libéré de l'ancrage strict (peut converser normalement)
-    // Mais le statut reste ambre côté Dashboard jusqu'à action manuelle du praticien
-    const forceAncrage = behavioralLocked
-      || crisisAnalysis.level === "red_behavioral"
-      || (currentEmotionalStatus === "red_behavioral" && !behavioralPostLock);
+    const forceAncrage = crisisAnalysis.level === "red_behavioral"
+      || currentEmotionalStatus === "red_behavioral";
 
     const practitionerPrompt = systemPrompt ||
-      buildSystemPrompt(practitionerData.profile, patientContext, documentsContext, forceAncrage, behavioralPostLock);
+      buildSystemPrompt(practitionerData.profile, patientContext, documentsContext, forceAncrage);
 
     let conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[] = [];
     if (patientId && practitionerId) {
@@ -1065,9 +1059,13 @@ Max 150 mots. Sans markdown.`;
         const statusMatch = fullText.match(/\|\|\|([\s\S]*?)\|\|\|/);
         if (statusMatch) {
           try {
-            const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string; victory?: string; action?: string; alert_type?: string; apaisement?: string };
+            const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string; notable?: boolean; victory?: string; action?: string; alert_type?: string; apaisement?: string };
             emotionalStatus = parsed.status;
-            emotionalInsight = parsed.reason;
+            // emotional_insight : uniquement si Gemini juge le moment cliniquement notable
+            // (ou si status non-vert — toujours pertinent pour le praticien)
+            if (parsed.notable === true || parsed.status !== "green") {
+              emotionalInsight = parsed.reason;
+            }
             victoryText = parsed.victory ?? "";
             apaisementConfirme = parsed.apaisement === "oui";
             if (parsed.action) adminAlert = { action: parsed.action, alert_type: parsed.alert_type };
@@ -1075,41 +1073,17 @@ Max 150 mots. Sans markdown.`;
           fullText = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
         }
 
-        // ═══ VERROU red_behavioral 6h — logique de résolution ═══
-        // Priorités : 1) red_critical (verrou praticien absolu)
-        //             2) Apaisement confirmé par Gemini ET verrou 6h encore actif → résolution immédiate
-        //             3) Verrou 6h actif → maintien red_behavioral
-        //             4) Post-lock (6h expiré) → Jumeau libéré, mais statut reste ambre jusqu'au praticien
+        // ═══ Résolution apaisement — uniquement piloté par Gemini ═══
         const isRedCritical = currentEmotionalStatus === "red_critical";
-        const isRedBehavioralLocked = behavioralLocked;
-        const isPostLock = behavioralPostLock;
 
-        // En post-lock : le praticien seul peut passer au vert → blocage de l'auto-résolution Gemini
-        const shouldResolveApaisement = apaisementConfirme && !isRedCritical && !isPostLock
-          && (isRedBehavioralLocked || currentEmotionalStatus === "red_behavioral");
+        const shouldResolveApaisement = apaisementConfirme && !isRedCritical
+          && currentEmotionalStatus === "red_behavioral";
 
         if (isRedCritical) {
           // red_critical ne change jamais automatiquement — verrou praticien absolu
           emotionalStatus = "red_critical";
-          // emotional_insight JAMAIS écrasé par un libellé technique — on garde la météo de Gemini
         } else if (shouldResolveApaisement) {
-          // Apaisement validé pendant le verrou actif → résolution immédiate
           emotionalStatus = "green";
-        } else if (isRedBehavioralLocked && emotionalStatus !== "red_critical") {
-          // Verrou 6h actif : forcer red_behavioral mais laisser la météo humaine de Gemini intacte
-          emotionalStatus = "red_behavioral";
-        } else if (isPostLock) {
-          // 6h expirées sans action praticien → statut reste ambre, insight = "Statut indéterminé"
-          emotionalStatus = "red_behavioral";
-          if (!emotionalInsight) emotionalInsight = "Statut indéterminé (Sans nouvelles depuis la crise)";
-        }
-
-        // Nouveau red_behavioral détecté → initialiser verrou 6h
-        if (emotionalStatus === "red_behavioral" && !isRedBehavioralLocked && !isRedCritical && !isPostLock) {
-          const lockUntil = new Date(Date.now() + 6 * 60 * 60 * 1000).toISOString();
-          if (patientId) {
-            await supabase.from("patients").update({ red_behavioral_until: lockUntil }).eq("user_id", patientId);
-          }
         }
 
         if (patientId) {
@@ -1133,48 +1107,72 @@ Max 150 mots. Sans markdown.`;
           void incrementDailyMessageCount(patientId);
 
           // ═══ BRIDAGE emotional_status — uniquement sur événements majeurs ═══
-          // Ne jamais écrire emotional_status pour les messages de routine (vert ↔ orange fluctuations).
+          // Ne jamais écrire emotional_status pour les messages de routine (green stable).
           // Seuls changements légitimes :
           //   1) Crise détectée → red_critical ou red_behavioral
           //   2) Résolution apaisement → green (depuis red_behavioral)
-          //   3) Retour green depuis un état rouge (post-lock ou résolution)
           const isSignificantStatusChange =
             emotionalStatus === "red_critical" ||
             emotionalStatus === "red_behavioral" ||
             shouldResolveApaisement ||
             (currentEmotionalStatus !== "green" && emotionalStatus === "green");
 
-          const patientStatusUpdate: Record<string, unknown> = {
-            // emotional_insight : toujours la météo humaine de Gemini — jamais de libellé technique
-            // Uniquement mis à jour si non-vide pour ne pas écraser un insight existant
-            ...(emotionalInsight ? { emotional_insight: emotionalInsight } : {}),
-            ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString(), victory_message_id: userMsgId } : {}),
-          };
-          // emotional_status uniquement sur changements majeurs
-          if (isSignificantStatusChange) {
-            patientStatusUpdate.emotional_status = emotionalStatus;
-          }
-          // Lever le verrou si apaisement confirmé ou si le post-lock a permis une résolution
-          if (shouldResolveApaisement || (isPostLock && emotionalStatus === "green")) {
-            patientStatusUpdate.red_behavioral_until = null;
-          }
-          await supabase.from("patients").update(patientStatusUpdate).eq("user_id", patientId);
-
-          // Apaisement confirmé → marquer le sos_event le plus récent en "success"
+          // Apaisement confirmé → identifier le sos_event "pending" le plus récent
+          // (servira à le marquer "success" ET à évaluer la 🏆 auto ci-dessous)
+          type ResolvedSosEvent = { id: string; origin?: string; sos_context?: string | null; raw_response?: string | null };
+          let resolvedSosEvent: ResolvedSosEvent | null = null;
           if (shouldResolveApaisement) {
             try {
               const { data: recentSosEvent } = await supabase
                 .from("sos_events")
-                .select("id")
+                .select("id, origin, sos_context, raw_response")
                 .eq("patient_id", patientId)
                 .in("status", ["pending"])
                 .order("triggered_at", { ascending: false })
                 .limit(1)
                 .single();
-              if (recentSosEvent?.id) {
-                await supabase.from("sos_events").update({ status: "success" }).eq("id", (recentSosEvent as { id: string }).id);
-              }
+              if (recentSosEvent?.id) resolvedSosEvent = recentSosEvent as ResolvedSosEvent;
             } catch { /* silencieux — pas d'event en attente */ }
+          }
+
+          // ═══ 🏆 VICTOIRE AUTO — une crise réellement désamorcée (origin "crise") est toujours
+          // une victoire, même si Gemini n'a rien détecté dans son champ libre "victory" ═══
+          let autoVictoryText = "";
+          if (resolvedSosEvent?.origin === "crise" && !victoryText) {
+            const sosToolNames: Record<string, string> = {
+              breathing: "la cohérence cardiaque", ancrage: "l'ancrage sensoriel",
+              manger: "la pleine conscience alimentaire", marche: "la marche consciente",
+              body_scan: "le body scan", defusion: "la défusion cognitive",
+              ecriture: "l'écriture cathartique", adaptive_coaching: "le coaching TCC",
+            };
+            let resolvedToolId: string | null = null;
+            try { resolvedToolId = (JSON.parse(resolvedSosEvent.raw_response ?? "{}") as { tool_id?: string }).tool_id ?? null; } catch { /* ignore */ }
+            const exerciseLabel = resolvedToolId ? sosToolNames[resolvedToolId] ?? null : null;
+            const rawContext = (resolvedSosEvent.sos_context ?? "").split("|")[0]?.trim();
+            const crisisLabel = rawContext && !rawContext.startsWith("[contexte chat récent]") ? `une crise (${rawContext})` : "un moment difficile";
+            autoVictoryText = exerciseLabel ? `A surmonté ${crisisLabel} grâce à ${exerciseLabel}.` : `A surmonté ${crisisLabel}.`;
+          }
+          const finalVictoryText = victoryText || autoVictoryText;
+
+          const patientStatusUpdate: Record<string, unknown> = {
+            // emotional_insight : toujours la météo humaine de Gemini — jamais de libellé technique
+            // Uniquement mis à jour si non-vide pour ne pas écraser un insight existant
+            ...(emotionalInsight ? { emotional_insight: emotionalInsight } : {}),
+            ...(finalVictoryText ? { latest_victory: finalVictoryText, victory_detected_at: new Date().toISOString(), victory_message_id: userMsgId } : {}),
+          };
+          // emotional_status uniquement sur changements majeurs
+          if (isSignificantStatusChange) {
+            patientStatusUpdate.emotional_status = emotionalStatus;
+          }
+          // Mettre à jour le timestamp du dernier message patient (pour indicateur silence 24h)
+          patientStatusUpdate.last_patient_message_at = new Date().toISOString();
+          await supabase.from("patients").update(patientStatusUpdate).eq("user_id", patientId);
+
+          // Apaisement confirmé → marquer le sos_event résolu en "success"
+          if (resolvedSosEvent?.id) {
+            try {
+              await supabase.from("sos_events").update({ status: "success" }).eq("id", resolvedSosEvent.id);
+            } catch { /* silencieux */ }
           }
 
           // Créer admin_alert via JSON Gemini — seulement si pas déjà créée par détection précoce

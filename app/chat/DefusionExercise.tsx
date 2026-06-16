@@ -1,747 +1,587 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { IconThoughtBubble, IconBalloon, IconStars, IconBurst, IconCheckRing } from "./SosIcons";
-import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
-import { makeBoundaryHandler, scheduleWordTimers } from "@/lib/therapeuticVoice";
+/**
+ * DefusionExercise — Défusion cognitive ACT (Niveau 1)
+ *
+ * Principe ACT : on ne débat pas avec la pensée, on change son statut.
+ * La pensée devient un objet graphique (nuage) que le patient repousse physiquement.
+ * Boucle max 3 nuages pour éviter la rumination.
+ *
+ * State machine :
+ *   intro_live    → Gemini Live capture la phrase de crise à l'oral (stub Phase 1)
+ *   cloud_display → La phrase matérialisée en nuage, consigne orale de swipe
+ *   swiping       → Patient swipe le nuage vers le haut (drag-Y framer-motion)
+ *   checkpoint    → Gemini demande si autre pensée ou si ça s'allège
+ *   cloture       → Conclusion + injection chat + alerte victoire
+ *
+ * Phase 1 : coquille visuelle + state machine + gestes locaux + panneau simulation.
+ * Phase 2 (à venir) : brancher les stubs Gemini Live WebSocket.
+ */
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-type Stage =
-  | "INTRO"
-  | "CAPTURE"
-  | "REFRAME_1"
-  | "REFRAME_2"
-  | "RITUAL_CHOICE"
-  | "ANIMATION"
-  | "COMPLETED";
+import { useState, useRef, useCallback, useEffect } from "react";
+import {
+  motion,
+  useMotionValue,
+  useTransform,
+  animate,
+  type PanInfo,
+} from "framer-motion";
 
-type RitualChoice = "balloon" | "space" | null;
-type BalloonState  = "idle" | "flying" | "exploded";
+// ─── Design tokens ─────────────────────────────────────────────────────────────
+const BG_DEEP      = "#06030f";
+const VIOLET       = "#8b5cf6";
+const VIOLET_DIM   = "rgba(139,92,246,0.12)";
+const VIOLET_GLOW  = "rgba(139,92,246,0.45)";
+const VIOLET_BORD  = "rgba(139,92,246,0.30)";
+const VIOLET_SOFT  = "rgba(139,92,246,0.18)";
+const INDIGO       = "#6366f1";
+const CLOUD_BG     = "rgba(88,40,180,0.22)";
+const CLOUD_BORD   = "rgba(139,92,246,0.38)";
+const TEXT_PRIMARY = "rgba(255,255,255,0.90)";
+const TEXT_MUTED   = "rgba(255,255,255,0.40)";
+const TEXT_FADED   = "rgba(255,255,255,0.18)";
 
-type StarData = {
-  x: number; y: number;
-  size: number; delay: number; duration: number;
-};
+const MAX_CLOUDS      = 3;
+const EJECT_THRESHOLD = -280; // px : au-delà, le nuage est évacué
 
-type Props = {
-  sosContext: string;
+// ─── Types ─────────────────────────────────────────────────────────────────────
+type Status =
+  | "intro_live"
+  | "cloud_display"
+  | "swiping"
+  | "checkpoint"
+  | "cloture";
+
+export interface DefusionExerciseProps {
+  patientId: string;
+  practitionerId: string;
   firstName: string;
-  onCompleted: () => void;
+  sosContext?: string;
+  onTransitionToChat: (evacuatedThoughts: string[], closing: string) => void;
   onClose: () => void;
-};
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-const WORD_MS = 390;
-const INFLATE_STEPS = 5;
-
-function getIntroSpeech(firstName: string): string {
-  const name = firstName ? `, ${firstName}` : "";
-  return `Ta tête te raconte une histoire sombre${name}. On va regarder cette pensée d'un peu plus loin ensemble.`;
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
-export default function DefusionExercise({
-  // sosContext unused — kept in props for API consistency
-  sosContext: _sosContext,
-  firstName,
-  onCompleted,
-  onClose,
-}: Props) {
-  const { speakTherapeutic, cancelSpeech, unlockAudio } = useTherapeuticVoice();
+// ─── Composant Nuage ──────────────────────────────────────────────────────────
+interface CloudProps {
+  phrase: string;
+  cloudIndex: number;
+  onEjected: () => void;
+}
 
-  // ── Core state ──────────────────────────────────────────────────────────────
-  const [stage,        setStage]        = useState<Stage>("INTRO");
-  const [thoughtText,  setThoughtText]  = useState("");
-  const [highlightWord,setHighlightWord]= useState(-1);
-  const [ritualChoice, setRitualChoice] = useState<RitualChoice>(null);
+function Cloud({ phrase, cloudIndex, onEjected }: CloudProps) {
+  const y       = useMotionValue(0);
+  const ejected = useRef(false);
 
-  // ── Balloon state ───────────────────────────────────────────────────────────
-  const [balloonClicks, setBalloonClicks] = useState(0);
-  const [balloonState,  setBalloonState]  = useState<BalloonState>("idle");
-
-  // ── Space state ─────────────────────────────────────────────────────────────
-  const [thoughtAway,  setThoughtAway]  = useState(false);
-  const [glowVisible,  setGlowVisible]  = useState(false);
-  const swipeStartY = useRef<number | null>(null);
-
-  // ── Refs ────────────────────────────────────────────────────────────────────
-  const onCompletedRef = useRef(onCompleted);
-  useEffect(() => { onCompletedRef.current = onCompleted; }, [onCompleted]);
-
-  const timerRefs   = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // ── Stable starfield (generated once) ──────────────────────────────────────
-  const stars = useMemo<StarData[]>(() =>
-    Array.from({ length: 90 }, () => ({
-      x:        Math.random() * 100,
-      y:        Math.random() * 100,
-      size:     Math.random() * 1.8  + 0.3,
-      delay:    Math.random() * 4,
-      duration: Math.random() * 2.5  + 1.5,
-    })), []
+  const scale   = useTransform(y, [0, EJECT_THRESHOLD], [1, 0.18]);
+  const opacity = useTransform(y, [0, EJECT_THRESHOLD * 0.75], [1, 0]);
+  const blurVal = useTransform(y, [0, EJECT_THRESHOLD], [0, 14]);
+  const filter  = useTransform(blurVal, (v) => `blur(${v}px)`);
+  const borderColor = useTransform(
+    y,
+    [0, EJECT_THRESHOLD * 0.5],
+    [CLOUD_BORD, "rgba(103,232,249,0.55)"]
   );
 
-  // ── Stable balloon gradient (chosen once) ──────────────────────────────────
-  const balloonGrad = useMemo(() => {
-    const opts = [
-      "linear-gradient(135deg, #f97316 0%, #ef4444 100%)",
-      "linear-gradient(135deg, #a78bfa 0%, #6d28d9 100%)",
-      "linear-gradient(135deg, #34d399 0%, #0891b2 100%)",
-    ];
-    return opts[Math.floor(Math.random() * opts.length)];
-  }, []);
+  const handleDragEnd = useCallback(
+    (_e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+      if (ejected.current) return;
+      if (y.get() < EJECT_THRESHOLD || info.velocity.y < -600) {
+        ejected.current = true;
+        void animate(y, -window.innerHeight, {
+          duration: 0.32,
+          ease: "easeOut",
+        }).then(() => onEjected());
+      } else {
+        void animate(y, 0, { type: "spring", stiffness: 220, damping: 22 });
+      }
+    },
+    [y, onEjected]
+  );
 
-  // ── Global unmount cleanup ──────────────────────────────────────────────────
-  useEffect(() => {
-    return () => {
-      cancelSpeech();
-      if (typeof navigator !== "undefined") navigator.vibrate?.(0);
-      timerRefs.current.forEach(clearTimeout);
-    };
-  }, [cancelSpeech]);
-
-  // ── INTRO: karaoke (boundary-driven, timer fallback for iOS) ────────────────
-  useEffect(() => {
-    if (stage !== "INTRO") return;
-    const text  = getIntroSpeech(firstName);
-    const words = text.split(" ");
-    const wt = words.map((_, i) =>
-      setTimeout(() => setHighlightWord(i), 400 + i * WORD_MS)
-    );
-    const cancelFallback = () => { wt.forEach(clearTimeout); };
-    // skipPrep: true — karaoke timers calibrated to raw text length
-    const tts = setTimeout(() => speakTherapeutic(text, {
-      skipPrep: true,
-      rate: 0.80,
-      volume: 0.82,
-      onBoundary: makeBoundaryHandler(words, setHighlightWord, cancelFallback),
-      onDurationReady: (durationMs: number) => {
-        cancelFallback();
-        const newTimers = scheduleWordTimers(words, durationMs, setHighlightWord);
-        timerRefs.current.push(...newTimers);
-      },
-    }), 250);
-    timerRefs.current = [...wt, tts];
-    return () => {
-      wt.forEach(clearTimeout); clearTimeout(tts);
-      cancelSpeech(); setHighlightWord(-1);
-    };
-  }, [stage, firstName, speakTherapeutic, cancelSpeech]);
-
-  // ── CAPTURE: auto-focus ─────────────────────────────────────────────────────
-  useEffect(() => {
-    if (stage !== "CAPTURE") return;
-    const t = setTimeout(() => textareaRef.current?.focus(), 120);
-    return () => clearTimeout(t);
-  }, [stage]);
-
-  // ── REFRAME_1: TTS ──────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (stage !== "REFRAME_1") return;
-    const t = setTimeout(() =>
-      speakTherapeutic(`J'ai la pensée que ${thoughtText}`, { rate: 0.82, volume: 0.75 }),
-    400);
-    return () => { clearTimeout(t); cancelSpeech(); };
-  }, [stage, thoughtText, speakTherapeutic, cancelSpeech]);
-
-  // ── REFRAME_2: TTS clinique ──────────────────────────────────────────────────
-  useEffect(() => {
-    if (stage !== "REFRAME_2") return;
-    const t = setTimeout(() =>
-      speakTherapeutic(
-        "Vois-tu ? Ce n'est plus une vérité absolue, c'est juste une activité de ton esprit que tu observes.",
-        { rate: 0.82, volume: 0.78 }
-      ),
-    700);
-    return () => { clearTimeout(t); cancelSpeech(); };
-  }, [stage, speakTherapeutic, cancelSpeech]);
-
-  // ── COMPLETED: TTS + auto-dismiss ───────────────────────────────────────────
-  useEffect(() => {
-    if (stage !== "COMPLETED") return;
-    speakTherapeutic("Parfait. On laisse cette pensée s'éloigner. On revient au présent.", {
-      rate: 0.82, volume: 0.70,
-    });
-    const t = setTimeout(() => onCompletedRef.current(), 3200);
-    return () => { clearTimeout(t); cancelSpeech(); };
-  }, [stage, speakTherapeutic, cancelSpeech]);
-
-  // ── Balloon click ────────────────────────────────────────────────────────────
-  const handleBalloonClick = useCallback(() => {
-    if (balloonState !== "idle") return;
-    const next = balloonClicks + 1;
-    setBalloonClicks(next);
-    navigator.vibrate?.(20);
-    if (next >= INFLATE_STEPS) {
-      setBalloonState("flying");
-      const t1 = setTimeout(() => {
-        setBalloonState("exploded");
-        navigator.vibrate?.(100);
-        const t2 = setTimeout(() => setStage("COMPLETED"), 800);
-        timerRefs.current.push(t2);
-      }, 1500);
-      timerRefs.current.push(t1);
-    }
-  }, [balloonClicks, balloonState]);
-
-  // ── Space: launch thought away ───────────────────────────────────────────────
-  const triggerSpaceAway = useCallback(() => {
-    if (thoughtAway) return;
-    setThoughtAway(true);
-    navigator.vibrate?.(200);
-    const t1 = setTimeout(() => {
-      setGlowVisible(true);
-      const t2 = setTimeout(() => setStage("COMPLETED"), 700);
-      timerRefs.current.push(t2);
-    }, 1800);
-    timerRefs.current.push(t1);
-  }, [thoughtAway]);
-
-  // ── Space: swipe-up detection ────────────────────────────────────────────────
-  const onSpacePtrDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    swipeStartY.current = e.clientY;
-  }, []);
-  const onSpacePtrMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    if (swipeStartY.current === null || thoughtAway) return;
-    if ((swipeStartY.current - e.clientY) > 60) {
-      swipeStartY.current = null;
-      triggerSpaceAway();
-    }
-  }, [thoughtAway, triggerSpaceAway]);
-  const onSpacePtrUp = useCallback(() => { swipeStartY.current = null; }, []);
-
-  // ── Choose ritual ────────────────────────────────────────────────────────────
-  const handleChooseRitual = useCallback((choice: RitualChoice) => {
-    setRitualChoice(choice);
-    setBalloonClicks(0); setBalloonState("idle");
-    setThoughtAway(false); setGlowVisible(false);
-    setStage("ANIMATION");
-  }, []);
-
-  const handleClose = useCallback(() => {
-    cancelSpeech();
-    if (typeof navigator !== "undefined") navigator.vibrate?.(0);
-    timerRefs.current.forEach(clearTimeout);
-    onClose();
-  }, [onClose, cancelSpeech]);
-
-  // ── Derived ──────────────────────────────────────────────────────────────────
-  const canCapture   = thoughtText.trim().length >= 3;
-  const introWords   = getIntroSpeech(firstName).split(" ");
-  const balloonSize  = 172 + balloonClicks * 22;           // 172 → 260 px
-  const textStretch  = 1 + balloonClicks * 0.055;          // 1 → 1.275
-  const isSpaceAnim  = stage === "ANIMATION" && ritualChoice === "space";
-
-  // ────────────────────────────────────────────────────────────────────────────
   return (
-    <div
+    <motion.div
+      drag="y"
+      dragConstraints={{ top: -window.innerHeight * 0.88, bottom: 60 }}
+      dragElastic={0.14}
+      dragMomentum={false}
+      onDragEnd={handleDragEnd}
       style={{
-        position: "fixed", inset: 0, zIndex: 200,
-        background: isSpaceAnim ? "#030712" : "#060a08",
-        display: "flex", flexDirection: "column",
-        alignItems: "center", justifyContent: "center",
-        padding: isSpaceAnim ? 0 : "24px 20px",
-        overflow: "hidden",
-        transition: "background 0.9s ease",
+        y,
+        scale,
+        opacity,
+        filter,
+        borderColor,
+        maxWidth: 340,
+        width: "calc(100vw - 64px)",
+        padding: "28px 30px",
+        borderRadius: "52% 48% 44% 56% / 40% 44% 56% 60%",
+        background: CLOUD_BG,
+        backdropFilter: "blur(18px)",
+        WebkitBackdropFilter: "blur(18px)",
+        border: "1.5px solid",
+        boxShadow: `0 0 60px ${VIOLET_GLOW}, 0 0 120px rgba(139,92,246,0.10), inset 0 0 40px rgba(139,92,246,0.06)`,
+        cursor: "grab",
+        userSelect: "none",
+        touchAction: "none",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 14,
       }}
+      whileDrag={{ cursor: "grabbing" }}
     >
-      {/* ─ keyframes ─────────────────────────────────────────────────────────── */}
-      <style>{`
-        @keyframes df-fadein {
-          from { opacity: 0; transform: translateY(14px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes df-blink {
-          0%, 100% { opacity: 0.38; }
-          50%       { opacity: 1; }
-        }
-        @keyframes df-star {
-          0%, 100% { opacity: 0.15; }
-          50%       { opacity: 1; }
-        }
-        @keyframes df-slide-prefix {
-          from { opacity: 0; transform: translateX(-14px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes df-balloon-fly {
-          0%   { transform: translate(0,       0)    scale(1); }
-          20%  { transform: translate(20px,  -22vh)  scale(0.82); }
-          50%  { transform: translate(-28px, -58vh)  scale(0.52); }
-          80%  { transform: translate(14px,  -90vh)  scale(0.26); }
-          100% { transform: translate(0,     -115vh) scale(0.05); }
-        }
-        @keyframes df-balloon-pop {
-          0%   { transform: scale(0.05); opacity: 1; }
-          45%  { transform: scale(2.6);  opacity: 0.85; }
-          100% { transform: scale(4.2);  opacity: 0; }
-        }
-        @keyframes df-into-space {
-          0%   { transform: scale(1)     translateY(0px);   opacity: 1; }
-          18%  { transform: scale(1.04)  translateY(-7px);  opacity: 1; }
-          100% { transform: scale(0.004) translateY(-65px); opacity: 0; }
-        }
-        @keyframes df-glow-dot {
-          0%   { transform: scale(0.4); opacity: 0.9; box-shadow: 0 0 14px 5px rgba(165,180,252,0.7); }
-          50%  { transform: scale(1.6); opacity: 0.5; box-shadow: 0 0 30px 12px rgba(165,180,252,0.3); }
-          100% { transform: scale(3);   opacity: 0;   box-shadow: 0 0 0    0   rgba(165,180,252,0); }
-        }
-        @keyframes df-complete-glow {
-          0%   { box-shadow: 0 0 0 0    rgba(16,185,129,0.5); }
-          70%  { box-shadow: 0 0 0 20px rgba(16,185,129,0); }
-          100% { box-shadow: 0 0 0 0    rgba(16,185,129,0); }
-        }
-        .df-btn {
-          cursor: pointer; font-family: inherit;
-          transition: opacity 0.2s, transform 0.15s;
-        }
-        .df-btn:hover  { opacity: 0.82; transform: translateY(-1px); }
-        .df-btn:active { transform: scale(0.97); }
-        .df-in { animation: df-fadein 0.44s ease; }
-      `}</style>
+      <span style={{
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: 1.6,
+        color: "rgba(139,92,246,0.55)",
+        textTransform: "uppercase",
+      }}>
+        Pensée {cloudIndex} / {MAX_CLOUDS}
+      </span>
 
-      {/* ── Close button (hidden during space animation) ── */}
-      {stage !== "COMPLETED" && !isSpaceAnim && (
-        <button onClick={handleClose} style={CLOSE_BTN_STYLE}>×</button>
-      )}
+      <p style={{
+        margin: 0,
+        fontSize: 17,
+        lineHeight: 1.65,
+        color: TEXT_PRIMARY,
+        textAlign: "center",
+        fontStyle: "italic",
+        fontWeight: 400,
+      }}>
+        « {phrase} »
+      </p>
 
-      {/* ══ INTRO ══════════════════════════════════════════════════════════════ */}
-      {stage === "INTRO" && (
-        <div style={{ ...COL_CENTER, gap: 28, maxWidth: 380, animation: "df-fadein 0.6s ease" }}>
-          <IconThoughtBubble size={48} color="#10b981" strokeWidth={1.3} style={{ filter: "drop-shadow(0 0 10px rgba(16,185,129,0.35))" }} />
+      <motion.span
+        style={{ fontSize: 12, color: TEXT_MUTED }}
+        animate={{ opacity: [0.7, 0.25, 0.7] }}
+        transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+      >
+        ↑ Glisse vers le haut pour libérer
+      </motion.span>
+    </motion.div>
+  );
+}
 
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 21, fontWeight: 700, color: "rgba(255,255,255,0.9)", marginBottom: 20, letterSpacing: "-0.3px" }}>
-              Défusion cognitive
-            </div>
-            <div style={{ fontSize: 15, lineHeight: 1.78, maxWidth: 330 }}>
-              {introWords.map((word, i) => (
-                <span key={i} style={{
-                  marginRight: "0.28em",
-                  color: i === highlightWord ? "rgba(255,255,255,0.95)"
-                       : i  < highlightWord  ? "rgba(255,255,255,0.58)"
-                       : "rgba(255,255,255,0.32)",
-                  fontWeight:  i === highlightWord ? 600 : 400,
-                  transition: "color 0.18s ease",
-                }}>
-                  {word}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <button className="df-btn" onClick={() => { unlockAudio(); setStage("CAPTURE"); }} style={GREEN_CTA}>
-            J&apos;y suis →
-          </button>
-        </div>
-      )}
-
-      {/* ══ CAPTURE ════════════════════════════════════════════════════════════ */}
-      {stage === "CAPTURE" && (
-        <div className="df-in" style={{ ...COL, gap: 20, maxWidth: 420, width: "100%" }}>
-          <div>
-            <div style={STEP_LABEL}>Étape 1 · Capture</div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: "rgba(255,255,255,0.88)", lineHeight: 1.45 }}>
-              Écris ici la pensée qui te fait du mal en ce moment.
-            </div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", marginTop: 6, fontStyle: "italic" }}>
-              ex : « Je n&apos;ai aucune volonté »
-            </div>
-          </div>
-
-          <div style={TEXTAREA_WRAP}>
-            <textarea
-              ref={textareaRef}
-              value={thoughtText}
-              onChange={(e) => setThoughtText(e.target.value)}
-              placeholder="Ma pensée est…"
-              rows={4}
-              style={TEXTAREA_STYLE}
-            />
-            <div style={{ ...CHAR_COUNT, color: canCapture ? "rgba(16,185,129,0.55)" : "rgba(255,255,255,0.18)" }}>
-              {thoughtText.trim().length} car.
-            </div>
-          </div>
-
-          <button
-            className="df-btn"
-            disabled={!canCapture}
-            onClick={() => setStage("REFRAME_1")}
-            style={canCapture ? PROCEED_BTN_ON : PROCEED_BTN_OFF}
-          >
-            Suivant →
-          </button>
-        </div>
-      )}
-
-      {/* ══ REFRAME_1 ══════════════════════════════════════════════════════════ */}
-      {stage === "REFRAME_1" && (
-        <div key="r1" className="df-in" style={{ ...COL_CENTER, gap: 26, maxWidth: 420, width: "100%" }}>
-          <div style={{ ...STEP_LABEL, alignSelf: "flex-start" }}>Étape 2 · Mise à distance</div>
-
-          {/* Reframed sentence */}
-          <div style={THOUGHT_CARD}>
-            <span style={{ fontSize: 20, fontWeight: 700, color: "rgba(255,255,255,0.88)" }}>
-              J&apos;ai la pensée que{" "}
-            </span>
-            <span style={{ fontSize: 17, fontWeight: 400, color: "rgba(255,255,255,0.45)", fontStyle: "italic" }}>
-              {thoughtText}
-            </span>
-          </div>
-
-          <div style={HINT_TEXT}>
-            En ajoutant ce préfixe, tu crées de l&apos;espace entre toi et ta pensée.
-          </div>
-
-          <button className="df-btn" onClick={() => setStage("REFRAME_2")} style={GREEN_CTA}>
-            Encore plus loin →
-          </button>
-        </div>
-      )}
-
-      {/* ══ REFRAME_2 ══════════════════════════════════════════════════════════ */}
-      {stage === "REFRAME_2" && (
-        <div key="r2" className="df-in" style={{ ...COL_CENTER, gap: 26, maxWidth: 420, width: "100%" }}>
-          <div style={{ ...STEP_LABEL, alignSelf: "flex-start" }}>Étape 3 · Recul total</div>
-
-          {/* Layered reframe — new prefix slides in, pushing the rest right */}
-          <div style={{ ...THOUGHT_CARD, lineHeight: 1.78, overflow: "hidden" }}>
-            <span style={{
-              fontSize: 20, fontWeight: 700, color: "rgba(255,255,255,0.90)",
-              animation: "df-slide-prefix 0.55s cubic-bezier(0.22,1,0.36,1) both",
-              display: "inline",
-            }}>
-              Je remarque que{" "}
-            </span>
-            <span style={{ fontSize: 16, fontWeight: 500, color: "rgba(255,255,255,0.50)" }}>
-              j&apos;ai la pensée que{" "}
-            </span>
-            <span style={{ fontSize: 13.5, fontWeight: 400, color: "rgba(255,255,255,0.26)", fontStyle: "italic" }}>
-              {thoughtText}
-            </span>
-          </div>
-
-          {/* Jumeau insight callout */}
-          <div style={{
-            background: "rgba(16,185,129,0.06)",
-            border: "1px solid rgba(16,185,129,0.18)",
-            borderRadius: 12, padding: "14px 18px",
-            fontSize: 13.5, color: "rgba(255,255,255,0.58)", lineHeight: 1.65, textAlign: "center",
-          }}>
-            Vois-tu ? Ce n&apos;est plus une vérité absolue, c&apos;est juste une activité de ton esprit que tu observes.
-          </div>
-
-          <button className="df-btn" onClick={() => setStage("RITUAL_CHOICE")} style={GREEN_CTA}>
-            Choisir un rituel →
-          </button>
-        </div>
-      )}
-
-      {/* ══ RITUAL_CHOICE ══════════════════════════════════════════════════════ */}
-      {stage === "RITUAL_CHOICE" && (
-        <div className="df-in" style={{ ...COL_CENTER, gap: 20, maxWidth: 420, width: "100%" }}>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1.5px", color: "rgba(255,255,255,0.28)", marginBottom: 8 }}>
-              Rituel de détachement
-            </div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>
-              Comment laisser partir cette pensée ?
-            </div>
-          </div>
-
-          {/* Balloon option */}
-          <button className="df-btn" onClick={() => handleChooseRitual("balloon")}
-            style={{ ...RITUAL_CARD, background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.25)" }}>
-            <IconBalloon size={36} color="#fdba74" strokeWidth={1.4} />
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#fdba74", marginBottom: 4 }}>
-                Le Ballon de baudruche
-              </div>
-              <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.44)", lineHeight: 1.5 }}>
-                Gonfle le ballon jusqu&apos;à ce qu&apos;il s&apos;envole et explose.
-              </div>
-            </div>
-          </button>
-
-          {/* Space option */}
-          <button className="df-btn" onClick={() => handleChooseRitual("space")}
-            style={{ ...RITUAL_CARD, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)" }}>
-            <IconStars size={36} color="#a5b4fc" strokeWidth={1.4} />
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#a5b4fc", marginBottom: 4 }}>
-                L&apos;Espace infini
-              </div>
-              <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.44)", lineHeight: 1.5 }}>
-                Envoie la pensée se perdre dans le cosmos.
-              </div>
-            </div>
-          </button>
-        </div>
-      )}
-
-      {/* ══ ANIMATION ══════════════════════════════════════════════════════════ */}
-      {stage === "ANIMATION" && (
-        <>
-          {/* ── 🎈 BALLOON ── */}
-          {ritualChoice === "balloon" && (
-            <div className="df-in" style={{ ...COL_CENTER, gap: 16, width: "100%" }}>
-              {/* Instruction */}
-              <div style={{ minHeight: 22, textAlign: "center" }}>
-                <span style={{
-                  fontSize: 13, color: "rgba(255,255,255,0.45)",
-                  animation: balloonState === "idle" ? "df-blink 1.8s ease-in-out infinite" : "none",
-                }}>
-                  {balloonState === "idle"
-                    ? balloonClicks === 0
-                      ? "Clique pour gonfler le ballon"
-                      : `${INFLATE_STEPS - balloonClicks} clic${INFLATE_STEPS - balloonClicks > 1 ? "s" : ""} restant${INFLATE_STEPS - balloonClicks > 1 ? "s" : ""}…`
-                    : balloonState === "flying"
-                    ? "S'envole !"
-                    : "Disparu !"}
-                </span>
-              </div>
-
-              {/* Balloon arena */}
-              <div style={{ height: 320, position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-
-                {/* Explosion flash */}
-                {balloonState === "exploded" && (
-                  <div style={{
-                    position: "absolute", width: 180, height: 180, borderRadius: "50%",
-                    background: "radial-gradient(circle, rgba(255,200,50,0.95) 0%, rgba(249,115,22,0.5) 45%, transparent 72%)",
-                    animation: "df-balloon-pop 0.85s ease-out forwards",
-                    pointerEvents: "none",
-                  }} />
-                )}
-
-                {/* Balloon */}
-                {balloonState !== "exploded" && (
-                  <div
-                    onClick={handleBalloonClick}
-                    style={{
-                      display: "flex", flexDirection: "column", alignItems: "center",
-                      cursor: balloonState === "idle" ? "pointer" : "default",
-                      animation: balloonState === "flying"
-                        ? "df-balloon-fly 1.5s cubic-bezier(0.4,0,0.7,1) forwards"
-                        : "none",
-                    }}
-                  >
-                    {/* Balloon body */}
-                    <div style={{
-                      width:  balloonSize,
-                      height: Math.round(balloonSize * 1.15),
-                      borderRadius: "50% 50% 46% 46% / 55% 55% 45% 45%",
-                      background: balloonGrad,
-                      boxShadow: "inset -10px -10px 24px rgba(0,0,0,0.22), inset 6px 6px 14px rgba(255,255,255,0.32), 0 8px 32px rgba(0,0,0,0.4)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      padding: 16, position: "relative", overflow: "hidden",
-                      transition: "all 0.35s cubic-bezier(0.34,1.56,0.64,1)",
-                    }}>
-                      {/* Shine highlight */}
-                      <div style={{
-                        position: "absolute", top: "12%", left: "18%",
-                        width: "28%", height: "20%", borderRadius: "50%",
-                        background: "rgba(255,255,255,0.35)", filter: "blur(4px)",
-                        pointerEvents: "none",
-                      }} />
-                      {/* Thought text inside balloon */}
-                      <div style={{
-                        fontSize: Math.max(10, 14 - balloonClicks * 0.5),
-                        color: "rgba(255,255,255,0.92)",
-                        fontWeight: 600, textAlign: "center",
-                        textShadow: "0 1px 4px rgba(0,0,0,0.45)",
-                        transform: `scaleX(${textStretch})`,
-                        transition: "transform 0.35s cubic-bezier(0.34,1.56,0.64,1)",
-                        lineHeight: 1.3, maxWidth: "86%", wordBreak: "break-word",
-                        position: "relative", zIndex: 1,
-                      }}>
-                        {thoughtText}
-                      </div>
-                    </div>
-                    {/* String */}
-                    <div style={{ width: 2, height: 28, background: "rgba(255,255,255,0.38)", marginTop: -2, borderRadius: 1 }} />
-                  </div>
-                )}
-              </div>
-
-              {/* Progress dots */}
-              {balloonState === "idle" && (
-                <div style={{ display: "flex", gap: 9 }}>
-                  {Array.from({ length: INFLATE_STEPS }, (_, i) => (
-                    <div key={i} style={{
-                      width: 9, height: 9, borderRadius: "50%",
-                      background: i < balloonClicks ? "#f97316" : "rgba(255,255,255,0.14)",
-                      transition: "background 0.25s, transform 0.25s",
-                      transform: i === balloonClicks - 1 ? "scale(1.3)" : "scale(1)",
-                    }} />
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── 🌌 SPACE ── */}
-          {ritualChoice === "space" && (
-            <div
-              onPointerDown={onSpacePtrDown}
-              onPointerMove={onSpacePtrMove}
-              onPointerUp={onSpacePtrUp}
-              onPointerCancel={onSpacePtrUp}
-              style={{
-                position: "absolute", inset: 0,
-                display: "flex", flexDirection: "column",
-                alignItems: "center", justifyContent: "center",
-                overflow: "hidden", touchAction: "none",
-                cursor: thoughtAway ? "default" : "grab",
-              }}
-            >
-              {/* Stars */}
-              {stars.map((s, i) => (
-                <div key={i} aria-hidden style={{
-                  position: "absolute",
-                  left: `${s.x}%`, top: `${s.y}%`,
-                  width: s.size, height: s.size,
-                  borderRadius: "50%", background: "white",
-                  animation: `df-star ${s.duration}s ${s.delay}s ease-in-out infinite`,
-                  pointerEvents: "none",
-                }} />
-              ))}
-
-              {/* Close button inside space overlay */}
-              {!thoughtAway && (
-                <button onClick={handleClose} style={{ ...CLOSE_BTN_STYLE, zIndex: 10 }}>×</button>
-              )}
-
-              {/* Content */}
-              <div style={{ ...COL_CENTER, gap: 28, zIndex: 2 }}>
-
-                {/* Thought bubble — zooms away when triggered */}
-                {!glowVisible && (
-                  <div style={{
-                    background: "rgba(255,255,255,0.07)",
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    borderRadius: 16, padding: "18px 24px",
-                    maxWidth: 300, textAlign: "center",
-                    fontSize: 16, fontStyle: "italic",
-                    color: "rgba(255,255,255,0.72)",
-                    animation: thoughtAway
-                      ? "df-into-space 1.8s cubic-bezier(0.5,0,1,0.4) forwards"
-                      : "none",
-                    willChange: "transform, opacity",
-                  }}>
-                    {thoughtText}
-                  </div>
-                )}
-
-                {/* Glow dot that lingers after thought disappears */}
-                {glowVisible && (
-                  <div style={{
-                    width: 8, height: 8, borderRadius: "50%", background: "#a5b4fc",
-                    animation: "df-glow-dot 0.85s ease-out forwards",
-                  }} />
-                )}
-
-                {/* Swipe instruction + fallback button */}
-                {!thoughtAway && (
-                  <div style={{ ...COL_CENTER, gap: 12 }}>
-                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.38)", animation: "df-blink 2.2s ease-in-out infinite" }}>
-                      ↑ Glisse vers le haut pour l&apos;envoyer dans l&apos;espace
-                    </div>
-                    <button className="df-btn" onClick={triggerSpaceAway} style={{
-                      background: "rgba(99,102,241,0.10)", border: "1px solid rgba(99,102,241,0.28)",
-                      borderRadius: 14, padding: "10px 22px",
-                      color: "#a5b4fc", fontSize: 13, fontWeight: 600,
-                    }}>
-                      Envoyer →
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ══ COMPLETED ══════════════════════════════════════════════════════════ */}
-      {stage === "COMPLETED" && (
-        <div style={{ ...COL_CENTER, gap: 24, animation: "df-fadein 0.7s ease" }}>
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "center",
-            animation: "df-complete-glow 1.6s ease infinite",
-          }}>
-            <IconCheckRing size={76} color="#10b981" strokeWidth={1.2} style={{ filter: "drop-shadow(0 0 12px rgba(16,185,129,0.5))" }} />
-          </div>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "rgba(255,255,255,0.92)", letterSpacing: "-0.3px", marginBottom: 8 }}>
-              Tu es l&apos;observateur,
-            </div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "#10b981", marginBottom: 14 }}>
-              pas la pensée.
-            </div>
-            <div style={{ fontSize: 14, color: "rgba(255,255,255,0.44)", lineHeight: 1.65 }}>
-              On laisse cette pensée s&apos;éloigner. On revient au présent.
-            </div>
-          </div>
-        </div>
-      )}
+// ─── Waveform violet ──────────────────────────────────────────────────────────
+function VioletWave({ active }: { active: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 4, height: 36 }}>
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+        <motion.div
+          key={i}
+          style={{ width: 3, borderRadius: 2, background: VIOLET }}
+          animate={active
+            ? { height: ["6px", `${12 + Math.sin(i * 0.9) * 14}px`, "6px"], opacity: [0.5, 0.85, 0.5] }
+            : { height: "4px", opacity: 0.2 }
+          }
+          transition={active
+            ? { repeat: Infinity, duration: 0.9 + i * 0.08, ease: "easeInOut", delay: i * 0.1 }
+            : {}
+          }
+        />
+      ))}
     </div>
   );
 }
 
-// ─── Shared style objects ─────────────────────────────────────────────────────
-const COL: React.CSSProperties = {
-  display: "flex", flexDirection: "column",
-};
-const COL_CENTER: React.CSSProperties = {
-  display: "flex", flexDirection: "column", alignItems: "center",
-};
-const CLOSE_BTN_STYLE: React.CSSProperties = {
-  position: "absolute", top: 20, right: 20,
-  width: 36, height: 36, borderRadius: 10,
-  background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)",
-  color: "rgba(255,255,255,0.4)", fontSize: 18, cursor: "pointer",
-  display: "flex", alignItems: "center", justifyContent: "center",
-};
-const STEP_LABEL: React.CSSProperties = {
-  fontSize: 11, fontWeight: 700, textTransform: "uppercase",
-  letterSpacing: "1.6px", color: "rgba(255,255,255,0.28)", marginBottom: 10,
-};
-const TEXTAREA_WRAP: React.CSSProperties = {
-  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)",
-  borderRadius: 14, padding: "16px 16px 36px", position: "relative",
-};
-const TEXTAREA_STYLE: React.CSSProperties = {
-  width: "100%", background: "transparent", border: "none", outline: "none",
-  color: "rgba(255,255,255,0.85)", fontSize: 15, lineHeight: 1.7,
-  resize: "none", fontFamily: "inherit", caretColor: "#10b981", display: "block",
-};
-const CHAR_COUNT: React.CSSProperties = {
-  position: "absolute", bottom: 10, right: 14, fontSize: 11, transition: "color 0.3s",
-};
-const GREEN_CTA: React.CSSProperties = {
-  background: "rgba(16,185,129,0.11)", border: "1px solid rgba(16,185,129,0.32)",
-  borderRadius: 16, padding: "14px 36px", color: "#10b981",
-  fontSize: 15, fontWeight: 600, letterSpacing: "0.2px",
-};
-const PROCEED_BTN_ON: React.CSSProperties = {
-  background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.35)",
-  borderRadius: 14, padding: "14px 28px", color: "#10b981",
-  fontSize: 15, fontWeight: 600, cursor: "pointer", transition: "all 0.25s",
-};
-const PROCEED_BTN_OFF: React.CSSProperties = {
-  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: 14, padding: "14px 28px", color: "rgba(255,255,255,0.22)",
-  fontSize: 15, fontWeight: 600, cursor: "default", transition: "all 0.25s",
-};
-const THOUGHT_CARD: React.CSSProperties = {
-  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: 16, padding: "24px 22px", width: "100%",
-};
-const HINT_TEXT: React.CSSProperties = {
-  fontSize: 13.5, color: "rgba(255,255,255,0.42)", lineHeight: 1.65,
-  textAlign: "center", maxWidth: 320,
-};
-const RITUAL_CARD: React.CSSProperties = {
-  width: "100%", borderRadius: 16, padding: "20px 18px",
-  textAlign: "left", display: "flex", alignItems: "center", gap: 16,
-};
+// ─── Main component ────────────────────────────────────────────────────────────
+export default function DefusionExercise({
+  patientId: _patientId,
+  practitionerId: _practitionerId,
+  firstName,
+  sosContext: _sosContext = "",
+  onTransitionToChat,
+  onClose,
+}: DefusionExerciseProps) {
+  const [status, setStatus]             = useState<Status>("intro_live");
+  const [currentPhrase, setCurrentPhrase] = useState("");
+  const [cloudKey, setCloudKey]         = useState(0);
+  const [cloudCount, setCloudCount]     = useState(0);
+  const [evacuated, setEvacuated]       = useState<string[]>([]);
+  const [waveActive, setWaveActive]     = useState(true);
+  const [simInput, setSimInput]         = useState("");
+  const [showSimPanel, setShowSimPanel] = useState(true);
+
+  const onTransitionRef = useRef(onTransitionToChat);
+  useEffect(() => { onTransitionRef.current = onTransitionToChat; }, [onTransitionToChat]);
+
+  // ── Simulation : créer un nuage ─────────────────────────────────────────────
+  const handleSimCreate = useCallback(() => {
+    const phrase = simInput.trim();
+    if (phrase.length < 3) return;
+    setCurrentPhrase(phrase);
+    setShowSimPanel(false);
+    setWaveActive(false);
+    setCloudKey((k) => k + 1);
+    setStatus("cloud_display");
+    setTimeout(() => setStatus("swiping"), 700);
+  }, [simInput]);
+
+  // ── Nuage éjecté ────────────────────────────────────────────────────────────
+  const handleCloudEjected = useCallback(() => {
+    setEvacuated((prev) => {
+      const next = [...prev, currentPhrase];
+      if (cloudCount + 1 >= MAX_CLOUDS) {
+        setTimeout(() => setStatus("cloture"), 400);
+      } else {
+        setShowSimPanel(false);
+        setTimeout(() => {
+          setStatus("checkpoint");
+          setWaveActive(true);
+        }, 400);
+      }
+      return next;
+    });
+    setCloudCount((c) => c + 1);
+  }, [currentPhrase, cloudCount]);
+
+  // ── Checkpoint : nouvelle pensée ────────────────────────────────────────────
+  const handleCheckpointNew = useCallback(() => {
+    setSimInput("");
+    setShowSimPanel(true);
+    setWaveActive(false);
+    setStatus("intro_live");
+  }, []);
+
+  // ── Checkpoint : on arrête ───────────────────────────────────────────────────
+  const handleCheckpointStop = useCallback(() => {
+    setWaveActive(false);
+    setStatus("cloture");
+  }, []);
+
+  // ── Clôture → injection chat ─────────────────────────────────────────────────
+  const handleTransition = useCallback(() => {
+    const closing = evacuated.length > 0
+      ? `Tu viens d'observer ${evacuated.length} pensée${evacuated.length > 1 ? "s" : ""} sans te laisser emporter. Ce sont des mots, pas des faits. Tu gardes le contrôle.`
+      : "Tu viens de prendre de la distance avec ce qui t'oppressait. Ce sont des mots, pas des faits.";
+    onTransitionRef.current(evacuated, closing);
+  }, [evacuated]);
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
+  return (
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 200,
+      background: BG_DEEP,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      overflow: "hidden",
+    }}>
+      <style>{`
+        @keyframes nebula-pulse {
+          0%, 100% { transform: scale(1);    opacity: 0.18; }
+          50%       { transform: scale(1.12); opacity: 0.26; }
+        }
+      `}</style>
+
+      {/* ── Fond nébuleuse ────────────────────────────────────────────────── */}
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+        <div style={{
+          position: "absolute", top: "-15%", left: "-10%",
+          width: "55vw", height: "55vw", borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(109,40,217,0.22) 0%, transparent 70%)",
+          animation: "nebula-pulse 6s ease-in-out infinite",
+        }} />
+        <div style={{
+          position: "absolute", bottom: "-15%", right: "-10%",
+          width: "50vw", height: "50vw", borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(79,70,229,0.18) 0%, transparent 70%)",
+          animation: "nebula-pulse 8s ease-in-out infinite 1s",
+        }} />
+      </div>
+
+      {/* ── Close ─────────────────────────────────────────────────────────── */}
+      {status !== "cloture" && (
+        <button onClick={onClose} aria-label="Fermer" style={{
+          position: "absolute", top: 20, right: 20,
+          width: 34, height: 34, borderRadius: "50%",
+          background: VIOLET_DIM, border: `1px solid ${VIOLET_BORD}`,
+          color: TEXT_MUTED, fontSize: 20, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 10,
+        }}>×</button>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          INTRO / CHECKPOINT + panneau simulation
+      ═══════════════════════════════════════════════════════════════════════ */}
+      {(status === "intro_live" || (status === "checkpoint" && showSimPanel)) && (
+        <motion.div
+          key="sim-panel"
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -18 }}
+          style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            gap: 28, padding: "0 28px", width: "100%", maxWidth: 440,
+            position: "relative", zIndex: 1,
+          }}
+        >
+          <VioletWave active={waveActive} />
+
+          <p style={{ margin: 0, fontSize: 14, color: TEXT_MUTED, letterSpacing: 0.4, textAlign: "center" }}>
+            {status === "intro_live"
+              ? `${firstName}, quelle est la phrase exacte qui prend toute la place dans ta tête ?`
+              : "Le nuage est passé. Une autre pensée bloque encore ?"}
+          </p>
+
+          {/* Panneau simulation */}
+          <div style={{
+            width: "100%", background: VIOLET_DIM,
+            border: `1px solid ${VIOLET_BORD}`, borderRadius: 18,
+            padding: "20px 20px 16px", display: "flex", flexDirection: "column", gap: 14,
+          }}>
+            <p style={{
+              margin: 0, fontSize: 11, fontWeight: 700,
+              letterSpacing: 1.4, color: "rgba(139,92,246,0.6)", textTransform: "uppercase",
+            }}>
+              Simulation Phase 1 — phrase de crise
+            </p>
+            <textarea
+              value={simInput}
+              onChange={(e) => setSimInput(e.target.value)}
+              placeholder={`Ex : "Je vais craquer ce soir, c'est sûr"`}
+              rows={2}
+              style={{
+                width: "100%", background: "rgba(0,0,0,0.3)",
+                border: `1.5px solid ${VIOLET_BORD}`, borderRadius: 12,
+                padding: "12px 14px", color: TEXT_PRIMARY, fontSize: 15,
+                resize: "none", outline: "none", fontFamily: "inherit",
+                caretColor: VIOLET, boxSizing: "border-box",
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSimCreate(); }
+              }}
+            />
+            <button
+              onClick={handleSimCreate}
+              disabled={simInput.trim().length < 3}
+              style={{
+                padding: "12px 24px", borderRadius: 12, border: "none",
+                background: simInput.trim().length >= 3
+                  ? `linear-gradient(135deg, ${VIOLET}, ${INDIGO})`
+                  : "rgba(255,255,255,0.04)",
+                color: simInput.trim().length >= 3 ? "#fff" : TEXT_FADED,
+                fontSize: 14, fontWeight: 700,
+                cursor: simInput.trim().length >= 3 ? "pointer" : "default",
+                transition: "all 0.2s",
+              }}
+            >
+              Matérialiser le nuage →
+            </button>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          CHECKPOINT — choix (sans saisie)
+      ═══════════════════════════════════════════════════════════════════════ */}
+      {status === "checkpoint" && !showSimPanel && (
+        <motion.div
+          key="checkpoint"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            gap: 22, padding: "0 28px", width: "100%", maxWidth: 380,
+            position: "relative", zIndex: 1,
+          }}
+        >
+          <VioletWave active={true} />
+
+          <p style={{ margin: 0, fontSize: 16, color: TEXT_PRIMARY, textAlign: "center", lineHeight: 1.7 }}>
+            Le nuage est passé.
+          </p>
+          <p style={{ margin: 0, fontSize: 14, color: TEXT_MUTED, textAlign: "center", lineHeight: 1.65 }}>
+            Est-ce qu'il y a une autre pensée qui bloque,<br />
+            ou est-ce que ça commence à s'alléger ?
+          </p>
+
+          <div style={{ display: "flex", gap: 12, width: "100%", flexWrap: "wrap", justifyContent: "center" }}>
+            <button onClick={handleCheckpointNew} style={{
+              flex: "1 1 140px", padding: "13px 18px", borderRadius: 14,
+              background: VIOLET_SOFT, border: `1.5px solid ${VIOLET_BORD}`,
+              color: TEXT_PRIMARY, fontSize: 14, fontWeight: 600, cursor: "pointer",
+            }}>
+              Oui, une autre pensée
+            </button>
+            <button onClick={handleCheckpointStop} style={{
+              flex: "1 1 140px", padding: "13px 18px", borderRadius: 14,
+              background: `linear-gradient(135deg, ${VIOLET}, ${INDIGO})`,
+              border: "none", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer",
+            }}>
+              Ça s'allège ✓
+            </button>
+          </div>
+
+          {evacuated.length > 0 && (
+            <div style={{
+              width: "100%", padding: "14px 18px", borderRadius: 12,
+              background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)",
+            }}>
+              <p style={{ margin: "0 0 8px", fontSize: 11, color: TEXT_FADED, letterSpacing: 1.2, textTransform: "uppercase" }}>
+                Nuages évacués
+              </p>
+              {evacuated.map((t, i) => (
+                <p key={i} style={{ margin: "4px 0", fontSize: 13, color: TEXT_MUTED, fontStyle: "italic" }}>
+                  « {t} »
+                </p>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          CLOUD_DISPLAY / SWIPING
+      ═══════════════════════════════════════════════════════════════════════ */}
+      {(status === "cloud_display" || status === "swiping") && (
+        <div style={{
+          position: "relative", zIndex: 2,
+          width: "100%", height: "100%",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          {/* Hint contextuel */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: status === "swiping" ? 0.5 : 0 }}
+            transition={{ delay: 0.6 }}
+            style={{
+              position: "absolute", top: "11%", margin: 0,
+              fontSize: 13, color: TEXT_FADED, textAlign: "center", letterSpacing: 0.3,
+            }}
+          >
+            Ce ne sont que des mots.
+          </motion.p>
+
+          <motion.div
+            key={`cloud-${cloudKey}`}
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 180, damping: 18 }}
+          >
+            <Cloud
+              key={cloudKey}
+              phrase={currentPhrase}
+              cloudIndex={cloudCount + 1}
+              onEjected={handleCloudEjected}
+            />
+          </motion.div>
+
+          {/* Nuages restants */}
+          {cloudCount < MAX_CLOUDS - 1 && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.28 }}
+              transition={{ delay: 1.4 }}
+              style={{
+                position: "absolute", bottom: "9%", margin: 0,
+                fontSize: 12, color: TEXT_FADED, textAlign: "center",
+              }}
+            >
+              {MAX_CLOUDS - cloudCount - 1} nuage{MAX_CLOUDS - cloudCount - 1 > 1 ? "s" : ""} encore possible{MAX_CLOUDS - cloudCount - 1 > 1 ? "s" : ""}
+            </motion.p>
+          )}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          CLOTURE
+      ═══════════════════════════════════════════════════════════════════════ */}
+      {status === "cloture" && (
+        <motion.div
+          key="cloture"
+          initial={{ opacity: 0, y: 22 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            display: "flex", flexDirection: "column", alignItems: "center",
+            gap: 24, padding: "0 28px", width: "100%", maxWidth: 420,
+            position: "relative", zIndex: 1, textAlign: "center",
+          }}
+        >
+          {/* Icône victoire */}
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 14, delay: 0.1 }}
+            style={{
+              width: 60, height: 60, borderRadius: "50%",
+              background: VIOLET_DIM, border: `2px solid ${VIOLET_BORD}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: `0 0 32px ${VIOLET_GLOW}`,
+            }}
+          >
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
+              stroke={VIOLET} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </motion.div>
+
+          {/* Liste des pensées évacuées */}
+          {evacuated.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              style={{
+                width: "100%", background: VIOLET_DIM,
+                border: `1px solid ${VIOLET_BORD}`, borderRadius: 16,
+                padding: "16px 20px", textAlign: "left",
+              }}
+            >
+              <p style={{
+                margin: "0 0 10px", fontSize: 11, fontWeight: 700,
+                letterSpacing: 1.3, color: "rgba(139,92,246,0.6)", textTransform: "uppercase",
+              }}>
+                Pensées observées et libérées
+              </p>
+              {evacuated.map((t, i) => (
+                <motion.p
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 + i * 0.13 }}
+                  style={{ margin: "5px 0", fontSize: 14, color: TEXT_MUTED, fontStyle: "italic", lineHeight: 1.55 }}
+                >
+                  « {t} »
+                </motion.p>
+              ))}
+            </motion.div>
+          )}
+
+          {/* Message clôture */}
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: TEXT_PRIMARY }}
+          >
+            {evacuated.length > 0
+              ? `Tu viens d'observer ${evacuated.length} pensée${evacuated.length > 1 ? "s" : ""} sans te laisser emporter. Ce sont des mots, pas des faits. Tu gardes le contrôle.`
+              : "Tu viens de prendre de la distance avec ce qui t'oppressait. Ce sont des mots, pas des faits."}
+          </motion.p>
+
+          <motion.button
+            onClick={handleTransition}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            style={{
+              padding: "14px 36px", borderRadius: 16, border: "none",
+              background: `linear-gradient(135deg, ${VIOLET}, ${INDIGO})`,
+              color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer",
+              boxShadow: `0 4px 24px ${VIOLET_GLOW}`,
+            }}
+          >
+            Continuer avec mon Jumeau →
+          </motion.button>
+        </motion.div>
+      )}
+    </div>
+  );
+}

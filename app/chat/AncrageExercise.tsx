@@ -1,1059 +1,783 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  IconAnchor, IconCheckRing, IconEye, IconTouch, IconEar, IconWind, IconDroplet,
-} from "./SosIcons";
-import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
-import { makeBoundaryHandler, scheduleWordTimers } from "@/lib/therapeuticVoice";
+/**
+ * AncrageExercise — Technique sensorielle 5-4-3-2-1 (Niveau 1)
+ *
+ * Objectif clinique : stopper dissociation / angoisse aiguë / obsession TCA
+ * en forçant le système cognitif à scanner l'environnement réel via les 5 sens,
+ * saturant la mémoire de travail pour éteindre la rumination.
+ *
+ * State machine :
+ *   intro      → cadrage vocal Gemini Live (2.5s auto Phase 1)
+ *   sight_5    → 5 choses vues
+ *   touch_4    → 4 sensations tactiles
+ *   hearing_3  → 3 sons identifiés
+ *   smell_2    → 2 odeurs perçues
+ *   taste_1    → 1 saveur ressentie
+ *   cloture    → validation + feedback + injection chat
+ *
+ * Sécurité :
+ *   VAD 6s     → auto-avance si silence (Phase 2 : Gemini déblocage vocal)
+ *   Hard stop  → 3 minutes maximum
+ *   Haptic     → micro-vibration à chaque étape validée
+ *
+ * Phase 1 : coquille locale. Bouton simulation "Étape suivante".
+ * Phase 2 : brancher Gemini Live WebSocket.
+ */
 
-// ─── Tiny inline SVG check for validated states ───────────────────────────────
-function SvgCheck({ size = 16, color = "currentColor" }: { size?: number; color?: string }) {
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+
+// ─── Design tokens — Terre / Ocre ─────────────────────────────────────────────
+const BG_DEEP      = "#080501";                    // noir chaud
+const OCHRE        = "#d4a255";                    // ocre doré
+const OCHRE_DIM    = "rgba(212,162,85,0.11)";
+const OCHRE_GLOW   = "rgba(212,162,85,0.42)";
+const OCHRE_BORD   = "rgba(212,162,85,0.28)";
+const OCHRE_SOFT   = "rgba(212,162,85,0.18)";
+const EARTH        = "rgba(180,120,50,0.55)";      // terre plus sombre
+const TEXT_WARM    = "rgba(255,248,230,0.88)";     // blanc chaud
+const TEXT_MUTED   = "rgba(255,248,230,0.36)";
+const TEXT_FADED   = "rgba(255,248,230,0.16)";
+
+// ─── Timing ───────────────────────────────────────────────────────────────────
+const VAD_TIMEOUT  = 6;    // secondes avant auto-avance si silence
+const HARD_STOP_MS = 180_000; // 3 minutes
+
+// ─── State machine ─────────────────────────────────────────────────────────────
+type SenseStatus =
+  | "intro"
+  | "sight_5"
+  | "touch_4"
+  | "hearing_3"
+  | "smell_2"
+  | "taste_1"
+  | "cloture";
+
+const SENSE_ORDER: SenseStatus[] = [
+  "intro", "sight_5", "touch_4", "hearing_3", "smell_2", "taste_1", "cloture",
+];
+
+// ─── Config par sens ──────────────────────────────────────────────────────────
+interface SenseConfig {
+  count: number;
+  label: string;       // affiché dans le panneau simulation seulement
+  consigne: string;    // ce que Gemini dirait (Phase 2)
+  icon: React.ReactNode;
+}
+
+// ─── SVG Icons inline ─────────────────────────────────────────────────────────
+function IconEye({ size = 36, color = OCHRE }: { size?: number; color?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="m3 8 3.5 3.5 6.5-7" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
     </svg>
   );
 }
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
-const ACCENT = "#10b981";
-const ACCENT_DIM = "rgba(16,185,129,0.10)";
-const ACCENT_BORDER = "rgba(16,185,129,0.28)";
-const TEXT_PRIMARY = "rgba(255,255,255,0.88)";
-const TEXT_SECONDARY = "rgba(255,255,255,0.45)";
-const TEXT_MUTED = "rgba(255,255,255,0.22)";
+function IconHand({ size = 36, color = OCHRE }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/>
+      <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/>
+      <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/>
+      <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>
+    </svg>
+  );
+}
 
-// ─── Circular progress constants ──────────────────────────────────────────────
-const GAUGE_R = 36;
-const GAUGE_CIRC = 2 * Math.PI * GAUGE_R;
+function IconEar({ size = 36, color = OCHRE }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 8.5a6.5 6.5 0 1 1 13 0c0 6-6 6-6 10a3.5 3.5 0 0 1-7 0"/>
+      <path d="M15 8.5a2.5 2.5 0 0 0-5 0v1a2 2 0 0 0 4 0 2 2 0 0 0-4 0"/>
+    </svg>
+  );
+}
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-export type AncrageStage =
-  | "INTRO"
-  | "STEP_5_SEE"
-  | "STEP_4_FEEL"
-  | "STEP_3_HEAR"
-  | "STEP_2_SMELL"
-  | "STEP_1_TASTE"
-  | "COMPLETED";
+function IconWind({ size = 36, color = OCHRE }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>
+    </svg>
+  );
+}
 
+function IconDroplet({ size = 36, color = OCHRE }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
+    </svg>
+  );
+}
+
+const SENSE_CONFIG: Record<Exclude<SenseStatus, "intro" | "cloture">, SenseConfig> = {
+  sight_5: {
+    count: 5,
+    label: "5 choses que tu vois",
+    consigne: "Cite-moi à haute voix 5 objets que tu vois autour de toi en ce moment.",
+    icon: <IconEye />,
+  },
+  touch_4: {
+    count: 4,
+    label: "4 sensations que tu ressens",
+    consigne: "Sens ton corps. Nomme 4 sensations physiques ou textures que tu ressens là tout de suite.",
+    icon: <IconHand />,
+  },
+  hearing_3: {
+    count: 3,
+    label: "3 sons que tu entends",
+    consigne: "Ferme les yeux. Dis-moi 3 sons distincts que tu entends en arrière-plan.",
+    icon: <IconEar />,
+  },
+  smell_2: {
+    count: 2,
+    label: "2 odeurs que tu perçois",
+    consigne: "Prends une inspiration. Nomme 2 odeurs que tu perçois ou que tu peux imaginer autour de toi.",
+    icon: <IconWind />,
+  },
+  taste_1: {
+    count: 1,
+    label: "1 saveur sur ta langue",
+    consigne: "Enfin, concentre-toi sur ta bouche. Dis-moi 1 saveur que tu as sur la langue en ce moment.",
+    icon: <IconDroplet />,
+  },
+};
+
+// Ordre des sens actifs (sans intro/cloture)
+const ACTIVE_SENSES: Exclude<SenseStatus, "intro" | "cloture">[] = [
+  "sight_5", "touch_4", "hearing_3", "smell_2", "taste_1",
+];
+
+// ─── Indicateur géométrique 5-4-3-2-1 ────────────────────────────────────────
+function GeoIndicator({ completedCount }: { completedCount: number }) {
+  const nodes = [5, 4, 3, 2, 1];
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+      {nodes.map((n, i) => {
+        const done    = i < completedCount;
+        const current = i === completedCount;
+        return (
+          <div key={n} style={{ display: "flex", alignItems: "center" }}>
+            {/* Segment de liaison */}
+            {i > 0 && (
+              <div style={{
+                width: 28,
+                height: 2,
+                background: done ? OCHRE : "rgba(255,248,230,0.08)",
+                transition: "background 0.5s ease",
+              }} />
+            )}
+            {/* Nœud */}
+            <motion.div
+              animate={done
+                ? { boxShadow: [`0 0 0px ${OCHRE_GLOW}`, `0 0 14px ${OCHRE_GLOW}`, `0 0 6px ${OCHRE_GLOW}`] }
+                : { boxShadow: "0 0 0px rgba(0,0,0,0)" }
+              }
+              transition={{ repeat: done ? Infinity : 0, duration: 2.5, ease: "easeInOut" }}
+              style={{
+                width: current ? 48 : 40,
+                height: current ? 48 : 40,
+                borderRadius: "50%",
+                background: done
+                  ? OCHRE_SOFT
+                  : current
+                  ? OCHRE_DIM
+                  : "rgba(255,255,255,0.03)",
+                border: `2px solid ${done ? OCHRE : current ? OCHRE_BORD : "rgba(255,255,255,0.07)"}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.4s ease",
+              }}
+            >
+              {done ? (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"
+                  stroke={OCHRE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m3 8 3.5 3.5 6.5-7" />
+                </svg>
+              ) : (
+                <span style={{
+                  fontSize: current ? 18 : 15,
+                  fontWeight: 700,
+                  color: current ? OCHRE : TEXT_FADED,
+                  transition: "all 0.3s ease",
+                }}>
+                  {n}
+                </span>
+              )}
+            </motion.div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Onde ocre (bas d'écran) ─────────────────────────────────────────────────
+function OchreWave({ active }: { active: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 5, height: 40 }}>
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
+        const baseH = 4 + Math.sin(i * 0.7) * 2;
+        const peakH = 10 + Math.sin(i * 1.1) * 14;
+        return (
+          <motion.div
+            key={i}
+            style={{ width: 3.5, borderRadius: 2, background: OCHRE }}
+            animate={active
+              ? { height: [`${baseH}px`, `${peakH}px`, `${baseH}px`], opacity: [0.35, 0.8, 0.35] }
+              : { height: "4px", opacity: 0.15 }
+            }
+            transition={active
+              ? { repeat: Infinity, duration: 1.0 + i * 0.09, ease: "easeInOut", delay: i * 0.11 }
+              : { duration: 0.4 }
+            }
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Props ───────────────────────────────────────────────────────────────────
 export interface AncrageExerciseProps {
-  sosContext: string;
+  patientId?: string;
+  practitionerId?: string;
   firstName: string;
-  onCompleted: () => void;
+  sosContext?: string;
+  onTransitionToChat?: (summary: string, closing: string) => void;
+  // Compat ancien : onCompleted (utilisé par page.tsx v1)
+  onCompleted?: () => void;
   onClose: () => void;
 }
 
-// ─── TTS speech texts for each step ──────────────────────────────────────────
-const STEP_SPEECH: Partial<Record<AncrageStage, string>> = {
-  STEP_5_SEE:
-    "Regardez autour de vous. Nommez mentalement cinq choses que vous voyez. Tapez sur chaque case dès que vous en avez identifié une.",
-  STEP_4_FEEL:
-    "Le toucher maintenant. Posez votre doigt sur quatre surfaces différentes — votre peau, un tissu, une table. Maintenez deux secondes et ressentez.",
-  STEP_3_HEAR:
-    "Fermez les yeux. Écoutez. Identifiez trois sons distincts autour de vous.",
-  STEP_2_SMELL:
-    "Respirez lentement. Concentrez-vous sur deux odeurs que vous percevez en ce moment.",
-  STEP_1_TASTE:
-    "Pour finir, prenez conscience d'un goût dans votre bouche. Salivez légèrement. Observez.",
-};
-
-// ─── Contextual intro texts ───────────────────────────────────────────────────
-function getIntroText(ctx: string, name: string): string {
-  const c = ctx.toLowerCase();
-  if (c.includes("stress") || c.includes("anxiété") || c.includes("angoiss"))
-    return `${name}, quand l'anxiété monte, le cerveau s'emballe. La technique 5-4-3-2-1 va le ramener dans le présent — sens par sens, ici et maintenant.`;
-  if (c.includes("fringale") || c.includes("faim") || c.includes("envie"))
-    return `${name}, cette envie que tu ressens est réelle, mais elle peut passer. Ancrons ton attention dans l'instant pour laisser la vague s'apaiser.`;
-  if (c.includes("culpabilité") || c.includes("coupable") || c.includes("craqué"))
-    return `${name}, la culpabilité t'emporte dans les pensées. Revenons dans ton corps, dans le présent, là où tu es en sécurité.`;
-  return `${name}, prenons le temps de revenir dans l'instant. L'ancrage sensoriel va interrompre la spirale et te reconnecter à toi.`;
-}
-
-// ─── Circular progress gauge ─────────────────────────────────────────────────
-function Gauge({
-  progress,
-  validated,
-  idx,
-  isHolding,
-}: {
-  progress: number;
-  validated: boolean;
-  idx: number;
-  isHolding: boolean;
-}) {
-  const active = validated || isHolding;
-  return (
-    <svg
-      width={88}
-      height={88}
-      viewBox="0 0 88 88"
-      style={{ display: "block", overflow: "visible" }}
-    >
-      {/* Glow when active */}
-      {active && (
-        <circle
-          cx={44}
-          cy={44}
-          r={GAUGE_R + 6}
-          fill="none"
-          stroke={`rgba(16,185,129,${isHolding && !validated ? 0.15 : 0.08})`}
-          strokeWidth={8}
-          style={{ transition: "opacity 0.2s" }}
-        />
-      )}
-      {/* Track */}
-      <circle
-        cx={44}
-        cy={44}
-        r={GAUGE_R}
-        fill="none"
-        stroke="rgba(16,185,129,0.12)"
-        strokeWidth={3}
-      />
-      {/* Progress arc */}
-      <circle
-        cx={44}
-        cy={44}
-        r={GAUGE_R}
-        fill="none"
-        stroke={validated ? ACCENT : "rgba(16,185,129,0.65)"}
-        strokeWidth={3}
-        strokeLinecap="round"
-        strokeDasharray={String(GAUGE_CIRC)}
-        strokeDashoffset={GAUGE_CIRC * (1 - progress / 100)}
-        transform="rotate(-90 44 44)"
-        style={{ transition: "stroke-dashoffset 0.05s linear, stroke 0.25s" }}
-      />
-      {/* Background fill */}
-      <circle
-        cx={44}
-        cy={44}
-        r={GAUGE_R - 2}
-        fill={
-          validated
-            ? "rgba(16,185,129,0.08)"
-            : isHolding
-            ? "rgba(16,185,129,0.05)"
-            : "rgba(255,255,255,0.02)"
-        }
-        style={{ transition: "fill 0.2s" }}
-      />
-      {/* Center label */}
-      <text
-        x={44}
-        y={50}
-        textAnchor="middle"
-        fill={validated ? ACCENT : isHolding ? ACCENT : TEXT_MUTED}
-        fontSize={validated ? 18 : 16}
-        fontWeight={700}
-        style={{ transition: "fill 0.2s", userSelect: "none" }}
-      >
-        {validated ? "✓" : String(idx + 1)}
-      </text>
-    </svg>
-  );
-}
-
-// ─── Step progress dots ───────────────────────────────────────────────────────
-const STAGE_ORDER: AncrageStage[] = [
-  "INTRO",
-  "STEP_5_SEE",
-  "STEP_4_FEEL",
-  "STEP_3_HEAR",
-  "STEP_2_SMELL",
-  "STEP_1_TASTE",
-  "COMPLETED",
-];
-
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function AncrageExercise({
-  sosContext,
   firstName,
+  sosContext: _sosContext = "",
+  onTransitionToChat,
   onCompleted,
   onClose,
 }: AncrageExerciseProps) {
-  const { speakTherapeutic, cancelSpeech } = useTherapeuticVoice();
+  const [status, setStatus]         = useState<SenseStatus>("intro");
+  const [completedCount, setCompletedCount] = useState(0); // nb de sens complétés (0–5)
+  const [vadSecs, setVadSecs]       = useState(VAD_TIMEOUT);
+  const [waveActive, setWaveActive] = useState(true);
 
-  const [stage, setStage] = useState<AncrageStage>("INTRO");
+  // ─── Refs ──────────────────────────────────────────────────────────────────
+  const vadRef      = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hardStopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onTransRef  = useRef(onTransitionToChat);
+  const onCompRef   = useRef(onCompleted);
+  useEffect(() => { onTransRef.current = onTransitionToChat; }, [onTransitionToChat]);
+  useEffect(() => { onCompRef.current = onCompleted; }, [onCompleted]);
 
-  // INTRO
-  const introText = getIntroText(sosContext, firstName);
-  const introWords = introText.split(" ");
-  const [wordIdx, setWordIdx] = useState(-1);
-  const [introReady, setIntroReady] = useState(false);
+  // ─── Index du sens courant ─────────────────────────────────────────────────
+  const currentSenseIdx = ACTIVE_SENSES.indexOf(
+    status as Exclude<SenseStatus, "intro" | "cloture">
+  ); // -1 si intro/cloture
 
-  // STEP_5_SEE — 5 tap boxes
-  const [seeChecked, setSeeChecked] = useState<boolean[]>(Array(5).fill(false));
-
-  // STEP_4_FEEL — 4 hold circles
-  const [holdProgress, setHoldProgress] = useState<number[]>(Array(4).fill(0));
-  const [holdValidated, setHoldValidated] = useState<boolean[]>(Array(4).fill(false));
-  const [isHolding, setIsHolding] = useState<boolean[]>(Array(4).fill(false));
-
-  // STEP_3_HEAR — 3 tap buttons
-  const [hearChecked, setHearChecked] = useState<boolean[]>(Array(3).fill(false));
-
-  // STEP_2_SMELL — 2 tap boxes
-  const [smellChecked, setSmellChecked] = useState<boolean[]>(Array(2).fill(false));
-
-  // STEP_1_TASTE — 1 button
-  const [tasteDone, setTasteDone] = useState(false);
-
-  // ─── Refs (stale-closure proof) ───────────────────────────────────────────
-  const wordTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const holdIntervalsRef = useRef<(ReturnType<typeof setInterval> | null)[]>([
-    null, null, null, null,
-  ]);
-  const vibIntervalsRef = useRef<(ReturnType<typeof setInterval> | null)[]>([
-    null, null, null, null,
-  ]);
-  const holdValidRef = useRef<boolean[]>([false, false, false, false]);
-  const onCompletedRef = useRef(onCompleted);
-  useEffect(() => {
-    onCompletedRef.current = onCompleted;
-  }, [onCompleted]);
-
-  // ─── Full cleanup ─────────────────────────────────────────────────────────
-  const cleanupAll = useCallback(() => {
-    wordTimersRef.current.forEach(clearTimeout);
-    holdIntervalsRef.current.forEach((id) => id && clearInterval(id));
-    vibIntervalsRef.current.forEach((id) => id && clearInterval(id));
-    cancelSpeech();
-    if (typeof navigator !== "undefined") navigator.vibrate?.(0);
-  }, [cancelSpeech]);
-
-  useEffect(() => () => cleanupAll(), [cleanupAll]);
-
-  // ─── INTRO: karaoke (boundary-driven, timer fallback for iOS) ───────────────
-  useEffect(() => {
-    if (stage !== "INTRO") return;
-    const bootstrap = setTimeout(() => {
-      wordTimersRef.current = introWords.map((_, i) =>
-        setTimeout(() => setWordIdx(i), i * 420)
-      );
-      const endTimer = setTimeout(() => {
-        setWordIdx(-1);
-        setIntroReady(true);
-      }, introWords.length * 420 + 400);
-      wordTimersRef.current.push(endTimer);
-
-      const cancelFallback = () => {
-        wordTimersRef.current.forEach(clearTimeout);
-        wordTimersRef.current = [];
-      };
-
-      speakTherapeutic(introText, {
-        skipPrep: true,
-        rate: 0.82,
-        volume: 0.8,
-        onBoundary: makeBoundaryHandler(introWords, setWordIdx, cancelFallback),
-        onDurationReady: (durationMs: number) => {
-          wordTimersRef.current.forEach(clearTimeout);
-          wordTimersRef.current = [];
-          const timers = scheduleWordTimers(introWords, durationMs, setWordIdx);
-          const endTimer = setTimeout(() => {
-            setWordIdx(-1);
-            setIntroReady(true);
-          }, durationMs + 400);
-          wordTimersRef.current = [...timers, endTimer];
-        },
-      });
-    }, 380);
-
-    return () => {
-      clearTimeout(bootstrap);
-      wordTimersRef.current.forEach(clearTimeout);
-      wordTimersRef.current = [];
-      cancelSpeech();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, speakTherapeutic, cancelSpeech]);
-
-  // ─── Stage transition + speech ────────────────────────────────────────────
-  const goTo = useCallback((next: AncrageStage) => {
-    setStage(next);
-    const speech = STEP_SPEECH[next];
-    if (speech) {
-      setTimeout(() => speakTherapeutic(speech, { rate: 0.82, volume: 0.75 }), 280);
-    }
-  }, [speakTherapeutic]);
-
-  // ─── Auto-advance effects ─────────────────────────────────────────────────
-  useEffect(() => {
-    if (stage !== "STEP_5_SEE" || !seeChecked.every(Boolean)) return;
-    const t = setTimeout(() => goTo("STEP_4_FEEL"), 650);
-    return () => clearTimeout(t);
-  }, [seeChecked, stage, goTo]);
-
-  useEffect(() => {
-    if (stage !== "STEP_4_FEEL" || !holdValidated.every(Boolean)) return;
-    const t = setTimeout(() => goTo("STEP_3_HEAR"), 650);
-    return () => clearTimeout(t);
-  }, [holdValidated, stage, goTo]);
-
-  useEffect(() => {
-    if (stage !== "STEP_3_HEAR" || !hearChecked.every(Boolean)) return;
-    const t = setTimeout(() => goTo("STEP_2_SMELL"), 650);
-    return () => clearTimeout(t);
-  }, [hearChecked, stage, goTo]);
-
-  useEffect(() => {
-    if (stage !== "STEP_2_SMELL" || !smellChecked.every(Boolean)) return;
-    const t = setTimeout(() => goTo("STEP_1_TASTE"), 650);
-    return () => clearTimeout(t);
-  }, [smellChecked, stage, goTo]);
-
-  // STEP_1_TASTE → COMPLETED
-  useEffect(() => {
-    if (!tasteDone) return;
-    speakTherapeutic("Excellent. Tu es ancré. Ton esprit est revenu au présent.", {
-      rate: 0.8,
-      volume: 0.75,
-    });
-    setStage("COMPLETED");
-    const t = setTimeout(() => onCompletedRef.current(), 3200);
-    return () => clearTimeout(t);
-  }, [tasteDone, speakTherapeutic]);
-
-  // ─── SEE: tap handler ─────────────────────────────────────────────────────
-  const handleSeeClick = useCallback((i: number) => {
-    setSeeChecked((prev) => {
-      if (prev[i]) return prev;
-      if (typeof navigator !== "undefined") navigator.vibrate?.(40);
-      const n = [...prev];
-      n[i] = true;
-      return n;
-    });
+  // ─── Cleanup ───────────────────────────────────────────────────────────────
+  const cleanup = useCallback(() => {
+    if (vadRef.current)      clearInterval(vadRef.current);
+    if (hardStopRef.current) clearTimeout(hardStopRef.current);
   }, []);
 
-  // ─── FEEL: hold vibration helpers ─────────────────────────────────────────
-  const startVib = useCallback((i: number) => {
-    if (typeof navigator === "undefined" || !navigator.vibrate) return;
-    navigator.vibrate(200);
-    vibIntervalsRef.current[i] = setInterval(
-      () => navigator.vibrate?.(200),
-      310
-    );
-  }, []);
+  useEffect(() => () => cleanup(), [cleanup]);
 
-  const stopVib = useCallback((i: number) => {
-    if (vibIntervalsRef.current[i]) {
-      clearInterval(vibIntervalsRef.current[i]!);
-      vibIntervalsRef.current[i] = null;
-    }
-    if (typeof navigator !== "undefined") navigator.vibrate?.(0);
-  }, []);
+  // ─── Hard stop 3min ────────────────────────────────────────────────────────
+  useEffect(() => {
+    hardStopRef.current = setTimeout(() => {
+      cleanup();
+      setStatus("cloture");
+      setWaveActive(false);
+    }, HARD_STOP_MS);
+    return () => { if (hardStopRef.current) clearTimeout(hardStopRef.current); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── FEEL: hold start / end ───────────────────────────────────────────────
-  const handleHoldStart = useCallback(
-    (i: number) => {
-      if (holdValidRef.current[i]) return;
-      if (holdIntervalsRef.current[i]) return; // already running
-
-      setIsHolding((prev) => {
-        const n = [...prev];
-        n[i] = true;
-        return n;
-      });
-      startVib(i);
-
-      holdIntervalsRef.current[i] = setInterval(() => {
-        setHoldProgress((prev) => {
-          const next = [...prev];
-          // 2.5% per 50ms → 40 ticks = 2s
-          next[i] = Math.min(100, next[i] + 2.5);
-          if (next[i] >= 100) {
-            clearInterval(holdIntervalsRef.current[i]!);
-            holdIntervalsRef.current[i] = null;
-            stopVib(i);
-            holdValidRef.current[i] = true;
-            // Success haptic
-            if (typeof navigator !== "undefined")
-              navigator.vibrate?.([60, 40, 80]);
-            setHoldValidated((v) => {
-              const nv = [...v];
-              nv[i] = true;
-              return nv;
-            });
-            setIsHolding((h) => {
-              const nh = [...h];
-              nh[i] = false;
-              return nh;
-            });
-          }
-          return next;
-        });
-      }, 50);
-    },
-    [startVib, stopVib]
-  );
-
-  const handleHoldEnd = useCallback(
-    (i: number) => {
-      if (holdValidRef.current[i]) return;
-      if (holdIntervalsRef.current[i]) {
-        clearInterval(holdIntervalsRef.current[i]!);
-        holdIntervalsRef.current[i] = null;
+  // ─── Démarrer VAD pour un sens ────────────────────────────────────────────
+  const startVad = useCallback(() => {
+    if (vadRef.current) clearInterval(vadRef.current);
+    setVadSecs(VAD_TIMEOUT);
+    let rem = VAD_TIMEOUT;
+    vadRef.current = setInterval(() => {
+      rem -= 1;
+      setVadSecs(rem);
+      if (rem <= 0) {
+        clearInterval(vadRef.current!);
+        validateCurrentSense(); // auto-avance sur silence
       }
-      stopVib(i);
-      setIsHolding((prev) => {
-        const n = [...prev];
-        n[i] = false;
-        return n;
-      });
-      setHoldProgress((prev) => {
-        const n = [...prev];
-        n[i] = 0;
-        return n;
-      });
-    },
-    [stopVib]
-  );
+    }, 1000);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── HEAR: tap handler ────────────────────────────────────────────────────
-  const handleHearClick = useCallback((i: number) => {
-    setHearChecked((prev) => {
-      if (prev[i]) return prev;
-      if (typeof navigator !== "undefined") navigator.vibrate?.(40);
-      const n = [...prev];
-      n[i] = true;
-      return n;
+  // ─── Avancer au sens suivant ──────────────────────────────────────────────
+  const validateCurrentSense = useCallback(() => {
+    if (vadRef.current) clearInterval(vadRef.current);
+
+    // Haptic confirmation
+    navigator.vibrate?.([25, 30, 50]);
+
+    setCompletedCount((prev) => {
+      const next = prev + 1;
+      if (next >= ACTIVE_SENSES.length) {
+        // Tous les sens validés → cloture
+        setTimeout(() => {
+          setStatus("cloture");
+          setWaveActive(true); // onde active pour la validation finale
+        }, 300);
+      } else {
+        // Sens suivant
+        const nextSense = ACTIVE_SENSES[next];
+        setTimeout(() => {
+          setStatus(nextSense);
+          setWaveActive(false);
+          setTimeout(() => startVad(), 600);
+        }, 300);
+      }
+      return next;
     });
-  }, []);
+  }, [startVad]);
 
-  // ─── SMELL: tap handler ───────────────────────────────────────────────────
-  const handleSmellClick = useCallback((i: number) => {
-    setSmellChecked((prev) => {
-      if (prev[i]) return prev;
-      if (typeof navigator !== "undefined") navigator.vibrate?.(40);
-      const n = [...prev];
-      n[i] = true;
-      return n;
-    });
-  }, []);
+  // ─── INTRO → premier sens auto ────────────────────────────────────────────
+  useEffect(() => {
+    if (status !== "intro") return;
+    setWaveActive(true);
+    const t = setTimeout(() => {
+      setStatus("sight_5");
+      setWaveActive(false);
+      setTimeout(() => startVad(), 500);
+    }, 2600);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
-  // ─── Stage index for progress dots ───────────────────────────────────────
-  const stageIdx = STAGE_ORDER.indexOf(stage); // 0=INTRO … 6=COMPLETED
+  // ─── Clôture → injection chat ─────────────────────────────────────────────
+  const handleTransition = useCallback(() => {
+    cleanup();
+    const summary = `🪨 *Exercice d'ancrage 5-4-3-2-1 complété — ${completedCount} sens explorés.*`;
+    const closing = `Magnifique ${firstName}. Ton esprit est de retour dans la pièce. Tu viens de traverser une vague difficile et tu es encore là, pleinement présent·e.`;
+    if (onTransRef.current) {
+      onTransRef.current(summary, closing);
+    } else {
+      onCompRef.current?.();
+    }
+  }, [cleanup, completedCount, firstName]);
 
-  // ─── Dark background for STEP_3_HEAR ─────────────────────────────────────
-  const bgColor =
-    stage === "STEP_3_HEAR" ? "rgba(1,2,4,0.99)" : "rgba(5,10,12,0.97)";
+  // ─── Sens courant config ──────────────────────────────────────────────────
+  const senseKey = status !== "intro" && status !== "cloture"
+    ? status as Exclude<SenseStatus, "intro" | "cloture">
+    : null;
+  const senseConf = senseKey ? SENSE_CONFIG[senseKey] : null;
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 200,
-        background: bgColor,
-        backdropFilter: "blur(32px)",
-        WebkitBackdropFilter: "blur(32px)",
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 200,
+      background: BG_DEEP,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "space-between",
+      overflow: "hidden",
+    }}>
+      <style>{`
+        @keyframes earth-pulse {
+          0%, 100% { opacity: 0.10; transform: scale(1); }
+          50%       { opacity: 0.20; transform: scale(1.07); }
+        }
+      `}</style>
+
+      {/* ── Halo de fond terre ────────────────────────────────────────────── */}
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "hidden" }}>
+        <div style={{
+          position: "absolute",
+          top: "-20%", left: "50%", transform: "translateX(-50%)",
+          width: "90vw", height: "90vw", borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(180,110,30,0.20) 0%, transparent 65%)",
+          animation: "earth-pulse 7s ease-in-out infinite",
+        }} />
+      </div>
+
+      {/* ── Close ─────────────────────────────────────────────────────────── */}
+      {status !== "cloture" && (
+        <button onClick={onClose} aria-label="Fermer" style={{
+          position: "absolute", top: 20, right: 20,
+          width: 34, height: 34, borderRadius: "50%",
+          background: OCHRE_DIM, border: `1px solid ${OCHRE_BORD}`,
+          color: TEXT_MUTED, fontSize: 20, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          zIndex: 10,
+        }}>×</button>
+      )}
+
+      {/* ── Indicateur géométrique (haut) ─────────────────────────────────── */}
+      <div style={{
+        paddingTop: 52,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
-        padding: "24px",
-        overflowY: "auto",
-        transition: "background 1.4s ease",
-      }}
-    >
-      {/* ── Close ─────────────────────────────────────────────────────────── */}
-      <button
-        onClick={() => { cleanupAll(); onClose(); }}
-        aria-label="Fermer"
-        style={{
-          position: "absolute",
-          top: 20,
-          right: 20,
-          width: 36,
-          height: 36,
-          borderRadius: "50%",
-          background: "rgba(255,255,255,0.06)",
-          border: "1px solid rgba(255,255,255,0.10)",
-          color: TEXT_MUTED,
-          fontSize: 20,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexShrink: 0,
-        }}
-      >
-        ×
-      </button>
-
-      {/* ── Progress dots (visible during steps 1–5) ──────────────────────── */}
-      {stageIdx >= 1 && stageIdx <= 5 && (
-        <div
-          style={{
-            position: "absolute",
-            top: 24,
-            left: "50%",
-            transform: "translateX(-50%)",
-            display: "flex",
-            gap: 8,
-          }}
-        >
-          {[1, 2, 3, 4, 5].map((n) => (
-            <div
-              key={n}
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: "50%",
-                background:
-                  n < stageIdx
-                    ? ACCENT
-                    : n === stageIdx
-                    ? "rgba(16,185,129,0.55)"
-                    : "rgba(255,255,255,0.12)",
-                transition: "background 0.4s ease",
-              }}
-            />
-          ))}
-        </div>
-      )}
+        gap: 12,
+        zIndex: 1,
+      }}>
+        <GeoIndicator completedCount={completedCount} />
+        {status !== "intro" && status !== "cloture" && (
+          <p style={{
+            margin: 0,
+            fontSize: 10,
+            color: TEXT_FADED,
+            letterSpacing: 1.3,
+            textTransform: "uppercase",
+          }}>
+            {SENSE_ORDER.indexOf(status) - 1} / 5 sens explorés
+          </p>
+        )}
+      </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          INTRO
+          Contenu central
       ══════════════════════════════════════════════════════════════════════ */}
-      {stage === "INTRO" && (
-        <div
-          style={{
-            maxWidth: 380,
-            textAlign: "center",
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: "50%",
-              background: ACCENT_DIM,
-              border: `1px solid ${ACCENT_BORDER}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 28px",
-              boxShadow: `0 0 20px ${ACCENT}22`,
-            }}
-          >
-            <IconAnchor size={26} color={ACCENT} strokeWidth={1.5} />
-          </div>
+      <AnimatePresence mode="wait">
 
-          <p
-            style={{
-              fontSize: 17,
-              lineHeight: 1.78,
-              color: TEXT_PRIMARY,
-              margin: "0 0 36px",
-              fontWeight: 400,
-            }}
+        {/* ── INTRO ─────────────────────────────────────────────────────── */}
+        {status === "intro" && (
+          <motion.div key="intro"
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, zIndex: 1 }}
           >
-            {introWords.map((w, i) => (
-              <span
-                key={i}
-                style={{
-                  color: i === wordIdx ? ACCENT : TEXT_PRIMARY,
-                  textShadow:
-                    i === wordIdx ? `0 0 12px ${ACCENT}88` : "none",
-                  transition: "color 0.15s ease, text-shadow 0.15s ease",
-                }}
-              >
-                {w}{" "}
-              </span>
-            ))}
-          </p>
-
-          {introReady && (
-            <button
-              onClick={() => goTo("STEP_5_SEE")}
+            <motion.div
+              animate={{ scale: [1, 1.06, 1], opacity: [0.7, 1, 0.7] }}
+              transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
               style={{
-                padding: "14px 36px",
-                borderRadius: 14,
-                background: ACCENT,
-                border: "none",
-                color: "#000",
-                fontSize: 15,
-                fontWeight: 700,
-                cursor: "pointer",
-                animation: "fadeUp 0.4s ease",
+                width: 68, height: 68, borderRadius: "50%",
+                background: OCHRE_DIM, border: `1.5px solid ${OCHRE_BORD}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: `0 0 28px ${OCHRE_GLOW}`,
               }}
             >
-              Commencer l'ancrage →
+              {/* Icône ancre */}
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+                stroke={OCHRE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="5" r="3"/>
+                <line x1="12" y1="8" x2="12" y2="22"/>
+                <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
+              </svg>
+            </motion.div>
+            <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, letterSpacing: 0.4 }}>
+              Ton Jumeau prend la parole…
+            </p>
+            {/* Bypass simulation */}
+            <button
+              onClick={() => {
+                setStatus("sight_5");
+                setWaveActive(false);
+                setTimeout(() => startVad(), 400);
+              }}
+              style={{
+                marginTop: 8, padding: "9px 22px", borderRadius: 12,
+                background: "transparent", border: `1px solid ${OCHRE_BORD}`,
+                color: TEXT_MUTED, fontSize: 12, cursor: "pointer",
+              }}
+            >
+              Passer l'intro →
             </button>
-          )}
-        </div>
-      )}
+          </motion.div>
+        )}
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          STEP_5_SEE — 5 tap boxes
-      ══════════════════════════════════════════════════════════════════════ */}
-      {stage === "STEP_5_SEE" && (
-        <div
-          style={{
-            textAlign: "center",
-            position: "relative",
-            zIndex: 1,
-            width: "100%",
-            maxWidth: 360,
-          }}
-        >
-          <div style={{ marginBottom: 14, display: "flex", justifyContent: "center" }}>
-            <IconEye size={30} color={ACCENT} strokeWidth={1.5} style={{ filter: `drop-shadow(0 0 6px ${ACCENT}55)` }} />
-          </div>
-          <p
+        {/* ── SENS ACTIF ────────────────────────────────────────────────── */}
+        {senseConf && (
+          <motion.div key={status}
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.05 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
             style={{
-              fontSize: 17,
-              fontWeight: 700,
-              color: TEXT_PRIMARY,
-              margin: "0 0 6px",
-            }}
-          >
-            5 choses que vous{" "}
-            <span style={{ color: ACCENT }}>voyez</span>
-          </p>
-          <p
-            style={{
-              fontSize: 13,
-              color: TEXT_SECONDARY,
-              marginBottom: 32,
-              lineHeight: 1.6,
-            }}
-          >
-            Tapez sur chaque case dès que vous avez identifié un objet
-          </p>
-
-          {/* 5 boxes */}
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 14,
-              justifyContent: "center",
-              maxWidth: 280,
-              margin: "0 auto",
-            }}
-          >
-            {seeChecked.map((checked, i) => (
-              <button
-                key={i}
-                onClick={() => handleSeeClick(i)}
-                style={{
-                  width: 60,
-                  height: 60,
-                  borderRadius: 16,
-                  background: checked
-                    ? ACCENT_DIM
-                    : "rgba(255,255,255,0.04)",
-                  border: `2px solid ${
-                    checked ? ACCENT : "rgba(255,255,255,0.09)"
-                  }`,
-                  cursor: checked ? "default" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: checked ? 22 : 15,
-                  fontWeight: 700,
-                  color: checked ? ACCENT : TEXT_MUTED,
-                  transition: "all 0.22s ease",
-                  transform: checked ? "scale(1.06)" : "scale(1)",
-                  boxShadow: checked ? `0 0 14px ${ACCENT}44` : "none",
-                }}
-              >
-                {checked ? <SvgCheck size={18} color={ACCENT} /> : String(i + 1)}
-              </button>
-            ))}
-          </div>
-
-          <p style={{ marginTop: 22, fontSize: 12, color: TEXT_MUTED }}>
-            {seeChecked.filter(Boolean).length} / 5
-          </p>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          STEP_4_FEEL — 4 hold circles with progress gauge
-      ══════════════════════════════════════════════════════════════════════ */}
-      {stage === "STEP_4_FEEL" && (
-        <div
-          style={{
-            textAlign: "center",
-            position: "relative",
-            zIndex: 1,
-            width: "100%",
-            maxWidth: 360,
-          }}
-        >
-          <div style={{ marginBottom: 14, display: "flex", justifyContent: "center" }}>
-            <IconTouch size={30} color={ACCENT} strokeWidth={1.5} style={{ filter: `drop-shadow(0 0 6px ${ACCENT}55)` }} />
-          </div>
-          <p
-            style={{
-              fontSize: 17,
-              fontWeight: 700,
-              color: TEXT_PRIMARY,
-              margin: "0 0 6px",
-            }}
-          >
-            4 textures à{" "}
-            <span style={{ color: ACCENT }}>ressentir</span>
-          </p>
-          <p
-            style={{
-              fontSize: 13,
-              color: TEXT_SECONDARY,
-              marginBottom: 32,
-              lineHeight: 1.6,
-            }}
-          >
-            Maintenez votre doigt{" "}
-            <strong style={{ color: TEXT_PRIMARY }}>2 secondes</strong> sur
-            chaque cercle
-          </p>
-
-          {/* 2×2 grid */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 20,
-              maxWidth: 220,
-              margin: "0 auto",
-            }}
-          >
-            {holdProgress.map((prog, i) => (
-              <div
-                key={i}
-                onMouseDown={() => handleHoldStart(i)}
-                onMouseUp={() => handleHoldEnd(i)}
-                onMouseLeave={() => handleHoldEnd(i)}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  handleHoldStart(i);
-                }}
-                onTouchEnd={() => handleHoldEnd(i)}
-                onTouchCancel={() => handleHoldEnd(i)}
-                style={{
-                  cursor: holdValidated[i] ? "default" : "pointer",
-                  userSelect: "none",
-                  touchAction: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Gauge
-                  progress={prog}
-                  validated={holdValidated[i]}
-                  idx={i}
-                  isHolding={isHolding[i]}
-                />
-              </div>
-            ))}
-          </div>
-
-          <p style={{ marginTop: 22, fontSize: 12, color: TEXT_MUTED }}>
-            {holdValidated.filter(Boolean).length} / 4
-          </p>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          STEP_3_HEAR — 3 pulsing buttons on dark background
-      ══════════════════════════════════════════════════════════════════════ */}
-      {stage === "STEP_3_HEAR" && (
-        <div
-          style={{
-            textAlign: "center",
-            position: "relative",
-            zIndex: 1,
-            width: "100%",
-            maxWidth: 360,
-          }}
-        >
-          <div style={{ marginBottom: 14, display: "flex", justifyContent: "center" }}>
-            <IconEar size={30} color={ACCENT} strokeWidth={1.5} style={{ filter: `drop-shadow(0 0 6px ${ACCENT}55)` }} />
-          </div>
-          <p
-            style={{
-              fontSize: 17,
-              fontWeight: 700,
-              color: TEXT_PRIMARY,
-              margin: "0 0 6px",
-            }}
-          >
-            3 sons à{" "}
-            <span style={{ color: ACCENT }}>identifier</span>
-          </p>
-          <p
-            style={{
-              fontSize: 13,
-              color: TEXT_SECONDARY,
-              marginBottom: 44,
-              lineHeight: 1.6,
-            }}
-          >
-            Écoutez. Validez chaque son dès que vous le percevez
-          </p>
-
-          <div
-            style={{ display: "flex", gap: 24, justifyContent: "center" }}
-          >
-            {hearChecked.map((checked, i) => (
-              <button
-                key={i}
-                onClick={() => handleHearClick(i)}
-                style={{
-                  width: 76,
-                  height: 76,
-                  borderRadius: "50%",
-                  background: checked
-                    ? ACCENT_DIM
-                    : "rgba(255,255,255,0.04)",
-                  border: `2px solid ${
-                    checked ? ACCENT : "rgba(255,255,255,0.11)"
-                  }`,
-                  cursor: checked ? "default" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 24,
-                  color: checked ? ACCENT : "rgba(255,255,255,0.3)",
-                  animation: !checked
-                    ? `pulse-hear 2.6s ease-in-out infinite`
-                    : "none",
-                  animationDelay: `${i * 0.45}s`,
-                  transition: "all 0.25s ease",
-                  boxShadow: checked ? `0 0 18px ${ACCENT}44` : "none",
-                }}
-              >
-                {checked ? <SvgCheck size={20} color={ACCENT} /> : "~"}
-              </button>
-            ))}
-          </div>
-
-          <p style={{ marginTop: 28, fontSize: 12, color: TEXT_MUTED }}>
-            {hearChecked.filter(Boolean).length} / 3
-          </p>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          STEP_2_SMELL — 2 tap boxes, screen re-lit
-      ══════════════════════════════════════════════════════════════════════ */}
-      {stage === "STEP_2_SMELL" && (
-        <div
-          style={{
-            textAlign: "center",
-            position: "relative",
-            zIndex: 1,
-            width: "100%",
-            maxWidth: 360,
-          }}
-        >
-          <div style={{ marginBottom: 14, display: "flex", justifyContent: "center" }}>
-            <IconWind size={30} color={ACCENT} strokeWidth={1.5} style={{ filter: `drop-shadow(0 0 6px ${ACCENT}55)` }} />
-          </div>
-          <p
-            style={{
-              fontSize: 17,
-              fontWeight: 700,
-              color: TEXT_PRIMARY,
-              margin: "0 0 6px",
-            }}
-          >
-            2 odeurs à{" "}
-            <span style={{ color: ACCENT }}>percevoir</span>
-          </p>
-          <p
-            style={{
-              fontSize: 13,
-              color: TEXT_SECONDARY,
-              marginBottom: 40,
-              lineHeight: 1.6,
-            }}
-          >
-            Respirez lentement. Tapez sur chaque case dès que vous
-            identifiez une odeur
-          </p>
-
-          <div
-            style={{ display: "flex", gap: 24, justifyContent: "center" }}
-          >
-            {smellChecked.map((checked, i) => (
-              <button
-                key={i}
-                onClick={() => handleSmellClick(i)}
-                style={{
-                  width: 84,
-                  height: 84,
-                  borderRadius: 22,
-                  background: checked
-                    ? ACCENT_DIM
-                    : "rgba(255,255,255,0.04)",
-                  border: `2px solid ${
-                    checked ? ACCENT : "rgba(255,255,255,0.09)"
-                  }`,
-                  cursor: checked ? "default" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: checked ? 26 : 16,
-                  fontWeight: 700,
-                  color: checked ? ACCENT : TEXT_MUTED,
-                  transition: "all 0.25s ease",
-                  transform: checked ? "scale(1.06)" : "scale(1)",
-                  boxShadow: checked ? `0 0 18px ${ACCENT}44` : "none",
-                }}
-              >
-                {checked ? <SvgCheck size={22} color={ACCENT} /> : String(i + 1)}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          STEP_1_TASTE — 1 central pulsing button
-      ══════════════════════════════════════════════════════════════════════ */}
-      {stage === "STEP_1_TASTE" && (
-        <div
-          style={{
-            textAlign: "center",
-            position: "relative",
-            zIndex: 1,
-            maxWidth: 320,
-          }}
-        >
-          <div style={{ marginBottom: 14, display: "flex", justifyContent: "center" }}>
-            <IconDroplet size={30} color={ACCENT} strokeWidth={1.5} style={{ filter: `drop-shadow(0 0 6px ${ACCENT}55)` }} />
-          </div>
-          <p
-            style={{
-              fontSize: 17,
-              fontWeight: 700,
-              color: TEXT_PRIMARY,
-              margin: "0 0 6px",
-            }}
-          >
-            1 goût à{" "}
-            <span style={{ color: ACCENT }}>percevoir</span>
-          </p>
-          <p
-            style={{
-              fontSize: 13,
-              color: TEXT_SECONDARY,
-              marginBottom: 44,
-              lineHeight: 1.7,
-            }}
-          >
-            Salivez légèrement. Observez le goût dans votre bouche.
-          </p>
-
-          <button
-            onClick={() => {
-              if (typeof navigator !== "undefined")
-                navigator.vibrate?.([40, 30, 80]);
-              setTasteDone(true);
-            }}
-            style={{
-              width: 164,
-              height: 164,
-              borderRadius: "50%",
-              background: `radial-gradient(circle, ${ACCENT_DIM}, rgba(16,185,129,0.02))`,
-              border: `2px solid ${ACCENT_BORDER}`,
-              color: ACCENT,
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: "pointer",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              boxShadow: `0 0 52px ${ACCENT}22`,
-              animation: "pulse-taste 2.4s ease-in-out infinite",
-              lineHeight: 1.4,
-              letterSpacing: 0.2,
+              gap: 28,
+              zIndex: 1,
+              width: "100%",
+              maxWidth: 360,
+              padding: "0 28px",
             }}
           >
-            <span style={{ fontSize: 22, lineHeight: 1 }}>✦</span>
-            <span>
-              Prendre conscience
-              <br />
-              du goût
-            </span>
-          </button>
-        </div>
-      )}
+            {/* Grande icône du sens */}
+            <motion.div
+              animate={{
+                boxShadow: [
+                  `0 0 0px ${OCHRE_GLOW}`,
+                  `0 0 32px ${OCHRE_GLOW}`,
+                  `0 0 12px ${OCHRE_GLOW}`,
+                ],
+              }}
+              transition={{ repeat: Infinity, duration: 2.8, ease: "easeInOut" }}
+              style={{
+                width: 88,
+                height: 88,
+                borderRadius: "50%",
+                background: OCHRE_DIM,
+                border: `1.5px solid ${OCHRE_BORD}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {senseConf.icon}
+            </motion.div>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          COMPLETED
-      ══════════════════════════════════════════════════════════════════════ */}
-      {stage === "COMPLETED" && (
-        <div
-          style={{
-            textAlign: "center",
-            position: "relative",
-            zIndex: 1,
-            maxWidth: 320,
-            animation: "fadeUp 0.5s ease",
-          }}
-        >
-          <div style={{ marginBottom: 20, display: "flex", justifyContent: "center" }}>
-            <IconCheckRing size={52} color={ACCENT} strokeWidth={1.2} style={{ filter: `drop-shadow(0 0 12px ${ACCENT}55)` }} />
-          </div>
-          <h2
+            {/* Compteur du sens (grand chiffre) */}
+            <div style={{ textAlign: "center" }}>
+              <motion.p
+                key={`count-${status}`}
+                initial={{ scale: 1.4, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                style={{
+                  margin: "0 0 4px",
+                  fontSize: 56,
+                  fontWeight: 700,
+                  color: OCHRE,
+                  lineHeight: 1,
+                  textShadow: `0 0 24px ${OCHRE_GLOW}`,
+                }}
+              >
+                {senseConf.count}
+              </motion.p>
+              <p style={{ margin: 0, fontSize: 12, color: TEXT_FADED, letterSpacing: 1.2, textTransform: "uppercase" }}>
+                {senseConf.label}
+              </p>
+            </div>
+
+            {/* Indicateur micro + VAD */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+              <motion.div
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
+                style={{
+                  width: 40, height: 40, borderRadius: "50%",
+                  background: OCHRE_DIM, border: `1.5px solid ${OCHRE_BORD}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  stroke={OCHRE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                </svg>
+              </motion.div>
+
+              {/* VAD barre de progression */}
+              <div style={{ width: 120, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.06)" }}>
+                <motion.div
+                  style={{
+                    height: "100%",
+                    borderRadius: 2,
+                    background: vadSecs <= 2 ? "#ef4444" : OCHRE,
+                    width: `${(vadSecs / VAD_TIMEOUT) * 100}%`,
+                    transition: "width 0.9s linear, background 0.3s ease",
+                  }}
+                />
+              </div>
+              <p style={{ margin: 0, fontSize: 11, color: TEXT_FADED }}>
+                {vadSecs > 0 ? `avance auto dans ${vadSecs}s` : "passage automatique…"}
+              </p>
+            </div>
+
+            {/* ── Panneau simulation Phase 1 ───────────────────────────── */}
+            <div style={{
+              width: "100%",
+              background: OCHRE_DIM,
+              border: `1px solid ${OCHRE_BORD}`,
+              borderRadius: 16,
+              padding: "14px 18px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}>
+              <p style={{
+                margin: 0,
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: 1.3,
+                color: `rgba(212,162,85,0.55)`,
+                textTransform: "uppercase",
+              }}>
+                Simulation Phase 1 — consigne IA
+              </p>
+              <p style={{
+                margin: 0,
+                fontSize: 13,
+                color: TEXT_MUTED,
+                fontStyle: "italic",
+                lineHeight: 1.6,
+              }}>
+                « {senseConf.consigne} »
+              </p>
+              <button
+                onClick={validateCurrentSense}
+                style={{
+                  padding: "11px 20px",
+                  borderRadius: 12,
+                  background: `linear-gradient(135deg, #b45309, ${OCHRE})`,
+                  border: "none",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  letterSpacing: 0.3,
+                }}
+              >
+                {currentSenseIdx < ACTIVE_SENSES.length - 1
+                  ? `Étape suivante — ${SENSE_CONFIG[ACTIVE_SENSES[currentSenseIdx + 1]]?.label ?? ""} →`
+                  : "Valider et clôturer ✓"}
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── CLOTURE ───────────────────────────────────────────────────── */}
+        {status === "cloture" && (
+          <motion.div key="cloture"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             style={{
-              margin: "0 0 14px",
-              fontSize: 22,
-              fontWeight: 700,
-              color: TEXT_PRIMARY,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 24,
+              zIndex: 1,
+              textAlign: "center",
+              padding: "0 28px",
+              maxWidth: 380,
+              width: "100%",
             }}
           >
-            Tu es ancré·e, {firstName}
-          </h2>
-          <p
-            style={{
-              margin: 0,
-              fontSize: 15,
-              color: TEXT_SECONDARY,
-              lineHeight: 1.75,
-            }}
-          >
-            5 · 4 · 3 · 2 · 1<br />
-            Ton esprit est revenu au présent.
+            {/* Badge victoire */}
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 14, delay: 0.1 }}
+              style={{
+                width: 64, height: 64, borderRadius: "50%",
+                background: OCHRE_SOFT, border: `2px solid ${OCHRE_BORD}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: `0 0 32px ${OCHRE_GLOW}`,
+              }}
+            >
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                stroke={OCHRE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </motion.div>
+
+            {/* Résumé des sens */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              style={{
+                width: "100%",
+                background: OCHRE_DIM,
+                border: `1px solid ${OCHRE_BORD}`,
+                borderRadius: 16,
+                padding: "16px 20px",
+              }}
+            >
+              <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, letterSpacing: 1.3, color: `rgba(212,162,85,0.6)`, textTransform: "uppercase" }}>
+                Ancrage complété
+              </p>
+              <div style={{ display: "flex", gap: 16, justifyContent: "center", flexWrap: "wrap" }}>
+                {ACTIVE_SENSES.slice(0, completedCount).map((s, i) => {
+                  const conf = SENSE_CONFIG[s];
+                  return (
+                    <motion.div
+                      key={s}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.35 + i * 0.1 }}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <div style={{
+                        width: 36, height: 36, borderRadius: "50%",
+                        background: OCHRE_SOFT, border: `1px solid ${OCHRE_BORD}`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        {/* Mini icon */}
+                        <div style={{ transform: "scale(0.6)" }}>{conf.icon}</div>
+                      </div>
+                      <span style={{ fontSize: 10, color: TEXT_MUTED }}>{conf.count}</span>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
+
+            {/* Message */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              style={{ margin: 0, fontSize: 15, lineHeight: 1.8, color: TEXT_WARM }}
+            >
+              Magnifique {firstName}. Ton esprit est de retour dans la pièce.
+            </motion.p>
+
+            <motion.button
+              onClick={handleTransition}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              style={{
+                padding: "14px 36px", borderRadius: 16, border: "none",
+                background: `linear-gradient(135deg, #92400e, ${OCHRE})`,
+                color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer",
+                boxShadow: `0 4px 24px ${OCHRE_GLOW}`,
+              }}
+            >
+              Continuer avec mon Jumeau →
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Onde ocre (bas d'écran) ───────────────────────────────────────── */}
+      <div style={{
+        paddingBottom: 34,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 10,
+        zIndex: 1,
+      }}>
+        <OchreWave active={waveActive} />
+        {status !== "cloture" && (
+          <p style={{
+            margin: 0,
+            fontSize: 10,
+            color: TEXT_FADED,
+            letterSpacing: 1.1,
+            textTransform: "uppercase",
+          }}>
+            {status === "intro" ? "Ton Jumeau prend la parole" : "Jumeau · Présent"}
           </p>
-        </div>
-      )}
-
-      {/* ── Keyframes ──────────────────────────────────────────────────────── */}
-      <style>{`
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(14px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes pulse-hear {
-          0%, 100% { transform: scale(1);    opacity: 0.6; }
-          50%       { transform: scale(1.10); opacity: 1;   }
-        }
-        @keyframes pulse-taste {
-          0%, 100% {
-            transform: scale(1);
-            box-shadow: 0 0 52px rgba(16,185,129,0.22);
-          }
-          50% {
-            transform: scale(1.07);
-            box-shadow: 0 0 80px rgba(16,185,129,0.38);
-          }
-        }
-      `}</style>
+        )}
+      </div>
     </div>
   );
 }

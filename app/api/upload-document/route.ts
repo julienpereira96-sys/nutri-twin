@@ -98,6 +98,7 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get("file") as File;
     const practitionerId = formData.get("practitionerId") as string;
+    const patientId = (formData.get("patientId") as string | null) || null;
 
     if (!file || !practitionerId) {
       return Response.json({ error: "Fichier ou practitionerId manquant." }, { status: 400 });
@@ -105,11 +106,13 @@ export async function POST(request: Request) {
 
     if (user.id !== practitionerId) return forbidden();
 
-    const { count } = await supabase
+    let dupQuery = supabase
       .from("documents")
       .select("*", { count: "exact", head: true })
       .eq("practitioner_id", practitionerId)
       .eq("file_name", file.name);
+    dupQuery = patientId ? dupQuery.eq("patient_id", patientId) : dupQuery.is("patient_id", null);
+    const { count } = await dupQuery;
 
     if ((count ?? 0) > 0) {
       return Response.json({ error: `${file.name} est déjà indexé. Supprimez-le d'abord si vous voulez le remplacer.` }, { status: 400 });
@@ -197,6 +200,7 @@ export async function POST(request: Request) {
       const embedding = await getGeminiEmbedding(chunk);
       const { error: insertError } = await supabase.from("documents").insert({
         practitioner_id: practitionerId,
+        patient_id: documentType === "patient" ? patientId : null,
         file_name: file.name,
         file_type: fileType,
         content: chunk,

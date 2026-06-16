@@ -5,6 +5,47 @@ import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
+const MOTIVATION_LABELS: Record<string, string> = {
+  abloc: "Très motivé(e) en ce moment",
+  progres: "Voir des progrès concrets",
+  sante: "Améliorer ma santé",
+  poids: "Atteindre mon poids de forme",
+  energie: "Avoir plus d'énergie",
+  autre: "Autre raison personnelle",
+};
+
+const OBJECTIVE_LABELS: Record<string, string> = {
+  perte: "Perte de poids",
+  maintien: "Maintien du poids",
+  prise: "Prise de masse",
+  equilibre: "Rééquilibrage alimentaire",
+  tca: "Troubles du comportement alimentaire",
+  performance: "Performance sportive",
+  autre: "Autre objectif",
+};
+
+const DEFI_LABELS: Record<string, string> = {
+  grignotage: "Grignotage / compulsions",
+  stress: "Alimentation émotionnelle / stress",
+  temps: "Manque de temps pour cuisiner",
+  motivation: "Manque de motivation",
+  connaissance: "Manque de connaissances nutritionnelles",
+  sociaux: "Repas sociaux difficiles à gérer",
+  autre: "Autre défi",
+};
+
+const ALERT_TYPE_LABELS: Record<string, string> = {
+  critical: "Alerte critique (mots-clés)",
+  critical_llm: "Alerte critique (analyse IA)",
+  behavioral: "Alerte comportementale",
+};
+
+const RESOLUTION_LABELS: Record<string, string> = {
+  practitioner_certified: "Certifiée traitée par le praticien",
+  practitioner_resolved: "Résolue par le praticien (instruction transmise au jumeau)",
+  practitioner_dismissed: "Classée sans suite par le praticien",
+};
+
 export async function POST(request: Request) {
   try {
     const user = await getSessionUser();
@@ -50,17 +91,24 @@ export async function POST(request: Request) {
       conversationsQuery = conversationsQuery.gt("created_at", lastCursor);
     }
 
-    const [{ data: chatMessages }, { data: journalEntries }, { data: patient }, { data: sosEventsRaw }] = await Promise.all([
+    const [{ data: chatMessages }, { data: patient }, { data: sosEventsRaw }] = await Promise.all([
       conversationsQuery,
       supabase
-        .from("journal_entries")
-        .select("date, mood, food_rating, emotions, content")
-        .eq("patient_id", patientId)
-        .order("date", { ascending: false })
-        .limit(14),
-      supabase
         .from("patients")
-        .select("first_name, last_name, age, pathologies, objective, objectif_clinique")
+        .select(`
+          first_name, last_name, age, pathologies,
+          objective, objectif_clinique,
+          motivation, defi,
+          alimentation_actuelle, habitudes_alimentaires,
+          restrictions_alimentaires, allergies,
+          activite_physique, niveau_stress,
+          rythme_de_vie, sommeil,
+          rapport_corps, rapport_alimentation,
+          historique_regime, contexte_social,
+          objectif_poids_actuel, objectif_poids_cible,
+          objectif_delai, onboarding_answers,
+          archived_alerts, practitioner_instruction
+        `)
         .eq("user_id", patientId)
         .single(),
       // Épisodes Mon Soutien depuis le curseur (ou tout si pas de curseur)
@@ -102,20 +150,73 @@ export async function POST(request: Request) {
       .map(m => (m.content as string).slice(0, 200))
       .join(" | ");
 
-    const journalData = (journalEntries ?? [])
-      .map(e => {
-        const emotions = (e.emotions as string[])?.join(", ") || "non renseignées";
-        const note = e.content ? ` - "${(e.content as string).slice(0, 100)}"` : "";
-        return `${e.date}: humeur ${e.mood}/10, alimentation ${e.food_rating}/3, émotions: ${emotions}${note}`;
-      })
-      .join(" | ") || "Pas d'entrées journal";
+    // ── Build rich onboarding profile (mêmes champs que le Rapport IA) ──
+    const p = patient as Record<string, unknown> | null;
+    const motivationRaw = (p?.motivation as string) ?? "";
+    const objectiveRaw = (p?.objective as string) ?? "";
+    const defiRaw = (p?.defi as string) ?? "";
 
-    const patientProfile = [
-      (patient as { age?: number } | null)?.age ? `Âge : ${(patient as { age?: number }).age} ans` : "",
-      (patient as { pathologies?: string } | null)?.pathologies ? `Pathologies : ${(patient as { pathologies?: string }).pathologies}` : "",
-      (patient as { objectif_clinique?: string } | null)?.objectif_clinique ? `Objectif clinique : ${(patient as { objectif_clinique?: string }).objectif_clinique}` : "",
-      (patient as { objective?: string } | null)?.objective ? `Objectif personnel : ${(patient as { objective?: string }).objective}` : "",
-    ].filter(Boolean).join(" | ") || "";
+    const profileLines: string[] = [];
+    if (p?.age) profileLines.push(`Âge : ${p.age as number} ans`);
+    if (p?.pathologies) profileLines.push(`Pathologies : ${p.pathologies as string}`);
+    if (p?.objectif_clinique) profileLines.push(`Objectif clinique (praticien) : ${p.objectif_clinique as string}`);
+    if (objectiveRaw) profileLines.push(`Objectif personnel : ${OBJECTIVE_LABELS[objectiveRaw] ?? objectiveRaw}`);
+    if (motivationRaw) profileLines.push(`Niveau de motivation : ${MOTIVATION_LABELS[motivationRaw] ?? motivationRaw}`);
+    if (defiRaw) profileLines.push(`Principal défi : ${DEFI_LABELS[defiRaw] ?? defiRaw}`);
+    if (p?.alimentation_actuelle) profileLines.push(`Alimentation actuelle : ${p.alimentation_actuelle as string}`);
+    if (p?.habitudes_alimentaires) profileLines.push(`Habitudes alimentaires : ${p.habitudes_alimentaires as string}`);
+    if (p?.restrictions_alimentaires) profileLines.push(`Restrictions / allergies : ${p.restrictions_alimentaires as string}`);
+    if (p?.activite_physique) profileLines.push(`Activité physique : ${p.activite_physique as string}`);
+    if (p?.niveau_stress) profileLines.push(`Niveau de stress habituel : ${p.niveau_stress as string}`);
+    if (p?.sommeil) profileLines.push(`Qualité du sommeil : ${p.sommeil as string}`);
+    if (p?.rapport_corps) profileLines.push(`Rapport au corps : ${p.rapport_corps as string}`);
+    if (p?.rapport_alimentation) profileLines.push(`Rapport à l'alimentation : ${p.rapport_alimentation as string}`);
+    if (p?.historique_regime) profileLines.push(`Historique régimes : ${p.historique_regime as string}`);
+    if (p?.contexte_social) profileLines.push(`Contexte social : ${p.contexte_social as string}`);
+    if (p?.objectif_poids_actuel && p?.objectif_poids_cible) profileLines.push(`Poids actuel → cible : ${p.objectif_poids_actuel as string} kg → ${p.objectif_poids_cible as string} kg${p.objectif_delai ? ` (horizon : ${p.objectif_delai as string})` : ""}`);
+
+    const onboardingAnswers = (p?.onboarding_answers as Record<string, string> | null) ?? {};
+    const answersLines = Object.entries(onboardingAnswers)
+      .filter(([, v]) => v)
+      .map(([k, v]) => `  • ${k} : ${v}`)
+      .join("\n");
+
+    const patientProfile = profileLines.length > 0
+      ? `${profileLines.map(l => `- ${l}`).join("\n")}${answersLines ? `\n- Questions complémentaires :\n${answersLines}` : ""}`
+      : "";
+
+    // ── Murmures praticien actifs (consignes en cours) ──
+    const murmuresActifs = (() => {
+      const instr = p?.practitioner_instruction as { id: string; text: string; expires_at?: string | null }[] | null;
+      if (!Array.isArray(instr)) return "";
+      const active = instr.filter(m => !m.expires_at || new Date(m.expires_at) > new Date());
+      if (active.length === 0) return "";
+      return `MURMURES DU PRATICIEN ACTUELLEMENT EN COURS :\n${active.map(m => `  - "${m.text}"`).join("\n")}`;
+    })();
+
+    // ── Alertes praticien traitées depuis le dernier bilan ──
+    type ArchivedAlert = {
+      type?: string; alert_type?: string; date?: string; murmure?: string;
+      message?: string; archived_at?: string; resolution?: string;
+    };
+    const archivedAlerts = (p?.archived_alerts as ArchivedAlert[] | null) ?? [];
+    const recentArchivedAlerts = archivedAlerts
+      .filter(a => {
+        const ref = a.archived_at ?? a.date;
+        if (!ref) return false;
+        return lastCursor ? ref > lastCursor : true;
+      })
+      .slice(-10);
+    const alertsSection = recentArchivedAlerts.length > 0
+      ? `ALERTES PRATICIEN TRAITÉES DEPUIS LE DERNIER BILAN (${recentArchivedAlerts.length}) :\n` +
+        recentArchivedAlerts.map(a => {
+          const date = a.date ? new Date(a.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "date inconnue";
+          const label = ALERT_TYPE_LABELS[a.alert_type ?? ""] ?? a.alert_type ?? "Alerte";
+          const resolution = a.resolution ? ` — ${RESOLUTION_LABELS[a.resolution] ?? a.resolution}` : "";
+          const detail = a.murmure || a.message || "";
+          return `  - ${date} : ${label}${detail ? ` — ${detail}` : ""}${resolution}`;
+        }).join("\n")
+      : "";
 
     // Construire la section Mon Soutien
     const toolNames: Record<string, string> = {
@@ -138,13 +239,10 @@ export async function POST(request: Request) {
 
     const prompt = `Tu es l'assistant d'un nutritionniste qui prépare sa prochaine consultation avec ${firstName}.
 
-${patientProfile ? `PROFIL PATIENT :\n${patientProfile}\n\n` : ""}MESSAGES DU PATIENT DEPUIS LE DERNIER BILAN (${messageCount} messages) :
+${patientProfile ? `PROFIL PATIENT (onboarding complet) :\n${patientProfile}\n\n` : ""}MESSAGES DU PATIENT DEPUIS LE DERNIER BILAN (${messageCount} messages) :
 ${chatData}
-
-JOURNAL DES 14 DERNIERS JOURS :
-${journalData}
-${sosSection ? `\n${sosSection}\n` : ""}
-Génère exactement 3 questions clés que le praticien devrait poser lors de la prochaine consultation. Les questions doivent être précises, personnalisées et montrer que le praticien a suivi de près l'évolution du patient.${sosSection ? " Intègre les épisodes Mon Soutien si pertinents pour comprendre l'état émotionnel du patient." : ""}
+${sosSection ? `\n${sosSection}\n` : ""}${alertsSection ? `\n${alertsSection}\n` : ""}${murmuresActifs ? `\n${murmuresActifs}\n` : ""}
+Génère exactement 3 questions clés que le praticien devrait poser lors de la prochaine consultation. Les questions doivent être précises, personnalisées et montrer que le praticien a suivi de près l'évolution du patient.${sosSection ? " Intègre les épisodes Mon Soutien si pertinents pour comprendre l'état émotionnel du patient." : ""}${alertsSection ? " Tiens compte des alertes praticien traitées récemment." : ""}
 
 Pour chaque question :
 - "question" : la question à poser, formulée directement au patient

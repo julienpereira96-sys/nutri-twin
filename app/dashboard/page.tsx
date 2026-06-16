@@ -346,7 +346,7 @@ type RealPatient = {
   regime_specifique?: string;   practitioner_instruction?: { id: string; text: string; expires_at?: string | null; created_at: string }[];
   emotional_status?: string; emotional_insight?: string;
   latest_victory?: string; victory_detected_at?: string | null; victory_message_id?: string; private_notes?: { id: string; text: string; created_at: string }[]; created_at?: string;
-  lastActive?: string | null; streak?: number; sosResolved?: number; sosEvents?: { triggered_at: string; sos_context: string; tool_id?: string; status?: string | null }[]; red_behavioral_until?: string | null; onboardingCompleted?: boolean; onboardingStatus?: string | null;
+  lastActive?: string | null; streak?: number; sosResolved?: number; sosEvents?: { triggered_at: string; sos_context: string; tool_id?: string; status?: string | null; origin?: string | null }[]; red_behavioral_until?: string | null; last_patient_message_at?: string | null; onboardingCompleted?: boolean; onboardingStatus?: string | null;
   sharing_status?: string; cabinet_id?: string;
 };
 
@@ -360,17 +360,16 @@ const AVATAR_COLORS = ["#f43f5e", "#3b82f6", "#8b5cf6", "#f59e0b", "#10b981", "#
 
 const CYAN_STATUS = "#06b6d4"; // réservé côté patient (Mon Soutien)
 const ORANGE_BEHAVIORAL = "#f59e0b"; // red_behavioral côté praticien → amber (spec clinique)
+const SLATE_BLUE = "#60a5fa"; // identity_correction — administratif, non-urgent
 const RED_CRITICAL_COLOR = "#ef4444";
 function getStatusColor(status?: string) {
   if (status === "red_critical" || status === "red") return RED_CRITICAL_COLOR;
   if (status === "red_behavioral") return ORANGE_BEHAVIORAL;
-  if (status === "orange") return amber;
   return emerald;
 }
 function getStatusEmoji(status?: string) {
   if (status === "red_critical" || status === "red") return "🔴";
   if (status === "red_behavioral") return "🟠";
-  if (status === "orange") return "🟡";
   return "🟢";
 }
 
@@ -478,76 +477,6 @@ function LeverAlerteCritique({ alert, patientId, practitionerId, onResolved }: {
         style={{ width: "100%", height: 32, borderRadius: 8, background: checked ? "rgba(244,63,94,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${checked ? "rgba(244,63,94,0.3)" : "rgba(255,255,255,0.06)"}`, color: checked ? "#f87171" : "#64748b", fontSize: 11, fontWeight: 600, cursor: checked ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
         {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Chargement</span> : "Confirmer et lever l'alerte"}
       </button>
-    </div>
-  );
-}
-
-function LeverAlerteSimple({ alert, patientId, murmureSuggere, onResolved, showMurmure = true }: { alert: object; patientId: string; murmureSuggere: string; onResolved: (murmure: string) => void; showMurmure?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const [murmure, setMurmure] = useState(murmureSuggere);
-  const [loading, setLoading] = useState(false);
-  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
-
-  const resolve = async () => {
-    setLoading(true);
-    // Archiver l'alerte comportementale (garder pour le rapport IA)
-    const archivedEntry = { ...alert, archived: true, archived_at: new Date().toISOString(), resolution: "practitioner_resolved" };
-    const { data: cur } = await supabase.from("patients").select("admin_alerts, archived_alerts, practitioner_instruction").eq("user_id", patientId).single();
-    const existingAlerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
-    const existingArchived = (cur as { archived_alerts?: object[] } | null)?.archived_alerts ?? [];
-    const existingInstructions = (cur as { practitioner_instruction?: { id: string; text: string; expires_at?: string | null; created_at: string }[] } | null)?.practitioner_instruction ?? [];
-    // Marquer l'alerte spécifique comme seen: true — NE PAS effacer la liste (audit immutable)
-    const alertTyped = alert as { trigger_message_id?: string; date?: string };
-    const updatedAlerts = existingAlerts.map((a: object) => {
-      const al = a as { trigger_message_id?: string; date?: string };
-      const matches = alertTyped.trigger_message_id
-        ? al.trigger_message_id === alertTyped.trigger_message_id
-        : al.date === alertTyped.date;
-      return matches ? { ...a, seen: true } : a;
-    });
-    // Murmure : injecter toujours en append — behavioral auto-injecte murmureSuggere même si !showMurmure
-    const murmureToInject = showMurmure ? murmure : murmureSuggere;
-    const newInstruction = murmureToInject ? {
-      id: crypto.randomUUID(),
-      text: murmureToInject,
-      expires_at: null,
-      created_at: new Date().toISOString(),
-    } : null;
-    await supabase.from("patients").update({
-      emotional_status: "green",
-      admin_alerts: updatedAlerts,
-      red_behavioral_until: null,
-      archived_alerts: [...existingArchived, archivedEntry],
-      ...(newInstruction ? { practitioner_instruction: [...existingInstructions, newInstruction] } : {}),
-    }).eq("user_id", patientId);
-    onResolved(murmureToInject ?? "");
-    setLoading(false);
-    setOpen(false);
-  };
-
-  if (!open) return (
-    <button onClick={() => setOpen(true)}
-      style={{ height: 28, borderRadius: 8, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: "1px solid rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.08)", color: amber, transition: "all 0.2s" }}>
-      Lever l'alerte
-    </button>
-  );
-
-  return (
-    <div style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 8, padding: "10px 12px" }}>
-      {showMurmure && (
-        <>
-          <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: amber }}>Murmure suggéré par le Jumeau</p>
-          <textarea value={murmure} onChange={e => setMurmure(e.target.value)} rows={3}
-            style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)", color: "white", padding: "8px 10px", fontSize: 11, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.5, marginBottom: 8 }} />
-        </>
-      )}
-      <div style={{ display: "flex", gap: 6 }}>
-        <button onClick={() => setOpen(false)} style={{ flex: 1, height: 28, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 11, cursor: "pointer" }}>Annuler</button>
-        <button onClick={resolve} disabled={loading}
-          style={{ flex: 2, height: 28, borderRadius: 8, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", color: emerald, fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-          {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Chargement</span> : "Lever et activer le murmure"}
-        </button>
-      </div>
     </div>
   );
 }
@@ -732,6 +661,8 @@ export default function DashboardPage() {
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const fidelityScore = documents.length === 0 ? 70 : documents.length === 1 ? 85 : documents.length === 2 ? 95 : 100;
   const fidelityColor = documents.length === 0 ? amber : documents.length >= 3 ? emerald : "#06b6d4";
+  const firstNameInputRef = useRef<HTMLInputElement>(null);
+  const [focusFirstNameOnOpen, setFocusFirstNameOnOpen] = useState(false);
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
   const [editAge, setEditAge] = useState("");
@@ -834,7 +765,7 @@ export default function DashboardPage() {
     if (!relations || relations.length === 0) { setLoading(false); setOnboardingDemoMode(true); return true; }
     const patientIds = relations.map((r) => r.patient_id as string);
 
-    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id").in("user_id", patientIds);
+    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, last_seen_at").in("user_id", patientIds);
     if (!patientsData) { setLoading(false); return false; }
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -859,7 +790,7 @@ export default function DashboardPage() {
         .eq("role", "user")
         .gte("created_at", thirtyDaysAgo),
       supabase.from("sos_events")
-        .select("patient_id, triggered_at, sos_context, raw_response, status")
+        .select("patient_id, triggered_at, sos_context, raw_response, status, origin")
         .in("patient_id", patientIds)
         .gte("triggered_at", startOfCurrentMonth)
         .order("triggered_at", { ascending: false }),
@@ -882,7 +813,7 @@ export default function DashboardPage() {
       streakDaysByPatient.get(p)!.add(day);
     }
 
-    type SosEventItem = { triggered_at: string; sos_context: string; tool_id?: string; status?: string | null };
+    type SosEventItem = { triggered_at: string; sos_context: string; tool_id?: string; status?: string | null; origin?: string | null };
     const sosCountByPatient = new Map<string, number>();
     const sosEventsByPatient = new Map<string, SosEventItem[]>();
     for (const sos of (allSosEvents ?? [])) {
@@ -894,6 +825,8 @@ export default function DashboardPage() {
         sos_context: (sos.sos_context as string) ?? "",
         tool_id: toolId,
         status: (sos.status as string | null) ?? null,
+        // Historique (avant migration) : pas de colonne origin → traité comme "crise" par défaut
+        origin: (sos.origin as string | null) ?? "crise",
       };
       if (!sosEventsByPatient.has(p)) sosEventsByPatient.set(p, []);
       sosEventsByPatient.get(p)!.push(item);
@@ -908,11 +841,18 @@ export default function DashboardPage() {
         lastMessage: lastConv?.content ?? "Aucun message pour l'instant",
         lastMessageTime: lastConv?.created_at ? new Date(lastConv.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "",
         lastMessageRole: lastConv?.role ?? "", totalMessages: totalCountByPatient.get(p.user_id) ?? 0,
-        lastActive: lastConv?.created_at ?? null,
+        // "Dernière connexion" : on retient la plus récente entre le dernier message
+        // envoyé et le dernier heartbeat de présence (last_seen_at), qui couvre
+        // les visites sans envoi de message (lecture seule, exercices, etc.)
+        lastActive: [lastConv?.created_at, (p as { last_seen_at?: string | null }).last_seen_at]
+          .filter((d): d is string => !!d)
+          .sort()
+          .pop() ?? null,
         streak: streakDaysByPatient.get(p.user_id)?.size ?? 0,
-        sosResolved: (sosEventsByPatient.get(p.user_id) ?? []).filter(e => e.status === "success").length,
+        sosResolved: (sosEventsByPatient.get(p.user_id) ?? []).filter(e => e.status === "success" && e.origin !== "pratique").length,
         sosEvents: sosEventsByPatient.get(p.user_id) ?? [],
         red_behavioral_until: (p as { red_behavioral_until?: string | null }).red_behavioral_until ?? null,
+        last_patient_message_at: (p as { last_patient_message_at?: string | null }).last_patient_message_at ?? null,
         age: p.age, sexe: p.sexe, taille: p.taille, poids: p.poids, traitements: p.traitements,
         objectif_clinique: p.objectif_clinique, niveau_activite: p.niveau_activite, regime_specifique: p.regime_specifique,
         objective: p.objective, pathologies: p.pathologies, allergies: p.allergies,
@@ -1539,7 +1479,7 @@ export default function DashboardPage() {
     setHasDocuments((count ?? 0) > 0);
   };
 
-  const openProfileModal = () => {
+  const openProfileModal = (focusFirst = false) => {
     const patient = onboardingDemoMode
       ? demoPatients.find(p => p.id === (selectedPatientId ?? "demo-1")) as unknown as RealPatient
       : patients.find((p) => p.id === selectedPatientId);
@@ -1559,7 +1499,9 @@ export default function DashboardPage() {
     setEditRegime(patient.regime_specifique ?? "");
     setEditNotes("");
     setProfileSaved(false);
+    setFocusFirstNameOnOpen(focusFirst);
     setShowProfileModal(true);
+    if (focusFirst) setTimeout(() => firstNameInputRef.current?.focus(), 120);
   };
 
   const saveProfile = async () => {
@@ -1756,10 +1698,11 @@ export default function DashboardPage() {
     setReplySending(true);
     const msgContent = replyText.trim();
     const newMsg = { id: `local-${Date.now()}`, role: "assistant" as const, content: msgContent, created_at: new Date().toISOString() };
-    // Mise à jour locale immédiate
+    // Mise à jour locale — marque les alertes comme vues mais NE change PAS emotional_status
+    // (le retour à green n'est déclenché que par Gemini via signal d'apaisement patient)
     if (onboardingDemoMode) {
-      setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, emotional_status: "green", admin_alerts: [] } : p));
-      setAlertBannerDismissed(prev => ({ ...prev, [selectedPatientId]: true }));
+      setPatients(prev => prev.map(p => p.id === selectedPatientId
+        ? { ...p, admin_alerts: p.admin_alerts?.map(a => ({ ...a, seen: true })) } : p));
     } else {
       try {
         await fetch("/api/send-soutien", {
@@ -1767,8 +1710,8 @@ export default function DashboardPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ patientId: selectedPatientId, practitionerId, messageText: msgContent }),
         });
-        setPatients(prev => prev.map(p => p.id === selectedPatientId ? { ...p, emotional_status: "green", admin_alerts: [] } : p));
-        setAlertBannerDismissed(prev => ({ ...prev, [selectedPatientId]: true }));
+        setPatients(prev => prev.map(p => p.id === selectedPatientId
+          ? { ...p, admin_alerts: p.admin_alerts?.map(a => ({ ...a, seen: true })) } : p));
       } catch { /* silencieux */ }
     }
     // Ajouter le message à la conversation locale
@@ -2037,10 +1980,11 @@ export default function DashboardPage() {
                   const isCritical = patient.emotional_status === "red_critical";
                   const isRed = patient.emotional_status === "red" || isCritical;
                   const isBehavioralList = patient.emotional_status === "red_behavioral";
-                  const isOrange = patient.emotional_status === "orange";
-                  const hasAlert = isRed || isOrange || isBehavioralList;
+                  const hasAlert = isRed || isBehavioralList;
                   const alertDismissed = alertBannerDismissed[patient.id];
                   const activeAlert = hasAlert && !alertDismissed;
+                  // Alerte administrative : correction d'identité non traitée
+                  const hasIdentityAlert = !activeAlert && (patient.admin_alerts ?? []).some((a: { type?: string; alert_type?: string; seen?: boolean }) => !a.seen && a.type === "admin_alert" && a.alert_type === "identity_correction");
                   // Victoire récente : seulement si < 48h — déclarée avant les styles de carte
                   const victoryFresh = !!(patient.latest_victory && patient.victory_detected_at
                     && (Date.now() - new Date(patient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
@@ -2053,14 +1997,14 @@ export default function DashboardPage() {
                     if (isCritical) { cardBg = "rgba(244,63,94,0.07)"; cardBorder = "rgba(244,63,94,0.4)"; cardShadow = "0 0 16px rgba(244,63,94,0.1)"; }
                     else if (isRed) { cardBg = "rgba(244,63,94,0.05)"; cardBorder = "rgba(244,63,94,0.3)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
                     else if (isBehavioralList) { cardBg = "rgba(245,158,11,0.04)"; cardBorder = "rgba(245,158,11,0.28)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
-                    else if (isOrange) { cardBg = "rgba(245,158,11,0.04)"; cardBorder = "rgba(245,158,11,0.28)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
+                    else if (hasIdentityAlert) { cardBg = "rgba(96,165,250,0.05)"; cardBorder = "rgba(96,165,250,0.28)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
                     else if (victoryFresh) {
-                      // Victoire fraîche → lueur émeraude réservée
                       cardBg = "rgba(16,185,129,0.04)"; cardBorder = "rgba(16,185,129,0.22)"; cardShadow = "0 0 12px rgba(16,185,129,0.12)";
                     } else {
-                      // Vert sans victoire → fond et bordure 100% neutres
                       cardBg = "rgba(255,255,255,0.04)"; cardBorder = "rgba(255,255,255,0.08)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)";
                     }
+                  } else if (hasIdentityAlert) {
+                    cardBg = "rgba(96,165,250,0.03)"; cardBorder = "rgba(96,165,250,0.18)"; cardShadow = "none";
                   }
                   // Sous-texte : alerte > victoire > dernier message
                   const subText = (activeAlert && patient.emotional_insight)
@@ -2089,6 +2033,7 @@ export default function DashboardPage() {
                           </p>
                         </div>
                         {activeAlert && <div style={{ width: 7, height: 7, borderRadius: "50%", background: alertColor2, flexShrink: 0 }} />}
+                        {!activeAlert && hasIdentityAlert && <div style={{ width: 7, height: 7, borderRadius: "50%", background: SLATE_BLUE, flexShrink: 0 }} title="Correction de nom demandée" />}
                       </div>
                     </button>
                   );
@@ -2130,8 +2075,7 @@ export default function DashboardPage() {
                       const isCritical = selectedPatient.emotional_status === "red_critical";
                       const isRed = selectedPatient.emotional_status === "red" || isCritical;
                       const isBehavioralBanner = selectedPatient.emotional_status === "red_behavioral";
-                      const isOrange = selectedPatient.emotional_status === "orange";
-                      const hasAlert = isRed || isOrange || isBehavioralBanner;
+                      const hasAlert = isRed || isBehavioralBanner;
                       if (!hasAlert || alertBannerDismissed[selectedPatient.id]) return null;
                       const alertText = alerts.length > 0 ? (
                         alerts[0].type === "crisis" ? (
@@ -2149,6 +2093,13 @@ export default function DashboardPage() {
                           <span style={{ fontSize: 12, fontWeight: 600, color: alertColor, flex: 1, minWidth: 0 }}>
                             {selectedPatient.firstName} · {alertText}
                           </span>
+                          {isBehavioralBanner && (() => {
+                            const lastMsg = (selectedPatient as RealPatient).last_patient_message_at;
+                            if (!lastMsg) return null;
+                            const hoursSilent = (Date.now() - new Date(lastMsg).getTime()) / 3_600_000;
+                            if (hoursSilent <= 24) return null;
+                            return <span style={{ fontSize: 11, color: amber, whiteSpace: "nowrap", fontWeight: 500 }}>· Sans nouvelles depuis {Math.round(hoursSilent)}h</span>;
+                          })()}
                           {alerts.length > 0 && (
                           <button onClick={() => scrollToAlertMessage(alerts[0])}
                             style={{ fontSize: 11, fontWeight: 600, color: alertColor, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, whiteSpace: "nowrap" }}>
@@ -2168,7 +2119,7 @@ export default function DashboardPage() {
 
                     {/* Bandeau victoire HAUT — texte + "Aller au message" uniquement */}
                     {(() => {
-                      const hasActiveAlert = (selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical" || selectedPatient.emotional_status === "orange" || selectedPatient.emotional_status === "red_behavioral") && !alertBannerDismissed[selectedPatient.id];
+                      const hasActiveAlert = (selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical" || selectedPatient.emotional_status === "red_behavioral") && !alertBannerDismissed[selectedPatient.id];
                       const victoryFreshBanner = !!(selectedPatient.latest_victory && selectedPatient.victory_detected_at && (Date.now() - new Date(selectedPatient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
                       if (!victoryFreshBanner || hasActiveAlert) return null;
                       return (
@@ -2410,52 +2361,65 @@ export default function DashboardPage() {
                               <span style={{ fontSize: 11, color: sos > 0 ? emerald : "#e2e8f0", fontWeight: 500 }}>
                                 {sos > 0 ? `${sos} ce mois` : "Aucune"}
                               </span>
-                              {sos > 0 && (
-                                <div style={{ position: "relative" }}>
-                                  <button
-                                    onClick={() => setOpenSosPopover(openSosPopover === p.id ? null : p.id)}
-                                    style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 0, opacity: 0.7, transition: "opacity 0.15s" }}
-                                    onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }}
-                                    onMouseLeave={e => { e.currentTarget.style.opacity = "0.7"; }}
-                                    title="Voir le détail des crises"
-                                  >
-                                    <InfoCircleIcon size={13} color={emerald} />
-                                  </button>
-                                  {openSosPopover === p.id && (
-                                    <div style={{
-                                      position: "absolute", right: 0, bottom: "calc(100% + 6px)", zIndex: 200,
-                                      background: "#0f172a", border: "1px solid rgba(16,185,129,0.25)",
-                                      borderRadius: 10, padding: "10px 12px", minWidth: 220, maxWidth: 280,
-                                      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-                                    }}>
-                                      <div style={{ fontSize: 10, fontWeight: 700, color: emerald, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
-                                        Mon Soutien — ce mois
-                                      </div>
-                                      {sosEvts.length === 0 ? (
-                                        <span style={{ fontSize: 11, color: "#64748b" }}>Aucun détail disponible</span>
-                                      ) : sosEvts.map((ev, idx) => {
-                                        const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
-                                        const context = ev.sos_context?.split(" | ")[0] ?? "–";
-                                        const exercise = ev.tool_id ? (toolNames[ev.tool_id] ?? ev.tool_id) : "–";
-                                        const isSuccess = ev.status === "success";
-                                        const rowColor = isSuccess ? emerald : "#f59e0b";
-                                        const statusLabel = isSuccess ? "" : " [Non résolu]";
-                                        return (
-                                          <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: idx < sosEvts.length - 1 ? 6 : 0, paddingBottom: idx < sosEvts.length - 1 ? 6 : 0, borderBottom: idx < sosEvts.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                                            <span style={{ fontSize: 9, marginTop: 2, color: rowColor, flexShrink: 0 }}>●</span>
-                                            <span style={{ fontSize: 10, color: "#64748b", whiteSpace: "nowrap", paddingTop: 1 }}>{date}</span>
-                                            <span style={{ fontSize: 10, color: "#94a3b8", flex: 1 }}>
-                                              <span style={{ color: "#cbd5e1", textTransform: "capitalize" }}>{context}</span>
-                                              {exercise !== "–" && <><span style={{ color: "#475569" }}> → </span><span style={{ color: rowColor }}>{exercise}</span></>}
-                                              {statusLabel && <span style={{ color: "#f59e0b", fontSize: 9, marginLeft: 3 }}>{statusLabel}</span>}
-                                            </span>
-                                          </div>
-                                        );
-                                      })}
+                              {sosEvts.length > 0 && (() => {
+                                const crisisEvts = sosEvts.filter(ev => ev.origin !== "pratique");
+                                const practiceEvts = sosEvts.filter(ev => ev.origin === "pratique");
+                                const renderRow = (ev: typeof sosEvts[number], idx: number, list: typeof sosEvts, withStatus: boolean) => {
+                                  const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+                                  const context = ev.sos_context?.split(" | ")[0] ?? "–";
+                                  const exercise = ev.tool_id ? (toolNames[ev.tool_id] ?? ev.tool_id) : "–";
+                                  const isSuccess = ev.status === "success";
+                                  const rowColor = withStatus ? (isSuccess ? emerald : "#f59e0b") : "#64748b";
+                                  const statusLabel = withStatus && !isSuccess ? " [Non résolu]" : "";
+                                  return (
+                                    <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: idx < list.length - 1 ? 6 : 0, paddingBottom: idx < list.length - 1 ? 6 : 0, borderBottom: idx < list.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                                      <span style={{ fontSize: 9, marginTop: 2, color: rowColor, flexShrink: 0 }}>●</span>
+                                      <span style={{ fontSize: 10, color: "#64748b", whiteSpace: "nowrap", paddingTop: 1 }}>{date}</span>
+                                      <span style={{ fontSize: 10, color: "#94a3b8", flex: 1 }}>
+                                        <span style={{ color: "#cbd5e1", textTransform: "capitalize" }}>{context}</span>
+                                        {exercise !== "–" && <><span style={{ color: "#475569" }}> → </span><span style={{ color: withStatus ? rowColor : "#94a3b8" }}>{exercise}</span></>}
+                                        {statusLabel && <span style={{ color: "#f59e0b", fontSize: 9, marginLeft: 3 }}>{statusLabel}</span>}
+                                      </span>
                                     </div>
-                                  )}
-                                </div>
-                              )}
+                                  );
+                                };
+                                return (
+                                  <div style={{ position: "relative" }}>
+                                    <button
+                                      onClick={() => setOpenSosPopover(openSosPopover === p.id ? null : p.id)}
+                                      style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 0, opacity: 0.7, transition: "opacity 0.15s" }}
+                                      onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }}
+                                      onMouseLeave={e => { e.currentTarget.style.opacity = "0.7"; }}
+                                      title="Voir le détail des crises et exercices"
+                                    >
+                                      <InfoCircleIcon size={13} color={emerald} />
+                                    </button>
+                                    {openSosPopover === p.id && (
+                                      <div style={{
+                                        position: "absolute", right: 0, bottom: "calc(100% + 6px)", zIndex: 200,
+                                        background: "#0f172a", border: "1px solid rgba(16,185,129,0.25)",
+                                        borderRadius: 10, padding: "10px 12px", minWidth: 220, maxWidth: 280,
+                                        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+                                      }}>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: emerald, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
+                                          Crises — ce mois
+                                        </div>
+                                        {crisisEvts.length === 0 ? (
+                                          <span style={{ fontSize: 11, color: "#64748b" }}>Aucune crise ce mois</span>
+                                        ) : crisisEvts.map((ev, idx) => renderRow(ev, idx, crisisEvts, true))}
+                                        {practiceEvts.length > 0 && (
+                                          <>
+                                            <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", marginTop: 10, marginBottom: 8 }}>
+                                              Exercices pratiqués
+                                            </div>
+                                            {practiceEvts.map((ev, idx) => renderRow(ev, idx, practiceEvts, false))}
+                                          </>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </div>
                         </>
@@ -2463,30 +2427,41 @@ export default function DashboardPage() {
                     })()}
                   </div>
 
-                  {/* Alerte admin */}
-                  {(selectedPatient.admin_alerts?.filter(a => !a.seen).length ?? 0) > 0 && !onboardingDemoMode && (
+                  {/* Alerte admin — uniquement les alertes nécessitant une action manuelle praticien.
+                      Exclure :
+                        - type "alert"              → behavioral ancien format, auto-expire via red_behavioral_until
+                        - type "admin_alert" + alert_type "behavioral" → behavioral nouveau format LLM, même règle
+                      Inclure : type "crisis" et type "admin_alert" + alert_type "identity_correction" / "critical_llm" */}
+                  {(selectedPatient.admin_alerts?.filter(a => !a.seen && a.type !== "alert" && !(a.type === "admin_alert" && a.alert_type === "behavioral")).length ?? 0) > 0 && !onboardingDemoMode && (
                     <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                         <AlertIcon size={13} color={amber} />
                         <span style={{ fontSize: 11, fontWeight: 700, color: amber }}>Action requise</span>
                       </div>
-                      {selectedPatient.admin_alerts?.filter(a => !a.seen).map((alert, i) => (
+                      {selectedPatient.admin_alerts?.filter(a => !a.seen && a.type !== "alert" && !(a.type === "admin_alert" && a.alert_type === "behavioral")).map((alert, i) => (
                         <div key={i} style={{ marginBottom: 8 }}>
                           <p style={{ margin: "0 0 6px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
                             {alert.type === "crisis" && alert.alert_type === "suicide" && "Le patient a exprimé des idées suicidaires."}
                             {alert.type === "crisis" && alert.alert_type === "medical" && "Urgence médicale signalée par le patient."}
                             {alert.type === "crisis" && alert.alert_type === "threat" && "Le patient a exprimé une menace envers autrui."}
-                            {alert.type === "alert" && "Comportement sensible détecté - relecture recommandée."}
+                            {alert.type === "crisis" && alert.alert_type === "critical" && "Urgence vitale détectée (mots-clés)."}
+                            {alert.type === "admin_alert" && alert.alert_type === "critical_llm" && "Détresse critique détectée par analyse IA — vérification recommandée."}
                             {alert.type === "admin_alert" && alert.alert_type === "identity_correction" && "Le patient signale une erreur dans son nom."}
                           </p>
-                          {alert.type === "crisis" ? (
+                          {(alert.type === "crisis" || (alert.type === "admin_alert" && alert.alert_type === "critical_llm")) ? (
                             <LeverAlerteCritique alert={alert} patientId={selectedPatient.id} practitionerId={practitionerId ?? undefined} onResolved={() => {
                               setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a) } : p));
                             }} />
+                          ) : alert.type === "admin_alert" && alert.alert_type === "identity_correction" ? (
+                            <button onClick={() => openProfileModal(true)}
+                              style={{ height: 28, borderRadius: 8, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1px solid rgba(96,165,250,0.3)`, background: "rgba(96,165,250,0.08)", color: SLATE_BLUE, transition: "all 0.2s" }}
+                              onMouseEnter={e => { e.currentTarget.style.background = "rgba(96,165,250,0.16)"; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = "rgba(96,165,250,0.08)"; }}>
+                              Modifier le profil →
+                            </button>
                           ) : (
-                            // Alertes comportementales : classement exclusivement depuis le bandeau "Marquer comme vu"
                             <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b", fontStyle: "italic" }}>
-                              Utilisez « Marquer comme vu / Classer » dans le bandeau du chat pour traiter cette alerte.
+                              Traitez cette alerte via l&apos;interface correspondante.
                             </p>
                           )}
                         </div>
@@ -2850,6 +2825,7 @@ export default function DashboardPage() {
                     const isOrange = patient.emotional_status === "orange";
                     const hasAlert = isRed || isBehavioral || isOrange;
                     const hasVictory = isVictoryFresh(patient) && !hasAlert;
+                    const hasIdentityAlertGrid = !hasAlert && (patient.admin_alerts ?? []).some((a: { type?: string; alert_type?: string; seen?: boolean }) => !a.seen && a.type === "admin_alert" && a.alert_type === "identity_correction");
                     const bState = bravoState[patient.id];
 
                     // Couleurs de la carte
@@ -2860,6 +2836,7 @@ export default function DashboardPage() {
                     else if (isRed) { cardBg = "rgba(239,68,68,0.03)"; cardBorder = "rgba(239,68,68,0.18)"; }
                     else if (isBehavioral) { cardBg = "rgba(245,158,11,0.03)"; cardBorder = "rgba(245,158,11,0.22)"; cardShadow = "0 0 12px rgba(245,158,11,0.08)"; }
                     else if (isOrange) { cardBg = "rgba(245,158,11,0.02)"; cardBorder = "rgba(245,158,11,0.15)"; }
+                    else if (hasIdentityAlertGrid) { cardBg = "rgba(96,165,250,0.03)"; cardBorder = "rgba(96,165,250,0.18)"; }
                     else if (hasVictory) { cardBg = "rgba(16,185,129,0.02)"; cardBorder = "rgba(16,185,129,0.15)"; }
 
                     const alertColor = isCritical || isRed ? RED_CRITICAL_COLOR : isBehavioral ? ORANGE_BEHAVIORAL : amber;
@@ -2885,6 +2862,7 @@ export default function DashboardPage() {
                             <p style={{ margin: "2px 0 0", fontSize: 10, color: "#475569" }}>{patient.totalMessages} messages</p>
                           </div>
                           {hasVictory && <span style={{ fontSize: 14, flexShrink: 0, alignSelf: "flex-start" }} title={patient.latest_victory}>🏆</span>}
+                          {hasIdentityAlertGrid && <span style={{ fontSize: 10, fontWeight: 600, color: SLATE_BLUE, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", borderRadius: 6, padding: "2px 6px", flexShrink: 0, alignSelf: "flex-start", whiteSpace: "nowrap" }}>Correction nom</span>}
                         </div>
 
                         {/* Contenu selon statut */}
@@ -3676,11 +3654,12 @@ export default function DashboardPage() {
                     setHasDocuments(true);
                     return;
                   }
-                  if (!practitionerId) return;
+                  if (!practitionerId || !selectedPatientId) return;
                   for (const file of patientDocFiles) {
                     const formData = new FormData();
                     formData.append("file", file);
                     formData.append("practitionerId", practitionerId);
+                    formData.append("patientId", selectedPatientId);
                     formData.append("documentType", "patient");
                     try {
                       const res = await fetch("/api/upload-document", { method: "POST", body: formData });
@@ -3727,9 +3706,9 @@ export default function DashboardPage() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                     <div>
                       <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Prénom</p>
-                      <input type="text" value={editFirstName} onChange={e => setEditFirstName(e.target.value)} placeholder="Sophie"
-                        style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-                        onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
+                      <input ref={firstNameInputRef} type="text" value={editFirstName} onChange={e => setEditFirstName(e.target.value)} placeholder="Sophie"
+                        style={{ width: "100%", height: 42, borderRadius: 10, border: focusFirstNameOnOpen ? `1.5px solid ${SLATE_BLUE}` : "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 13, outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
+                        onFocus={e => { e.target.style.borderColor = emerald; setFocusFirstNameOnOpen(false); }} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
                     </div>
                     <div>
                       <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Nom</p>

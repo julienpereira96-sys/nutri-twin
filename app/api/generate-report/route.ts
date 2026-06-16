@@ -84,7 +84,7 @@ export async function POST(request: Request) {
           rapport_corps, rapport_alimentation,
           historique_regime, contexte_social,
           objectif_poids_actuel, objectif_poids_cible,
-          objectif_delai, onboarding_answers
+          objectif_delai, onboarding_answers, archived_alerts
         `)
         .eq("user_id", patientId)
         .single(),
@@ -211,14 +211,51 @@ ${withFeedback.length > 0 ? `- Crises apaisées : ${apaises} / ${withFeedback.le
 ${patientMessages.slice(-30).map((m: { content: string }) => `- ${(m.content as string).slice(0, 200)}`).join("\n")}`
       : "";
 
+    // ── Build alerts section (alertes praticien archivées sur la période) ──
+    const ALERT_TYPE_LABELS: Record<string, string> = {
+      critical: "Alerte critique (mots-clés)",
+      critical_llm: "Alerte critique (analyse IA)",
+      behavioral: "Alerte comportementale",
+    };
+    const RESOLUTION_LABELS: Record<string, string> = {
+      practitioner_certified: "Certifiée traitée par le praticien",
+      practitioner_resolved: "Résolue par le praticien (instruction transmise au jumeau)",
+      practitioner_dismissed: "Classée sans suite par le praticien",
+    };
+    type ArchivedAlert = {
+      type?: string; alert_type?: string; date?: string; murmure?: string;
+      message?: string; archived_at?: string; resolution?: string;
+    };
+    const archivedAlerts = (p?.archived_alerts as ArchivedAlert[] | null) ?? [];
+    const periodAlerts = archivedAlerts.filter(a => {
+      const ref = a.archived_at ?? a.date;
+      if (!ref) return false;
+      return ref >= `${dateFrom}T00:00:00` && ref <= `${dateTo}T23:59:59`;
+    });
+
+    let alertsSection = "";
+    if (periodAlerts.length > 0) {
+      const alertsList = periodAlerts.map(a => {
+        const date = a.date ? new Date(a.date).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }) : "date inconnue";
+        const label = ALERT_TYPE_LABELS[a.alert_type ?? ""] ?? a.alert_type ?? "Alerte";
+        const resolution = a.resolution ? ` — ${RESOLUTION_LABELS[a.resolution] ?? a.resolution}` : "";
+        const detail = a.murmure || a.message || "";
+        return `  - ${date} : ${label}${detail ? ` — ${detail}` : ""}${resolution}`;
+      }).join("\n");
+      alertsSection = `ALERTES PRATICIEN TRAITÉES (période du ${dateFrom} au ${dateTo}) :
+- Volume : ${periodAlerts.length} alerte${periodAlerts.length > 1 ? "s" : ""} traitée${periodAlerts.length > 1 ? "s" : ""}
+- Détail chronologique :
+${alertsList}`;
+    }
+
     const prompt = `Tu es l'assistant d'un nutritionniste. Génère un compte rendu professionnel pour ${firstName} sur la période du ${dateFrom} au ${dateTo}.
 
-${profileSection ? `${profileSection}\n\n` : ""}${sosSection ? `${sosSection}\n\n` : ""}${chatSection ? `${chatSection}\n\n` : ""}Génère EXACTEMENT les 4 sections suivantes, basées UNIQUEMENT sur les données fournies. N'invente aucune information. Si une section n'a pas de données suffisantes, dis-le honnêtement en une phrase.
+${profileSection ? `${profileSection}\n\n` : ""}${sosSection ? `${sosSection}\n\n` : ""}${alertsSection ? `${alertsSection}\n\n` : ""}${chatSection ? `${chatSection}\n\n` : ""}Génère EXACTEMENT les 4 sections suivantes, basées UNIQUEMENT sur les données fournies. N'invente aucune information. Si une section n'a pas de données suffisantes, dis-le honnêtement en une phrase.
 
 - synthese : Vue d'ensemble de la période (2-3 phrases). Ton clinique et factuel.
 - patterns : Patterns comportementaux ou émotionnels observés dans les données (2-4 phrases). Ne cite que ce qui est documenté.
 - victoires : Points positifs et progrès concrets constatés sur la période (1-3 phrases). Si aucun n'est visible dans les données, dis-le simplement.
-- murmures_bilan : Points à approfondir lors de la prochaine consultation, basés sur les signaux observés (2-4 phrases). Intègre les données SOS si présentes.
+- murmures_bilan : Points à approfondir lors de la prochaine consultation, basés sur les signaux observés (2-4 phrases). Intègre les données SOS et les alertes praticien traitées si présentes.
 
 Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks :
 {"synthese": "...", "patterns": "...", "victoires": "...", "murmures_bilan": "..."}`;

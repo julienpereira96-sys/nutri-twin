@@ -6,11 +6,12 @@ import JournalModal from "./JournalModal";
 import BreathingExercise from "./BreathingExercise";
 import AncrageExercise from "./AncrageExercise";
 import BodyScanExercise from "./BodyScanExercise";
-import MangerExercise from "./MangerExercise";
+import MindfulEating from "./MindfulEating";
 import EcritureExercise from "./EcritureExercise";
 import DefusionExercise from "./DefusionExercise";
 import MarcheExercise from "./MarcheExercise";
 import AdaptiveCoachingExercise from "./AdaptiveCoachingExercise";
+import SOSExercise from "./SOSExercise";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 import {
@@ -142,11 +143,6 @@ const SettingsIcon = ({ size = 16, color = TEXT_MUTED }: { size?: number; color?
 );
 
 // ─── Icônes SVG outline pour les modales Mon Soutien ───
-const IconFork = ({ size = 22, color = "currentColor" }: { size?: number; color?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/>
-  </svg>
-);
 const IconActivity = ({ size = 22, color = "currentColor" }: { size?: number; color?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -156,11 +152,6 @@ const IconThought = ({ size = 22, color = "currentColor" }: { size?: number; col
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
     <line x1="9" y1="10" x2="9" y2="10" strokeWidth="2"/><line x1="12" y1="10" x2="12" y2="10" strokeWidth="2"/><line x1="15" y1="10" x2="15" y2="10" strokeWidth="2"/>
-  </svg>
-);
-const IconMoon = ({ size = 22, color = "currentColor" }: { size?: number; color?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
   </svg>
 );
 const IconWind = ({ size = 22, color = "currentColor" }: { size?: number; color?: string }) => (
@@ -205,13 +196,6 @@ const IconLeaf2 = ({ size = 22, color = "currentColor" }: { size?: number; color
   </svg>
 );
 
-// Maps d'icônes SVG pour les modales Mon Soutien
-const TRIAGE_ICONS: Record<string, React.ReactElement> = {
-  fringale: <IconFork size={24} color={CYAN} />,
-  stress: <IconActivity size={24} color={CYAN} />,
-  "culpabilité": <IconThought size={24} color={CYAN} />,
-  "coup de mou": <IconMoon size={24} color={CYAN} />,
-};
 const TOOL_SVG_ICONS: Record<string, React.ReactElement> = {
   body_scan: <IconBody size={28} color={CYAN} />,
   manger: <IconLeaf2 size={28} color={CYAN} />,
@@ -453,26 +437,6 @@ const OnboardingTour = ({ step, firstName, onNext, onSkip, isMobile }: Onboardin
   );
 };
 
-// ═══ CARTOGRAPHIE DES DUOS D'OUTILS SOS ═══
-const TOOL_DUOS: Record<string, { id: string; emoji: string; label: string; desc: string }[]> = {
-  fringale: [
-    { id: "body_scan", emoji: "🧘‍♂️", label: "Scanner mon corps", desc: "Distinguer faim réelle et faim émotionnelle" },
-    { id: "manger", emoji: "🍏", label: "Manger en pleine conscience", desc: "Ralentir et savourer, étape par étape" },
-  ],
-  stress: [
-    { id: "breathing", emoji: "🌬️", label: "Calmer mon souffle", desc: "Cohérence cardiaque · 3 min · Prouvé" },
-    { id: "ancrage", emoji: "👀", label: "Ancrer mes 5 sens", desc: "Technique 5-4-3-2-1 · Retour au présent" },
-  ],
-  "culpabilité": [
-    { id: "ecriture", emoji: "📝", label: "Écrire pour me libérer", desc: "Vider ce qui pèse · Personne ne lira" },
-    { id: "defusion", emoji: "🧠", label: "Prendre de la distance", desc: "Défusion cognitive · Observer sans juger" },
-  ],
-  "coup de mou": [
-    { id: "marche", emoji: "🚶‍♂️", label: "Faire quelques pas", desc: "Marche consciente · Se vider la tête" },
-    { id: "adaptive_coaching", emoji: "💬", label: "Retrouver mon jumeau", desc: "Coaching TCC personnalisé pour toi" },
-  ],
-};
-
 // Labels courts pour les boutons [TRIGGER_SOS] dans le chat
 const SOS_EXERCISE_META: Record<string, { label: string; icon: string }> = {
   breathing:        { label: "Calmer mon souffle",         icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" },
@@ -484,6 +448,17 @@ const SOS_EXERCISE_META: Record<string, { label: string; icon: string }> = {
   ecriture:         { label: "Écrire pour me libérer",     icon: "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" },
   adaptive_coaching:{ label: "Coaching personnalisé",      icon: "M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" },
 };
+
+// ═══ BIBLIOTHÈQUE D'EXERCICES — accès direct, hors situation de crise ═══
+// Les 5 exercices retravaillés (Gemini Live). Lancés en dehors de toute triage SOS,
+// toujours en origin "pratique" (Exercices pratiqués côté Dashboard, jamais "[Non résolu]").
+const LIBRARY_EXERCISES: { id: string; label: string; desc: string; icon: string }[] = [
+  { id: "breathing", label: "Cohérence cardiaque", desc: "Respiration guidée · 3 min · Calme le système nerveux", icon: SOS_EXERCISE_META.breathing.icon },
+  { id: "ancrage", label: "Ancrage sensoriel", desc: "Technique 5-4-3-2-1 · Retour au moment présent", icon: SOS_EXERCISE_META.ancrage.icon },
+  { id: "manger", label: "Pleine conscience alimentaire", desc: "Manger en conscience, sans jugement", icon: SOS_EXERCISE_META.manger.icon },
+  { id: "ecriture", label: "Écriture cathartique", desc: "Déposer ce qui pèse, à son rythme", icon: SOS_EXERCISE_META.ecriture.icon },
+  { id: "defusion", label: "Défusion cognitive", desc: "Prendre de la distance avec ses pensées", icon: SOS_EXERCISE_META.defusion.icon },
+];
 
 function generateCelebration(firstName: string, toolId: string): string {
   const toolNames: Record<string, string> = {
@@ -704,7 +679,9 @@ export default function ChatPage() {
   const [patientInitials, setPatientInitials] = useState("?");
   const [practitionerIdFromDb, setPractitionerIdFromDb] = useState<string | null>(null);
   const [practitionerPlan, setPractitionerPlan] = useState("essentiel");
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [imageCompressing, setImageCompressing] = useState(false);
@@ -772,7 +749,6 @@ export default function ChatPage() {
   const typewriterRafRef = useRef<number | null>(null);
   const hasMessages = messages.filter(m => !m.hidden).length > 0;
   const sidebarWidth = 305;
-  const [showPreemptiveSOS, setShowPreemptiveSOS] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
@@ -795,9 +771,8 @@ export default function ChatPage() {
   const patientAvatarRef = useRef<HTMLInputElement>(null);
   const [emotionalStatus, setEmotionalStatus] = useState<"green" | "red_behavioral" | "red_critical">("green");
   const [showSasButtons, setShowSasButtons] = useState(false);
-  const [showSOSTriageModal, setShowSOSTriageModal] = useState(false);
-  const [selectedTriageCtx, setSelectedTriageCtx] = useState("");
-  const [showToolDuo, setShowToolDuo] = useState(false);
+  const [showSOSExercise, setShowSOSExercise] = useState(false);
+  const [showLibraryModal, setShowLibraryModal] = useState(false);
   const [postExerciseStep, setPostExerciseStep] = useState<{ toolId: string; answer: string } | null>(null);
   const [chatSearch, setChatSearch] = useState("");
   const [chatSearchIdx, setChatSearchIdx] = useState(0);
@@ -927,6 +902,9 @@ export default function ChatPage() {
         return;
       }
       setPatientId(data.user.id);
+      // Heartbeat "dernière connexion" — indépendant de l'envoi de messages,
+      // affiché dans le dashboard praticien (cf. migration add_patients_last_seen_at.sql)
+      void supabase.from("patients").update({ last_seen_at: new Date().toISOString() }).eq("user_id", data.user.id);
       const { data: rel } = await supabase.from("patient_practitioner").select("practitioner_id").eq("patient_id", data.user.id).single();
       if (rel) {
         const practId = rel.practitioner_id as string;
@@ -995,6 +973,20 @@ export default function ChatPage() {
 
     return () => { subscription.unsubscribe(); };
   }, [loadSessions]);
+
+  // ─── Heartbeat "dernière connexion" ─────────────────────────────────────────
+  // Rafraîchit last_seen_at toutes les 5 min tant que l'onglet est visible, et
+  // au retour au premier plan, pour que le dashboard praticien reflète une
+  // session en cours même sans nouveaux messages.
+  useEffect(() => {
+    if (!patientId) return;
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    const ping = () => { void supabase.from("patients").update({ last_seen_at: new Date().toISOString() }).eq("user_id", patientId); };
+    const interval = setInterval(() => { if (document.visibilityState === "visible") ping(); }, 5 * 60 * 1000);
+    const onVisible = () => { if (document.visibilityState === "visible") ping(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
+  }, [patientId]);
 
   // ─── Realtime : message épinglé praticien ───────────────────────────────────
   // S'abonne aux UPDATE sur la ligne du patient dès que patientId est connu.
@@ -1137,11 +1129,22 @@ export default function ChatPage() {
     setPostExerciseStep({ toolId: "breathing", answer: "" });
   }, []);
 
-  // ─── Ancrage overlay complete ────────────────────────────────────────────────
+  // ─── Ancrage 5-4-3-2-1 : injection chat + victoire dashboard ─────────────────
   const handleAncrageComplete = useCallback(() => {
     setShowAncrageExercise(false);
     setActiveTool({ id: "ancrage", data: null });
     setPostExerciseStep({ toolId: "ancrage", answer: "" });
+  }, []);
+
+  const handleAncrageTransitionToChat = useCallback((summary: string, closing: string) => {
+    setShowAncrageExercise(false);
+    setMessages((prev) => [
+      ...prev,
+      { role: "user" as const, content: summary },
+      { role: "assistant" as const, content: closing },
+    ]);
+    setActiveTool({ id: "ancrage", data: null });
+    setPostExerciseStep({ toolId: "ancrage", answer: "victoire" });
   }, []);
 
   // ─── Body scan overlay complete ──────────────────────────────────────────────
@@ -1158,16 +1161,65 @@ export default function ChatPage() {
     setPostExerciseStep({ toolId: "manger", answer: "" });
   }, []);
 
-  // ─── Écriture cathartique overlay complete ────────────────────────────────────
-  const handleEcritureComplete = useCallback(() => {
+  // ─── MindfulEating : injection chat + log dashboard ──────────────────────────
+  const handleMindfulEatingTransition = useCallback((
+    summary: string,
+    exitMode: "victory" | "moderate" | "severe"
+  ) => {
+    setShowMangerExercise(false);
+    setMessages((prev) => [
+      ...prev,
+      { role: "user" as const, content: summary },
+    ]);
+    setActiveTool({ id: "manger", data: null });
+    setPostExerciseStep({ toolId: "manger", answer: exitMode === "victory" ? "victoire" : exitMode });
+  }, []);
+
+  // ─── Écriture cathartique : injection chat + clôture ──────────────────────────
+  const handleEcritureTransitionToChat = useCallback((
+    patientText: string,
+    tccBlocks: { label: string; emoji: string; text: string }[]
+  ) => {
     setShowEcritureExercise(false);
+
+    // 1 bulle patient (résumé de la décharge)
+    const userBubble = patientText.trim()
+      ? `📝 *Exercice d'écriture — décharge émotionnelle :*\n\n${patientText.trim().slice(0, 400)}${patientText.trim().length > 400 ? "…" : ""}`
+      : "📝 *J'ai complété l'exercice d'écriture cathartique.*";
+
+    // 3 bulles Twin (une par bloc TCC)
+    const twinBubbles = tccBlocks.map(
+      (b) => `**${b.emoji} ${b.label}**\n\n${b.text}`
+    );
+
+    setMessages((prev) => [
+      ...prev,
+      { role: "user" as const, content: userBubble },
+      ...twinBubbles.map((content) => ({ role: "assistant" as const, content })),
+    ]);
+
     setActiveTool({ id: "ecriture", data: null });
     setPostExerciseStep({ toolId: "ecriture", answer: "" });
   }, []);
 
   // ─── Défusion cognitive overlay complete ─────────────────────────────────────
-  const handleDefusionComplete = useCallback(() => {
+  const handleDefusionTransitionToChat = useCallback((
+    evacuatedThoughts: string[],
+    closing: string
+  ) => {
     setShowDefusionExercise(false);
+
+    // Bulle patient : liste des pensées observées
+    const userContent = evacuatedThoughts.length > 0
+      ? `🌫️ *Exercice de défusion ACT — pensées observées et libérées :*\n${evacuatedThoughts.map((t) => `• « ${t} »`).join("\n")}`
+      : "🌫️ *J'ai complété l'exercice de défusion cognitive.*";
+
+    setMessages((prev) => [
+      ...prev,
+      { role: "user" as const, content: userContent },
+      { role: "assistant" as const, content: closing },
+    ]);
+
     setActiveTool({ id: "defusion", data: null });
     setPostExerciseStep({ toolId: "defusion", answer: "" });
   }, []);
@@ -1225,8 +1277,21 @@ export default function ChatPage() {
   }, [postExerciseStep, patientId, practitionerIdFromDb, closeTool]);
 
   // ─── Sélection d'un outil dans le duo → modale plein écran ───
-  const handleToolSelect = useCallback(async (toolId: string, sosContext: string) => {
-    setShowToolDuo(false);
+  // forcedOrigin: "pratique" pour la bibliothèque d'exercices (geste proactif délibéré,
+  // toujours traité comme "Exercice pratiqué", jamais comme une crise non résolue).
+  const handleToolSelect = useCallback(async (toolId: string, sosContext: string, forcedOrigin?: "pratique") => {
+    // Enregistrer l'événement (sos_events) en arrière-plan — alimente le Dashboard
+    // ("Crises désamorcées" / "Exercices pratiqués") et la 🏆 victoire automatique.
+    if (patientId && practitionerIdFromDb) {
+      void fetch("/api/chat", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "", patientId, practitionerId: practitionerIdFromDb, isSOS: true,
+          sosContext: `${sosContext} | outil: ${toolId}`,
+          ...(forcedOrigin ? { origin: forcedOrigin } : {}),
+        }),
+      }).catch(() => {});
+    }
 
     // Breathing → overlay immersif dédié (bypass activeTool)
     if (toolId === "breathing") {
@@ -1239,13 +1304,6 @@ export default function ChatPage() {
     if (toolId === "ancrage") {
       setAncrageSosContext(sosContext);
       setShowAncrageExercise(true);
-      return;
-    }
-
-    // Body scan → overlay immersif dédié (bypass activeTool)
-    if (toolId === "body_scan") {
-      setBodyScanSosContext(sosContext);
-      setShowBodyScanExercise(true);
       return;
     }
 
@@ -1267,20 +1325,6 @@ export default function ChatPage() {
     if (toolId === "defusion") {
       setDefusionSosContext(sosContext);
       setShowDefusionExercise(true);
-      return;
-    }
-
-    // Marche consciente → overlay immersif dédié
-    if (toolId === "marche") {
-      setMarcheSosContext(sosContext);
-      setShowMarcheExercise(true);
-      return;
-    }
-
-    // Coaching adaptatif → overlay immersif dédié
-    if (toolId === "adaptive_coaching") {
-      setAdaptiveCoachingSosContext(sosContext);
-      setShowAdaptiveCoachingExercise(true);
       return;
     }
 
@@ -1333,11 +1377,36 @@ export default function ChatPage() {
     } catch { /* silencieux */ }
   };
 
-  // handleSOS : appelé depuis la bannière préemptive → ouvre le triage
-  const handleSOS = () => {
-    setShowPreemptiveSOS(false);
-    setShowSOSTriageModal(true);
-  };
+  // handleSOSTransitionToChat : appelé quand SOSExercise termine
+  // Injecte la réponse de clôture du patient comme message dans le chat
+  const handleSOSTransitionToChat = useCallback((closingText: string) => {
+    setShowSOSExercise(false);
+    if (closingText?.trim()) {
+      setMessages(prev => [...prev,
+        { role: "user", content: closingText.trim() },
+      ]);
+      // Trigger a closing Gemini response via the regular chat API
+      setTimeout(() => {
+        void (async () => {
+          if (!patientId || !practitionerIdFromDb) return;
+          try {
+            await fetch("/api/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                message: closingText.trim(),
+                patientId,
+                practitionerId: practitionerIdFromDb,
+                sessionId: currentSessionId ?? undefined,
+                isPostExercise: true,
+                toolId: "sos_exercise",
+              }),
+            });
+          } catch { /* silencieux */ }
+        })();
+      }, 800);
+    }
+  }, [patientId, practitionerIdFromDb, currentSessionId]);
 
   const createSession = async (firstMessage: string) => {
     if (!patientId || !practitionerIdFromDb) return null;
@@ -1468,8 +1537,7 @@ export default function ChatPage() {
         try {
           const parsed = JSON.parse(statusMatch[1]) as { status: string };
           if (parsed.status === "red_critical") { setEmotionalStatus("red_critical"); }
-          else if (parsed.status === "red_behavioral") { setEmotionalStatus("red_behavioral"); if (!activeTool) setShowPreemptiveSOS(true); }
-          else if (parsed.status === "red" && !activeTool) { setShowPreemptiveSOS(true); }
+          else if (parsed.status === "red_behavioral") { setEmotionalStatus("red_behavioral"); }
         } catch { /* silencieux */ }
       }
 
@@ -1639,45 +1707,45 @@ export default function ChatPage() {
         />
       )}
 
-      {/* ═══ MODALE DUO D'OUTILS ═══ */}
-      {showToolDuo && (() => {
-        const duos = TOOL_DUOS[selectedTriageCtx] ?? TOOL_DUOS["stress"];
-        return (
-          <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.9)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-            <div style={{ background: "#060d14", borderRadius: 24, padding: "28px 24px", width: "100%", maxWidth: 400, border: `1px solid ${CYAN_BORDER}`, boxShadow: "0 24px 80px rgba(0,0,0,0.7)", animation: "fadeUp 0.3s ease" }}>
-              <div style={{ textAlign: "center", marginBottom: 24 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 14, background: CYAN_DIM, border: `1px solid ${CYAN_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
-                  {TRIAGE_ICONS[selectedTriageCtx] ?? <IconActivity size={22} color={CYAN} />}
-                </div>
-                <h3 style={{ margin: "0 0 6px", fontSize: 17, fontWeight: 700, color: TEXT_PRIMARY }}>Qu'est-ce qui te parle le mieux ?</h3>
-                <p style={{ margin: 0, fontSize: 13, color: TEXT_SECONDARY }}>Choisis l'exercice qui te semble le plus accessible</p>
+      {/* ═══ BIBLIOTHÈQUE D'EXERCICES — Modale ═══ */}
+      {showLibraryModal && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.9)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#060d14", borderRadius: 24, padding: "28px 24px", width: "100%", maxWidth: 420, border: `1px solid ${ACCENT_BORDER}`, boxShadow: "0 24px 80px rgba(0,0,0,0.7)", animation: "fadeUp 0.3s ease", maxHeight: "85vh", overflowY: "auto" }}>
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 14, background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                </svg>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
-                {duos.map(tool => (
-                  <button key={tool.id}
-                    onClick={() => void handleToolSelect(tool.id, selectedTriageCtx)}
-                    style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 18px", borderRadius: 16, background: "rgba(6,182,212,0.04)", border: "1px solid rgba(6,182,212,0.12)", cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}
-                    onMouseEnter={e => { e.currentTarget.style.background = CYAN_DIM; e.currentTarget.style.borderColor = CYAN_BORDER; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(6,182,212,0.04)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.12)"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                    <div style={{ width: 44, height: 44, borderRadius: 12, background: CYAN_DIM, border: `1px solid ${CYAN_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      {TOOL_SVG_ICONS[tool.id] ?? <IconStar size={28} color={CYAN} />}
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: TEXT_PRIMARY }}>{tool.label}</p>
-                      <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED }}>{tool.desc}</p>
-                    </div>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6" stroke={TEXT_MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => { setShowToolDuo(false); setSelectedTriageCtx(""); }}
-                style={{ width: "100%", height: 38, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 13, cursor: "pointer" }}>
-                Annuler
-              </button>
+              <h3 style={{ margin: "0 0 6px", fontSize: 17, fontWeight: 700, color: TEXT_PRIMARY }}>Bibliothèque d'exercices</h3>
+              <p style={{ margin: 0, fontSize: 13, color: TEXT_SECONDARY }}>À pratiquer quand tu veux, même quand tout va bien</p>
             </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
+              {LIBRARY_EXERCISES.map(ex => (
+                <button key={ex.id}
+                  onClick={() => { setShowLibraryModal(false); void handleToolSelect(ex.id, "Bibliothèque", emotionalStatus === "red_behavioral" ? undefined : "pratique"); }}
+                  style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 18px", borderRadius: 16, background: "rgba(16,185,129,0.04)", border: `1px solid ${ACCENT_BORDER}`, cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = ACCENT_DIM; e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.04)"; e.currentTarget.style.borderColor = ACCENT_BORDER; e.currentTarget.style.transform = "translateY(0)"; }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {TOOL_SVG_ICONS[ex.id] ?? <IconStar size={28} color={ACCENT} />}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: TEXT_PRIMARY }}>{ex.label}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED }}>{ex.desc}</p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6" stroke={TEXT_MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setShowLibraryModal(false)}
+              style={{ width: "100%", height: 38, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 13, cursor: "pointer" }}>
+              Fermer
+            </button>
           </div>
-        );
-      })()}
+        </div>
+      )}
 
       {/* ═══ SAS DE DÉCOMPRESSION ═══ */}
       {showSasButtons && !activeTool && (
@@ -1707,70 +1775,15 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* Bannière préemptive */}
-      {showPreemptiveSOS && !activeTool && (
-        <div style={{ position: "fixed", bottom: hasMessages ? 100 : 180, left: "50%", transform: "translateX(-50%)", zIndex: 90, width: "calc(100% - 40px)", maxWidth: 500, background: "#0a0f0c", borderRadius: 16, border: `1px solid ${ACCENT_BORDER}`, padding: "14px 16px", boxShadow: "0 8px 32px rgba(0,0,0,0.5)", display: "flex", alignItems: "center", gap: 12, animation: "fadeUp 0.3s ease" }}>
-          <div style={{ width: 36, height: 36, borderRadius: "50%", border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconWave size={18} color={ACCENT} strokeWidth={1.5} /></div>
-          <p style={{ margin: 0, fontSize: 13, color: TEXT_PRIMARY, flex: 1, lineHeight: 1.5 }}>On dirait que la pression monte. On prend 2 minutes ensemble pour souffler ?</p>
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <button onClick={() => { setShowPreemptiveSOS(false); void handleSOS(); }}
-              style={{ height: 34, borderRadius: 8, padding: "0 14px", background: ACCENT, border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-              Oui
-            </button>
-            <button onClick={() => setShowPreemptiveSOS(false)}
-              style={{ height: 34, borderRadius: 8, padding: "0 12px", background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 13, cursor: "pointer" }}>
-              Non
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ MODALE TRIAGE SOS ═══ */}
-      {showSOSTriageModal && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.88)", backdropFilter: "blur(14px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#060d14", borderRadius: 24, padding: "28px 24px", width: "100%", maxWidth: 400, border: `1px solid ${CYAN_BORDER}`, boxShadow: "0 24px 80px rgba(0,0,0,0.7)" }}>
-            <div style={{ textAlign: "center", marginBottom: 22 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 14, background: CYAN_DIM, border: `1px solid ${CYAN_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
-                <IconActivity size={22} color={CYAN} />
-              </div>
-              <h3 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY }}>Comment puis-je vous aider ?</h3>
-              <p style={{ margin: 0, fontSize: 13, color: TEXT_SECONDARY }}>Choisissez ce qui correspond le mieux à ce que vous ressentez</p>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {[
-                { key: "fringale", label: "Fringale / Impulsion alimentaire", ctx: "fringale", desc: "Envie soudaine, compulsion, difficulté à résister" },
-                { key: "stress", label: "Pic de stress / Anxiété forte", ctx: "stress", desc: "Tension, agitation, sensation d'être dépassé(e)" },
-                { key: "culpabilité", label: "Culpabilité / Ruminations", ctx: "culpabilité", desc: "Pensées négatives qui tournent en boucle" },
-                { key: "coup de mou", label: "Coup de mou / Baisse de régime", ctx: "coup de mou", desc: "Fatigue, découragement, manque d'élan" },
-              ].map(({ key, label, ctx, desc }) => (
-                <button key={ctx} onClick={() => { setShowSOSTriageModal(false); setSelectedTriageCtx(ctx); setShowToolDuo(true); }}
-                  style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14, background: "rgba(255,255,255,0.03)", border: `1px solid ${BORDER}`, cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = CYAN_DIM; e.currentTarget.style.borderColor = CYAN_BORDER; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = BORDER; }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 10, background: CYAN_DIM, border: `1px solid ${CYAN_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    {TRIAGE_ICONS[key]}
-                  </div>
-                  <div>
-                    <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 600, color: TEXT_PRIMARY }}>{label}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: TEXT_MUTED }}>{desc}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <button onClick={() => setShowSOSTriageModal(false)} style={{ marginTop: 16, width: "100%", height: 38, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 13, cursor: "pointer" }}>
-              Annuler
-            </button>
-          </div>
-        </div>
-      )}
-
-        {renderTool()}
+      {renderTool()}
 
       {/* ─── Breathing exercise full-screen overlay ─── */}
       {showBreathingExercise && (
         <BreathingExercise
           sosContext={breathingSosContext}
           firstName={patientFirstName}
+          patientId={patientId ?? undefined}
+          practitionerId={practitionerIdFromDb ?? undefined}
           onCompleted={handleBreathingComplete}
           onClose={() => setShowBreathingExercise(false)}
         />
@@ -1779,8 +1792,11 @@ export default function ChatPage() {
       {/* ─── Ancrage 5-4-3-2-1 full-screen overlay ─── */}
       {showAncrageExercise && (
         <AncrageExercise
+          patientId={patientId ?? undefined}
+          practitionerId={practitionerIdFromDb ?? undefined}
           sosContext={ancrageSosContext}
           firstName={patientFirstName}
+          onTransitionToChat={handleAncrageTransitionToChat}
           onCompleted={handleAncrageComplete}
           onClose={() => setShowAncrageExercise(false)}
         />
@@ -1797,31 +1813,38 @@ export default function ChatPage() {
       )}
 
       {/* ─── Manger en pleine conscience full-screen overlay ─── */}
-      {showMangerExercise && (
-        <MangerExercise
-          sosContext={mangerSosContext}
+      {/* ─── MindfulEating full-screen overlay ─── */}
+      {showMangerExercise && patientId && practitionerIdFromDb && (
+        <MindfulEating
+          patientId={patientId}
+          practitionerId={practitionerIdFromDb}
           firstName={patientFirstName}
-          onCompleted={handleMangerComplete}
+          sosContext={mangerSosContext}
+          onTransitionToChat={handleMindfulEatingTransition}
           onClose={() => setShowMangerExercise(false)}
         />
       )}
 
       {/* ─── Écriture cathartique full-screen overlay ─── */}
-      {showEcritureExercise && (
+      {showEcritureExercise && patientId && practitionerIdFromDb && (
         <EcritureExercise
-          sosContext={ecrirtureSosContext}
+          patientId={patientId}
+          practitionerId={practitionerIdFromDb}
           firstName={patientFirstName}
-          onCompleted={handleEcritureComplete}
+          sosContext={ecrirtureSosContext}
+          onTransitionToChat={handleEcritureTransitionToChat}
           onClose={() => setShowEcritureExercise(false)}
         />
       )}
 
       {/* ─── Défusion cognitive full-screen overlay ─── */}
-      {showDefusionExercise && (
+      {showDefusionExercise && patientId && practitionerIdFromDb && (
         <DefusionExercise
+          patientId={patientId}
+          practitionerId={practitionerIdFromDb}
           sosContext={defusionSosContext}
           firstName={patientFirstName}
-          onCompleted={handleDefusionComplete}
+          onTransitionToChat={handleDefusionTransitionToChat}
           onClose={() => setShowDefusionExercise(false)}
         />
       )}
@@ -1843,6 +1866,17 @@ export default function ChatPage() {
           firstName={patientFirstName}
           onCompleted={handleAdaptiveCoachingComplete}
           onClose={() => setShowAdaptiveCoachingExercise(false)}
+        />
+      )}
+
+      {/* ─── SOSExercise Gemini Live — mode SOS immersif ─── */}
+      {showSOSExercise && patientId && practitionerIdFromDb && (
+        <SOSExercise
+          patientId={patientId}
+          practitionerId={practitionerIdFromDb}
+          firstName={patientFirstName}
+          onTransitionToChat={handleSOSTransitionToChat}
+          onClose={() => setShowSOSExercise(false)}
         />
       )}
 
@@ -2197,8 +2231,18 @@ export default function ChatPage() {
           {/* ═══ MON SOUTIEN — Bouton ═══ */}
           <div style={{ marginBottom: 16 }}>
             <button
-              onClick={() => { if (emotionalStatus === "red_critical") return; setShowSOSTriageModal(true); if (isMobile) setSidebarOpen(false); }}
-              disabled={sosLoading || emotionalStatus === "red_critical"}
+              onClick={() => {
+                if (emotionalStatus === "red_critical") return;
+                if (!patientId || !practitionerIdFromDb) return;
+                // Créer sos_event origin "crise" (Mon Soutien = toujours une demande d'aide)
+                void fetch("/api/chat", {
+                  method: "POST", headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ message: "", patientId, practitionerId: practitionerIdFromDb, isSOS: true, sosContext: "Mon Soutien", origin: "crise" }),
+                }).catch(() => {});
+                setShowSOSExercise(true);
+                if (isMobile) setSidebarOpen(false);
+              }}
+              disabled={sosLoading || emotionalStatus === "red_critical" || !patientId || !practitionerIdFromDb}
               style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", borderRadius: 14, background: "rgba(6,182,212,0.07)", border: "1px solid rgba(6,182,212,0.25)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}
               onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(6,182,212,0.13)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.42)"; } }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(6,182,212,0.07)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.25)"; }}>
@@ -2214,6 +2258,25 @@ export default function ChatPage() {
                 <p style={{ margin: 0, fontSize: 11, color: "rgba(6,182,212,0.65)", lineHeight: 1.5 }}>Aide immédiate</p>
               </div>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.45 }}><path d="M9 18l6-6-6-6" stroke={CYAN} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+          </div>
+
+          {/* ═══ BIBLIOTHÈQUE D'EXERCICES — Bouton ═══ */}
+          <div style={{ marginBottom: 16 }}>
+            <button
+              onClick={() => { setShowLibraryModal(true); if (isMobile) setSidebarOpen(false); }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", borderRadius: 14, background: "rgba(16,185,129,0.06)", border: `1px solid ${ACCENT_BORDER}`, cursor: "pointer", transition: "all 0.2s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.06)"; e.currentTarget.style.borderColor = ACCENT_BORDER; }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              </svg>
+              <div style={{ textAlign: "left", flex: 1, position: "relative" }}>
+                <p style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.2px" }}>Bibliothèque</p>
+                <p style={{ margin: 0, fontSize: 11, color: "rgba(16,185,129,0.65)", lineHeight: 1.5 }}>Exercices à pratiquer librement</p>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.45 }}><path d="M9 18l6-6-6-6" stroke={ACCENT} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </div>
 
