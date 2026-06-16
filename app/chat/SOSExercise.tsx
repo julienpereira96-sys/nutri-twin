@@ -294,6 +294,8 @@ export default function SOSExercise({
   const phaseTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finalTextRef    = useRef("");
   const intakeStartRef  = useRef(false);
+  // Stable ref so initSession() can wire onmessage without stale-closure issues
+  const handleWSMessageRef = useRef<((evt: { data: string }) => void) | null>(null);
 
   // Keep refs in sync
   useEffect(() => { statusRef.current = status; }, [status]);
@@ -594,16 +596,17 @@ export default function SOSExercise({
       }));
     };
 
+    // Wire onmessage immediately via ref — avoids race condition where
+    // setupComplete arrives before the separate useEffect runs
+    ws.onmessage = (evt) => handleWSMessageRef.current?.(evt);
+
     ws.onerror = () => setLoadError("Connexion Gemini Live échouée. Vérifier la clé API.");
+    // Single onclose handler (was duplicated — second was overwriting first)
     ws.onclose = (evt) => {
       if (statusRef.current === "loading") {
         setLoadError(`Connexion fermée (code ${evt.code}). Vérifie ta clé API Gemini Live.`);
       }
-    };
-    ws.onclose = () => {
-      if (statusRef.current !== "transition" && statusRef.current !== "reveal") {
-        // Unexpected close
-      }
+      // For non-terminal states, unexpected close is silently handled
     };
   }, [patientId, practitionerId, firstName]);
 
@@ -628,12 +631,11 @@ export default function SOSExercise({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Wire up WS message handler
+  // Keep handler ref in sync — also re-wire live WS if it already exists
   useEffect(() => {
-    const ws = wsRef.current;
-    if (!ws) return;
-    ws.onmessage = handleWSMessage;
-  }, [geminiReady, handleWSMessage]);
+    handleWSMessageRef.current = handleWSMessage;
+    if (wsRef.current) wsRef.current.onmessage = handleWSMessage;
+  }, [handleWSMessage]);
 
   // ── Animation loop ────────────────────────────────────────────────────────
   useEffect(() => {
