@@ -518,9 +518,11 @@ export default function AncrageExercise({
       ws.send(JSON.stringify({
         config: {
           model: GEMINI_MODEL,
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+            },
           },
           outputAudioTranscription: {},
           inputAudioTranscription:  {},

@@ -284,9 +284,11 @@ export default function EcritureExercise({
       ws.send(JSON.stringify({
         config: {
           model: GEMINI_MODEL,
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+            },
           },
           systemInstruction: {
             parts: [{ text: buildIntroPrompt(firstName, sosContext) }],
