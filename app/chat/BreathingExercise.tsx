@@ -20,6 +20,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
 
 // ─── Design ───────────────────────────────────────────────────────────────────
 const ACCENT        = "#10b981";
@@ -451,7 +452,7 @@ export default function BreathingExercise({
           generationConfig: {
             responseModalities: ["AUDIO"],
             speechConfig: {
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: getSelectedGeminiVoice() } },
             },
           },
           systemInstruction: { parts: [{ text: systemPrompt }] },

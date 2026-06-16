@@ -22,6 +22,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
 import {
   motion,
   useMotionValue,
@@ -420,7 +421,7 @@ export default function DefusionExercise({
           generationConfig: {
             responseModalities: ["AUDIO"],
             speechConfig: {
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: getSelectedGeminiVoice() } },
             },
           },
           systemInstruction: { parts: [{ text: systemPrompt }] },

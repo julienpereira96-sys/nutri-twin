@@ -20,6 +20,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
 
 // ─── Design tokens — Terre / Ocre ─────────────────────────────────────────────
 const BG_DEEP      = "#080501";
@@ -521,7 +522,7 @@ export default function AncrageExercise({
           generationConfig: {
             responseModalities: ["AUDIO"],
             speechConfig: {
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: getSelectedGeminiVoice() } },
             },
           },
           systemInstruction: { parts: [{ text: systemPrompt }] },

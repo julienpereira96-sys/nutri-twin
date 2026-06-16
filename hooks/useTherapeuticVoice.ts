@@ -2,99 +2,101 @@
 
 /**
  * useTherapeuticVoice
- * React hook for high-quality therapeutic voice synthesis.
+ * React hook for high-quality therapeutic voice synthesis via Gemini Live.
  *
- * Primary path  — Google Cloud TTS Neural2 (via /api/tts)
- *   • Fetches MP3 audio, plays via HTMLAudioElement
- *   • Karaoke timing driven by returned durationMs
+ * Architecture:
+ * - Opens a single Gemini Live WebSocket per session (lazy, on first speak)
+ * - Sends text as realtimeInput → receives PCM16 audio chunks → plays via AudioContext
+ * - When voice changes, closes WS → reopens on next speak with new voice
+ * - Maintains same public API as the legacy Google Cloud TTS version
+ *   so existing exercises (BodyScan, Manger, Marche, AdaptiveCoaching) work unchanged
  *
- * Fallback path — Web Speech API
- *   • Used automatically when /api/tts returns 503 (key not configured)
- *     or when fetch fails
- *   • Maintains full parity of the public API
- *
- * Persists the selected voice ID in localStorage.
- * Zero memory leaks — all listeners / timers cleaned up on unmount.
+ * Note: rate/pitch/volume options are ignored (Gemini Live uses its own prosody).
+ *       onBoundary and onDurationReady are no-ops (no boundary events from Gemini Live).
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   TherapeuticVoice,
-  NEURAL2_VOICES,
+  GEMINI_LIVE_VOICES,
   DEFAULT_VOICE_ID,
-  buildSSML,
-  prepareTextForTherapeuticSpeech,
-  scoreVoiceQuality,
-  THERAPEUTIC_RATE,
-  THERAPEUTIC_PITCH,
-  THERAPEUTIC_VOLUME,
+  VOICE_STORAGE_KEY,
 } from "@/lib/therapeuticVoice";
 
-const STORAGE_KEY = "nutritwin_selected_voice_id";
+const GEMINI_WS_URL = (key: string) =>
+  `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`;
+const GEMINI_MODEL = "models/gemini-3.1-flash-live-preview";
 
-export interface TherapeuticVoiceOptions {
-  /** Skip SSML/acoustic preparation (use for karaoke-synced exercises). */
-  skipPrep?: boolean;
-  /** Override default volume (0–1, Web Speech only). */
-  volume?: number;
-  /** Override speaking rate (0.25–4.0). */
-  rate?: number;
-  /** Callback fired when the utterance / audio finishes. */
-  onEnd?: () => void;
-  /**
-   * Callback fired on word boundary events.
-   * Web Speech path: receives SpeechSynthesisEvent.
-   * Google TTS path: ignored — use onDurationReady for timer-based karaoke.
-   */
-  onBoundary?: (event: SpeechSynthesisEvent) => void;
-  /**
-   * Called with the audio duration (ms) once the Google TTS audio is ready.
-   * Use this to set up scheduleWordTimers() for karaoke in exercises.
-   */
-  onDurationReady?: (durationMs: number) => void;
+// ─── PCM helpers ──────────────────────────────────────────────────────────────
+
+function pcm16Base64ToFloat32(base64: string): Float32Array {
+  const bin = atob(base64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const int16 = new Int16Array(bytes.buffer);
+  const f32 = new Float32Array(int16.length);
+  for (let i = 0; i < int16.length; i++) f32[i] = int16[i] / 32768;
+  return f32;
 }
 
-export interface UseTherapeuticVoiceReturn {
-  /** Ordered list of available Neural2 voices. */
-  voices: TherapeuticVoice[];
-  /** Currently selected voice. */
-  selectedVoice: TherapeuticVoice;
-  /** Select a voice and persist the choice. */
-  setSelectedVoice: (voice: TherapeuticVoice) => void;
-  /** Speak text with therapeutic settings. */
-  speakTherapeutic: (text: string, opts?: TherapeuticVoiceOptions) => void;
-  /** Speak a preview with a specific voice object (bypasses state). */
-  previewVoice: (voice: TherapeuticVoice, text: string) => void;
-  /** Cancel any ongoing speech. */
-  cancelSpeech: () => void;
-  /** Unlock iOS audio context (call on first user gesture). */
-  unlockAudio: () => void;
-  /** True while Google TTS audio is being fetched. */
-  isFetching: boolean;
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Voice helpers ────────────────────────────────────────────────────────────
 
 function resolveVoice(id: string): TherapeuticVoice {
   return (
-    NEURAL2_VOICES.find(v => v.id === id) ??
-    NEURAL2_VOICES.find(v => v.id === DEFAULT_VOICE_ID) ??
-    NEURAL2_VOICES[0]
+    GEMINI_LIVE_VOICES.find(v => v.id === id) ??
+    GEMINI_LIVE_VOICES.find(v => v.id === DEFAULT_VOICE_ID) ??
+    GEMINI_LIVE_VOICES[0]
   );
 }
 
 function loadPersistedVoice(): TherapeuticVoice {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(VOICE_STORAGE_KEY);
     if (saved) return resolveVoice(saved);
   } catch { /* localStorage unavailable */ }
   return resolveVoice(DEFAULT_VOICE_ID);
 }
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface TherapeuticVoiceOptions {
+  /** Ignored — kept for API compatibility with legacy exercises. */
+  skipPrep?: boolean;
+  /** Ignored — Gemini Live manages its own volume. */
+  volume?: number;
+  /** Ignored — Gemini Live manages its own rate. */
+  rate?: number;
+  /** Fired when audio playback finishes. */
+  onEnd?: () => void;
+  /** No-op — Gemini Live doesn't emit boundary events. */
+  onBoundary?: (event: SpeechSynthesisEvent) => void;
+  /** No-op — audio duration not known upfront with Gemini Live. */
+  onDurationReady?: (durationMs: number) => void;
+}
+
+export interface UseTherapeuticVoiceReturn {
+  /** Ordered list of available Gemini Live voices. */
+  voices: TherapeuticVoice[];
+  /** Currently selected voice. */
+  selectedVoice: TherapeuticVoice;
+  /** Select a voice and persist the choice. Closes current WS connection. */
+  setSelectedVoice: (voice: TherapeuticVoice) => void;
+  /** Speak text with therapeutic voice via Gemini Live. */
+  speakTherapeutic: (text: string, opts?: TherapeuticVoiceOptions) => void;
+  /** Preview a voice immediately (bypasses selected state). */
+  previewVoice: (voice: TherapeuticVoice, text: string) => void;
+  /** Stop all audio playback and clear the queue. */
+  cancelSpeech: () => void;
+  /** Unlock AudioContext on iOS (call on first user gesture). */
+  unlockAudio: () => void;
+  /** True while waiting for Gemini Live setup to complete. */
+  isFetching: boolean;
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
-  const [voices] = useState<TherapeuticVoice[]>(NEURAL2_VOICES);
+  const [voices] = useState<TherapeuticVoice[]>(GEMINI_LIVE_VOICES);
   const [selectedVoice, setSelectedVoiceState] = useState<TherapeuticVoice>(
     () => resolveVoice(DEFAULT_VOICE_ID)
   );
@@ -105,175 +107,220 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     setSelectedVoiceState(loadPersistedVoice());
   }, []);
 
-  // Active audio element ref — paused on new speak() or unmount
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  // Abort controller for in-flight TTS fetches
-  const fetchAbortRef = useRef<AbortController | null>(null);
+  // WebSocket and audio state
+  const wsRef            = useRef<WebSocket | null>(null);
+  const audioCtxRef      = useRef<AudioContext | null>(null);
+  const audioQueueRef    = useRef<{ data: Float32Array; rate: number }[]>([]);
+  const isPlayingRef     = useRef(false);
+  const setupCompleteRef = useRef(false);
+  const turnCompleteRef  = useRef(false);
+  const onEndRef         = useRef<(() => void) | null>(null);
+  const pendingTextRef   = useRef<string | null>(null);
+
+  // ── Audio playback queue ───────────────────────────────────────────────────
+
+  const playNextChunk = useCallback(() => {
+    const ctx = audioCtxRef.current;
+    if (!ctx || audioQueueRef.current.length === 0) {
+      isPlayingRef.current = false;
+      // Fire onEnd once queue drains after turnComplete
+      if (turnCompleteRef.current) {
+        turnCompleteRef.current = false;
+        const cb = onEndRef.current;
+        onEndRef.current = null;
+        cb?.();
+      }
+      return;
+    }
+    isPlayingRef.current = true;
+    const { data, rate } = audioQueueRef.current.shift()!;
+    const buf = ctx.createBuffer(1, data.length, rate);
+    buf.getChannelData(0).set(data);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.connect(ctx.destination);
+    src.onended = playNextChunk;
+    src.start(0);
+  }, []);
+
+  const enqueueAudio = useCallback((base64: string, sampleRate = 24000) => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new AudioContext();
+    }
+    if (audioCtxRef.current.state === "suspended") {
+      void audioCtxRef.current.resume();
+    }
+    audioQueueRef.current.push({ data: pcm16Base64ToFloat32(base64), rate: sampleRate });
+    if (!isPlayingRef.current) playNextChunk();
+  }, [playNextChunk]);
+
+  const flushAudio = useCallback(() => {
+    audioQueueRef.current   = [];
+    isPlayingRef.current    = false;
+    turnCompleteRef.current = false;
+    onEndRef.current        = null;
+  }, []);
+
+  // ── WebSocket management ───────────────────────────────────────────────────
+
+  const closeWs = useCallback(() => {
+    if (wsRef.current) {
+      wsRef.current.onmessage = null;
+      wsRef.current.onclose   = null;
+      wsRef.current.onerror   = null;
+      try { wsRef.current.close(); } catch { /* no-op */ }
+      wsRef.current = null;
+    }
+    setupCompleteRef.current = false;
+    setIsFetching(false);
+  }, []);
+
+  const openWs = useCallback((voiceName: string) => {
+    closeWs();
+    flushAudio();
+
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!apiKey) return;
+
+    setIsFetching(true);
+
+    const ws = new WebSocket(GEMINI_WS_URL(apiKey));
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({
+        config: {
+          model: GEMINI_MODEL,
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: { prebuiltVoiceConfig: { voiceName } },
+            },
+          },
+          systemInstruction: {
+            parts: [{
+              text: "Tu es un assistant vocal thérapeutique. Prononce exactement le texte reçu, avec une voix douce, posée et bienveillante. Ne rajoute aucun mot.",
+            }],
+          },
+        },
+      }));
+    };
+
+    ws.onmessage = (evt) => {
+      let msg: Record<string, unknown>;
+      try { msg = JSON.parse(evt.data as string); } catch { return; }
+
+      // Setup complete → send pending text if any
+      if (msg.setupComplete) {
+        setupCompleteRef.current = true;
+        setIsFetching(false);
+        if (pendingTextRef.current) {
+          ws.send(JSON.stringify({ realtimeInput: { text: pendingTextRef.current } }));
+          pendingTextRef.current = null;
+        }
+        return;
+      }
+
+      const sc = msg.serverContent as Record<string, unknown> | undefined;
+      if (!sc) return;
+
+      // Audio chunks
+      const modelTurn = sc.modelTurn as Record<string, unknown> | undefined;
+      const parts = (modelTurn?.parts as unknown[]) ?? [];
+      for (const p of parts) {
+        const part = p as Record<string, unknown>;
+        const inlineData = part.inlineData as Record<string, unknown> | undefined;
+        if (
+          inlineData?.mimeType &&
+          typeof inlineData.mimeType === "string" &&
+          inlineData.mimeType.startsWith("audio/pcm")
+        ) {
+          const rate = parseInt(
+            (inlineData.mimeType.match(/rate=(\d+)/)?.[1]) ?? "24000",
+            10
+          );
+          enqueueAudio(inlineData.data as string, rate);
+        }
+      }
+
+      // Turn complete → fire onEnd once audio queue drains
+      if (sc.turnComplete === true) {
+        turnCompleteRef.current = true;
+        if (!isPlayingRef.current && audioQueueRef.current.length === 0) {
+          turnCompleteRef.current = false;
+          const cb = onEndRef.current;
+          onEndRef.current = null;
+          cb?.();
+        }
+      }
+    };
+
+    ws.onerror = () => { setIsFetching(false); };
+    ws.onclose = () => {
+      setupCompleteRef.current = false;
+      setIsFetching(false);
+    };
+  }, [closeWs, flushAudio, enqueueAudio]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      audioRef.current?.pause();
-      fetchAbortRef.current?.abort();
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      closeWs();
+      flushAudio();
+      audioCtxRef.current?.close().catch(() => {});
     };
-  }, []);
+  }, [closeWs, flushAudio]);
 
-  // ─── Persist voice selection ─────────────────────────────────────────────
+  // ── Public API ─────────────────────────────────────────────────────────────
+
+  const cancelSpeech = useCallback(() => { flushAudio(); }, [flushAudio]);
+
+  const unlockAudio = useCallback(() => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new AudioContext();
+    }
+    if (audioCtxRef.current.state === "suspended") {
+      void audioCtxRef.current.resume();
+    }
+  }, []);
 
   const setSelectedVoice = useCallback((voice: TherapeuticVoice) => {
     setSelectedVoiceState(voice);
-    try { localStorage.setItem(STORAGE_KEY, voice.id); } catch { /* no-op */ }
-  }, []);
+    try { localStorage.setItem(VOICE_STORAGE_KEY, voice.id); } catch { /* no-op */ }
+    closeWs();
+    flushAudio();
+  }, [closeWs, flushAudio]);
 
-  // ─── Cancel ──────────────────────────────────────────────────────────────
-
-  const cancelSpeech = useCallback(() => {
-    fetchAbortRef.current?.abort();
-    fetchAbortRef.current = null;
-
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-      audioRef.current = null;
-    }
-
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
-
-    setIsFetching(false);
-  }, []);
-
-  // ─── Unlock iOS audio ────────────────────────────────────────────────────
-
-  const unlockAudio = useCallback(() => {
-    if (typeof window === "undefined") return;
-    if (window.speechSynthesis) {
-      const utter = new SpeechSynthesisUtterance(" ");
-      utter.volume = 0;
-      window.speechSynthesis.speak(utter);
-    }
-  }, []);
-
-  // ─── Web Speech fallback ─────────────────────────────────────────────────
-
-  const speakViaWebSpeech = useCallback((
+  const speakTherapeutic = useCallback((
     text: string,
-    opts: TherapeuticVoiceOptions,
+    opts: TherapeuticVoiceOptions = {}
   ) => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    flushAudio();
+    onEndRef.current = opts.onEnd ?? null;
 
-    window.speechSynthesis.cancel();
+    const ws = wsRef.current;
+    const voiceName = selectedVoice.id;
 
-    const prepared = opts.skipPrep ? text : prepareTextForTherapeuticSpeech(text);
-
-    const doSpeak = () => {
-      if (typeof window === "undefined" || !window.speechSynthesis) return;
-      window.speechSynthesis.resume();
-
-      const utter = new SpeechSynthesisUtterance(prepared);
-      utter.lang   = "fr-FR";
-      utter.rate   = opts.rate   ?? THERAPEUTIC_RATE;
-      utter.pitch  = THERAPEUTIC_PITCH;
-      utter.volume = opts.volume ?? THERAPEUTIC_VOLUME;
-
-      // Try to find a French browser voice
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        const allVoices = window.speechSynthesis.getVoices();
-        const frVoices = allVoices
-          .filter(v => v.lang.startsWith("fr"))
-          .sort((a, b) => scoreVoiceQuality(b.name) - scoreVoiceQuality(a.name));
-        // Match by name if we had saved a browser voice name, otherwise use best fr
-        const match = saved
-          ? allVoices.find(v => v.name === saved) ?? frVoices[0]
-          : frVoices[0];
-        if (match) utter.voice = match;
-      } catch { /* no-op */ }
-
-      if (opts.onEnd)      utter.onend      = opts.onEnd;
-      if (opts.onBoundary) utter.onboundary = opts.onBoundary;
-
-      window.speechSynthesis.speak(utter);
-    };
-
-    setTimeout(doSpeak, 50);
-  }, []);
-
-  // ─── Google Cloud TTS path ───────────────────────────────────────────────
-
-  const speakViaTTS = useCallback(async (
-    text: string,
-    voiceId: string,
-    opts: TherapeuticVoiceOptions
-  ) => {
-    cancelSpeech();
-
-    const rate = opts.rate ?? 0.92;
-    const ssml = opts.skipPrep ? undefined : buildSSML(text, rate);
-
-    fetchAbortRef.current = new AbortController();
-    setIsFetching(true);
-
-    try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: opts.skipPrep ? text : undefined,
-          ssml: ssml ?? undefined,
-          voiceId,
-          rate,
-        }),
-        signal: fetchAbortRef.current.signal,
-      });
-
-      setIsFetching(false);
-
-      // 503 = key not configured → fall back silently
-      if (res.status === 503 || !res.ok) {
-        speakViaWebSpeech(text, opts);
-        return;
-      }
-
-      const data = await res.json() as { audioBase64: string; durationMs: number };
-      const { audioBase64, durationMs } = data;
-
-      // Notify caller of duration for karaoke scheduling
-      if (opts.onDurationReady && durationMs) {
-        opts.onDurationReady(durationMs);
-      }
-
-      const audio = new Audio(`data:audio/mp3;base64,${audioBase64}`);
-      audioRef.current = audio;
-
-      if (opts.onEnd) {
-        audio.addEventListener("ended", opts.onEnd, { once: true });
-      }
-
-      await audio.play();
-    } catch (err) {
-      setIsFetching(false);
-      if ((err as Error).name === "AbortError") return;
-      speakViaWebSpeech(text, opts);
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      pendingTextRef.current = text;
+      openWs(voiceName);
+      return;
     }
-  }, [cancelSpeech, speakViaWebSpeech]);
 
-  // ─── Public API ──────────────────────────────────────────────────────────
+    if (!setupCompleteRef.current) {
+      pendingTextRef.current = text;
+      return;
+    }
 
-  const speakTherapeutic = useCallback(
-    (text: string, opts: TherapeuticVoiceOptions = {}) => {
-      void speakViaTTS(text, selectedVoice.id, opts);
-    },
-    [selectedVoice, speakViaTTS]
-  );
+    ws.send(JSON.stringify({ realtimeInput: { text } }));
+  }, [selectedVoice, openWs, flushAudio]);
 
   const previewVoice = useCallback((voice: TherapeuticVoice, text: string) => {
-    void speakViaTTS(text, voice.id, { skipPrep: false });
-  }, [speakViaTTS]);
+    flushAudio();
+    onEndRef.current = null;
+    pendingTextRef.current = text;
+    openWs(voice.id);
+  }, [openWs, flushAudio]);
 
   return {
     voices,

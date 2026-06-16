@@ -15,6 +15,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
 
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 const BG_PAPER       = "rgba(245,242,235,1)";      // beige papier premium
@@ -287,7 +288,7 @@ export default function EcritureExercise({
           generationConfig: {
             responseModalities: ["AUDIO"],
             speechConfig: {
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: getSelectedGeminiVoice() } },
             },
           },
           systemInstruction: {

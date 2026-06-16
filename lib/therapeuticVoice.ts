@@ -1,13 +1,12 @@
 /**
  * therapeuticVoice.ts
- * Core utilities for therapeutic TTS synthesis.
+ * Core utilities for therapeutic voice synthesis.
  *
  * Features:
- * - TherapeuticVoice catalogue — Google Cloud Neural2 voices (fr-FR)
- * - buildSSML() — wraps plain text in SSML with therapeutic pauses
- * - prepareTextForTherapeuticSpeech() — Web Speech fallback text preparation
- * - makeBoundaryHandler() — karaoke word highlighting (Web Speech only)
- * - scoreVoiceQuality() — legacy Web Speech voice ranking (fallback)
+ * - TherapeuticVoice catalogue — Gemini Live voices (prebuiltVoiceConfig)
+ * - getSelectedGeminiVoice() — reads persisted voice name from localStorage
+ * - buildSSML() — kept for legacy compatibility (unused with Gemini Live)
+ * - makeBoundaryHandler() / scheduleWordTimers() — karaoke helpers (legacy)
  */
 
 // ─── TherapeuticVoice ─────────────────────────────────────────────────────────
@@ -28,49 +27,90 @@ export interface TherapeuticVoice {
 }
 
 /**
- * Full catalogue of available fr-FR Neural2 voices.
- * Order matters — it drives the display order in the selector.
+ * Gemini Live prebuilt voices catalogue.
+ * Ces voix sont générées nativement par Gemini Flash Audio — qualité IA,
+ * sans passer par Google Cloud TTS.
  */
-export const NEURAL2_VOICES: TherapeuticVoice[] = [
+export const GEMINI_LIVE_VOICES: TherapeuticVoice[] = [
   {
-    id: "fr-FR-Neural2-A",
-    name: "Amélie",
+    id: "Aoede",
+    name: "Aoede",
     lang: "fr-FR",
     gender: "FEMALE",
-    description: "Voix féminine, douce et posée",
+    description: "Douce et posée — recommandée",
   },
   {
-    id: "fr-FR-Neural2-C",
-    name: "Camille",
+    id: "Kore",
+    name: "Kore",
     lang: "fr-FR",
     gender: "FEMALE",
-    description: "Voix féminine, chaleureuse et naturelle",
+    description: "Chaleureuse et bienveillante",
   },
   {
-    id: "fr-FR-Neural2-E",
-    name: "Élise",
+    id: "Leda",
+    name: "Leda",
     lang: "fr-FR",
     gender: "FEMALE",
-    description: "Voix féminine, claire et bienveillante",
+    description: "Claire et apaisante",
   },
   {
-    id: "fr-FR-Neural2-B",
-    name: "Baptiste",
+    id: "Zephyr",
+    name: "Zephyr",
+    lang: "fr-FR",
+    gender: "FEMALE",
+    description: "Légère et sereine",
+  },
+  {
+    id: "Puck",
+    name: "Puck",
     lang: "fr-FR",
     gender: "MALE",
-    description: "Voix masculine, grave et apaisante",
+    description: "Naturelle et rassurante",
   },
   {
-    id: "fr-FR-Neural2-D",
-    name: "Damien",
+    id: "Charon",
+    name: "Charon",
     lang: "fr-FR",
     gender: "MALE",
-    description: "Voix masculine, posée et rassurante",
+    description: "Grave et apaisante",
+  },
+  {
+    id: "Fenrir",
+    name: "Fenrir",
+    lang: "fr-FR",
+    gender: "MALE",
+    description: "Posée et enveloppante",
+  },
+  {
+    id: "Orus",
+    name: "Orus",
+    lang: "fr-FR",
+    gender: "MALE",
+    description: "Profonde et bienveillante",
   },
 ];
 
-/** Default voice — Camille (Neural2-C) */
-export const DEFAULT_VOICE_ID = "fr-FR-Neural2-C";
+/** Alias kept for backward compatibility */
+export const NEURAL2_VOICES = GEMINI_LIVE_VOICES;
+
+/** Default voice — Aoede */
+export const DEFAULT_VOICE_ID = "Aoede";
+
+/** Storage key shared between hook and exercises */
+export const VOICE_STORAGE_KEY = "nutritwin_selected_voice_id";
+
+/**
+ * Reads the persisted Gemini Live voice name from localStorage.
+ * Safe to call during component initialization (SSR-safe).
+ */
+export function getSelectedGeminiVoice(): string {
+  try {
+    if (typeof window === "undefined") return DEFAULT_VOICE_ID;
+    const saved = localStorage.getItem(VOICE_STORAGE_KEY);
+    if (saved && GEMINI_LIVE_VOICES.find(v => v.id === saved)) return saved;
+  } catch { /* localStorage unavailable */ }
+  return DEFAULT_VOICE_ID;
+}
 
 // ─── SSML builder ─────────────────────────────────────────────────────────────
 

@@ -15,6 +15,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
+import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
 
 // ─── Design ───────────────────────────────────────────────────────────────────
 const ACCENT       = "#00e5b4";
@@ -591,7 +592,7 @@ export default function SOSExercise({
           generationConfig: {
             responseModalities: ["AUDIO"],
             speechConfig: {
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
+              voiceConfig: { prebuiltVoiceConfig: { voiceName: getSelectedGeminiVoice() } },
             },
           },
           systemInstruction: {
