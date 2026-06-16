@@ -363,15 +363,19 @@ export default function SOSExercise({
 
   // ── WS message handler ────────────────────────────────────────────────────
   const handleWSMessage = useCallback((event: { data: string }) => {
+    console.log("[SOS] 📨 message reçu:", (event.data as string).slice(0, 120));
     let msg: Record<string, unknown>;
     try { msg = JSON.parse(event.data as string) as Record<string, unknown>; }
     catch { return; }
 
     // Setup complete → trigger AI greeting
     if (msg.setupComplete !== undefined) {
+      console.log("[SOS] ✅ setupComplete reçu");
       setGeminiReady(true);
       // Kick off the greeting
-      wsRef.current?.send(JSON.stringify({ realtimeInput: { text: `[SOS activé pour ${firstName}. Commence l'accueil maintenant.]` } }));
+      const greetMsg = JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text: `[SOS activé pour ${firstName}. Commence l'accueil maintenant.]` }] }], turnComplete: true } });
+      console.log("[SOS] 📤 Envoi greeting:", greetMsg.slice(0, 100));
+      wsRef.current?.send(greetMsg);
       return;
     }
 
@@ -582,6 +586,7 @@ export default function SOSExercise({
     wsRef.current = ws;
 
     ws.onopen = () => {
+      console.log("[SOS] 🔌 WebSocket ouvert — envoi setup");
       // Send setup message
       ws.send(JSON.stringify({
         setup: {
