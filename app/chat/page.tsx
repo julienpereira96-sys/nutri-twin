@@ -824,17 +824,13 @@ export default function ChatPage() {
   useEffect(() => {
     const el = mainAreaRef.current;
     if (!el) return;
-    // Capture la cible du touchstart pour détecter si le doigt est dans un champ de saisie
     let touchStartTarget: Element | null = null;
     const handleTouchStart = (e: TouchEvent) => {
       touchStartTarget = e.target as Element | null;
     };
     const handleTouchMove = (e: TouchEvent) => {
-      // Désactiver complètement le swipe si un champ de saisie est actif (clavier ouvert)
       const active = document.activeElement;
       if (active && (active.tagName === "TEXTAREA" || active.tagName === "INPUT")) return;
-      // Ne jamais intercepter les glissements horizontaux dans un textarea/input
-      // (nécessaire pour la sélection de texte native sur iOS)
       if (touchStartTarget && (touchStartTarget.tagName === "TEXTAREA" || touchStartTarget.tagName === "INPUT")) return;
       const dx = e.touches[0].clientX - touchStartXRef.current;
       const dy = e.touches[0].clientY - touchStartYRef.current;
@@ -848,6 +844,33 @@ export default function ChatPage() {
     return () => {
       el.removeEventListener("touchstart", handleTouchStart);
       el.removeEventListener("touchmove", handleTouchMove);
+    };
+  }, []);
+
+  // ─── Garde de bord gauche : bloque le retour arrière Safari ──────────────────
+  // Safari intercepte les swipes partant des ~20px de bord gauche AVANT touchmove.
+  // Un listener touchstart non-passif avec preventDefault() sur cette zone
+  // capture le geste avant Safari et permet d'ouvrir la sidebar à la place.
+  const edgeGuardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const guard = edgeGuardRef.current;
+    if (!guard) return;
+    let startX = 0, startY = 0;
+    const onStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      e.preventDefault(); // bloque Safari back-swipe dès touchstart
+    };
+    const onEnd = (e: TouchEvent) => {
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = Math.abs(e.changedTouches[0].clientY - startY);
+      if (dx > 30 && dy < 80) setSidebarOpen(true);
+    };
+    guard.addEventListener("touchstart", onStart, { passive: false });
+    guard.addEventListener("touchend", onEnd, { passive: true });
+    return () => {
+      guard.removeEventListener("touchstart", onStart);
+      guard.removeEventListener("touchend", onEnd);
     };
   }, []);
 
@@ -2405,6 +2428,20 @@ export default function ChatPage() {
           </div>
         </div>
       </aside>
+
+      {/* ─── Garde de bord gauche (mobile, sidebar fermée) ─── */}
+      {isMobile && !sidebarOpen && (
+        <div
+          ref={edgeGuardRef}
+          style={{
+            position: "fixed",
+            top: 0, bottom: 0,
+            left: 0, width: 20,
+            zIndex: 200,
+            touchAction: "none",
+          }}
+        />
+      )}
 
       {/* ═══ ZONE PRINCIPALE ═══ */}
       <div ref={mainAreaRef} style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, touchAction: "pan-y" }}
