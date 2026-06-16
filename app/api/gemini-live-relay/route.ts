@@ -23,7 +23,9 @@ import { WebSocket } from "ws";
 export const runtime   = "nodejs";
 export const maxDuration = 300; // 5 minutes — requires Vercel Pro; adjust if needed
 
-const LOCATION       = process.env.GOOGLE_CLOUD_LOCATION ?? "us-central1";
+// Gemini Live is only available in us-central1 — hard-coded, independent of
+// GOOGLE_CLOUD_LOCATION which may point to "eu" for REST calls.
+const LOCATION       = "us-central1";
 const PROJECT_ID     = process.env.GOOGLE_CLOUD_PROJECT_ID!;
 const VERTEX_WS_URL  = `wss://${LOCATION}-aiplatform.googleapis.com/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
 
