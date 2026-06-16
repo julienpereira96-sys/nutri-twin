@@ -1477,34 +1477,11 @@ export default function ChatPage() {
     setMessage(""); setPendingImage(null); setLoading(true);
     abortControllerRef.current = new AbortController();
 
-    // ─── Reset typewriter ───
+    // ─── Reset refs stream ───
     if (typewriterRafRef.current !== null) { cancelAnimationFrame(typewriterRafRef.current); typewriterRafRef.current = null; }
     targetTextRef.current = "";
     displayedLenRef.current = 0;
     streamDoneRef.current = false;
-
-    // ─── RAF tick : avance de 4 chars/frame ≈ 240 chars/sec à 60fps ───
-    const CHARS_PER_FRAME = 4;
-    const tick = () => {
-      const target = targetTextRef.current;
-      const cur = displayedLenRef.current;
-      if (cur < target.length) {
-        const next = Math.min(cur + CHARS_PER_FRAME, target.length);
-        displayedLenRef.current = next;
-        setMessages(prev => {
-          const u = [...prev];
-          if (u[assistantIndex]) u[assistantIndex] = { ...u[assistantIndex], content: target.slice(0, next) };
-          return u;
-        });
-      }
-      // Continue tant que le stream n'est pas terminé OU qu'on n'a pas tout affiché
-      if (!streamDoneRef.current || displayedLenRef.current < targetTextRef.current.length) {
-        typewriterRafRef.current = requestAnimationFrame(tick);
-      } else {
-        typewriterRafRef.current = null;
-      }
-    };
-    typewriterRafRef.current = requestAnimationFrame(tick);
 
     try {
       const body: Record<string, string | undefined> = { message: trimmed || "Analyse cette photo", patientId: patientId ?? undefined, practitionerId: practitionerIdFromDb ?? undefined };
@@ -1512,26 +1489,22 @@ export default function ChatPage() {
       const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: abortControllerRef.current.signal });
       if (!res.ok || !res.body) throw new Error("Erreur");
 
-      // ─── Stream : mise à jour cible uniquement, le RAF affiche ───
+      // ─── Stream : chaque chunk est affiché immédiatement, sans RAF ───
       const reader = res.body.getReader(); const decoder = new TextDecoder(); let fullText = "";
       while (true) {
         const { done, value } = await reader.read(); if (done) break;
         fullText += decoder.decode(value, { stream: true });
-        targetTextRef.current = fullText
+        const visible = fullText
           .replace(/\|\|\|[\s\S]*?\|\|\|/g, "")
           .replace(/\[TRIGGER_SOS:[^\]]*\]/g, "")
           .trim();
+        setMessages(prev => {
+          const u = [...prev];
+          if (u[assistantIndex]) u[assistantIndex] = { ...u[assistantIndex], content: visible };
+          return u;
+        });
       }
-
-      // ─── Stream terminé : attendre que le typewriter finisse ───
       streamDoneRef.current = true;
-      await new Promise<void>(resolve => {
-        const waitForTypewriter = () => {
-          if (displayedLenRef.current >= targetTextRef.current.length) { resolve(); }
-          else { setTimeout(waitForTypewriter, 16); }
-        };
-        waitForTypewriter();
-      });
 
       // ─── Signaux post-stream ───
       if (fullText.includes("|||SAS|||")) { setShowSasButtons(true); }
@@ -2206,9 +2179,7 @@ export default function ChatPage() {
           if (dx < -40 && dy < 80) setSidebarOpen(false);
         }}
         style={{
-          position: "fixed",
-          top: 0, bottom: 0,
-          left: "80vw", right: 0,   // ne couvre QUE la zone de contenu, jamais la sidebar
+          position: "fixed", inset: 0,
           background: "rgba(0,0,0,0.55)",
           backdropFilter: "blur(4px)",
           WebkitBackdropFilter: "blur(4px)",
@@ -2216,7 +2187,28 @@ export default function ChatPage() {
         }} />}
 
       {/* ═══ SIDEBAR ═══ */}
-      <aside style={{ width: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, minWidth: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, background: "#060908", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100dvh", zIndex: isMobile ? 50 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 32px rgba(0,0,0,0.6)", borderRight: "1px solid rgba(16,185,129,0.08)", }}>
+      <aside style={{
+        // Desktop : width anime 0 ↔ sidebarWidth (dans le flux flex)
+        // Mobile  : position fixed, width fixe 80vw, translateX pour ouvrir/fermer
+        //           → jamais d'impact sur le layout, le contenu NE BOUGE PAS
+        width:    isMobile ? "80vw" : (sidebarOpen ? sidebarWidth : 0),
+        minWidth: isMobile ? 0       : (sidebarOpen ? sidebarWidth : 0),
+        background: "#060908",
+        display: "flex",
+        flexDirection: "column",
+        position: isMobile ? "fixed" : "relative",
+        top: 0, left: 0,
+        height: "100dvh",
+        zIndex: isMobile ? 50 : 1,
+        transform: isMobile ? `translateX(${sidebarOpen ? "0%" : "-100%"})` : "none",
+        transition: isMobile
+          ? "transform 0.25s ease"
+          : "width 0.25s ease, min-width 0.25s ease",
+        overflow: "hidden",
+        flexShrink: 0,
+        boxShadow: "4px 0 32px rgba(0,0,0,0.6)",
+        borderRight: "1px solid rgba(16,185,129,0.08)",
+      }}>
         <div style={{ width: isMobile ? "80vw" : sidebarWidth, display: "flex", flexDirection: "column", height: "100%", padding: "0 12px" }}>
 
           {/* Header sidebar */}
