@@ -23,7 +23,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
-import { GeminiLiveClient } from "@/lib/geminiLiveClient";
+import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
 import {
   motion,
   useMotionValue,
@@ -412,7 +412,7 @@ export default function DefusionExercise({
     ws.onopen = () => {
       ws.send(JSON.stringify({
         setup: {
-          model: GEMINI_MODEL,
+          model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
           },

@@ -1,9 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { vertexGenerate } from "@/lib/vertexai";
 import { NextResponse } from "next/server";
 import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
 const MOTIVATION_LABELS: Record<string, string> = {
   abloc: "Très motivé(e) en ce moment",
@@ -260,12 +258,7 @@ Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks :
 
     let questions: { question: string; justification: string; objectif: string }[];
     try {
-      const model = genAI.getGenerativeModel({
-        model: "gemini-3-flash-preview",
-        generationConfig: { maxOutputTokens: 800, temperature: 0.6 },
-      });
-      const result = await model.generateContent(prompt);
-      const rawText = result.response.text().trim().replace(/```json|```/g, "").trim();
+      const rawText = (await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 800, temperature: 0.6 })).trim().replace(/```json|```/g, "").trim();
       questions = JSON.parse(rawText) as typeof questions;
       if (!Array.isArray(questions) || questions.length === 0 || !questions[0].question) throw new Error("Structure JSON invalide");
     } catch {

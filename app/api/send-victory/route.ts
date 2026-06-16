@@ -1,9 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { vertexGenerate } from "@/lib/vertexai";
 import { NextResponse } from "next/server";
 import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
 export async function POST(request: Request) {
   const user = await getSessionUser();
@@ -34,15 +32,12 @@ export async function POST(request: Request) {
   // Générer un message d'encouragement via Gemini directement (pas d'appel HTTP interne)
   let message = `${firstName}, votre praticien a remarqué votre belle victoire. Continuez comme ça ! 🌿`;
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-3.1-flash-lite",
-      generationConfig: { maxOutputTokens: 150, temperature: 0.7 },
-    });
-    const result = await model.generateContent(
-      `Le praticien a remarqué une victoire importante pour ce patient et veut lui envoyer un message d'encouragement personnalisé. La victoire : "${victoryText}". Génère un message chaleureux, court (2-3 phrases max), comme si le jumeau transmettait les félicitations du praticien. Commence par le prénom ${firstName}. Sans markdown.`
+    const text = await vertexGenerate(
+      "gemini-3.1-flash-lite",
+      `Le praticien a remarqué une victoire importante pour ce patient et veut lui envoyer un message d'encouragement personnalisé. La victoire : "${victoryText}". Génère un message chaleureux, court (2-3 phrases max), comme si le jumeau transmettait les félicitations du praticien. Commence par le prénom ${firstName}. Sans markdown.`,
+      { maxOutputTokens: 150, temperature: 0.7 }
     );
-    const text = result.response.text().trim();
-    if (text) message = text;
+    if (text.trim()) message = text.trim();
   } catch {
     // Silencieux - on garde le message par défaut
   }

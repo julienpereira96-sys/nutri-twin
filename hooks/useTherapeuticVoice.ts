@@ -22,7 +22,7 @@ import {
   DEFAULT_VOICE_ID,
   VOICE_STORAGE_KEY,
 } from "@/lib/therapeuticVoice";
-import { GeminiLiveClient } from "@/lib/geminiLiveClient";
+import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
 
 // Model name — the relay rewrites it to the full Vertex AI resource path
 const GEMINI_MODEL = "models/gemini-3.1-flash-live-preview";
@@ -187,7 +187,7 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     ws.onopen = () => {
       ws.send(JSON.stringify({
         setup: {
-          model: GEMINI_MODEL,
+          model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
           },

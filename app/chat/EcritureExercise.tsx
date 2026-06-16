@@ -16,7 +16,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
-import { GeminiLiveClient } from "@/lib/geminiLiveClient";
+import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
 
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 const BG_PAPER       = "rgba(245,242,235,1)";      // beige papier premium
@@ -282,7 +282,7 @@ export default function EcritureExercise({
     ws.onopen = () => {
       ws.send(JSON.stringify({
         setup: {
-          model: GEMINI_MODEL,
+          model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
           },

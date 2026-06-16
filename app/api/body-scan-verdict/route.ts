@@ -1,7 +1,5 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { vertexGenerate } from "@/lib/vertexai";
 import { getSessionUser } from "@/lib/api-auth";
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
 type RequestBody = {
   headScore: number;
@@ -43,14 +41,6 @@ export async function POST(req: Request) {
 
   // ─── Gemini analysis ─────────────────────────────────────────────────────
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-3.1-flash-lite",
-      generationConfig: {
-        maxOutputTokens: 110,
-        temperature: 0.45,
-      },
-    });
-
     const prompt = `Tu es l'assistant bienveillant d'une application de psychonutrition thérapeutique. \
 Un patient vient de réaliser un scanner corporel de ses sensations face à une envie de manger.
 
@@ -69,8 +59,7 @@ En exactement 2 phrases courtes, bienveillantes, en tutoyant le patient :
 2. Donne-lui un conseil immédiat et concret.
 Commence directement par le diagnostic, sans formule d'introduction.`;
 
-    const result = await model.generateContent(prompt);
-    const verdict = result.response.text().trim();
+    const verdict = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 110, temperature: 0.45 });
     return Response.json({ verdict });
   } catch (err) {
     console.error("[body-scan-verdict] Gemini error:", err);

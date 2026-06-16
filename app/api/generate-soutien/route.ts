@@ -1,9 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { vertexGenerate } from "@/lib/vertexai";
 import { NextResponse } from "next/server";
 import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
 export async function POST(request: Request) {
   const user = await getSessionUser();
@@ -55,11 +53,8 @@ export async function POST(request: Request) {
   let message = `${firstName}, je voulais juste prendre un moment pour vous dire que je pense à vous. N'hésitez pas si vous avez besoin de me parler.`;
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-3.1-flash-lite",
-      generationConfig: { maxOutputTokens: 160, temperature: 0.75 },
-    });
-    const result = await model.generateContent(
+    const text = await vertexGenerate(
+      "gemini-3.1-flash-lite",
       `Tu es le Jumeau IA d'un nutritionniste. Tu dois rédiger un message de soutien humain et sincère de la part du praticien, destiné directement au patient ${firstName} qui traverse un moment difficile.
 
 ${situationCtx}
@@ -67,10 +62,10 @@ ${conversationCtx}
 ${murmureCtx}
 ${signatureCtx}
 
-Rédige un message court (2-4 phrases), chaleureux, personnel, qui montre que le praticien a fait attention. Commence par le prénom. Le ton doit être celui d'un professionnel bienveillant, pas d'un chatbot. Sans markdown, sans emojis excessifs.`
+Rédige un message court (2-4 phrases), chaleureux, personnel, qui montre que le praticien a fait attention. Commence par le prénom. Le ton doit être celui d'un professionnel bienveillant, pas d'un chatbot. Sans markdown, sans emojis excessifs.`,
+      { maxOutputTokens: 160, temperature: 0.75 }
     );
-    const text = result.response.text().trim();
-    if (text) message = text;
+    if (text.trim()) message = text.trim();
   } catch {
     // Silencieux - message par défaut
   }

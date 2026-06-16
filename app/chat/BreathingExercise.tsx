@@ -21,7 +21,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
-import { GeminiLiveClient } from "@/lib/geminiLiveClient";
+import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
 
 // ─── Design ───────────────────────────────────────────────────────────────────
 const ACCENT        = "#10b981";
@@ -442,7 +442,7 @@ export default function BreathingExercise({
     ws.onopen = () => {
       ws.send(JSON.stringify({
         setup: {
-          model: GEMINI_MODEL,
+          model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
           },

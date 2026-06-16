@@ -16,7 +16,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
-import { GeminiLiveClient } from "@/lib/geminiLiveClient";
+import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
 
 // ─── Design ───────────────────────────────────────────────────────────────────
 const ACCENT       = "#00e5b4";
@@ -583,7 +583,7 @@ export default function SOSExercise({
       // Send setup message
       ws.send(JSON.stringify({
         setup: {
-          model: GEMINI_MODEL,
+          model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
           },

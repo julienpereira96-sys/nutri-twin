@@ -1,8 +1,6 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { vertexGenerate } from "@/lib/vertexai";
 import { createClient } from "@supabase/supabase-js";
 import { getSessionUser } from "@/lib/api-auth";
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
 // ─── Fallback objectives (si Gemini indisponible) ────────────────────────────
 const FALLBACK_OBJECTIVES = [
@@ -41,14 +39,6 @@ export async function POST(req: Request) {
     const sosContext = body.sosContext?.slice(0, 500) ?? "";
 
     try {
-      const model = genAI.getGenerativeModel({
-        model: "gemini-3.1-flash-lite",
-        generationConfig: {
-          maxOutputTokens: 80,
-          temperature: 0.55,
-        },
-      });
-
       const prompt = `Tu es un coach en psychonutrition bienveillant et expert en approche Kaizen.
 Un patient traverse une difficulté émotionnelle. Contexte : "${sosContext}".
 
@@ -61,8 +51,7 @@ Ce geste doit :
 
 Réponds en UNE SEULE PHRASE (20-35 mots maximum). Pas de guillemets, pas d'introduction, pas d'explication.`;
 
-      const result = await model.generateContent(prompt);
-      const objective = result.response.text().trim();
+      const objective = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 80, temperature: 0.55 });
 
       // Sanity-check: reject if too short or malformed
       if (!objective || objective.length < 15) {

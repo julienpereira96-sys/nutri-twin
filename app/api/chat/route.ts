@@ -1,9 +1,94 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleAuth } from "google-auth-library";
 import { createClient } from "@supabase/supabase-js";
 import { Redis } from "@upstash/redis";
 import { getSessionUser } from "@/lib/api-auth";
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
+// ─── Vertex AI ────────────────────────────────────────────────────────────────
+const VERTEX_LOCATION = process.env.GOOGLE_CLOUD_LOCATION ?? "us-central1";
+const VERTEX_PROJECT  = process.env.GOOGLE_CLOUD_PROJECT_ID!;
+
+function vertexUrl(modelId: string, method: string): string {
+  return `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelId}:${method}`;
+}
+
+// In-process token cache — reused on warm starts, regenerated on cold starts
+let _cachedToken: { value: string; exp: number } | null = null;
+async function getVertexToken(): Promise<string> {
+  if (_cachedToken && Date.now() < _cachedToken.exp) return _cachedToken.value;
+  const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON!) as object;
+  const auth = new GoogleAuth({ credentials, scopes: ["https://www.googleapis.com/auth/cloud-platform"] });
+  const client = await auth.getClient();
+  const { token } = await client.getAccessToken();
+  if (!token) throw new Error("Failed to obtain Vertex AI access token");
+  _cachedToken = { value: token, exp: Date.now() + 50 * 60 * 1000 };
+  return token;
+}
+
+/** Non-streaming Vertex AI generateContent */
+async function vertexGenerate(
+  modelId: string,
+  prompt: string,
+  opts?: { maxOutputTokens?: number; temperature?: number }
+): Promise<string> {
+  const token = await getVertexToken();
+  const body = {
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: {
+      ...(opts?.maxOutputTokens ? { maxOutputTokens: opts.maxOutputTokens } : {}),
+      ...(opts?.temperature !== undefined ? { temperature: opts.temperature } : {}),
+    },
+  };
+  const res = await fetch(vertexUrl(modelId, "generateContent"), {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Vertex AI ${res.status}: ${await res.text()}`);
+  const data = await res.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+}
+
+/** Streaming Vertex AI generateContent — yields text chunks via SSE */
+async function* vertexStreamGenerate(
+  modelId: string,
+  contents: { role: string; parts: unknown[] }[],
+  systemInstruction: string,
+  generationConfig: { maxOutputTokens?: number; temperature?: number }
+): AsyncGenerator<string> {
+  const token = await getVertexToken();
+  const body = {
+    contents,
+    systemInstruction: { parts: [{ text: systemInstruction }] },
+    generationConfig,
+  };
+  const res = await fetch(vertexUrl(modelId, "streamGenerateContent") + "?alt=sse", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Vertex AI stream ${res.status}: ${await res.text()}`);
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split("\n");
+    buf = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const json = line.slice(6).trim();
+      if (!json || json === "[DONE]") continue;
+      try {
+        const parsed = JSON.parse(json) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+        const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) yield text;
+      } catch { /* ignore malformed SSE line */ }
+    }
+  }
+}
+
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
@@ -129,10 +214,6 @@ type CrisisAnalysis = {
 
 async function analyzeCrisisWithLLM(message: string, patientContext: string): Promise<CrisisAnalysis> {
   try {
-    const model = genAI.getGenerativeModel({
-      model: "gemini-3.1-flash-lite",
-      generationConfig: { maxOutputTokens: 100, temperature: 0 },
-    });
     const prompt = `Tu es un détecteur de crise pour un suivi nutritionnel. Analyse ce message d'un patient.
 
 CONTEXTE PATIENT :
@@ -150,9 +231,8 @@ Réponds UNIQUEMENT en JSON sans markdown :
 
 {"level":"none","murmure":""}`;
 
-    const result = await model.generateContent(prompt);
-    const raw = result.response.text().trim().replace(/```json|```/g, "").trim();
-    return JSON.parse(raw) as CrisisAnalysis;
+    const raw = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 100, temperature: 0 });
+    return JSON.parse(raw.replace(/```json|```/g, "").trim()) as CrisisAnalysis;
   } catch {
     return { level: "none", murmure: "" };
   }
@@ -166,13 +246,17 @@ function createSupabaseClient() {
 }
 
 async function getGeminiEmbedding(text: string): Promise<number[]> {
-  const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
-  const result = await model.embedContent({
-    content: { parts: [{ text }], role: "user" },
-    taskType: "RETRIEVAL_DOCUMENT",
-    outputDimensionality: 768,
-  } as never);
-  return result.embedding.values;
+  const token = await getVertexToken();
+  const res = await fetch(vertexUrl("text-embedding-004", "predict"), {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      instances: [{ content: text, task_type: "RETRIEVAL_DOCUMENT" }],
+    }),
+  });
+  if (!res.ok) throw new Error(`Embedding failed: ${res.status}`);
+  const data = await res.json() as { predictions?: { embeddings?: { values?: number[] } }[] };
+  return data.predictions?.[0]?.embeddings?.values ?? [];
 }
 
 type CachedPractitioner = {
@@ -409,13 +493,13 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
 async function summarizeOldMessages(messages: { role: string; content: string }[]): Promise<string> {
   try {
     const patientMessages = messages.filter((m) => m.role === "user").map((m) => m.content.slice(0, 400)).join(" | ");
-    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
-    const result = await model.generateContent(
+    const text = await vertexGenerate(
+      "gemini-3.1-flash-lite",
       `Résume en 5 lignes maximum les points clés de ces échanges patient-nutritionniste.
       Garde uniquement les faits importants : objectifs, écarts, progrès, préoccupations.
       Échanges : ${patientMessages}`
     );
-    return `[RÉSUMÉ DES ÉCHANGES PRÉCÉDENTS : ${result.response.text()}]`;
+    return `[RÉSUMÉ DES ÉCHANGES PRÉCÉDENTS : ${text}]`;
   } catch {
     const patientMessages = messages.filter((m) => m.role === "user").slice(0, 10).map((m) => m.content.slice(0, 100)).join(" | ");
     return `[RÉSUMÉ : ${patientMessages}]`;
@@ -658,9 +742,11 @@ export async function POST(request: Request) {
       const criticalResponse = CRISIS_CRITICAL_RESPONSES[responseType];
 
       // Vérification via modèle lourd — urgences vitales absolues (zéro faux négatif acceptable)
-      const verifyModel = genAI.getGenerativeModel({ model: "gemini-3-flash-preview", generationConfig: { maxOutputTokens: 10, temperature: 0 } });
-      const verifyResult = await verifyModel.generateContent(`Ce message exprime-t-il un danger de mort immédiat pour le patient ou pour autrui ? Réponds uniquement par "oui" ou "non". Message : "${message}"`);
-      const verifyText = verifyResult.response.text().trim().toLowerCase();
+      const verifyText = (await vertexGenerate(
+        "gemini-3.1-flash-lite",
+        `Ce message exprime-t-il un danger de mort immédiat pour le patient ou pour autrui ? Réponds uniquement par "oui" ou "non". Message : "${message}"`,
+        { maxOutputTokens: 10, temperature: 0 }
+      )).trim().toLowerCase();
 
       if (verifyText.includes("oui")) {
         await supabase.from("patients").update({ emotional_status: "red_critical", emotional_insight: "Urgence vitale détectée" }).eq("user_id", patientId);
@@ -782,13 +868,11 @@ ${toolHint ? `- TYPE DE CRISE DÉCLARÉ : "${sosContext}" → Privilégie : ${to
 Réponds UNIQUEMENT en JSON sans markdown ni backticks :
 {"tool_id":"breathing","twin_message":"Message personnalisé max 30 mots","tool_script":{"step_1":"instruction personnalisée","step_2":"instruction personnalisée","step_3":"instruction personnalisée"}}`;
 
-      const sosModel = genAI.getGenerativeModel({
-        model: "gemini-3.1-flash-lite",
-        generationConfig: { maxOutputTokens: 400, temperature: 0.7 },
-      });
-
-      const sosResult = await sosModel.generateContent(sosPrompt);
-      const sosText = sosResult.response.text().trim().replace(/```json|```/g, "").trim();
+      const sosText = (await vertexGenerate(
+        "gemini-3.1-flash-lite",
+        sosPrompt,
+        { maxOutputTokens: 400, temperature: 0.7 }
+      )).trim().replace(/```json|```/g, "").trim();
 
       try {
         await supabase.from("sos_events").insert({
@@ -850,13 +934,11 @@ Génère UN seul message de clôture chaleureux de 1 à 2 phrases courtes. Il do
 
 Réponds uniquement avec le message de clôture, rien d'autre.`;
 
-          const closingModel = genAI.getGenerativeModel({
-            model: "gemini-3.1-flash-lite",
-            generationConfig: { maxOutputTokens: 120, temperature: 0.75 },
-          });
-
-          const closingResult = await closingModel.generateContent(closingPrompt);
-          const closingText = closingResult.response.text().trim();
+          const closingText = (await vertexGenerate(
+            "gemini-3.1-flash-lite",
+            closingPrompt,
+            { maxOutputTokens: 120, temperature: 0.75 }
+          )).trim();
 
           if (closingText) {
             await supabase.from("conversations").insert({
@@ -1004,15 +1086,8 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     // gemini-3-flash-preview uniquement si image Base64 présente dans la requête.
     const modelName = imageBase64 ? "gemini-3-flash-preview" : "gemini-3.1-flash-lite";
 
-    const model = genAI.getGenerativeModel({
-      model: modelName,
-      systemInstruction: practitionerPrompt,
-      generationConfig: { maxOutputTokens: config.maxOutputTokens, temperature: 0.78 },
-    });
-
-    const chat = model.startChat({ history: conversationHistory });
-
-    let result;
+    // Build Vertex AI content array: history + current user turn
+    let userParts: unknown[];
     if (imageBase64 && imageMimeType) {
       const visionPrompt = `Tu reçois une photo de repas d'un patient en suivi nutritionnel.
 ${patientContext}${documentsContext}
@@ -1023,14 +1098,17 @@ Analyse :
 4. Réponds en tant que jumeau numérique - ton bienveillant, jamais culpabilisant
 ${message ? `\nMessage du patient : "${message}"` : ""}
 Max 150 mots. Sans markdown.`;
-
-      result = await chat.sendMessageStream([
-        { inlineData: { data: imageBase64, mimeType: imageMimeType as "image/jpeg" | "image/png" | "image/webp" } },
+      userParts = [
+        { inlineData: { data: imageBase64, mimeType: imageMimeType } },
         { text: visionPrompt },
-      ]);
+      ];
     } else {
-      result = await chat.sendMessageStream(message);
+      userParts = [{ text: message }];
     }
+    const chatContents = [
+      ...conversationHistory,
+      { role: "user", parts: userParts },
+    ];
 
     const encoder = new TextEncoder();
     const supabase = createSupabaseClient();
@@ -1040,8 +1118,7 @@ Max 150 mots. Sans markdown.`;
         let fullText = "";
 
         try {
-          for await (const chunk of result.stream) {
-            const chunkText = chunk.text();
+          for await (const chunkText of vertexStreamGenerate(modelName, chatContents, practitionerPrompt, { maxOutputTokens: config.maxOutputTokens, temperature: 0.78 })) {
             fullText += chunkText;
             controller.enqueue(encoder.encode(chunkText));
             await new Promise(resolve => setTimeout(resolve, 5));

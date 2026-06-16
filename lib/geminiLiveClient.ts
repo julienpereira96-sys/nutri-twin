@@ -1,144 +1,124 @@
 /**
  * GeminiLiveClient
  *
- * Drop-in replacement for `new WebSocket(url)` that routes through the
- * /api/gemini-live-relay Next.js route instead of connecting directly to
- * Vertex AI (which requires OAuth2 Bearer auth — not possible from the browser).
+ * Drop-in replacement for `new WebSocket(url)` that connects directly to
+ * Vertex AI Gemini Live using a short-lived OAuth2 token obtained from
+ * the server-side /api/gemini-token endpoint.
  *
- * Public API is intentionally identical to the browser WebSocket API so that
- * all exercises can be migrated with a one-line change:
+ * Architecture:
+ *   1. Fetches a short-lived OAuth2 token from /api/gemini-token
+ *      (service account credentials stay server-side — never exposed)
+ *   2. Opens a native browser WebSocket to Vertex AI using the token
+ *      as an `access_token` query parameter
+ *   3. Exposes the same onopen/onmessage/onclose/onerror/send/close API
+ *      as browser WebSocket so exercises need minimal changes
  *
- *   - before:  const ws = new WebSocket(GEMINI_WS_URL(apiKey));
- *   + after:   const ws = new GeminiLiveClient();
- *
- * Transport: HTTP streaming with `duplex: "half"` (supported in Chrome 105+,
- * Firefox 119+). The request body is a WritableStream (browser → server);
- * the response body is a ReadableStream (server → browser). Both carry
- * newline-delimited JSON (NDJSON).
+ * Usage (replaces `new WebSocket(url)`):
+ *   const ws = new GeminiLiveClient();
  */
 
-export const GEMINI_RELAY_URL = "/api/gemini-live-relay";
+const TOKEN_ENDPOINT  = "/api/gemini-token";
+const LOCATION        = process.env.NEXT_PUBLIC_GOOGLE_CLOUD_LOCATION ?? "us-central1";
+const PROJECT_ID      = process.env.NEXT_PUBLIC_GOOGLE_CLOUD_PROJECT_ID!;
 
-// WebSocket readyState constants (mirrored for TS convenience)
-const WS_CONNECTING = 0;
-const WS_OPEN       = 1;
-const WS_CLOSING    = 2;
-const WS_CLOSED     = 3;
+/** Full Vertex AI WebSocket URL (model path is set in the setup message) */
+const VERTEX_WS_URL =
+  `wss://${LOCATION}-aiplatform.googleapis.com` +
+  `/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent`;
 
 export class GeminiLiveClient {
   // ── Public state (mirrors WebSocket) ────────────────────────────────────────
-  readyState: number = WS_CONNECTING;
+  readyState: number = WebSocket.CONNECTING;
 
-  onopen:    (() => void)                        | null = null;
-  onmessage: ((evt: { data: string }) => void)   | null = null;
+  onopen:    (() => void)                                        | null = null;
+  onmessage: ((evt: { data: string }) => void)                  | null = null;
   onclose:   ((evt: { code: number; reason?: string }) => void) | null = null;
-  onerror:   ((evt: { message: string }) => void) | null = null;
+  onerror:   ((evt: { message: string }) => void)               | null = null;
 
-  // ── Private ──────────────────────────────────────────────────────────────────
-  private writer:    WritableStreamDefaultWriter<Uint8Array> | null = null;
-  private abortCtrl: AbortController | null = null;
-  private encoder  = new TextEncoder();
-  private decoder  = new TextDecoder();
+  private ws: WebSocket | null = null;
 
-  constructor(private relayUrl: string = GEMINI_RELAY_URL) {
-    // Connect immediately (same semantics as `new WebSocket(url)`)
+  constructor() {
     void this._connect();
   }
 
-  // ── Internal: open the fetch tunnel ─────────────────────────────────────────
+  // ── Internal ─────────────────────────────────────────────────────────────────
 
   private async _connect(): Promise<void> {
-    this.abortCtrl = new AbortController();
-
-    // TransformStream gives us a paired (readable, writable).
-    // We keep the writer to push outgoing messages (send()).
-    // The readable goes as the fetch request body.
-    const { readable, writable } = new TransformStream<Uint8Array>();
-    this.writer = writable.getWriter();
-
-    let response: Response;
+    // 1. Get a short-lived OAuth2 token from the server
+    let token: string;
     try {
-      response = await fetch(this.relayUrl, {
-        method:  "POST",
-        body:    readable,
-        headers: { "Content-Type": "application/x-ndjson" },
-        // @ts-expect-error — `duplex` is a stage-3 fetch proposal; TS types lag behind
-        duplex:  "half",
-        signal:  this.abortCtrl.signal,
-      });
+      const res = await fetch(TOKEN_ENDPOINT);
+      if (!res.ok) throw new Error(`Token endpoint returned ${res.status}`);
+      const data = await res.json() as { token?: string; error?: string };
+      if (!data.token) throw new Error(data.error ?? "No token in response");
+      token = data.token;
     } catch (err) {
-      // Network error or aborted
-      this.readyState = WS_CLOSED;
-      if (!(err instanceof DOMException && err.name === "AbortError")) {
-        this.onerror?.({ message: String(err) });
-      }
-      this.onclose?.({ code: 1006, reason: "fetch failed" });
+      console.error("[GeminiLiveClient] token fetch failed:", err);
+      this.readyState = WebSocket.CLOSED;
+      this.onerror?.({ message: String(err) });
+      this.onclose?.({ code: 1006, reason: "token fetch failed" });
       return;
     }
 
-    if (!response.ok) {
-      this.readyState = WS_CLOSED;
-      this.onerror?.({ message: `Relay returned HTTP ${response.status}` });
-      this.onclose?.({ code: 1011, reason: `HTTP ${response.status}` });
+    // 2. Open native WebSocket directly to Vertex AI
+    const url = `${VERTEX_WS_URL}?access_token=${encodeURIComponent(token)}`;
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(url);
+    } catch (err) {
+      this.readyState = WebSocket.CLOSED;
+      this.onerror?.({ message: String(err) });
+      this.onclose?.({ code: 1006, reason: "websocket construction failed" });
       return;
     }
 
-    // Connection established
-    this.readyState = WS_OPEN;
-    this.onopen?.();
+    this.ws = ws;
 
-    // ── Read response stream (server → browser) ──────────────────────────────
-    const reader = response.body!.getReader();
-    let   buffer = "";
+    ws.onopen = () => {
+      this.readyState = WebSocket.OPEN;
+      this.onopen?.();
+    };
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    ws.onmessage = (evt) => {
+      this.onmessage?.({ data: evt.data as string });
+    };
 
-        buffer += this.decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
+    ws.onclose = (evt) => {
+      this.readyState = WebSocket.CLOSED;
+      this.ws = null;
+      this.onclose?.({ code: evt.code, reason: evt.reason });
+    };
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed) this.onmessage?.({ data: trimmed });
-        }
-      }
-
-      // Clean close
-      this.readyState = WS_CLOSED;
-      this.onclose?.({ code: 1000, reason: "normal closure" });
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") {
-        this.readyState = WS_CLOSED;
-        this.onclose?.({ code: 1000, reason: "aborted" });
-      } else {
-        this.readyState = WS_CLOSED;
-        this.onerror?.({ message: String(err) });
-        this.onclose?.({ code: 1006, reason: "read error" });
-      }
-    }
+    ws.onerror = () => {
+      this.onerror?.({ message: "WebSocket error" });
+    };
   }
 
-  // ── Public: send ─────────────────────────────────────────────────────────────
+  // ── Public API ───────────────────────────────────────────────────────────────
 
   send(data: string): void {
-    if (this.readyState !== WS_OPEN || !this.writer) return;
-    // Append newline so the server can split on "\n"
-    const bytes = this.encoder.encode(data + "\n");
-    // Fire-and-forget (backpressure ignored for real-time audio)
-    this.writer.write(bytes).catch(() => {});
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(data);
+    }
   }
 
-  // ── Public: close ─────────────────────────────────────────────────────────────
-
-  close(_code?: number, _reason?: string): void {
-    if (this.readyState === WS_CLOSED || this.readyState === WS_CLOSING) return;
-    this.readyState = WS_CLOSING;
-    // Closing the writer signals EOF to the server (it will then close Vertex WS)
-    this.writer?.close().catch(() => {});
-    // Abort the fetch (cancels the response stream)
-    this.abortCtrl?.abort();
+  close(code?: number, reason?: string): void {
+    this.readyState = WebSocket.CLOSING;
+    this.ws?.close(code, reason);
   }
+}
+
+// ── Model path helper ─────────────────────────────────────────────────────────
+
+/**
+ * Rewrites an AI-Studio-style model name to the full Vertex AI resource path.
+ *   "models/gemini-3.1-flash-live-preview"
+ *   → "projects/PROJECT/locations/LOCATION/publishers/google/models/gemini-3.1-flash-live-preview"
+ *
+ * Call this on the model field inside the setup message before sending.
+ */
+export function toVertexModelPath(model: string): string {
+  if (model.startsWith("projects/")) return model; // already Vertex format
+  const modelId = model.replace(/^models\//, "");
+  return `projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/${modelId}`;
 }

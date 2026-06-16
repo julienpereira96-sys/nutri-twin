@@ -1,11 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { vertexGenerate, vertexGenerateMultipart, getVertexToken, vertexUrl } from "@/lib/vertexai";
 import { Redis } from "@upstash/redis";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
@@ -25,19 +23,23 @@ function chunkText(text: string, chunkSize = 500, overlap = 50): string[] {
 }
 
 async function getGeminiEmbedding(text: string): Promise<number[]> {
-  const model = genAI.getGenerativeModel({ model: "gemini-embedding-2" });
-  const result = await model.embedContent({
-    content: { parts: [{ text }], role: "user" },
-    taskType: "RETRIEVAL_DOCUMENT",
-    outputDimensionality: 768,
-  } as never);
-  return result.embedding.values;
+  const token = await getVertexToken();
+  const res = await fetch(vertexUrl("text-embedding-004", "predict"), {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      instances: [{ content: text, task_type: "RETRIEVAL_DOCUMENT" }],
+    }),
+  });
+  if (!res.ok) throw new Error(`Embedding failed: ${res.status}`);
+  const data = await res.json() as { predictions?: { embeddings?: { values?: number[] } }[] };
+  return data.predictions?.[0]?.embeddings?.values ?? [];
 }
 
 async function anonymizeText(text: string): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-    const result = await model.generateContent(
+    return await vertexGenerate(
+      "gemini-3.1-flash-lite",
       `Anonymise ce document médical/nutritionnel en remplaçant toutes les données personnelles identifiables par [ANONYMISÉ] :
       - Noms et prénoms de patients
       - Dates de naissance
@@ -45,44 +47,29 @@ async function anonymizeText(text: string): Promise<string> {
       - Adresses
       - Numéros de téléphone
       - Emails personnels
-      
+
       Garde intact tout le contenu médical et nutritionnel.
-      
+
       Document :
       ${text}`
     );
-    return result.response.text();
   } catch {
     return text;
   }
 }
 
 async function extractTextFromImage(buffer: Buffer, mimeType: string): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-  const result = await model.generateContent([
-    {
-      inlineData: {
-        data: buffer.toString("base64"),
-        mimeType,
-      },
-    },
-    "Extrais tout le texte et les informations nutritionnelles de cette image. Sois exhaustif.",
+  return vertexGenerateMultipart("gemini-3-flash-preview", [
+    { inlineData: { data: buffer.toString("base64"), mimeType } },
+    { text: "Extrais tout le texte et les informations nutritionnelles de cette image. Sois exhaustif." },
   ]);
-  return result.response.text();
 }
 
 async function extractTextFromAudio(buffer: Buffer, mimeType: string): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-  const result = await model.generateContent([
-    {
-      inlineData: {
-        data: buffer.toString("base64"),
-        mimeType,
-      },
-    },
-    "Transcris cet audio et extrais toutes les informations importantes sur l'approche nutritionnelle du praticien.",
+  return vertexGenerateMultipart("gemini-3-flash-preview", [
+    { inlineData: { data: buffer.toString("base64"), mimeType } },
+    { text: "Transcris cet audio et extrais toutes les informations importantes sur l'approche nutritionnelle du praticien." },
   ]);
-  return result.response.text();
 }
 
 export async function POST(request: Request) {
