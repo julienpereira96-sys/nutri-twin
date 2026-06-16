@@ -420,9 +420,6 @@ export default function DefusionExercise({
           model: GEMINI_MODEL,
           generationConfig: {
             responseModalities: ["AUDIO"],
-            speechConfig: {
-              voiceConfig: { prebuiltVoiceConfig: { voiceName: getSelectedGeminiVoice() } },
-            },
           },
           systemInstruction: { parts: [{ text: systemPrompt }] },
         },

@@ -193,9 +193,6 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
           model: GEMINI_MODEL,
           generationConfig: {
             responseModalities: ["AUDIO"],
-            speechConfig: {
-              voiceConfig: { prebuiltVoiceConfig: { voiceName } },
-            },
           },
           systemInstruction: {
             parts: [{
