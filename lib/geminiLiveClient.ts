@@ -18,7 +18,9 @@
  */
 
 const TOKEN_ENDPOINT  = "/api/gemini-token";
-const LOCATION        = process.env.NEXT_PUBLIC_GOOGLE_CLOUD_LOCATION ?? "us-central1";
+// Gemini Live is only available in us-central1 — hard-coded independently of
+// any env var so a location change for REST never breaks the WebSocket.
+const LOCATION        = "us-central1";
 const PROJECT_ID      = process.env.NEXT_PUBLIC_GOOGLE_CLOUD_PROJECT_ID!;
 
 /** Full Vertex AI WebSocket URL (model path is set in the setup message) */
