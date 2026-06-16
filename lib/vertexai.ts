@@ -12,8 +12,14 @@ export const VERTEX_LOCATION = process.env.GOOGLE_CLOUD_LOCATION ?? "us-central1
 export const VERTEX_PROJECT  = process.env.GOOGLE_CLOUD_PROJECT_ID!;
 
 export function vertexUrl(modelId: string, method: string): string {
+  // Multi-region identifiers ("eu", "us") use a different host pattern than
+  // specific regions ("us-central1", "europe-west1").
+  const isMultiRegion = !VERTEX_LOCATION.includes("-");
+  const host = isMultiRegion
+    ? `aiplatform.${VERTEX_LOCATION}.rep.googleapis.com`
+    : `${VERTEX_LOCATION}-aiplatform.googleapis.com`;
   return (
-    `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/` +
+    `https://${host}/v1/` +
     `projects/${VERTEX_PROJECT}/locations/${VERTEX_LOCATION}/` +
     `publishers/google/models/${modelId}:${method}`
   );

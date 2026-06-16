@@ -8,7 +8,11 @@ const VERTEX_LOCATION = process.env.GOOGLE_CLOUD_LOCATION ?? "us-central1";
 const VERTEX_PROJECT  = process.env.GOOGLE_CLOUD_PROJECT_ID!;
 
 function vertexUrl(modelId: string, method: string): string {
-  return `https://${VERTEX_LOCATION}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelId}:${method}`;
+  const isMultiRegion = !VERTEX_LOCATION.includes("-");
+  const host = isMultiRegion
+    ? `aiplatform.${VERTEX_LOCATION}.rep.googleapis.com`
+    : `${VERTEX_LOCATION}-aiplatform.googleapis.com`;
+  return `https://${host}/v1/projects/${VERTEX_PROJECT}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelId}:${method}`;
 }
 
 // In-process token cache — reused on warm starts, regenerated on cold starts
