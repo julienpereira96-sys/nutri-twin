@@ -16,6 +16,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
+import { GeminiLiveClient } from "@/lib/geminiLiveClient";
 
 // ─── Design tokens ─────────────────────────────────────────────────────────────
 const BG_PAPER       = "rgba(245,242,235,1)";      // beige papier premium
@@ -30,8 +31,7 @@ const TEXT_FADED     = "rgba(30,22,12,0.22)";
 const WAVE_COLOR     = ACCENT;
 
 // ─── Gemini Live ───────────────────────────────────────────────────────────────
-const GEMINI_WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
-const GEMINI_MODEL  = "models/gemini-2.0-flash-live-001";
+const GEMINI_MODEL  = "models/gemini-3.1-flash-live-preview";
 const GEMINI_REST   = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -195,7 +195,7 @@ export default function EcritureExercise({
   const recognitionRef = useRef<any>(null);
 
   // Gemini Live WS
-  const wsRef        = useRef<WebSocket | null>(null);
+  const wsRef        = useRef<GeminiLiveClient | null>(null);
   const audioCtxRef  = useRef<AudioContext | null>(null);
   const audioQueue   = useRef<ArrayBuffer[]>([]);
   const isPlaying    = useRef(false);
@@ -274,10 +274,8 @@ export default function EcritureExercise({
   useEffect(() => {
     if (status !== "intro_live") return;
 
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey) { goToWriting(); return; }
 
-    const ws = new WebSocket(`${GEMINI_WS_URL}?key=${apiKey}`);
+    const ws = new GeminiLiveClient();
     wsRef.current = ws;
     setWaveActive(true);
 

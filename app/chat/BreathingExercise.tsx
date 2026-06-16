@@ -21,6 +21,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
+import { GeminiLiveClient } from "@/lib/geminiLiveClient";
 
 // ─── Design ───────────────────────────────────────────────────────────────────
 const ACCENT        = "#10b981";
@@ -41,8 +42,7 @@ const HARD_STOP_MS = (MAX_BLOCKS * BLOCK_DUR + 15) * 1000; // 3m15s
 const INSPIRE_PCT  = Math.round((INSPIRE_DUR / CYCLE_DUR) * 100); // 40%
 
 // ─── Gemini Live ──────────────────────────────────────────────────────────────
-const GEMINI_WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
-const GEMINI_MODEL  = "models/gemini-2.0-flash-live-001";
+const GEMINI_MODEL  = "models/gemini-3.1-flash-live-preview";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Status = "loading" | "intro" | "breathing_cycle" | "checkpoint" | "cloture";
@@ -135,7 +135,7 @@ export default function BreathingExercise({
   // ── Refs ───────────────────────────────────────────────────────────────────
   const statusRef      = useRef<Status>("loading");
   const blockCountRef  = useRef(0);
-  const wsRef          = useRef<WebSocket | null>(null);
+  const wsRef          = useRef<GeminiLiveClient | null>(null);
   const audioCtxRef    = useRef<AudioContext | null>(null);
   const processorRef   = useRef<ScriptProcessorNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -322,7 +322,7 @@ export default function BreathingExercise({
   }, []);
 
   // ── WS message handler ────────────────────────────────────────────────────
-  const handleWSMessage = useCallback((event: MessageEvent) => {
+  const handleWSMessage = useCallback((event: { data: string }) => {
     let msg: Record<string, unknown>;
     try { msg = JSON.parse(event.data as string) as Record<string, unknown>; }
     catch { return; }
@@ -389,12 +389,6 @@ export default function BreathingExercise({
 
   // ── Init session ───────────────────────────────────────────────────────────
   const initSession = useCallback(async () => {
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey) {
-      setLoadError("NEXT_PUBLIC_GEMINI_API_KEY manquante.");
-      return;
-    }
-
     // 1. Fetch patient context
     let contextInfo = `Patient : ${firstName}. Exercice de cohérence cardiaque.`;
     try {
@@ -442,7 +436,7 @@ export default function BreathingExercise({
     };
 
     // 4. WebSocket Gemini Live
-    const ws = new WebSocket(`${GEMINI_WS_URL}?key=${apiKey}`);
+    const ws = new GeminiLiveClient();
     wsRef.current = ws;
 
     ws.onopen = () => {

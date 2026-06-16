@@ -21,6 +21,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
+import { GeminiLiveClient } from "@/lib/geminiLiveClient";
 
 // ─── Design tokens — Terre / Ocre ─────────────────────────────────────────────
 const BG_DEEP      = "#080501";
@@ -34,8 +35,7 @@ const TEXT_MUTED   = "rgba(255,248,230,0.36)";
 const TEXT_FADED   = "rgba(255,248,230,0.16)";
 
 // ─── Gemini Live ──────────────────────────────────────────────────────────────
-const GEMINI_WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
-const GEMINI_MODEL  = "models/gemini-2.0-flash-live-001";
+const GEMINI_MODEL  = "models/gemini-3.1-flash-live-preview";
 const HARD_STOP_MS  = 180_000; // 3 minutes
 
 // ─── State machine ─────────────────────────────────────────────────────────────
@@ -274,7 +274,7 @@ export default function AncrageExercise({
   const statusRef           = useRef<SenseStatus>("loading");
   const completedCountRef   = useRef(0);
   const geminiTurnCountRef  = useRef(0); // nb de turn_complete reçus
-  const wsRef               = useRef<WebSocket | null>(null);
+  const wsRef               = useRef<GeminiLiveClient | null>(null);
   const audioCtxRef         = useRef<AudioContext | null>(null);
   const processorRef        = useRef<ScriptProcessorNode | null>(null);
   const mediaStreamRef      = useRef<MediaStream | null>(null);
@@ -362,7 +362,7 @@ export default function AncrageExercise({
   }, []);
 
   // ─── WS message handler ──────────────────────────────────────────────────
-  const handleWSMessage = useCallback((event: MessageEvent) => {
+  const handleWSMessage = useCallback((event: { data: string }) => {
     let msg: Record<string, unknown>;
     try { msg = JSON.parse(event.data as string) as Record<string, unknown>; }
     catch { return; }
@@ -461,11 +461,6 @@ export default function AncrageExercise({
 
   // ─── Init session ─────────────────────────────────────────────────────────
   const initSession = useCallback(async () => {
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey) {
-      setLoadError("NEXT_PUBLIC_GEMINI_API_KEY manquante.");
-      return;
-    }
 
     // 1. Fetch patient context
     let contextInfo = `Patient : ${firstName}. Exercice d'ancrage sensoriel 5-4-3-2-1.`;
@@ -512,7 +507,7 @@ export default function AncrageExercise({
     };
 
     // 4. WebSocket Gemini Live
-    const ws = new WebSocket(`${GEMINI_WS_URL}?key=${apiKey}`);
+    const ws = new GeminiLiveClient();
     wsRef.current = ws;
 
     ws.onopen = () => {

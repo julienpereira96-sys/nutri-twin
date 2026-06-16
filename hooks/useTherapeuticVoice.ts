@@ -22,10 +22,10 @@ import {
   DEFAULT_VOICE_ID,
   VOICE_STORAGE_KEY,
 } from "@/lib/therapeuticVoice";
+import { GeminiLiveClient } from "@/lib/geminiLiveClient";
 
-const GEMINI_WS_URL = (key: string) =>
-  `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=${key}`;
-const GEMINI_MODEL = "models/gemini-2.0-flash-live-001";
+// Model name — the relay rewrites it to the full Vertex AI resource path
+const GEMINI_MODEL = "models/gemini-3.1-flash-live-preview";
 
 // ─── PCM helpers ──────────────────────────────────────────────────────────────
 
@@ -179,13 +179,10 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     closeWs();
     flushAudio();
 
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey) return;
-
     setIsFetching(true);
 
-    const ws = new WebSocket(GEMINI_WS_URL(apiKey));
-    wsRef.current = ws;
+    const ws = new GeminiLiveClient();
+    wsRef.current = ws as unknown as WebSocket;
 
     ws.onopen = () => {
       ws.send(JSON.stringify({

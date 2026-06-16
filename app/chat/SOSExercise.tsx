@@ -16,6 +16,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
+import { GeminiLiveClient } from "@/lib/geminiLiveClient";
 
 // ─── Design ───────────────────────────────────────────────────────────────────
 const ACCENT       = "#00e5b4";
@@ -26,8 +27,7 @@ const TEXT_PRIMARY = "rgba(255,255,255,0.90)";
 const TEXT_MUTED   = "rgba(255,255,255,0.35)";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const GEMINI_WS_URL    = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
-const GEMINI_MODEL     = "models/gemini-2.0-flash-live-001";
+const GEMINI_MODEL     = "models/gemini-3.1-flash-live-preview";
 const SOS_WORDS        = ["APAISE", "LIBERE", "CALME", "LIBRE"] as const;
 const INSPIRE_MS       = 4000;
 const EXPIRE_MS        = 6000;
@@ -272,7 +272,7 @@ export default function SOSExercise({
   const [geminiReady, setGeminiReady] = useState(false);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
-  const wsRef           = useRef<WebSocket | null>(null);
+  const wsRef           = useRef<GeminiLiveClient | null>(null);
   const audioCtxRef     = useRef<AudioContext | null>(null);
   const analyserRef     = useRef<AnalyserNode | null>(null);
   const mediaStreamRef  = useRef<MediaStream | null>(null);
@@ -360,7 +360,7 @@ export default function SOSExercise({
   useEffect(() => () => cleanup(), [cleanup]);
 
   // ── WS message handler ────────────────────────────────────────────────────
-  const handleWSMessage = useCallback((event: MessageEvent) => {
+  const handleWSMessage = useCallback((event: { data: string }) => {
     let msg: Record<string, unknown>;
     try { msg = JSON.parse(event.data as string) as Record<string, unknown>; }
     catch { return; }
@@ -514,11 +514,6 @@ export default function SOSExercise({
 
   // ── Init WebSocket + Mic ──────────────────────────────────────────────────
   const initSession = useCallback(async () => {
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey) {
-      setLoadError("NEXT_PUBLIC_GEMINI_API_KEY manquante (voir .env.local)");
-      return;
-    }
 
     // 1. Fetch context from backend
     let systemPrompt = `Tu es le Jumeau Numérique de ${firstName}. Mode SOS actif. Parle français uniquement, voix douce et lente.`;
@@ -581,7 +576,7 @@ export default function SOSExercise({
     };
 
     // 4. Open WebSocket
-    const ws = new WebSocket(`${GEMINI_WS_URL}?key=${apiKey}`);
+    const ws = new GeminiLiveClient();
     wsRef.current = ws;
 
     ws.onopen = () => {

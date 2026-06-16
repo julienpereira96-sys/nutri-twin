@@ -23,6 +23,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
+import { GeminiLiveClient } from "@/lib/geminiLiveClient";
 import {
   motion,
   useMotionValue,
@@ -47,8 +48,7 @@ const TEXT_MUTED   = "rgba(255,255,255,0.40)";
 const TEXT_FADED   = "rgba(255,255,255,0.18)";
 
 // ─── Gemini Live ──────────────────────────────────────────────────────────────
-const GEMINI_WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
-const GEMINI_MODEL  = "models/gemini-2.0-flash-live-001";
+const GEMINI_MODEL  = "models/gemini-3.1-flash-live-preview";
 
 const MAX_CLOUDS      = 3;
 const EJECT_THRESHOLD = -280;
@@ -224,7 +224,7 @@ export default function DefusionExercise({
 
   // ─── Refs ──────────────────────────────────────────────────────────────────
   const statusRef       = useRef<Status>("intro_live");
-  const wsRef           = useRef<WebSocket | null>(null);
+  const wsRef           = useRef<GeminiLiveClient | null>(null);
   const audioCtxRef     = useRef<AudioContext | null>(null);
   const processorRef    = useRef<ScriptProcessorNode | null>(null);
   const mediaStreamRef  = useRef<MediaStream | null>(null);
@@ -294,7 +294,7 @@ export default function DefusionExercise({
   useEffect(() => () => cleanup(), [cleanup]);
 
   // ─── WS message handler ────────────────────────────────────────────────────
-  const handleWSMessage = useCallback((event: MessageEvent) => {
+  const handleWSMessage = useCallback((event: { data: string }) => {
     let msg: Record<string, unknown>;
     try { msg = JSON.parse(event.data as string) as Record<string, unknown>; }
     catch { return; }
@@ -364,11 +364,6 @@ export default function DefusionExercise({
 
   // ─── Init session ─────────────────────────────────────────────────────────
   const initSession = useCallback(async () => {
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey) {
-      setLoadError("NEXT_PUBLIC_GEMINI_API_KEY manquante.");
-      return;
-    }
 
     let contextInfo = `Patient : ${firstName}. Exercice de défusion cognitive ACT.`;
     try {
@@ -411,7 +406,7 @@ export default function DefusionExercise({
       wsRef.current.send(JSON.stringify({ realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } } }));
     };
 
-    const ws = new WebSocket(`${GEMINI_WS_URL}?key=${apiKey}`);
+    const ws = new GeminiLiveClient();
     wsRef.current = ws;
 
     ws.onopen = () => {
