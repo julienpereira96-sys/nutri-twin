@@ -46,8 +46,8 @@ const TEXT_MUTED   = "rgba(255,255,255,0.40)";
 const TEXT_FADED   = "rgba(255,255,255,0.18)";
 
 // ─── Gemini Live ──────────────────────────────────────────────────────────────
-const GEMINI_WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent";
-const GEMINI_MODEL  = "models/gemini-2.0-flash-live-001";
+const GEMINI_WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
+const GEMINI_MODEL  = "models/gemini-3.1-flash-live-preview";
 
 const MAX_CLOUDS      = 3;
 const EJECT_THRESHOLD = -280;
@@ -273,9 +273,7 @@ export default function DefusionExercise({
   // ─── Send text turn ────────────────────────────────────────────────────────
   const sendTurn = useCallback((text: string) => {
     if (wsRef.current?.readyState !== WebSocket.OPEN) return;
-    wsRef.current.send(JSON.stringify({
-      client_content: { turns: [{ role: "user", parts: [{ text }] }], turn_complete: true },
-    }));
+    wsRef.current.send(JSON.stringify({ realtimeInput: { text } }));
   }, []);
 
   // ─── Cleanup ──────────────────────────────────────────────────────────────
@@ -307,36 +305,36 @@ export default function DefusionExercise({
       return;
     }
 
-    const sc = msg.server_content as Record<string, unknown> | undefined;
+    const sc = msg.serverContent as Record<string, unknown> | undefined;
     if (!sc) return;
 
     // Chunks audio
-    const parts = (sc.model_turn as Record<string, unknown> | undefined)
+    const parts = (sc.modelTurn as Record<string, unknown> | undefined)
       ?.parts as Array<Record<string, unknown>> | undefined;
     if (parts) {
       for (const part of parts) {
-        const inline = part.inline_data as Record<string, unknown> | undefined;
-        if (inline?.mime_type && typeof inline.mime_type === "string"
-            && inline.mime_type.startsWith("audio/pcm")) {
-          const rate = parseInt((inline.mime_type.match(/rate=(\d+)/)?.[1]) ?? "24000", 10);
-          enqueueAudio(inline.data as string, rate);
+        const inlineData = part.inlineData as Record<string, unknown> | undefined;
+        if (inlineData?.mimeType && typeof inlineData.mimeType === "string"
+            && inlineData.mimeType.startsWith("audio/pcm")) {
+          const rate = parseInt((inlineData.mimeType.match(/rate=(\d+)/)?.[1]) ?? "24000", 10);
+          enqueueAudio(inlineData.data as string, rate);
         }
       }
     }
 
     // Transcription sortie (cloture)
-    const outTrans = sc.output_transcription as Record<string, unknown> | undefined;
+    const outTrans = sc.outputTranscription as Record<string, unknown> | undefined;
     if (outTrans?.text && typeof outTrans.text === "string") {
       outputTransRef.current += outTrans.text;
     }
 
     // Transcription entrée (phrase du patient)
-    const inTrans = sc.input_transcription as Record<string, unknown> | undefined;
+    const inTrans = sc.inputTranscription as Record<string, unknown> | undefined;
     if (inTrans?.text && typeof inTrans.text === "string") {
       inputTransRef.current += inTrans.text;
     }
 
-    if (sc.turn_complete === true) {
+    if (sc.turnComplete === true) {
       const currentStatus = statusRef.current;
 
       if (currentStatus === "intro_live") {
@@ -409,9 +407,7 @@ export default function DefusionExercise({
       if (!micEnabledRef.current) return;
       if (wsRef.current?.readyState !== WebSocket.OPEN) return;
       const b64 = float32ToPCM16Base64(e.inputBuffer.getChannelData(0));
-      wsRef.current.send(JSON.stringify({
-        realtime_input: { media_chunks: [{ mime_type: "audio/pcm;rate=16000", data: b64 }] },
-      }));
+      wsRef.current.send(JSON.stringify({ realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } } }));
     };
 
     const ws = new WebSocket(`${GEMINI_WS_URL}?key=${apiKey}`);
@@ -419,21 +415,27 @@ export default function DefusionExercise({
 
     ws.onopen = () => {
       ws.send(JSON.stringify({
-        setup: {
+        config: {
           model: GEMINI_MODEL,
-          generation_config: {
-            response_modalities: ["AUDIO"],
-            speech_config: { voice_config: { prebuilt_voice_config: { voice_name: "Aoede" } } },
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
           },
-          output_audio_transcription: {},
-          input_audio_transcription:  {},
-          system_instruction: { parts: [{ text: systemPrompt }] },
+          outputAudioTranscription: {},
+          inputAudioTranscription:  {},
+          systemInstruction: { parts: [{ text: systemPrompt }] },
         },
       }));
     };
 
     ws.onmessage = handleWSMessage;
     ws.onerror   = () => setLoadError("Connexion Gemini Live échouée.");
+    ws.onclose = (evt) => {
+      // Fermeture inattendue avant que setupComplete soit reçu
+      if (statusRef.current === "intro_live") {
+        setLoadError(`Connexion fermée (code ${evt.code}). Vérifie ta clé API Gemini Live.`);
+      }
+    };
   }, [sosContext, firstName, patientId, practitionerId, handleWSMessage]);
 
   useEffect(() => { void initSession(); }, []); // eslint-disable-line

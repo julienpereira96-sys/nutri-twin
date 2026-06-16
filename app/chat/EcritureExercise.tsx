@@ -29,8 +29,8 @@ const TEXT_FADED     = "rgba(30,22,12,0.22)";
 const WAVE_COLOR     = ACCENT;
 
 // ─── Gemini Live ───────────────────────────────────────────────────────────────
-const GEMINI_WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent";
-const GEMINI_MODEL  = "models/gemini-2.0-flash-live-001";
+const GEMINI_WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
+const GEMINI_MODEL  = "models/gemini-3.1-flash-live-preview";
 const GEMINI_REST   = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -282,15 +282,13 @@ export default function EcritureExercise({
 
     ws.onopen = () => {
       ws.send(JSON.stringify({
-        setup: {
+        config: {
           model: GEMINI_MODEL,
-          generation_config: {
-            response_modalities: ["AUDIO"],
-            speech_config: {
-              voice_config: { prebuilt_voice_config: { voice_name: "Aoede" } },
-            },
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
           },
-          system_instruction: {
+          systemInstruction: {
             parts: [{ text: buildIntroPrompt(firstName, sosContext) }],
           },
         },
@@ -324,12 +322,7 @@ export default function EcritureExercise({
 
       // setupComplete → trigger intro speech
       if (msg.setupComplete !== undefined) {
-        ws.send(JSON.stringify({
-          client_content: {
-            turns: [{ role: "user", parts: [{ text: "Commence l'introduction maintenant." }] }],
-            turn_complete: true,
-          },
-        }));
+        ws.send(JSON.stringify({ realtimeInput: { text: "Commence l'introduction maintenant." } }));
       }
     };
 

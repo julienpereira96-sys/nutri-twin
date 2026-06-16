@@ -25,8 +25,8 @@ const TEXT_PRIMARY = "rgba(255,255,255,0.90)";
 const TEXT_MUTED   = "rgba(255,255,255,0.35)";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const GEMINI_WS_URL    = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent";
-const GEMINI_MODEL     = "models/gemini-2.0-flash-live-001";
+const GEMINI_WS_URL    = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
+const GEMINI_MODEL     = "models/gemini-3.1-flash-live-preview";
 const SOS_WORDS        = ["APAISE", "LIBERE", "CALME", "LIBRE"] as const;
 const INSPIRE_MS       = 4000;
 const EXPIRE_MS        = 6000;
@@ -368,43 +368,35 @@ export default function SOSExercise({
     if (msg.setupComplete !== undefined) {
       setGeminiReady(true);
       // Kick off the greeting
-      wsRef.current?.send(JSON.stringify({
-        client_content: {
-          turns: [{
-            role: "user",
-            parts: [{ text: `[SOS activé pour ${firstName}. Commence l'accueil maintenant.]` }],
-          }],
-          turn_complete: true,
-        },
-      }));
+      wsRef.current?.send(JSON.stringify({ realtimeInput: { text: `[SOS activé pour ${firstName}. Commence l'accueil maintenant.]` } }));
       return;
     }
 
-    const sc = msg.server_content as Record<string, unknown> | undefined;
+    const sc = msg.serverContent as Record<string, unknown> | undefined;
     if (!sc) return;
 
     // Audio chunks from Gemini
-    const modelTurn = sc.model_turn as Record<string, unknown> | undefined;
+    const modelTurn = sc.modelTurn as Record<string, unknown> | undefined;
     const parts = modelTurn?.parts as Array<Record<string, unknown>> | undefined;
     if (parts) {
       for (const part of parts) {
-        const inline = part.inline_data as Record<string, unknown> | undefined;
-        if (inline?.mime_type && typeof inline.mime_type === "string" && inline.mime_type.startsWith("audio/pcm")) {
-          const rate = parseInt((inline.mime_type.match(/rate=(\d+)/)?.[1]) ?? "24000", 10);
-          enqueueAudio(inline.data as string, rate);
+        const inlineData = part.inlineData as Record<string, unknown> | undefined;
+        if (inlineData?.mimeType && typeof inlineData.mimeType === "string" && inlineData.mimeType.startsWith("audio/pcm")) {
+          const rate = parseInt((inlineData.mimeType.match(/rate=(\d+)/)?.[1]) ?? "24000", 10);
+          enqueueAudio(inlineData.data as string, rate);
         }
       }
     }
 
     // Transcript of patient speech (closing phase)
-    const inputTrans = sc.input_transcription as Record<string, unknown> | undefined;
+    const inputTrans = sc.inputTranscription as Record<string, unknown> | undefined;
     if (inputTrans?.text && typeof inputTrans.text === "string") {
       finalTextRef.current = inputTrans.text;
       setClosingTranscript(inputTrans.text);
     }
 
     // AI turn complete
-    if (sc.turn_complete === true) {
+    if (sc.turnComplete === true) {
       const currentStatus = statusRef.current;
 
       // If we're still in loading/intake, switch to intake now that greeting done
@@ -443,15 +435,7 @@ export default function SOSExercise({
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 
     // Ask Gemini to speak the tracing instructions
-    wsRef.current?.send(JSON.stringify({
-      client_content: {
-        turns: [{
-          role: "user",
-          parts: [{ text: `[Analyse la décharge émotionnelle. Si la crise semble intense, prévois 70 secondes d'exercice. Sinon 40 secondes. Guide maintenant vers l'exercice du tracé. Parle très lentement, voix grave et douce. 3-4 phrases max. Dis-lui de poser son pouce sur le point lumineux qui va apparaître.]` }],
-        }],
-        turn_complete: true,
-      },
-    }));
+    wsRef.current?.send(JSON.stringify({ realtimeInput: { text: `[Analyse la décharge émotionnelle. Si la crise semble intense, prévois 70 secondes d'exercice. Sinon 40 secondes. Guide maintenant vers l'exercice du tracé. Parle très lentement, voix grave et douce. 3-4 phrases max. Dis-lui de poser son pouce sur le point lumineux qui va apparaître.]` } }));
 
     // The actual tracing phase starts when THIS response finishes (turn_complete will catch it)
     // We set a flag so next turn_complete triggers startTracing
@@ -519,15 +503,7 @@ export default function SOSExercise({
 
     // Ask Gemini to celebrate
     setTimeout(() => {
-      wsRef.current?.send(JSON.stringify({
-        client_content: {
-          turns: [{
-            role: "user",
-            parts: [{ text: `[Le tracé est terminé. Le mot "${chosenWord}" vient d'apparaître sur l'écran. Félicite le patient chaleureusement, 2 phrases, puis pose ta question de clôture thérapeutique adaptée à ce qu'il a partagé. Voix douce et fière.]` }],
-          }],
-          turn_complete: true,
-        },
-      }));
+      wsRef.current?.send(JSON.stringify({ realtimeInput: { text: `[Le tracé est terminé. Le mot "${chosenWord}" vient d'apparaître sur l'écran. Félicite le patient chaleureusement, 2 phrases, puis pose ta question de clôture thérapeutique adaptée à ce qu'il a partagé. Voix douce et fière.]` } }));
     }, 1500);
 
     // Switch Gemini to capture final patient voice → transcript
@@ -598,9 +574,7 @@ export default function SOSExercise({
       const base64 = float32ToPCM16Base64(inputData);
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({
-          realtime_input: {
-            media_chunks: [{ mime_type: "audio/pcm;rate=16000", data: base64 }],
-          },
+          realtimeInput: { audio: { data: base64, mimeType: "audio/pcm;rate=16000" } },
         }));
       }
     };
@@ -612,19 +586,15 @@ export default function SOSExercise({
     ws.onopen = () => {
       // Send setup message
       ws.send(JSON.stringify({
-        setup: {
+        config: {
           model: GEMINI_MODEL,
-          generation_config: {
-            response_modalities: ["AUDIO"],
-            speech_config: {
-              voice_config: {
-                prebuilt_voice_config: { voice_name: "Aoede" },
-              },
-            },
+          responseModalities: ["AUDIO"],
+          speechConfig: {
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
           },
-          output_audio_transcription: {},
-          input_audio_transcription: {},
-          system_instruction: {
+          outputAudioTranscription: {},
+          inputAudioTranscription: {},
+          systemInstruction: {
             parts: [{ text: systemPrompt }],
           },
         },
@@ -632,6 +602,11 @@ export default function SOSExercise({
     };
 
     ws.onerror = () => setLoadError("Connexion Gemini Live échouée. Vérifier la clé API.");
+    ws.onclose = (evt) => {
+      if (statusRef.current === "loading") {
+        setLoadError(`Connexion fermée (code ${evt.code}). Vérifie ta clé API Gemini Live.`);
+      }
+    };
     ws.onclose = () => {
       if (statusRef.current !== "transition" && statusRef.current !== "reveal") {
         // Unexpected close
@@ -734,15 +709,7 @@ export default function SOSExercise({
     abandonTimerRef.current = setTimeout(() => {
       if (!pointerDownRef.current && statusRef.current === "tracing") {
         // Gemini says goodbye
-        wsRef.current?.send(JSON.stringify({
-          client_content: {
-            turns: [{
-              role: "user",
-              parts: [{ text: "[Le patient a arrêté le tracé. Dis-lui doucement que c'est ok, qu'on peut reprendre une autre fois. 1 phrase. Puis ferme la session.]" }],
-            }],
-            turn_complete: true,
-          },
-        }));
+        wsRef.current?.send(JSON.stringify({ realtimeInput: { text: "[Le patient a arrêté le tracé. Dis-lui doucement que c'est ok, qu'on peut reprendre une autre fois. 1 phrase. Puis ferme la session.]" } }));
         setTimeout(() => { cleanup(); onClose(); }, 4000);
       }
     }, ABANDON_TIMEOUT);
