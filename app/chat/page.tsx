@@ -2205,7 +2205,15 @@ export default function ChatPage() {
           const dy = Math.abs(e.changedTouches[0].clientY - touchStartYRef.current);
           if (dx < -40 && dy < 80) setSidebarOpen(false);
         }}
-        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 20 }} />}
+        style={{
+          position: "fixed",
+          top: 0, bottom: 0,
+          left: "80vw", right: 0,   // ne couvre QUE la zone de contenu, jamais la sidebar
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(4px)",
+          WebkitBackdropFilter: "blur(4px)",
+          zIndex: 20,
+        }} />}
 
       {/* ═══ SIDEBAR ═══ */}
       <aside style={{ width: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, minWidth: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, background: "#060908", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100dvh", zIndex: isMobile ? 50 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 32px rgba(0,0,0,0.6)", borderRight: "1px solid rgba(16,185,129,0.08)", }}>
