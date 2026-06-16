@@ -21,7 +21,10 @@ const TOKEN_ENDPOINT  = "/api/gemini-token";
 // Gemini Live is only available in us-central1 — hard-coded independently of
 // any env var so a location change for REST never breaks the WebSocket.
 const LOCATION        = "us-central1";
-const PROJECT_ID      = process.env.NEXT_PUBLIC_GOOGLE_CLOUD_PROJECT_ID!;
+
+// Project ID is fetched from the token endpoint (server-side env var) so we
+// never need NEXT_PUBLIC_GOOGLE_CLOUD_PROJECT_ID in the browser.
+let _resolvedProjectId: string = process.env.NEXT_PUBLIC_GOOGLE_CLOUD_PROJECT_ID ?? "";
 
 /** Full Vertex AI WebSocket URL (model path is set in the setup message) */
 const VERTEX_WS_URL =
@@ -51,9 +54,11 @@ export class GeminiLiveClient {
     try {
       const res = await fetch(TOKEN_ENDPOINT);
       if (!res.ok) throw new Error(`Token endpoint returned ${res.status}`);
-      const data = await res.json() as { token?: string; error?: string };
+      const data = await res.json() as { token?: string; projectId?: string; error?: string };
       if (!data.token) throw new Error(data.error ?? "No token in response");
       token = data.token;
+      // Cache the projectId returned by the server (overrides any NEXT_PUBLIC_ fallback)
+      if (data.projectId) _resolvedProjectId = data.projectId;
     } catch (err) {
       console.error("[GeminiLiveClient] token fetch failed:", err);
       this.readyState = WebSocket.CLOSED;
@@ -122,5 +127,5 @@ export class GeminiLiveClient {
 export function toVertexModelPath(model: string): string {
   if (model.startsWith("projects/")) return model; // already Vertex format
   const modelId = model.replace(/^models\//, "");
-  return `projects/${PROJECT_ID}/locations/${LOCATION}/publishers/google/models/${modelId}`;
+  return `projects/${_resolvedProjectId}/locations/${LOCATION}/publishers/google/models/${modelId}`;
 }

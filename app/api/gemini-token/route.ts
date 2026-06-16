@@ -32,8 +32,12 @@ export async function GET() {
       return Response.json({ error: "Failed to obtain token" }, { status: 500 });
     }
 
+    // Also expose projectId so the browser can build the Vertex model path
+    // without needing a NEXT_PUBLIC_ env var.
+    const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID ?? "";
+
     return Response.json(
-      { token },
+      { token, projectId },
       {
         headers: {
           // Don't cache — always generate fresh
