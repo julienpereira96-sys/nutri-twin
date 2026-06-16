@@ -35,7 +35,7 @@ const TEXT_MUTED   = "rgba(255,248,230,0.36)";
 const TEXT_FADED   = "rgba(255,248,230,0.16)";
 
 // ─── Gemini Live ──────────────────────────────────────────────────────────────
-const GEMINI_MODEL  = "models/gemini-3.1-flash-live-preview";
+const GEMINI_MODEL  = "models/gemini-live-2.5-flash-native-audio";
 const HARD_STOP_MS  = 180_000; // 3 minutes
 
 // ─── State machine ─────────────────────────────────────────────────────────────

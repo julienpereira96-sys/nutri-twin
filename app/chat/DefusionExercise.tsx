@@ -48,7 +48,7 @@ const TEXT_MUTED   = "rgba(255,255,255,0.40)";
 const TEXT_FADED   = "rgba(255,255,255,0.18)";
 
 // ─── Gemini Live ──────────────────────────────────────────────────────────────
-const GEMINI_MODEL  = "models/gemini-3.1-flash-live-preview";
+const GEMINI_MODEL  = "models/gemini-live-2.5-flash-native-audio";
 
 const MAX_CLOUDS      = 3;
 const EJECT_THRESHOLD = -280;

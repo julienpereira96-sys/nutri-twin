@@ -42,7 +42,7 @@ const HARD_STOP_MS = (MAX_BLOCKS * BLOCK_DUR + 15) * 1000; // 3m15s
 const INSPIRE_PCT  = Math.round((INSPIRE_DUR / CYCLE_DUR) * 100); // 40%
 
 // ─── Gemini Live ──────────────────────────────────────────────────────────────
-const GEMINI_MODEL  = "models/gemini-3.1-flash-live-preview";
+const GEMINI_MODEL  = "models/gemini-live-2.5-flash-native-audio";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Status = "loading" | "intro" | "breathing_cycle" | "checkpoint" | "cloture";

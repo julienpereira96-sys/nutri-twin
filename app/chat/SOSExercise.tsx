@@ -27,7 +27,7 @@ const TEXT_PRIMARY = "rgba(255,255,255,0.90)";
 const TEXT_MUTED   = "rgba(255,255,255,0.35)";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const GEMINI_MODEL     = "models/gemini-3.1-flash-live-preview";
+const GEMINI_MODEL     = "models/gemini-live-2.5-flash-native-audio";
 const SOS_WORDS        = ["APAISE", "LIBERE", "CALME", "LIBRE"] as const;
 const INSPIRE_MS       = 4000;
 const EXPIRE_MS        = 6000;

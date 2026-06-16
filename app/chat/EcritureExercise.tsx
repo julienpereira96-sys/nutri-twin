@@ -31,7 +31,7 @@ const TEXT_FADED     = "rgba(30,22,12,0.22)";
 const WAVE_COLOR     = ACCENT;
 
 // ─── Gemini Live ───────────────────────────────────────────────────────────────
-const GEMINI_MODEL  = "models/gemini-3.1-flash-live-preview";
+const GEMINI_MODEL  = "models/gemini-live-2.5-flash-native-audio";
 const GEMINI_REST   = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
