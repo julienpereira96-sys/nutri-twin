@@ -172,6 +172,7 @@ export default function MindfulEating({
   const [exitMode, setExitMode]       = useState<ExitMode>("victory");
   const [waveActive, setWaveActive]   = useState(true);
   const [positiveExits, setPositiveExits] = useState(0); // nb de réponses biologiques
+  const [canAdvance, setCanAdvance]       = useState(false); // chewing timer terminé, patient contrôle
 
   // ─── Refs ──────────────────────────────────────────────────────────────────
   const chewIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -210,19 +211,17 @@ export default function MindfulEating({
     };
   }, [goToCloture]);
 
-  // ─── INTRO → transition auto vers premier chewing ─────────────────────────
+  // ─── INTRO → active l'onde, patient démarre quand il est prêt ────────────
   useEffect(() => {
     if (status !== "intro") return;
     setWaveActive(true);
-    const t = setTimeout(() => startChewing(), 3200);
-    return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   // ─── Démarrer un cycle de mastication ─────────────────────────────────────
   const startChewing = useCallback(() => {
     setStatus("chewing");
     setChewSecs(CHEW_SECS);
+    setCanAdvance(false);
     setWaveActive(false);
 
     let remaining = CHEW_SECS;
@@ -236,9 +235,10 @@ export default function MindfulEating({
       }
       if (remaining <= 0) {
         clearInterval(chewIntervalRef.current!);
-        // Haptic feutré de fin de cycle
+        chewIntervalRef.current = null;
+        // Haptic feutré de fin de cycle — patient peut passer à l'écoute
         navigator.vibrate?.([30, 50, 60]);
-        startListening();
+        setCanAdvance(true);
       }
     }, 1000);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -414,18 +414,22 @@ export default function MindfulEating({
               </svg>
             </motion.div>
 
-            <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, letterSpacing: 0.3 }}>
-              Ton Jumeau prend la parole…
+            <p style={{ margin: 0, fontSize: 15, color: TEXT_PRIMARY, lineHeight: 1.7, textAlign: "center", maxWidth: 300 }}>
+              Pose ce que tu portes un instant.
+            </p>
+            <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, lineHeight: 1.6, textAlign: "center", maxWidth: 280 }}>
+              Installe-toi confortablement, décroises les jambes, relâche les épaules.
             </p>
 
-            {/* Simulation Phase 1 : bouton bypass intro */}
-            <button onClick={() => { clearInterval(chewIntervalRef.current ?? undefined); startChewing(); }}
+            <button onClick={() => startChewing()}
               style={{
-                marginTop: 8, padding: "9px 22px", borderRadius: 12,
-                background: "transparent", border: `1px solid ${MINT_BORD}`,
-                color: TEXT_MUTED, fontSize: 12, cursor: "pointer",
+                marginTop: 12, padding: "13px 32px", borderRadius: 14,
+                background: `linear-gradient(135deg, #10b981, #34d399)`,
+                border: "none", color: "#fff",
+                fontSize: 15, fontWeight: 700, cursor: "pointer",
+                boxShadow: `0 4px 20px ${MINT_GLOW}`,
               }}>
-              Passer l'intro →
+              Commencer →
             </button>
           </motion.div>
         )}
@@ -444,17 +448,29 @@ export default function MindfulEating({
               mastique, ressens, observe
             </p>
 
-            {/* Sim : skip timer */}
-            <button onClick={() => {
-              if (chewIntervalRef.current) clearInterval(chewIntervalRef.current);
-              startListening();
-            }} style={{
-              marginTop: 12, padding: "8px 18px", borderRadius: 10,
-              background: "transparent", border: `1px solid rgba(255,255,255,0.08)`,
-              color: TEXT_FADED, fontSize: 11, cursor: "pointer",
-            }}>
-              Sim — fin mastication
-            </button>
+            {/* Bouton patient-paced — apparaît quand le timer atteint 0 */}
+            <AnimatePresence>
+              {canAdvance && (
+                <motion.button
+                  key="advance-btn"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  onClick={() => {
+                    setCanAdvance(false);
+                    startListening();
+                  }}
+                  style={{
+                    marginTop: 12, padding: "13px 32px", borderRadius: 14,
+                    background: `linear-gradient(135deg, #10b981, #34d399)`,
+                    border: "none", color: "#fff",
+                    fontSize: 15, fontWeight: 700, cursor: "pointer",
+                    boxShadow: `0 4px 20px ${MINT_GLOW}`,
+                  }}
+                >
+                  Continuer →
+                </motion.button>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
 

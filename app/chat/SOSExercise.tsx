@@ -44,6 +44,7 @@ export interface SOSExerciseProps {
   patientId: string;
   practitionerId: string;
   firstName: string;
+  sosContext?: string;
   /** Called when the closing chat message is ready (transcribed text) */
   onTransitionToChat: (closingText: string) => void;
   onClose: () => void;
@@ -246,6 +247,7 @@ export default function SOSExercise({
   patientId,
   practitionerId,
   firstName,
+  sosContext = "",
   onTransitionToChat,
   onClose,
 }: SOSExerciseProps) {
@@ -555,6 +557,11 @@ export default function SOSExercise({
       }
     } catch { /* use default prompt */ }
 
+    // Injecter le contexte déclencheur (ce qui a amené le patient ici)
+    if (sosContext?.trim()) {
+      systemPrompt += `\n\nCONTEXTE DÉCLENCHEUR :\n${sosContext}`;
+    }
+
     // 2. Get mic permission
     let stream: MediaStream;
     try {
@@ -615,6 +622,7 @@ export default function SOSExercise({
               },
             },
           },
+          output_audio_transcription: {},
           input_audio_transcription: {},
           system_instruction: {
             parts: [{ text: systemPrompt }],

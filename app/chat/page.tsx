@@ -772,6 +772,7 @@ export default function ChatPage() {
   const [emotionalStatus, setEmotionalStatus] = useState<"green" | "red_behavioral" | "red_critical">("green");
   const [showSasButtons, setShowSasButtons] = useState(false);
   const [showSOSExercise, setShowSOSExercise] = useState(false);
+  const [sosSosContext, setSosSosContext] = useState("");
   const [showLibraryModal, setShowLibraryModal] = useState(false);
   const [postExerciseStep, setPostExerciseStep] = useState<{ toolId: string; answer: string } | null>(null);
   const [chatSearch, setChatSearch] = useState("");
@@ -1119,12 +1120,14 @@ export default function ChatPage() {
     setPostExerciseStep({ toolId, answer: "" });
   }, []);
 
-  // ─── Breathing overlay complete ─────────────────────────────────────────────
-  // Ferme l'overlay immersif + ouvre la question post-exercice dans la modale
-  // existante (même UX que les autres exercices)
-  const handleBreathingComplete = useCallback(() => {
+  // ─── Breathing overlay — clôture avec injection du résumé dans le chat ──────
+  const handleBreathingTransitionToChat = useCallback((message: string) => {
     setShowBreathingExercise(false);
-    // Réutilise la modale post-exercice existante via activeTool fictif
+    // Injecter le résumé de l'exercice comme message assistant dans le chat
+    if (message?.trim()) {
+      setMessages(prev => [...prev, { role: "assistant", content: message.trim() }]);
+    }
+    // Ouvrir la modale post-exercice pour la question de ressenti
     setActiveTool({ id: "breathing", data: null });
     setPostExerciseStep({ toolId: "breathing", answer: "" });
   }, []);
@@ -1211,8 +1214,8 @@ export default function ChatPage() {
 
     // Bulle patient : liste des pensées observées
     const userContent = evacuatedThoughts.length > 0
-      ? `🌫️ *Exercice de défusion ACT — pensées observées et libérées :*\n${evacuatedThoughts.map((t) => `• « ${t} »`).join("\n")}`
-      : "🌫️ *J'ai complété l'exercice de défusion cognitive.*";
+      ? `*Défusion ACT — pensées observées et libérées :*\n${evacuatedThoughts.map((t) => `• « ${t} »`).join("\n")}`
+      : "*J'ai complété l'exercice de défusion cognitive.*";
 
     setMessages((prev) => [
       ...prev,
@@ -1784,7 +1787,7 @@ export default function ChatPage() {
           firstName={patientFirstName}
           patientId={patientId ?? undefined}
           practitionerId={practitionerIdFromDb ?? undefined}
-          onCompleted={handleBreathingComplete}
+          onTransitionToChat={handleBreathingTransitionToChat}
           onClose={() => setShowBreathingExercise(false)}
         />
       )}
@@ -1875,6 +1878,7 @@ export default function ChatPage() {
           patientId={patientId}
           practitionerId={practitionerIdFromDb}
           firstName={patientFirstName}
+          sosContext={sosSosContext}
           onTransitionToChat={handleSOSTransitionToChat}
           onClose={() => setShowSOSExercise(false)}
         />
@@ -2201,10 +2205,10 @@ export default function ChatPage() {
           const dy = Math.abs(e.changedTouches[0].clientY - touchStartYRef.current);
           if (dx < -40 && dy < 80) setSidebarOpen(false);
         }}
-        style={{ position: "fixed", top: 0, bottom: 0, left: "80vw", right: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 20 }} />}
+        style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", zIndex: 20 }} />}
 
       {/* ═══ SIDEBAR ═══ */}
-      <aside style={{ width: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, minWidth: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, background: "#060908", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100dvh", zIndex: isMobile ? 30 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 32px rgba(0,0,0,0.6)", borderRight: "1px solid rgba(16,185,129,0.08)", }}>
+      <aside style={{ width: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, minWidth: sidebarOpen ? (isMobile ? "80vw" : sidebarWidth) : 0, background: "#060908", display: "flex", flexDirection: "column", position: isMobile ? "fixed" : "relative", top: 0, left: 0, height: "100dvh", zIndex: isMobile ? 50 : 1, transition: "width 0.25s ease, min-width 0.25s ease", overflow: "hidden", flexShrink: 0, boxShadow: "4px 0 32px rgba(0,0,0,0.6)", borderRight: "1px solid rgba(16,185,129,0.08)", }}>
         <div style={{ width: isMobile ? "80vw" : sidebarWidth, display: "flex", flexDirection: "column", height: "100%", padding: "0 12px" }}>
 
           {/* Header sidebar */}
@@ -2234,6 +2238,15 @@ export default function ChatPage() {
               onClick={() => {
                 if (emotionalStatus === "red_critical") return;
                 if (!patientId || !practitionerIdFromDb) return;
+                // Construire contexte depuis les derniers messages du chat
+                const recentLines = messages.slice(-8).map(m => {
+                  const roleLabel = m.role === "user" ? "Patient" : "Jumeau";
+                  return `${roleLabel}: ${m.content.slice(0, 300)}`;
+                });
+                const builtContext = recentLines.length > 0
+                  ? `[contexte chat récent]\n${recentLines.join("\n")}`
+                  : "Mon Soutien";
+                setSosSosContext(builtContext);
                 // Créer sos_event origin "crise" (Mon Soutien = toujours une demande d'aide)
                 void fetch("/api/chat", {
                   method: "POST", headers: { "Content-Type": "application/json" },

@@ -51,7 +51,7 @@ export interface BreathingExerciseProps {
   firstName: string;
   patientId?: string;
   practitionerId?: string;
-  onCompleted: () => void;
+  onTransitionToChat: (message: string) => void;
   onClose: () => void;
 }
 
@@ -120,7 +120,7 @@ export default function BreathingExercise({
   firstName,
   patientId,
   practitionerId,
-  onCompleted,
+  onTransitionToChat,
   onClose,
 }: BreathingExerciseProps) {
   // ── State ──────────────────────────────────────────────────────────────────
@@ -129,6 +129,7 @@ export default function BreathingExercise({
   const [animPaused, setAnimPaused]   = useState(true);   // CSS animation-play-state
   const [loadError, setLoadError]     = useState<string | null>(null);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  const [breathPhaseLabel, setBreathPhaseLabel] = useState<"inspire" | "expire" | null>(null);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const statusRef      = useRef<Status>("loading");
@@ -146,10 +147,10 @@ export default function BreathingExercise({
   const outputTransRef = useRef("");              // transcription de Gemini (checkpoint)
 
   // Stable refs pour callbacks dans closures
-  const onCompletedRef = useRef(onCompleted);
-  const onCloseRef     = useRef(onClose);
-  useEffect(() => { onCompletedRef.current = onCompleted; }, [onCompleted]);
-  useEffect(() => { onCloseRef.current     = onClose;     }, [onClose]);
+  const onTransitionToChatRef = useRef(onTransitionToChat);
+  const onCloseRef            = useRef(onClose);
+  useEffect(() => { onTransitionToChatRef.current = onTransitionToChat; }, [onTransitionToChat]);
+  useEffect(() => { onCloseRef.current            = onClose;            }, [onClose]);
   useEffect(() => { statusRef.current      = status;      }, [status]);
   useEffect(() => { blockCountRef.current  = blockCount;  }, [blockCount]);
 
@@ -231,12 +232,18 @@ export default function BreathingExercise({
     micEnabledRef.current = false;
     setAnimPaused(true);
     setStatus("cloture");
+    setBreathPhaseLabel(null);
+    outputTransRef.current = ""; // Reset pour capturer uniquement les mots de clôture
     // Demande à Gemini de conclure
     setTimeout(() => sendTurn("[CLOTURE]"), 400);
-    // Fallback : onCompleted après 10s
+    // Fallback : transition après 12s sans transcription
     setTimeout(() => {
-      if (statusRef.current === "cloture") onCompletedRef.current();
-    }, 10000);
+      if (statusRef.current === "cloture") {
+        const blocs = blockCountRef.current;
+        const msg = `🌿 Cohérence cardiaque · ${blocs} bloc${blocs > 1 ? "s" : ""}`;
+        onTransitionToChatRef.current(msg);
+      }
+    }, 12000);
   }, [sendTurn]);
 
   // ── Start a 60s breathing block ────────────────────────────────────────────
@@ -249,6 +256,7 @@ export default function BreathingExercise({
     // Premier inspire immédiat
     hapticInspire();
     sendTurn("[INSPIRE]");
+    setBreathPhaseLabel("inspire");
 
     intervalRef.current = setInterval(() => {
       elapsedRef.current += 1;
@@ -257,9 +265,11 @@ export default function BreathingExercise({
       if (pos === INSPIRE_DUR) {
         hapticExpire();
         sendTurn("[EXPIRE]");
+        setBreathPhaseLabel("expire");
       } else if (pos === 0) {
         hapticInspire();
         sendTurn("[INSPIRE]");
+        setBreathPhaseLabel("inspire");
       }
 
       if (elapsedRef.current >= BLOCK_DUR) {
@@ -280,6 +290,7 @@ export default function BreathingExercise({
 
     setAnimPaused(true);
     setStatus("checkpoint");
+    setBreathPhaseLabel(null);
     outputTransRef.current = "";
 
     // Activer le mic pour que le patient puisse répondre
@@ -366,9 +377,12 @@ export default function BreathingExercise({
         return;
       }
 
-      // Cloture terminée → onCompleted
+      // Cloture terminée → injecter le résumé dans le chat
       if (currentStatus === "cloture") {
-        setTimeout(() => onCompletedRef.current(), 1000);
+        const closingWords = outputTransRef.current.trim();
+        const blocs = blockCountRef.current;
+        const message = `🌿 Cohérence cardiaque · ${blocs} bloc${blocs > 1 ? "s" : ""}${closingWords ? `\n\n${closingWords}` : ""}`;
+        setTimeout(() => onTransitionToChatRef.current(message), 1000);
       }
     }
 
@@ -582,6 +596,20 @@ export default function BreathingExercise({
             }} />
           ))}
         </div>
+      )}
+
+      {/* ── Breath phase label ────────────────────────────────────────────── */}
+      {status === "breathing_cycle" && breathPhaseLabel && (
+        <p key={breathPhaseLabel} style={{
+          position: "absolute", bottom: 80,
+          margin: 0, fontSize: 17, fontWeight: 300,
+          letterSpacing: "0.20em", textTransform: "uppercase",
+          color: "rgba(16,185,129,0.68)",
+          animation: "br-fade-in 0.3s ease",
+          pointerEvents: "none",
+        }}>
+          {breathPhaseLabel === "inspire" ? "Inspire" : "Expire"}
+        </p>
       )}
 
       {/* ── Hint "yeux fermés" (disparaît après 5s) ─────────────────────── */}
