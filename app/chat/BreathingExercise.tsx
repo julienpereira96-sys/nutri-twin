@@ -454,8 +454,6 @@ export default function BreathingExercise({
               voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
             },
           },
-          outputAudioTranscription: {},
-          inputAudioTranscription:  {},
           systemInstruction: { parts: [{ text: systemPrompt }] },
         },
       }));

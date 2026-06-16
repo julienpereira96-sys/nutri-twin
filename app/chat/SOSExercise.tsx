@@ -594,8 +594,6 @@ export default function SOSExercise({
               voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
             },
           },
-          outputAudioTranscription: {},
-          inputAudioTranscription: {},
           systemInstruction: {
             parts: [{ text: systemPrompt }],
           },

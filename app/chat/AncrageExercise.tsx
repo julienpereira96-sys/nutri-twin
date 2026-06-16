@@ -524,8 +524,6 @@ export default function AncrageExercise({
               voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
             },
           },
-          outputAudioTranscription: {},
-          inputAudioTranscription:  {},
           systemInstruction: { parts: [{ text: systemPrompt }] },
         },
       }));

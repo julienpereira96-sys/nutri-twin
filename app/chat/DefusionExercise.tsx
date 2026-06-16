@@ -423,8 +423,6 @@ export default function DefusionExercise({
               voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } },
             },
           },
-          outputAudioTranscription: {},
-          inputAudioTranscription:  {},
           systemInstruction: { parts: [{ text: systemPrompt }] },
         },
       }));
