@@ -48,7 +48,7 @@ const TEXT_FADED   = "rgba(255,255,255,0.18)";
 
 // ─── Gemini Live ──────────────────────────────────────────────────────────────
 const GEMINI_WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
-const GEMINI_MODEL  = "models/gemini-3.1-flash-live-preview";
+const GEMINI_MODEL  = "models/gemini-2.0-flash-live-001";
 
 const MAX_CLOUDS      = 3;
 const EJECT_THRESHOLD = -280;

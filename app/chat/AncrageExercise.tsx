@@ -35,7 +35,7 @@ const TEXT_FADED   = "rgba(255,248,230,0.16)";
 
 // ─── Gemini Live ──────────────────────────────────────────────────────────────
 const GEMINI_WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
-const GEMINI_MODEL  = "models/gemini-3.1-flash-live-preview";
+const GEMINI_MODEL  = "models/gemini-2.0-flash-live-001";
 const HARD_STOP_MS  = 180_000; // 3 minutes
 
 // ─── State machine ─────────────────────────────────────────────────────────────

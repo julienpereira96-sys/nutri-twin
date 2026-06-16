@@ -42,7 +42,7 @@ const INSPIRE_PCT  = Math.round((INSPIRE_DUR / CYCLE_DUR) * 100); // 40%
 
 // ─── Gemini Live ──────────────────────────────────────────────────────────────
 const GEMINI_WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
-const GEMINI_MODEL  = "models/gemini-3.1-flash-live-preview";
+const GEMINI_MODEL  = "models/gemini-2.0-flash-live-001";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Status = "loading" | "intro" | "breathing_cycle" | "checkpoint" | "cloture";

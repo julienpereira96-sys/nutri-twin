@@ -31,7 +31,7 @@ const WAVE_COLOR     = ACCENT;
 
 // ─── Gemini Live ───────────────────────────────────────────────────────────────
 const GEMINI_WS_URL = "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent";
-const GEMINI_MODEL  = "models/gemini-3.1-flash-live-preview";
+const GEMINI_MODEL  = "models/gemini-2.0-flash-live-001";
 const GEMINI_REST   = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
