@@ -416,7 +416,7 @@ export default function DefusionExercise({
 
     ws.onopen = () => {
       ws.send(JSON.stringify({
-        config: {
+        setup: {
           model: GEMINI_MODEL,
           generationConfig: {
             responseModalities: ["AUDIO"],

@@ -1012,6 +1012,26 @@ export default function ChatPage() {
     return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
   }, [patientId]);
 
+  // ─── Microphone permission warmup ───────────────────────────────────────────
+  // Demande la permission micro une seule fois dès que la session est chargée,
+  // pour que les exercices vocaux ne re-demandent plus l'autorisation à chaque fois.
+  useEffect(() => {
+    if (!patientId) return;
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return;
+    const warm = () =>
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => { stream.getTracks().forEach(t => t.stop()); })
+        .catch(() => { /* user declined — on n'insiste pas */ });
+
+    if (typeof navigator.permissions?.query === "function") {
+      void navigator.permissions.query({ name: "microphone" as PermissionName })
+        .then(r => { if (r.state === "prompt") void warm(); })
+        .catch(() => void warm());
+    } else {
+      void warm();
+    }
+  }, [patientId]);
+
   // ─── Realtime : message épinglé praticien ───────────────────────────────────
   // S'abonne aux UPDATE sur la ligne du patient dès que patientId est connu.
   // Pas de rechargement de page nécessaire — le bandeau se met à jour instantanément.

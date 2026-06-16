@@ -447,7 +447,7 @@ export default function BreathingExercise({
 
     ws.onopen = () => {
       ws.send(JSON.stringify({
-        config: {
+        setup: {
           model: GEMINI_MODEL,
           generationConfig: {
             responseModalities: ["AUDIO"],
