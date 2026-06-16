@@ -260,7 +260,7 @@ Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks :
 
     let report: { synthese: string; patterns: string; victoires: string; murmures_bilan: string };
     try {
-      const rawText = (await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 1000, temperature: 0.5 })).trim().replace(/```json|```/g, "").trim();
+      const rawText = (await vertexGenerate("gemini-3-flash-preview", prompt, { maxOutputTokens: 1000, temperature: 0.5 })).trim().replace(/```json|```/g, "").trim();
       report = JSON.parse(rawText) as typeof report;
       if (!report.synthese || !report.patterns) throw new Error("Structure JSON invalide");
     } catch {

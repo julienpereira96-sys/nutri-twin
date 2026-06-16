@@ -24,11 +24,11 @@ function chunkText(text: string, chunkSize = 500, overlap = 50): string[] {
 
 async function getGeminiEmbedding(text: string): Promise<number[]> {
   const token = await getVertexToken();
-  const res = await fetch(vertexUrl("text-embedding-004", "predict"), {
+  const res = await fetch(vertexUrl("gemini-embedding-2", "predict"), {
     method: "POST",
     headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      instances: [{ content: text, task_type: "RETRIEVAL_DOCUMENT" }],
+      instances: [{ content: text, task_type: "RETRIEVAL_DOCUMENT", output_dimensionality: 768 }],
     }),
   });
   if (!res.ok) throw new Error(`Embedding failed: ${res.status}`);
