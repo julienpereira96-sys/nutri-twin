@@ -81,13 +81,26 @@ export class GeminiLiveClient {
 
     this.ws = ws;
 
+    // Vertex AI BidiGenerateContent sends binary frames (not text frames).
+    // Setting binaryType = 'arraybuffer' lets us decode them as UTF-8 strings.
+    ws.binaryType = "arraybuffer";
+
     ws.onopen = () => {
       this.readyState = WebSocket.OPEN;
       this.onopen?.();
     };
 
     ws.onmessage = (evt) => {
-      this.onmessage?.({ data: evt.data as string });
+      let text: string;
+      if (typeof evt.data === "string") {
+        text = evt.data;
+      } else if (evt.data instanceof ArrayBuffer) {
+        text = new TextDecoder().decode(evt.data);
+      } else {
+        // Blob fallback (should not happen with binaryType=arraybuffer)
+        return;
+      }
+      this.onmessage?.({ data: text });
     };
 
     ws.onclose = (evt) => {
