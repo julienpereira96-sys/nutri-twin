@@ -713,9 +713,14 @@ export default function SOSExercise({
         setPhase("intake");
         phaseRef.current = "intake";
       } else if (p === "intake" && intakeSignalSentRef.current) {
-        // Validation TCC terminée → tracé (idem : audio peut encore jouer, beginTracing attend)
+        // Validation TCC terminée → attendre fin audio AVANT de lancer le tracé
+        // (turnComplete arrive avant que la file audio soit vidée — même bug que la clôture)
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-        beginTracing();
+        if (!isPlayingRef.current) {
+          beginTracing();
+        } else {
+          onQueueEmptyRef.current = beginTracing;
+        }
       } else if (p === "transition") {
         // Closing turn complete — close after audio finishes
         const doClose = () => {
