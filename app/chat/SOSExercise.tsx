@@ -3,7 +3,7 @@
 /**
  * SOSExercise V2 — Refonte complète
  *
- * Flow: loading → intake → tracing → reveal → transition
+ * Flow: loading → intake → ready → tracing → reveal → transition
  *
  * Phase loading  : WS ouvert, Gemini accueille, setup avec outputAudioTranscription
  * Phase intake   : Patient parle, RMS silence detection, inputTranscription capturé
@@ -397,7 +397,7 @@ function WordReveal({ word, ready }: { word: string; ready: boolean }) {
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type SOSPhase   = "loading" | "intake" | "tracing" | "reveal" | "transition";
+type SOSPhase   = "loading" | "intake" | "ready" | "tracing" | "reveal" | "transition";
 type BreathPhase = "inspire" | "expire";
 
 export interface SOSExerciseProps {
@@ -592,11 +592,19 @@ export default function SOSExercise({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cancelSpeech, speakTherapeutic, firstName]);
 
-  const beginTracing = useCallback(() => {
-    // Select word from what patient said
+  // Phase "ready" — Gemini a fini de parler, patient doit toucher l'écran
+  const enterReadyPhase = useCallback(() => {
+    // Sélection du mot ici (avant le tap) pour ne pas recalculer au tap
     const word = selectWord(inputTranscriptRef.current);
     chosenWordRef.current = word;
     setChosenWord(word);
+    setPhase("ready");
+    phaseRef.current = "ready";
+  }, []);
+
+  const beginTracing = useCallback(() => {
+    // Le mot est déjà sélectionné dans enterReadyPhase
+    const word = chosenWordRef.current;
     completedLettersRef.current = [];
     setCompletedLetters([]);
 
@@ -633,10 +641,10 @@ export default function SOSExercise({
     intakeSignalSentRef.current = true;
 
     const signal = patientHasSpokenRef.current
-      // Patient a parlé → valide + transition vers l'exercice
-      ? "[Le patient a terminé de s'exprimer. Valide son émotion chaleureusement en 2-3 phrases. Puis annonce doucement l'exercice respiratoire du tracé — ne révèle pas le mot.]"
-      // Patient n'a pas répondu → accueille le silence, guide directement
-      : "[Le patient n'a pas répondu. C'est normal. Dis-lui doucement que ce n'est pas grave, qu'il n'a pas besoin de parler, et guide-le directement vers l'exercice respiratoire. 1-2 phrases apaisantes, pas de question.]";
+      // Patient a parlé → valide + explique l'exercice
+      ? "[Le patient a terminé de s'exprimer. Valide son émotion chaleureusement en 1-2 phrases. Puis guide-le vers l'exercice : il va suivre un point lumineux avec sa respiration — inspirer quand il monte, expirer quand il descend. Dis-lui de toucher l'écran quand il est prêt. Voix douce, 3-4 phrases max. Ne révèle pas le mot.]"
+      // Patient n'a pas répondu → accueille le silence, explique l'exercice
+      : "[Le patient n'a pas répondu. C'est normal. Dis-lui doucement que ce n'est pas grave, qu'il n'a pas besoin de parler. Puis guide-le vers l'exercice : il va suivre un point lumineux avec sa respiration — inspirer quand il monte, expirer quand il descend. Dis-lui de toucher l'écran quand il est prêt. 2-3 phrases apaisantes, pas de question.]";
 
     wsRef.current?.send(JSON.stringify({
       clientContent: {
@@ -713,13 +721,12 @@ export default function SOSExercise({
         setPhase("intake");
         phaseRef.current = "intake";
       } else if (p === "intake" && intakeSignalSentRef.current) {
-        // Validation TCC terminée → attendre fin audio AVANT de lancer le tracé
-        // (turnComplete arrive avant que la file audio soit vidée — même bug que la clôture)
+        // Validation TCC terminée → attendre fin audio, puis écran "ready" (tap patient)
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         if (!isPlayingRef.current) {
-          beginTracing();
+          enterReadyPhase();
         } else {
-          onQueueEmptyRef.current = beginTracing;
+          onQueueEmptyRef.current = enterReadyPhase;
         }
       } else if (p === "transition") {
         // Closing turn complete — close after audio finishes
@@ -872,7 +879,7 @@ export default function SOSExercise({
 
     proc.onaudioprocess = (e: AudioProcessingEvent) => {
       const p = phaseRef.current;
-      if (p === "loading" || p === "tracing" || p === "reveal" || p === "transition") return;
+      if (p === "loading" || p === "ready" || p === "tracing" || p === "reveal" || p === "transition") return;
       const data = e.inputBuffer.getChannelData(0);
       // RMS silence suppression — don't send silent frames
       if (getRMS(data) < RMS_SILENCE) return;
@@ -969,6 +976,7 @@ export default function SOSExercise({
 
   // ── Render ────────────────────────────────────────────────────────────────────
   const showOrb    = phase === "loading" || phase === "intake";
+  const showReady  = phase === "ready";
   const showTrace  = phase === "tracing";
   const showReveal = phase === "reveal";
   const showTrans  = phase === "transition";
@@ -1038,6 +1046,45 @@ export default function SOSExercise({
                 Je t'écoute…
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ══ READY — Tap to start ═════════════════════════════════════════════════ */}
+      {showReady && (
+        <div
+          onClick={beginTracing}
+          style={{
+            position: "absolute", inset: 0,
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            gap: 48, cursor: "pointer",
+            animation: "sos-fade 0.6s ease",
+          }}
+        >
+          <AiBlob speaking={false} firstName={firstName} />
+
+          <div style={{
+            display: "flex", flexDirection: "column",
+            alignItems: "center", gap: 20,
+          }}>
+            {/* Dot pulsant */}
+            <div style={{
+              width: 18, height: 18,
+              borderRadius: "50%",
+              background: "#00e5b4",
+              boxShadow: "0 0 0 0 rgba(0,229,180,0.5)",
+              animation: "sos-dot-pulse 2s ease-in-out infinite",
+            }} />
+            <p style={{
+              color: TEXT_PRIMARY,
+              fontSize: 15,
+              letterSpacing: "0.07em",
+              textAlign: "center",
+              fontWeight: 300,
+            }}>
+              Toucher l'écran pour commencer
+            </p>
           </div>
         </div>
       )}
@@ -1132,6 +1179,11 @@ export default function SOSExercise({
         @keyframes sos-pulse {
           0%, 100% { opacity: 0.35; }
           50%       { opacity: 0.80; }
+        }
+        @keyframes sos-dot-pulse {
+          0%   { box-shadow: 0 0 0 0 rgba(0,229,180,0.55); }
+          70%  { box-shadow: 0 0 0 14px rgba(0,229,180,0); }
+          100% { box-shadow: 0 0 0 0 rgba(0,229,180,0); }
         }
       `}</style>
     </div>
