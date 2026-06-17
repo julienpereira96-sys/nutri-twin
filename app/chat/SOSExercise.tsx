@@ -1,249 +1,415 @@
 "use client";
 
 /**
- * SOSExercise — Exercice SOS multimodal Gemini Live
+ * SOSExercise V2 — Refonte complète
  *
- * Flow :
- *   loading → intake → tracing → reveal → transition
+ * Flow: loading → intake → tracing → reveal → transition
  *
- * Gemini Live gère : accueil personnalisé · écoute patient · transition · clôture
- * TTS local gère   : murmures respiratoires (inspire/expire) pendant le tracé
- *
- * WebSocket direct → Gemini AI Studio (phase test)
- * La clé est en NEXT_PUBLIC — à remplacer par relay WS serveur en prod.
+ * Phase loading  : WS ouvert, Gemini accueille, setup avec outputAudioTranscription
+ * Phase intake   : Patient parle, RMS silence detection, inputTranscription capturé
+ * Phase tracing  : Gemini muet, tracé lettre par lettre time-driven, TTS respiratoire
+ * Phase reveal   : Mot révélé lettre par lettre en couleurs, Gemini célèbre
+ * Phase transition: outputAudioTranscription accumulé → un seul write Supabase sur close WS
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
-import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
 import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
 
-// ─── Design ───────────────────────────────────────────────────────────────────
-const ACCENT       = "#00e5b4";
-const ACCENT_GLOW  = "rgba(0,229,180,0.55)";
-const ACCENT_DIM   = "rgba(0,229,180,0.08)";
-const ACCENT_BORDER= "rgba(0,229,180,0.22)";
-const TEXT_PRIMARY = "rgba(255,255,255,0.90)";
-const TEXT_MUTED   = "rgba(255,255,255,0.35)";
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const TEXT_MUTED   = "rgba(255,255,255,0.38)";
+const TEXT_PRIMARY = "rgba(255,255,255,0.88)";
+
+// Per-letter colors (up to 8 letters)
+const LETTER_COLORS = [
+  "#00e5b4", // emerald
+  "#818cf8", // indigo
+  "#f472b6", // pink
+  "#fbbf24", // amber
+  "#38bdf8", // sky
+  "#34d399", // green
+  "#fb923c", // orange
+  "#a78bfa", // violet
+];
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const GEMINI_MODEL     = "models/gemini-live-2.5-flash-native-audio";
-const SOS_WORDS        = ["APAISE", "LIBERE", "CALME", "LIBRE"] as const;
-const INSPIRE_MS       = 4000;
-const EXPIRE_MS        = 6000;
-const CYCLE_MS         = INSPIRE_MS + EXPIRE_MS;  // 10s
-const SHORT_EXERCISE   = 40000;  // 4 cycles
-const LONG_EXERCISE    = 70000;  // 7 cycles
-const SILENCE_TIMEOUT  = 5000;   // auto-advance intake if no audio after 5s
-const ABANDON_TIMEOUT  = 20000;  // close if pointer up 20s continuously
+const GEMINI_MODEL    = "models/gemini-live-2.5-flash-native-audio";
+const INSPIRE_MS      = 4500;
+const EXPIRE_MS       = 5500;
+const CYCLE_MS        = INSPIRE_MS + EXPIRE_MS; // 10s per letter
+const HARD_TIMER_MS   = 6 * 60 * 1000;           // 6 min hard stop
+const RMS_SILENCE     = 0.007;                    // below = silent, skip PCM
+
+// ─── Word bank (4–8 letters, 4 intensity levels) ──────────────────────────────
+const WORD_BANK = {
+  /** 4 letters — crisis léger (~40s) */
+  mild: [
+    "DOUX", "PAIX", "BIEN", "FORT", "LIEN", "SOIN", "VRAI", "POSE",
+    "SAIN", "BEAU", "CIEL", "REVE",
+  ],
+  /** 5–6 letters — crisis modérée (~50–60s) */
+  moderate: [
+    "CALME", "LIBRE", "FORCE", "REPOS", "ANCRE", "DIGNE",
+    "APAISE", "SEREIN", "SOLIDE", "LIBERE", "VIVANT", "SOURIS",
+    "LUMIER",
+  ],
+  /** 7–8 letters — crisis sévère (~70–80s) */
+  intense: [
+    "APAISER", "LIBERER", "SOULAGE", "CALMONS", "RESPIRE", "LIBERTE",
+    "SERENITE", "SOLIDITE", "SOULAGER", "APAISONS",
+  ],
+};
+
+const CRISIS_KEYWORDS = [
+  "craquer", "étouffer", "etouffer", "mourir", "panique",
+  "urgence", "crise", "pleurer", "hurler", "souffre", "peur",
+  "effroi", "terreur", "impossible", "plus",
+];
+const CALM_KEYWORDS = [
+  "fatigué", "fatigue", "lasse", "las", "pas bien", "un peu",
+  "légèrement", "legèrement",
+];
+
+function selectWord(transcript: string): string {
+  const lower = transcript.toLowerCase();
+  let level: keyof typeof WORD_BANK = "moderate";
+  if (CRISIS_KEYWORDS.some(k => lower.includes(k))) level = "intense";
+  else if (CALM_KEYWORDS.some(k => lower.includes(k)))  level = "mild";
+  const list = WORD_BANK[level];
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+// ─── Parametric letter curves ──────────────────────────────────────────────────
+// Each variant: t ∈ [0,1] → [x, y] in normalised [0,1]²
+// t 0→0.5 = inspire half; t 0.5→1 = expire half
+// Paths are abstract — patient doesn't see the letter, only the motion
+const CURVE_FNS: Array<(t: number) => [number, number]> = [
+  // 0 — Lemniscate horizontale (figure-8)
+  t => [
+    0.5 + 0.36 * Math.sin(t * Math.PI * 2),
+    0.5 + 0.26 * Math.sin(t * Math.PI * 4),
+  ],
+  // 1 — Cardioid
+  t => {
+    const θ = t * Math.PI * 2;
+    const r = 0.24 * (1 - Math.cos(θ));
+    return [0.5 + r * Math.cos(θ - Math.PI / 2), 0.54 + r * Math.sin(θ - Math.PI / 2)];
+  },
+  // 2 — Rose à 3 pétales
+  t => {
+    const θ = t * Math.PI * 2;
+    const r = 0.31 * Math.cos(3 * θ);
+    return [0.5 + r * Math.cos(θ), 0.5 + r * Math.sin(θ)];
+  },
+  // 3 — Lissajous 3:2
+  t => [
+    0.5 + 0.36 * Math.sin(3 * t * Math.PI * 2 + Math.PI / 2),
+    0.5 + 0.31 * Math.sin(2 * t * Math.PI * 2),
+  ],
+  // 4 — Trefoil knot (projection)
+  t => {
+    const θ = t * Math.PI * 2;
+    return [
+      0.5 + 0.28 * (Math.sin(θ) + 2 * Math.sin(2 * θ)) / 3,
+      0.5 + 0.28 * (Math.cos(θ) - 2 * Math.cos(2 * θ)) / 3,
+    ];
+  },
+  // 5 — Epitrochoid
+  t => {
+    const θ = t * Math.PI * 2;
+    const R = 0.22, r = 0.09, d = 0.17;
+    return [
+      0.5 + (R - r) * Math.cos(θ) + d * Math.cos((R / r - 1) * θ),
+      0.5 + (R - r) * Math.sin(θ) - d * Math.sin((R / r - 1) * θ),
+    ];
+  },
+  // 6 — Spirale rentrante
+  t => {
+    const θ = t * Math.PI * 6;
+    const r2 = 0.36 * (1 - t * 0.65);
+    return [0.5 + r2 * Math.cos(θ), 0.5 + r2 * Math.sin(θ)];
+  },
+  // 7 — Hypotrochoid
+  t => {
+    const θ = t * Math.PI * 2;
+    const R = 0.26, r = 0.08, d = 0.19;
+    return [
+      0.5 + (R - r) * Math.cos(θ) + d * Math.cos(((R - r) / r) * θ),
+      0.5 + (R - r) * Math.sin(θ) - d * Math.sin(((R - r) / r) * θ),
+    ];
+  },
+];
+
+const CURVE_POINT_COUNT = 360;
+
+function getCurvePoints(letterIndex: number): [number, number][] {
+  const fn = CURVE_FNS[letterIndex % CURVE_FNS.length];
+  return Array.from({ length: CURVE_POINT_COUNT }, (_, i) =>
+    fn(i / (CURVE_POINT_COUNT - 1))
+  );
+}
+
+// ─── Audio helpers ────────────────────────────────────────────────────────────
+function float32ToPCM16Base64(f32: Float32Array): string {
+  const i16 = new Int16Array(f32.length);
+  for (let i = 0; i < f32.length; i++)
+    i16[i] = Math.max(-32768, Math.min(32767, f32[i] * 32768));
+  const bytes = new Uint8Array(i16.buffer);
+  let s = "";
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+
+function pcm16Base64ToFloat32(b64: string): Float32Array {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const i16 = new Int16Array(bytes.buffer);
+  const f32 = new Float32Array(i16.length);
+  for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
+  return f32;
+}
+
+function getRMS(data: Float32Array): number {
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+  return Math.sqrt(sum / data.length);
+}
+
+// ─── SVG Blob (AI speaking visual) ───────────────────────────────────────────
+function AiBlob({ speaking, firstName }: { speaking: boolean; firstName: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
+      <div style={{ position: "relative" }}>
+        {/* Static ambient glow — no JS, no blur recalc */}
+        <div style={{
+          position: "absolute",
+          inset: -32,
+          background: "radial-gradient(circle, rgba(0,229,180,0.11) 0%, transparent 68%)",
+          borderRadius: "50%",
+          pointerEvents: "none",
+        }} />
+        <svg
+          width="230" height="230" viewBox="0 0 230 230"
+          style={{ display: "block", willChange: "transform" }}
+          aria-hidden
+        >
+          <defs>
+            {/* SVG filter — GPU-accelerated, zero JS per frame */}
+            <filter id="sos-blob-f" x="-35%" y="-35%" width="170%" height="170%">
+              <feTurbulence
+                type="fractalNoise"
+                baseFrequency="0.009 0.007"
+                numOctaves="3"
+                seed="4"
+                result="noise"
+              >
+                <animate
+                  attributeName="baseFrequency"
+                  values={
+                    speaking
+                      ? "0.009 0.007;0.020 0.015;0.009 0.007"
+                      : "0.009 0.007;0.013 0.010;0.009 0.007"
+                  }
+                  dur={speaking ? "1.3s" : "3.8s"}
+                  repeatCount="indefinite"
+                />
+                <animate attributeName="seed" values="4;7;12;4" dur="5s" repeatCount="indefinite" />
+              </feTurbulence>
+              <feDisplacementMap
+                in="SourceGraphic"
+                in2="noise"
+                scale={speaking ? "32" : "16"}
+                xChannelSelector="R"
+                yChannelSelector="G"
+              />
+            </filter>
+            <radialGradient id="sos-blob-g" cx="44%" cy="38%" r="56%">
+              <stop offset="0%"   stopColor="#e0faf5" stopOpacity="0.96" />
+              <stop offset="28%"  stopColor="#00e5b4" stopOpacity="0.90" />
+              <stop offset="62%"  stopColor="#0ea5e9" stopOpacity="0.74" />
+              <stop offset="88%"  stopColor="#7c3aed" stopOpacity="0.50" />
+              <stop offset="100%" stopColor="#7c3aed" stopOpacity="0"    />
+            </radialGradient>
+          </defs>
+          <circle cx="115" cy="115" r="72" fill="url(#sos-blob-g)" filter="url(#sos-blob-f)" />
+        </svg>
+      </div>
+      <p style={{
+        color: TEXT_MUTED,
+        fontSize: 12,
+        letterSpacing: "0.16em",
+        fontWeight: 300,
+        textTransform: "uppercase",
+      }}>
+        {firstName}
+      </p>
+    </div>
+  );
+}
+
+// ─── Canvas helpers ───────────────────────────────────────────────────────────
+interface CompletedLetter {
+  points: [number, number][];
+  color: string;
+}
+
+function renderTraceCanvas(
+  canvas: HTMLCanvasElement,
+  completed: CompletedLetter[],
+  currentPoints: [number, number][],
+  progress: number, // 0–1 within current letter
+  color: string,
+  breathPhase: "inspire" | "expire",
+  dpr: number,
+) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const px = (p: [number, number]): [number, number] => [p[0] * W, p[1] * H];
+
+  // Draw completed letter traces (low opacity)
+  for (const lt of completed) {
+    if (lt.points.length < 2) continue;
+    ctx.beginPath();
+    const [x0, y0] = px(lt.points[0]);
+    ctx.moveTo(x0, y0);
+    for (let i = 1; i < lt.points.length; i++) {
+      const [x, y] = px(lt.points[i]);
+      ctx.lineTo(x, y);
+    }
+    ctx.globalAlpha = 0.20;
+    ctx.strokeStyle = lt.color;
+    ctx.lineWidth = 1.4 * dpr;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.shadowBlur = 5 * dpr;
+    ctx.shadowColor = lt.color;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+  }
+
+  if (currentPoints.length < 2) return;
+
+  const endIdx = Math.min(
+    Math.floor(progress * (currentPoints.length - 1)),
+    currentPoints.length - 1,
+  );
+
+  // Ghost (entire future path)
+  ctx.beginPath();
+  const [gx0, gy0] = px(currentPoints[0]);
+  ctx.moveTo(gx0, gy0);
+  for (let i = 1; i < currentPoints.length; i++) {
+    const [x, y] = px(currentPoints[i]);
+    ctx.lineTo(x, y);
+  }
+  ctx.globalAlpha = 0.055;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5 * dpr;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Completed portion
+  if (endIdx > 0) {
+    ctx.beginPath();
+    const [ax0, ay0] = px(currentPoints[0]);
+    ctx.moveTo(ax0, ay0);
+    for (let i = 1; i <= endIdx; i++) {
+      const [x, y] = px(currentPoints[i]);
+      ctx.lineTo(x, y);
+    }
+    ctx.shadowBlur = 10 * dpr;
+    ctx.shadowColor = color;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.4 * dpr;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
+
+  // Guide dot — pulses with breath phase
+  const [dx, dy] = px(currentPoints[Math.max(0, endIdx)]);
+  const pulse = breathPhase === "inspire" ? 1.15 : 0.88;
+  const dotR  = 7 * dpr * pulse;
+  const glowR = 28 * dpr * pulse;
+
+  ctx.beginPath();
+  ctx.arc(dx, dy, glowR, 0, Math.PI * 2);
+  ctx.fillStyle = color + "44";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(dx, dy, dotR, 0, Math.PI * 2);
+  ctx.fillStyle = "#fff";
+  ctx.shadowBlur = 10 * dpr;
+  ctx.shadowColor = color;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+// ─── Word reveal ──────────────────────────────────────────────────────────────
+function WordReveal({ word, ready }: { word: string; ready: boolean }) {
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column",
+      alignItems: "center", gap: 24,
+      animation: "sos-fade 0.7s ease",
+    }}>
+      <div style={{ display: "flex", gap: "clamp(2px,1.8vw,10px)" }}>
+        {word.split("").map((ch, i) => (
+          <span
+            key={i}
+            style={{
+              fontSize: "clamp(48px, 13vw, 96px)",
+              fontWeight: 900,
+              letterSpacing: "0.05em",
+              color: ready ? LETTER_COLORS[i % LETTER_COLORS.length] : "transparent",
+              textShadow: ready
+                ? `0 0 28px ${LETTER_COLORS[i % LETTER_COLORS.length]}99, 0 0 56px ${LETTER_COLORS[i % LETTER_COLORS.length]}33`
+                : "none",
+              opacity: ready ? 1 : 0,
+              transform: ready ? "scale(1) translateY(0)" : "scale(0.55) translateY(20px)",
+              transition: `all 0.65s cubic-bezier(0.34,1.56,0.64,1) ${i * 110}ms`,
+              display: "inline-block",
+              userSelect: "none",
+            }}
+          >
+            {ch}
+          </span>
+        ))}
+      </div>
+      {ready && (
+        <p style={{
+          color: TEXT_MUTED, fontSize: 13, letterSpacing: "0.09em",
+          animation: "sos-fade 0.5s ease 1.1s both",
+        }}>
+          Tu l'as tracé toi-même
+        </p>
+      )}
+    </div>
+  );
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type SOSStatus = "loading" | "intake" | "tracing" | "reveal" | "transition";
+type SOSPhase   = "loading" | "intake" | "tracing" | "reveal" | "transition";
 type BreathPhase = "inspire" | "expire";
 
 export interface SOSExerciseProps {
-  patientId: string;
-  practitionerId: string;
-  firstName: string;
-  sosContext?: string;
-  /** Called when the closing chat message is ready (transcribed text) */
+  patientId:       string;
+  practitionerId:  string;
+  firstName:       string;
+  sosContext?:     string;
   onTransitionToChat: (closingText: string) => void;
   onClose: () => void;
 }
 
-// ─── Audio helpers ────────────────────────────────────────────────────────────
-
-/** Encode Float32 mic samples → PCM16 → base64 */
-function float32ToPCM16Base64(float32: Float32Array): string {
-  const int16 = new Int16Array(float32.length);
-  for (let i = 0; i < float32.length; i++) {
-    int16[i] = Math.max(-32768, Math.min(32767, float32[i] * 32768));
-  }
-  const bytes = new Uint8Array(int16.buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
-}
-
-/** Decode base64 PCM16 → Float32Array */
-function pcm16Base64ToFloat32(base64: string): Float32Array {
-  const binary = atob(base64);
-  const bytes   = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  const int16   = new Int16Array(bytes.buffer);
-  const float32 = new Float32Array(int16.length);
-  for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768;
-  return float32;
-}
-
-// ─── Path generator (sine-wave breathwork path) ───────────────────────────────
-/**
- * Génère le chemin du tracé : onde sinusoïdale horizontale synchronisée
- * avec le cycle respiratoire (4s monte → inspire, 6s descend → expire).
- * Le chemin parcourt l'écran de gauche à droite sur toute la durée.
- */
-function generateTracePath(
-  w: number, h: number, durationMs: number, fps = 60
-): [number, number][] {
-  const totalFrames = Math.round((durationMs / 1000) * fps);
-  const framesPerCycle = Math.round((CYCLE_MS / 1000) * fps);
-  const inspireFrames  = Math.round((INSPIRE_MS / 1000) * fps);
-  const path: [number, number][] = [];
-
-  const margin = w * 0.08;
-  const topY   = h * 0.18;
-  const botY   = h * 0.82;
-
-  for (let i = 0; i < totalFrames; i++) {
-    const x = margin + (w - 2 * margin) * (i / (totalFrames - 1));
-    const posInCycle = i % framesPerCycle;
-    let y: number;
-    if (posInCycle < inspireFrames) {
-      // Montée (inspire)
-      const t = posInCycle / (inspireFrames - 1);
-      const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-      y = botY - (botY - topY) * eased;
-    } else {
-      // Descente (expire)
-      const t = (posInCycle - inspireFrames) / (framesPerCycle - inspireFrames - 1);
-      const eased = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-      y = topY + (botY - topY) * eased;
-    }
-    path.push([x, y]);
-  }
-  return path;
-}
-
-// ─── Canvas renderers ─────────────────────────────────────────────────────────
-
-function drawWaveOrb(
-  canvas: HTMLCanvasElement,
-  amplitude: number,
-  t: number,
-  isListening: boolean
-) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  const dpr = window.devicePixelRatio || 1;
-  const W = canvas.width  / dpr;
-  const H = canvas.height / dpr;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const cx = canvas.width  / 2;
-  const cy = canvas.height / 2;
-  const baseR = Math.min(canvas.width, canvas.height) * 0.28;
-  const pulse  = 1 + amplitude * 0.35 * Math.sin(t * 0.003);
-  const r = baseR * pulse;
-
-  // Outer glow rings
-  for (let i = 3; i >= 1; i--) {
-    const ringR = r * (1 + i * 0.22);
-    const alpha = isListening ? (0.55 - i * 0.15) * amplitude : (0.18 - i * 0.04);
-    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, ringR);
-    grad.addColorStop(0, `rgba(0,229,180,${alpha})`);
-    grad.addColorStop(1, "rgba(0,229,180,0)");
-    ctx.beginPath();
-    ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
-    ctx.fill();
-  }
-
-  // Core orb
-  const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-  coreGrad.addColorStop(0, "rgba(255,255,255,0.92)");
-  coreGrad.addColorStop(0.35, "rgba(0,229,180,0.85)");
-  coreGrad.addColorStop(1, "rgba(0,229,180,0.08)");
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle = coreGrad;
-  ctx.fill();
-
-  // Frequency wave around the orb when listening
-  if (isListening && amplitude > 0.05) {
-    ctx.beginPath();
-    const segments = 120;
-    for (let i = 0; i <= segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      const noise = 1 + amplitude * 0.25 * Math.sin(i * 5.3 + t * 0.008);
-      const rx = cx + r * noise * Math.cos(angle);
-      const ry = cy + r * noise * Math.sin(angle);
-      i === 0 ? ctx.moveTo(rx, ry) : ctx.lineTo(rx, ry);
-    }
-    ctx.closePath();
-    ctx.strokeStyle = `rgba(0,229,180,${0.5 * amplitude})`;
-    ctx.lineWidth = dpr * 1.5;
-    ctx.stroke();
-  }
-}
-
-function drawTrace(
-  canvas: HTMLCanvasElement,
-  path: [number, number][],
-  progress: number, // 0–1
-  paused: boolean,
-  dpr: number
-) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx || path.length === 0) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const currentIdx = Math.min(
-    Math.floor(progress * path.length),
-    path.length - 1
-  );
-
-  // Faint ghost path (entire route)
-  ctx.beginPath();
-  ctx.moveTo(path[0][0] * dpr, path[0][1] * dpr);
-  for (let i = 1; i < path.length; i++) {
-    ctx.lineTo(path[i][0] * dpr, path[i][1] * dpr);
-  }
-  ctx.strokeStyle = "rgba(0,229,180,0.07)";
-  ctx.lineWidth = 1.5 * dpr;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.stroke();
-
-  // Completed bright path
-  if (currentIdx > 0) {
-    ctx.shadowBlur  = 10 * dpr;
-    ctx.shadowColor = ACCENT_GLOW;
-    ctx.beginPath();
-    ctx.moveTo(path[0][0] * dpr, path[0][1] * dpr);
-    for (let i = 1; i <= currentIdx; i++) {
-      ctx.lineTo(path[i][0] * dpr, path[i][1] * dpr);
-    }
-    ctx.strokeStyle = ACCENT;
-    ctx.lineWidth   = 2.5 * dpr;
-    ctx.stroke();
-    ctx.shadowBlur  = 0;
-  }
-
-  // Cursor (glowing dot)
-  if (currentIdx < path.length) {
-    const [px, py] = path[currentIdx];
-    const cx = px * dpr;
-    const cy = py * dpr;
-
-    // Outer glow
-    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 28 * dpr);
-    glow.addColorStop(0, paused ? "rgba(255,200,0,0.7)" : "rgba(0,229,180,0.7)");
-    glow.addColorStop(1, "rgba(0,229,180,0)");
-    ctx.beginPath();
-    ctx.arc(cx, cy, 28 * dpr, 0, Math.PI * 2);
-    ctx.fillStyle = glow;
-    ctx.fill();
-
-    // Inner dot
-    ctx.beginPath();
-    ctx.arc(cx, cy, 6 * dpr, 0, Math.PI * 2);
-    ctx.fillStyle = paused ? "#ffcc00" : "#fff";
-    ctx.fill();
-  }
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
-
 export default function SOSExercise({
   patientId,
   practitionerId,
@@ -254,59 +420,70 @@ export default function SOSExercise({
 }: SOSExerciseProps) {
   const { speakTherapeutic, cancelSpeech } = useTherapeuticVoice();
 
-  // ── Status ────────────────────────────────────────────────────────────────
-  const [status, setStatus] = useState<SOSStatus>("loading");
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [chosenWord, setChosenWord] = useState<string>(
-    SOS_WORDS[Math.floor(Math.random() * SOS_WORDS.length)]
-  );
-  const [exerciseDuration, setExerciseDuration] = useState(SHORT_EXERCISE);
-  const [breathPhase, setBreathPhase] = useState<BreathPhase>("inspire");
-  const [traceProgress, setTraceProgress] = useState(0); // 0–1
-  const [tracePaused, setTracePaused] = useState(true);
-  const [waveAmplitude, setWaveAmplitude] = useState(0.15);
-  const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+  // ── UI state ────────────────────────────────────────────────────────────────
+  const [phase,           setPhase]           = useState<SOSPhase>("loading");
+  const [loadError,       setLoadError]       = useState<string | null>(null);
+  const [isAiSpeaking,    setIsAiSpeaking]    = useState(false);
   const [isPatientSpeaking, setIsPatientSpeaking] = useState(false);
-  const [revealReady, setRevealReady] = useState(false);
-  const [closingTranscript, setClosingTranscript] = useState("");
-  const [geminiReady, setGeminiReady] = useState(false);
+  const [breathPhase,     setBreathPhase]     = useState<BreathPhase>("inspire");
+  const [currentLetterIdx, setCurrentLetterIdx] = useState(0);
+  const [completedLetters, setCompletedLetters] = useState<CompletedLetter[]>([]);
+  const [chosenWord,      setChosenWord]      = useState("CALME");
+  const [revealReady,     setRevealReady]     = useState(false);
 
-  // ── Refs ──────────────────────────────────────────────────────────────────
-  const wsRef           = useRef<GeminiLiveClient | null>(null);
-  const audioCtxRef     = useRef<AudioContext | null>(null);
-  const analyserRef     = useRef<AnalyserNode | null>(null);
-  const mediaStreamRef  = useRef<MediaStream | null>(null);
-  const processorRef    = useRef<ScriptProcessorNode | null>(null);
-  const orbCanvasRef    = useRef<HTMLCanvasElement | null>(null);
-  const traceCanvasRef  = useRef<HTMLCanvasElement | null>(null);
-  const animFrameRef    = useRef<number>(0);
-  const tracePathRef    = useRef<[number, number][]>([]);
-  const pointerDownRef  = useRef(false);
-  const statusRef       = useRef<SOSStatus>("loading");
-  const progressRef     = useRef(0);
-  const traceTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const abandonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const breathTimerRef  = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const audioQueueRef   = useRef<{ data: Float32Array; rate: number }[]>([]);
-  const isPlayingRef    = useRef(false);
-  const dprRef          = useRef(1);
-  const phaseTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const finalTextRef    = useRef("");
-  const intakeStartRef  = useRef(false);
-  // Stable ref so initSession() can wire onmessage without stale-closure issues
-  const handleWSMessageRef = useRef<((evt: { data: string }) => void) | null>(null);
+  // ── Refs ────────────────────────────────────────────────────────────────────
+  const phaseRef            = useRef<SOSPhase>("loading");
+  const wsRef               = useRef<GeminiLiveClient | null>(null);
+  const audioCtxRef         = useRef<AudioContext | null>(null);
+  const analyserRef         = useRef<AnalyserNode | null>(null);
+  const mediaStreamRef      = useRef<MediaStream | null>(null);
+  const processorRef        = useRef<ScriptProcessorNode | null>(null);
+  const traceCanvasRef      = useRef<HTMLCanvasElement | null>(null);
+  const animFrameRef        = useRef<number>(0);
+  const dprRef              = useRef(1);
 
-  // Keep refs in sync
-  useEffect(() => { statusRef.current = status; }, [status]);
-  useEffect(() => { progressRef.current = traceProgress; }, [traceProgress]);
+  // Timers
+  const hardTimerRef        = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const silenceTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const breathTimerRef      = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  // ── Audio playback queue ──────────────────────────────────────────────────
+  // Audio queue
+  const audioQueueRef       = useRef<{ data: Float32Array; rate: number }[]>([]);
+  const isPlayingRef        = useRef(false);
+  const onQueueEmptyRef     = useRef<(() => void) | null>(null);
+
+  // Transcription
+  const inputTranscriptRef  = useRef("");
+  const outputTranscriptRef = useRef("");
+
+  // Tracing
+  const chosenWordRef       = useRef("CALME");
+  const currentLetterIdxRef = useRef(0);
+  const completedLettersRef = useRef<CompletedLetter[]>([]);
+  const letterStartTimeRef  = useRef(0);
+  const breathPhaseRef      = useRef<BreathPhase>("inspire");
+  const isTracingMutedRef   = useRef(false);
+
+  // Flow control
+  const greetingDoneRef     = useRef(false);   // first AI turn complete
+  const intakeSignalSentRef = useRef(false);   // TCC validation signal sent
+  const patientHasSpokenRef = useRef(false);   // patient said something
+
+  // Stable message handler ref (avoids stale closure on WS onmessage)
+  const handleWSMessageRef  = useRef<((evt: { data: string }) => void) | null>(null);
+
+  // Keep phase ref in sync
+  useEffect(() => { phaseRef.current = phase; }, [phase]);
+  useEffect(() => { breathPhaseRef.current = breathPhase; }, [breathPhase]);
+
+  // ── Audio queue ─────────────────────────────────────────────────────────────
   const playNextChunk = useCallback(() => {
     const ctx = audioCtxRef.current;
     if (!ctx || audioQueueRef.current.length === 0) {
       isPlayingRef.current = false;
       setIsAiSpeaking(false);
+      const cb = onQueueEmptyRef.current;
+      if (cb) { onQueueEmptyRef.current = null; cb(); }
       return;
     }
     isPlayingRef.current = true;
@@ -321,208 +498,290 @@ export default function SOSExercise({
     src.start(0);
   }, []);
 
-  const enqueueAudio = useCallback((base64: string, sampleRate = 24000) => {
-    const float32 = pcm16Base64ToFloat32(base64);
-    audioQueueRef.current.push({ data: float32, rate: sampleRate });
+  const enqueueAudio = useCallback((b64: string, sr = 24000) => {
+    audioQueueRef.current.push({ data: pcm16Base64ToFloat32(b64), rate: sr });
     if (!isPlayingRef.current) playNextChunk();
   }, [playNextChunk]);
 
-  const flushAudioQueue = useCallback(() => {
+  const flushAudio = useCallback(() => {
     audioQueueRef.current = [];
     isPlayingRef.current  = false;
     setIsAiSpeaking(false);
   }, []);
 
-  // ── Cleanup ───────────────────────────────────────────────────────────────
+  // ── Cleanup ─────────────────────────────────────────────────────────────────
   const cleanup = useCallback(() => {
     cancelSpeech();
-    // Stop mic
     processorRef.current?.disconnect();
     processorRef.current = null;
     mediaStreamRef.current?.getTracks().forEach(t => t.stop());
     mediaStreamRef.current = null;
-    // Stop audio ctx
     audioCtxRef.current?.close().catch(() => {});
     audioCtxRef.current = null;
     analyserRef.current = null;
-    // Close WS
     wsRef.current?.close();
     wsRef.current = null;
-    // Cancel animation
     if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    // Clear all timers
-    [traceTimerRef, abandonTimerRef, silenceTimerRef, phaseTimerRef].forEach(r => {
-      if (r.current) clearTimeout(r.current);
-    });
+    if (hardTimerRef.current) clearTimeout(hardTimerRef.current);
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     breathTimerRef.current.forEach(clearTimeout);
     breathTimerRef.current = [];
-    flushAudioQueue();
-  }, [cancelSpeech, flushAudioQueue]);
+    flushAudio();
+  }, [cancelSpeech, flushAudio]);
 
   useEffect(() => () => cleanup(), [cleanup]);
 
-  // ── WS message handler ────────────────────────────────────────────────────
+  // ── Begin tracing ────────────────────────────────────────────────────────────
+  const startLetterAt = useCallback((idx: number, word: string) => {
+    if (phaseRef.current !== "tracing") return;
+    currentLetterIdxRef.current = idx;
+    setCurrentLetterIdx(idx);
+    letterStartTimeRef.current = Date.now();
+
+    // Breathing cues via TTS (no Gemini cost, pure local)
+    setBreathPhase("inspire");
+    breathPhaseRef.current = "inspire";
+    speakTherapeutic("Inspire...", { skipPrep: true, rate: 0.70, volume: 0.60 });
+
+    const t1 = setTimeout(() => {
+      setBreathPhase("expire");
+      breathPhaseRef.current = "expire";
+      speakTherapeutic("Expire, relâche...", { skipPrep: true, rate: 0.68, volume: 0.60 });
+    }, INSPIRE_MS);
+    breathTimerRef.current.push(t1);
+
+    const t2 = setTimeout(() => {
+      if (phaseRef.current !== "tracing") return;
+      // Letter done: archive it
+      const pts = getCurvePoints(idx);
+      const col  = LETTER_COLORS[idx % LETTER_COLORS.length];
+      const newCompleted = [...completedLettersRef.current, { points: pts, color: col }];
+      completedLettersRef.current = newCompleted;
+      setCompletedLetters(newCompleted);
+
+      if (idx + 1 < word.length) {
+        startLetterAt(idx + 1, word);
+      } else {
+        // All letters done → reveal
+        breathTimerRef.current.forEach(clearTimeout);
+        breathTimerRef.current = [];
+        cancelSpeech();
+        isTracingMutedRef.current = false;
+        setPhase("reveal");
+        phaseRef.current = "reveal";
+        setTimeout(() => setRevealReady(true), 600);
+
+        // Ask Gemini to celebrate (unmuted now)
+        setTimeout(() => {
+          wsRef.current?.send(JSON.stringify({
+            clientContent: {
+              turns: [{
+                role: "user",
+                parts: [{ text: `[Le tracé est terminé. Le mot "${word}" vient d'apparaître sur l'écran lettre par lettre. Félicite ${firstName} chaleureusement, 2 phrases. Puis pose une question de clôture thérapeutique basée sur ce qu'il t'a partagé tout à l'heure. Voix douce et fière.]` }],
+              }],
+              turnComplete: true,
+            },
+          }));
+        }, 1600);
+      }
+    }, CYCLE_MS);
+    breathTimerRef.current.push(t2);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cancelSpeech, speakTherapeutic, firstName]);
+
+  const beginTracing = useCallback(() => {
+    // Select word from what patient said
+    const word = selectWord(inputTranscriptRef.current);
+    chosenWordRef.current = word;
+    setChosenWord(word);
+    completedLettersRef.current = [];
+    setCompletedLetters([]);
+
+    setPhase("tracing");
+    phaseRef.current = "tracing";
+
+    // Mute Gemini
+    isTracingMutedRef.current = true;
+    wsRef.current?.send(JSON.stringify({
+      clientContent: {
+        turns: [{
+          role: "user",
+          parts: [{ text: "[Phase respiration et tracé en cours. Reste silencieux jusqu'à nouvel ordre.]" }],
+        }],
+        turnComplete: true,
+      },
+    }));
+
+    // Resize canvas
+    const canvas = traceCanvasRef.current;
+    if (canvas) {
+      const dpr = dprRef.current;
+      canvas.width  = canvas.offsetWidth  * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+    }
+
+    startLetterAt(0, word);
+  }, [startLetterAt]);
+
+  // ── Signal patient silence → Gemini TCC validation ──────────────────────────
+  const triggerIntakeTransition = useCallback(() => {
+    if (intakeSignalSentRef.current) return;
+    if (phaseRef.current !== "intake") return;
+    intakeSignalSentRef.current = true;
+
+    wsRef.current?.send(JSON.stringify({
+      clientContent: {
+        turns: [{
+          role: "user",
+          parts: [{ text: "[Le patient a terminé de s'exprimer. Valide son émotion chaleureusement en 2-3 phrases (pas plus). Puis annonce doucement l'exercice respiratoire du tracé — ne révèle pas le mot.]" }],
+        }],
+        turnComplete: true,
+      },
+    }));
+  }, []);
+
+  // ── WS message handler ───────────────────────────────────────────────────────
   const handleWSMessage = useCallback((event: { data: string }) => {
-    console.log("[SOS] 📨 message reçu:", (event.data as string).slice(0, 120));
     let msg: Record<string, unknown>;
-    try { msg = JSON.parse(event.data as string) as Record<string, unknown>; }
+    try { msg = JSON.parse(event.data) as Record<string, unknown>; }
     catch { return; }
 
-    // Setup complete → trigger AI greeting
+    // ── setupComplete: send greeting ──────────────────────────────────────────
     if (msg.setupComplete !== undefined) {
-      console.log("[SOS] ✅ setupComplete reçu");
-      setGeminiReady(true);
-      // Kick off the greeting
-      const greetMsg = JSON.stringify({ clientContent: { turns: [{ role: "user", parts: [{ text: `[SOS activé pour ${firstName}. Commence l'accueil maintenant.]` }] }], turnComplete: true } });
-      console.log("[SOS] 📤 Envoi greeting:", greetMsg.slice(0, 100));
-      wsRef.current?.send(greetMsg);
+      wsRef.current?.send(JSON.stringify({
+        clientContent: {
+          turns: [{
+            role: "user",
+            parts: [{ text: `[SOS activé pour ${firstName}. Commence l'accueil maintenant en parlant directement, voix douce et lente.]` }],
+          }],
+          turnComplete: true,
+        },
+      }));
       return;
     }
 
     const sc = msg.serverContent as Record<string, unknown> | undefined;
     if (!sc) return;
 
-    // Audio chunks from Gemini
+    // ── Audio chunks ──────────────────────────────────────────────────────────
     const modelTurn = sc.modelTurn as Record<string, unknown> | undefined;
     const parts = modelTurn?.parts as Array<Record<string, unknown>> | undefined;
     if (parts) {
       for (const part of parts) {
-        const inlineData = part.inlineData as Record<string, unknown> | undefined;
-        if (inlineData?.mimeType && typeof inlineData.mimeType === "string" && inlineData.mimeType.startsWith("audio/pcm")) {
-          const rate = parseInt((inlineData.mimeType.match(/rate=(\d+)/)?.[1]) ?? "24000", 10);
-          enqueueAudio(inlineData.data as string, rate);
+        const id = part.inlineData as Record<string, unknown> | undefined;
+        if (id?.mimeType && typeof id.mimeType === "string" && id.mimeType.startsWith("audio/pcm")) {
+          if (!isTracingMutedRef.current) {
+            const sr = parseInt((id.mimeType.match(/rate=(\d+)/)?.[1]) ?? "24000", 10);
+            enqueueAudio(id.data as string, sr);
+          }
         }
       }
     }
 
-    // Transcript of patient speech (closing phase)
-    const inputTrans = sc.inputTranscription as Record<string, unknown> | undefined;
-    if (inputTrans?.text && typeof inputTrans.text === "string") {
-      finalTextRef.current = inputTrans.text;
-      setClosingTranscript(inputTrans.text);
+    // ── outputAudioTranscription (what Gemini said) ───────────────────────────
+    const outTrans = sc.outputAudioTranscription as Record<string, unknown> | undefined;
+    if (outTrans?.text && typeof outTrans.text === "string") {
+      const p = phaseRef.current;
+      if (p === "reveal" || p === "transition") {
+        outputTranscriptRef.current += outTrans.text as string;
+      }
     }
 
-    // AI turn complete
+    // ── inputTranscription (what patient said) ────────────────────────────────
+    const inTrans = sc.inputTranscription as Record<string, unknown> | undefined;
+    if (inTrans?.text && typeof inTrans.text === "string") {
+      inputTranscriptRef.current += " " + (inTrans.text as string);
+    }
+
+    // ── Interrupted by patient ────────────────────────────────────────────────
+    if (sc.interrupted === true) flushAudio();
+
+    // ── Turn complete ─────────────────────────────────────────────────────────
     if (sc.turnComplete === true) {
-      const currentStatus = statusRef.current;
+      const p = phaseRef.current;
 
-      // If we're still in loading/intake, switch to intake now that greeting done
-      if (currentStatus === "loading" || currentStatus === "intake") {
-        if (!intakeStartRef.current) {
-          intakeStartRef.current = true;
-          setStatus("intake");
-          // Start silence timer — after 5s without patient audio, auto-advance
-          silenceTimerRef.current = setTimeout(() => {
-            if (statusRef.current === "intake") triggerTracingTransition();
-          }, SILENCE_TIMEOUT + 8000); // give time for AI greeting first
+      if (p === "loading" && !greetingDoneRef.current) {
+        // First AI turn (greeting) done
+        greetingDoneRef.current = true;
+        setPhase("intake");
+        phaseRef.current = "intake";
+        // Hard fallback: if patient never speaks, advance after 14s
+        silenceTimerRef.current = setTimeout(() => {
+          if (phaseRef.current === "intake") triggerIntakeTransition();
+        }, 14000);
+      } else if (p === "intake" && intakeSignalSentRef.current) {
+        // TCC validation done → begin tracing
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+        beginTracing();
+      } else if (p === "transition") {
+        // Closing turn complete — close after audio finishes
+        const doClose = () => {
+          const text = outputTranscriptRef.current.trim() || "Je me sens mieux.";
+          void fetch("/api/sos/log", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              patientId,
+              practitionerId,
+              closingMessage: text,
+              word: chosenWordRef.current,
+            }),
+          }).catch(() => {});
+          onTransitionToChat(text);
+          cleanup();
+        };
+        if (!isPlayingRef.current) {
+          doClose();
         } else {
-          // Patient spoke and AI responded — now move to tracing
-          triggerTracingTransition();
+          onQueueEmptyRef.current = doClose;
         }
       }
-
-      // If we're in transition (closing question answered), finish
-      if (currentStatus === "transition") {
-        const text = finalTextRef.current || "Je me sens mieux.";
-        onTransitionToChat(text);
-        cleanup();
-      }
     }
+  }, [
+    enqueueAudio, flushAudio, firstName,
+    triggerIntakeTransition, beginTracing,
+    patientId, practitionerId, onTransitionToChat, cleanup,
+  ]);
 
-    // Patient interrupted AI → flush queue
-    if (sc.interrupted === true) {
-      flushAudioQueue();
+  // Keep handler ref in sync
+  useEffect(() => {
+    handleWSMessageRef.current = handleWSMessage;
+    if (wsRef.current) wsRef.current.onmessage = handleWSMessage;
+  }, [handleWSMessage]);
+
+  // ── Silence detection in intake ──────────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== "intake") return;
+    if (isPatientSpeaking) {
+      patientHasSpokenRef.current = true;
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    } else if (patientHasSpokenRef.current) {
+      // Patient was speaking and stopped → 5s silence → trigger TCC transition
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = setTimeout(() => {
+        if (phaseRef.current === "intake") triggerIntakeTransition();
+      }, 5000);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enqueueAudio, flushAudioQueue, firstName, onTransitionToChat, cleanup]);
+  }, [isPatientSpeaking, phase]);
 
-  // Needs to be defined as function (not const arrow) because it's referenced in handleWSMessage
-  function triggerTracingTransition() {
-    if (statusRef.current === "tracing" || statusRef.current === "reveal" || statusRef.current === "transition") return;
-    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+  // Transition phase: set it 16s after reveal starts (Gemini has time to speak)
+  useEffect(() => {
+    if (phase !== "reveal") return;
+    const t = setTimeout(() => {
+      setPhase("transition");
+      phaseRef.current = "transition";
+    }, 16000);
+    return () => clearTimeout(t);
+  }, [phase]);
 
-    // Ask Gemini to speak the tracing instructions
-    wsRef.current?.send(JSON.stringify({ realtimeInput: { text: `[Analyse la décharge émotionnelle. Si la crise semble intense, prévois 70 secondes d'exercice. Sinon 40 secondes. Guide maintenant vers l'exercice du tracé. Parle très lentement, voix grave et douce. 3-4 phrases max. Dis-lui de poser son pouce sur le point lumineux qui va apparaître.]` } }));
-
-    // The actual tracing phase starts when THIS response finishes (turn_complete will catch it)
-    // We set a flag so next turn_complete triggers startTracing
-    statusRef.current = "tracing" as SOSStatus; // will be confirmed by setStatus below
-    // Give Gemini 12s max to speak the transition, then force start
-    phaseTimerRef.current = setTimeout(() => startTracing(), 12000);
-  }
-
-  // ── Start tracing ─────────────────────────────────────────────────────────
-  const startTracing = useCallback(() => {
-    if (phaseTimerRef.current) clearTimeout(phaseTimerRef.current);
-    setStatus("tracing");
-    setTracePaused(true);
-
-    // Generate path once we know canvas size
-    const canvas = traceCanvasRef.current;
-    if (canvas) {
-      const dpr = dprRef.current;
-      const W = canvas.width  / dpr;
-      const H = canvas.height / dpr;
-      tracePathRef.current = generateTracePath(W, H, exerciseDuration);
-    }
-
-    // Breathwork whispers via TTS (local — no Gemini latency)
-    const scheduleBreathCycle = (elapsed: number) => {
-      if (elapsed >= exerciseDuration) return;
-      const phase = (elapsed % CYCLE_MS) < INSPIRE_MS ? "inspire" : "expire";
-      const nextMs = phase === "inspire" ? INSPIRE_MS : EXPIRE_MS;
-      const timer = setTimeout(() => {
-        const nextPhase: BreathPhase = phase === "inspire" ? "expire" : "inspire";
-        setBreathPhase(nextPhase);
-        speakTherapeutic(
-          nextPhase === "expire" ? "Expire, relâche tout..." : "Inspire...",
-          { skipPrep: true, rate: 0.72, volume: 0.65 }
-        );
-        scheduleBreathCycle(elapsed + nextMs);
-      }, nextMs);
-      breathTimerRef.current.push(timer);
-    };
-
-    // First inspire
-    setBreathPhase("inspire");
-    speakTherapeutic("Inspire...", { skipPrep: true, rate: 0.72, volume: 0.65 });
-    scheduleBreathCycle(0);
-
-    // Exercise timer
-    traceTimerRef.current = setTimeout(() => {
-      finishTracing();
-    }, exerciseDuration);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exerciseDuration, speakTherapeutic]);
-
-  // ── Finish tracing → reveal ───────────────────────────────────────────────
-  const finishTracing = useCallback(() => {
-    breathTimerRef.current.forEach(clearTimeout);
-    breathTimerRef.current = [];
-    cancelSpeech();
-    setTraceProgress(1);
-    setTracePaused(true);
-    setStatus("reveal");
-    setRevealReady(false);
-
-    // Small delay for reveal animation
-    setTimeout(() => setRevealReady(true), 400);
-
-    // Ask Gemini to celebrate
-    setTimeout(() => {
-      wsRef.current?.send(JSON.stringify({ realtimeInput: { text: `[Le tracé est terminé. Le mot "${chosenWord}" vient d'apparaître sur l'écran. Félicite le patient chaleureusement, 2 phrases, puis pose ta question de clôture thérapeutique adaptée à ce qu'il a partagé. Voix douce et fière.]` } }));
-    }, 1500);
-
-    // Switch Gemini to capture final patient voice → transcript
-    statusRef.current = "transition";
-    setTimeout(() => setStatus("transition"), 15000);
-  }, [cancelSpeech, chosenWord]);
-
-  // ── Init WebSocket + Mic ──────────────────────────────────────────────────
+  // ── Init session ─────────────────────────────────────────────────────────────
   const initSession = useCallback(async () => {
-
-    // 1. Fetch context from backend
-    let systemPrompt = `Tu es le Jumeau Numérique de ${firstName}. Mode SOS actif. Parle français uniquement, voix douce et lente.`;
+    // 1. Build system prompt
+    let systemPrompt =
+      `Tu es le Jumeau Numérique de ${firstName}. Mode SOS actif. ` +
+      `Parle exclusivement en français, voix douce, lente, bienveillante. ` +
+      `Restes concis (2-3 phrases max par tour). Approche TCC.`;
     try {
       const res = await fetch("/api/gemini-live/context", {
         method: "POST",
@@ -530,69 +789,67 @@ export default function SOSExercise({
         body: JSON.stringify({ patientId, practitionerId }),
       });
       if (res.ok) {
-        const data = await res.json() as { systemPrompt: string };
-        systemPrompt = data.systemPrompt;
+        const d = await res.json() as { systemPrompt?: string };
+        if (d.systemPrompt) systemPrompt = d.systemPrompt;
       }
-    } catch { /* use default prompt */ }
+    } catch { /* use default */ }
 
-    // Injecter le contexte déclencheur (ce qui a amené le patient ici)
     if (sosContext?.trim()) {
       systemPrompt += `\n\nCONTEXTE DÉCLENCHEUR :\n${sosContext}`;
     }
 
-    // 2. Get mic permission
+    // 2. Mic permission
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 }, video: false });
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { sampleRate: 16000, channelCount: 1 },
+        video: false,
+      });
       mediaStreamRef.current = stream;
     } catch {
-      setLoadError("Accès au microphone refusé. Active le micro pour cette expérience.");
+      setLoadError("Accès au microphone refusé. Active le micro pour cet exercice.");
       return;
     }
 
-    // 3. Create AudioContext for mic capture + playback
+    // 3. AudioContext
     const audioCtx = new AudioContext({ sampleRate: 16000 });
     audioCtxRef.current = audioCtx;
-
-    // Analyser for wave visualization
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 256;
     analyserRef.current = analyser;
+    const micSrc = audioCtx.createMediaStreamSource(stream);
+    micSrc.connect(analyser);
 
-    const micSource = audioCtx.createMediaStreamSource(stream);
-    micSource.connect(analyser);
-
-    // ScriptProcessor for PCM16 encoding
     // eslint-disable-next-line @typescript-eslint/no-deprecated
-    const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-    processorRef.current = processor;
-    micSource.connect(processor);
-    processor.connect(audioCtx.destination);
+    const proc = audioCtx.createScriptProcessor(4096, 1, 1);
+    processorRef.current = proc;
+    micSrc.connect(proc);
+    proc.connect(audioCtx.destination);
 
-    processor.onaudioprocess = (e: AudioProcessingEvent) => {
-      if (statusRef.current === "loading") return;
-      if (statusRef.current === "reveal" || statusRef.current === "transition") return;
-      const inputData = e.inputBuffer.getChannelData(0);
-      const base64 = float32ToPCM16Base64(inputData);
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({
-          realtimeInput: { audio: { data: base64, mimeType: "audio/pcm;rate=16000" } },
-        }));
-      }
+    proc.onaudioprocess = (e: AudioProcessingEvent) => {
+      const p = phaseRef.current;
+      if (p === "loading" || p === "tracing" || p === "reveal" || p === "transition") return;
+      const data = e.inputBuffer.getChannelData(0);
+      // RMS silence suppression — don't send silent frames
+      if (getRMS(data) < RMS_SILENCE) return;
+      const b64 = float32ToPCM16Base64(data);
+      wsRef.current?.send(JSON.stringify({
+        realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } },
+      }));
     };
 
-    // 4. Open WebSocket
+    // 4. Open WS
     const ws = new GeminiLiveClient();
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log("[SOS] 🔌 WebSocket ouvert — envoi setup");
-      // Send setup message
       ws.send(JSON.stringify({
         setup: {
           model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
+            outputAudioTranscription: {},
+            inputAudioTranscription:  {},
           },
           systemInstruction: {
             parts: [{ text: systemPrompt }],
@@ -601,161 +858,95 @@ export default function SOSExercise({
       }));
     };
 
-    // Wire onmessage immediately via ref — avoids race condition where
-    // setupComplete arrives before the separate useEffect runs
     ws.onmessage = (evt) => handleWSMessageRef.current?.(evt);
 
-    ws.onerror = () => setLoadError("Connexion Gemini Live échouée. Vérifier la clé API.");
-    // Single onclose handler (was duplicated — second was overwriting first)
-    ws.onclose = (evt) => {
-      if (statusRef.current === "loading") {
-        setLoadError(`Connexion fermée (code ${evt.code}). Vérifie ta clé API Gemini Live.`);
-      }
-      // For non-terminal states, unexpected close is silently handled
-    };
-  }, [patientId, practitionerId, firstName]);
+    ws.onerror = () => setLoadError("Connexion Gemini Live échouée.");
 
-  // ── Mount: init session + canvas DPR ─────────────────────────────────────
+    ws.onclose = (evt) => {
+      if (phaseRef.current === "loading") {
+        setLoadError(`Connexion fermée (${evt.code}). Vérifie ta connexion.`);
+      }
+    };
+
+    // Hard timer — 6 min max
+    hardTimerRef.current = setTimeout(() => cleanup(), HARD_TIMER_MS);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId, practitionerId, firstName, sosContext]);
+
+  // ── Mount ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
     dprRef.current = window.devicePixelRatio || 1;
-
-    const orbCanvas = orbCanvasRef.current;
-    const traceCanvas = traceCanvasRef.current;
-    const dpr = dprRef.current;
-
-    if (orbCanvas) {
-      orbCanvas.width  = orbCanvas.offsetWidth  * dpr;
-      orbCanvas.height = orbCanvas.offsetHeight * dpr;
-    }
-    if (traceCanvas) {
-      traceCanvas.width  = traceCanvas.offsetWidth  * dpr;
-      traceCanvas.height = traceCanvas.offsetHeight * dpr;
-    }
-
     void initSession();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep handler ref in sync — also re-wire live WS if it already exists
+  // ── Animation loop ───────────────────────────────────────────────────────────
   useEffect(() => {
-    handleWSMessageRef.current = handleWSMessage;
-    if (wsRef.current) wsRef.current.onmessage = handleWSMessage;
-  }, [handleWSMessage]);
-
-  // ── Animation loop ────────────────────────────────────────────────────────
-  useEffect(() => {
-    let t = 0;
     const dpr = dprRef.current;
 
+    // Analyser polling (runs every phase for amplitude)
+    let t = 0;
     const loop = () => {
       t++;
       animFrameRef.current = requestAnimationFrame(loop);
 
-      // Wave amplitude from analyser
+      // Patient speaking detection from analyser
       if (analyserRef.current) {
-        const data = new Uint8Array(analyserRef.current.frequencyBinCount);
-        analyserRef.current.getByteFrequencyData(data);
-        const avg = data.reduce((s, v) => s + v, 0) / data.length;
-        const amplitude = Math.min(1, avg / 60);
-        setWaveAmplitude(amplitude);
-        setIsPatientSpeaking(amplitude > 0.12);
+        const buf = new Uint8Array(analyserRef.current.frequencyBinCount);
+        analyserRef.current.getByteFrequencyData(buf);
+        const avg = buf.reduce((s, v) => s + v, 0) / buf.length;
+        setIsPatientSpeaking(avg / 60 > 0.12);
       }
 
-      const currentStatus = statusRef.current;
-
-      // Intake: draw orb on orbCanvas
-      if ((currentStatus === "loading" || currentStatus === "intake") && orbCanvasRef.current) {
-        drawWaveOrb(orbCanvasRef.current, waveAmplitude, t, isPatientSpeaking);
-      }
-
-      // Tracing: advance progress + draw
-      if (currentStatus === "tracing" && traceCanvasRef.current) {
-        const path = tracePathRef.current;
-        if (!pointerDownRef.current) {
-          // Pointer up
-          setTracePaused(true);
-        } else {
-          // Advance progress proportionally to fps
-          const totalFrames = path.length;
-          const increment = 1 / totalFrames;
-          const next = Math.min(1, progressRef.current + increment);
-          progressRef.current = next;
-          setTraceProgress(next);
-          setTracePaused(false);
-          if (next >= 1) finishTracing();
-        }
-        drawTrace(traceCanvasRef.current, path, progressRef.current, !pointerDownRef.current, dpr);
+      // Tracing phase: draw canvas at 60fps
+      if (phaseRef.current === "tracing" && traceCanvasRef.current) {
+        const elapsed  = Date.now() - letterStartTimeRef.current;
+        const progress = Math.min(1, elapsed / CYCLE_MS);
+        const idx      = currentLetterIdxRef.current;
+        const pts      = getCurvePoints(idx);
+        const col      = LETTER_COLORS[idx % LETTER_COLORS.length];
+        renderTraceCanvas(
+          traceCanvasRef.current,
+          completedLettersRef.current,
+          pts,
+          progress,
+          col,
+          breathPhaseRef.current,
+          dpr,
+        );
       }
     };
 
     animFrameRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animFrameRef.current);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, waveAmplitude, isPatientSpeaking]);
+  }, []); // runs once — reads everything via refs
 
-  // ── Pointer handlers (touch + mouse) ─────────────────────────────────────
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    if (statusRef.current !== "tracing") return;
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    pointerDownRef.current = true;
-    if (abandonTimerRef.current) clearTimeout(abandonTimerRef.current);
-    if (typeof navigator !== "undefined") navigator.vibrate?.(15);
-  }, []);
-
-  const handlePointerUp = useCallback(() => {
-    if (statusRef.current !== "tracing") return;
-    pointerDownRef.current = false;
-    // Abandon if pointer up > 20s
-    abandonTimerRef.current = setTimeout(() => {
-      if (!pointerDownRef.current && statusRef.current === "tracing") {
-        // Gemini says goodbye
-        wsRef.current?.send(JSON.stringify({ realtimeInput: { text: "[Le patient a arrêté le tracé. Dis-lui doucement que c'est ok, qu'on peut reprendre une autre fois. 1 phrase. Puis ferme la session.]" } }));
-        setTimeout(() => { cleanup(); onClose(); }, 4000);
-      }
-    }, ABANDON_TIMEOUT);
-  }, [cleanup, onClose]);
-
-  // ── Silence timer restart on patient audio ────────────────────────────────
-  useEffect(() => {
-    if (status !== "intake") return;
-    if (isPatientSpeaking) {
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-    } else {
-      // Reset silence timer
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = setTimeout(() => {
-        if (statusRef.current === "intake") triggerTracingTransition();
-      }, SILENCE_TIMEOUT);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPatientSpeaking, status]);
-
-  // ── Render ────────────────────────────────────────────────────────────────
-  const showOrb    = status === "loading" || status === "intake";
-  const showTrace  = status === "tracing";
-  const showReveal = status === "reveal";
-  const showTrans  = status === "transition";
+  // ── Render ────────────────────────────────────────────────────────────────────
+  const showOrb    = phase === "loading" || phase === "intake";
+  const showTrace  = phase === "tracing";
+  const showReveal = phase === "reveal";
+  const showTrans  = phase === "transition";
 
   return (
     <div
       style={{
         position: "fixed", inset: 0, zIndex: 300,
-        background: "#000",
+        background: "#060810",
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
         overflow: "hidden",
-        animation: "sos-fade-in 0.6s ease",
+        animation: "sos-fade 0.55s ease",
       }}
     >
-      {/* ── Close ──────────────────────────────────────────────────────────── */}
-      {(status === "loading" || status === "intake") && (
+      {/* Close button (only during loading/intake) */}
+      {showOrb && (
         <button
           onClick={() => { cleanup(); onClose(); }}
           aria-label="Fermer"
           style={{
-            position: "absolute", top: 20, right: 20, zIndex: 10,
-            width: 38, height: 38, borderRadius: "50%",
-            background: "rgba(255,255,255,0.05)",
+            position: "absolute", top: 18, right: 18, zIndex: 10,
+            width: 36, height: 36, borderRadius: "50%",
+            background: "rgba(255,255,255,0.04)",
             border: "1px solid rgba(255,255,255,0.08)",
             color: TEXT_MUTED, fontSize: 20, cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -763,39 +954,49 @@ export default function SOSExercise({
         >×</button>
       )}
 
-      {/* ══ LOADING ERROR ══════════════════════════════════════════════════════ */}
+      {/* ── Error ─────────────────────────────────────────────────────────────── */}
       {loadError && (
-        <div style={{ maxWidth: 340, textAlign: "center", padding: 24 }}>
-          <p style={{ color: "#f87171", fontSize: 15, lineHeight: 1.7, marginBottom: 20 }}>{loadError}</p>
+        <div style={{ maxWidth: 320, textAlign: "center", padding: 28 }}>
+          <p style={{ color: "#f87171", fontSize: 15, lineHeight: 1.7, marginBottom: 22 }}>
+            {loadError}
+          </p>
           <button
             onClick={() => { cleanup(); onClose(); }}
-            style={{ padding: "10px 28px", borderRadius: 10, background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, color: TEXT_PRIMARY, cursor: "pointer" }}
+            style={{
+              padding: "10px 28px", borderRadius: 10,
+              background: "rgba(0,229,180,0.08)",
+              border: "1px solid rgba(0,229,180,0.20)",
+              color: TEXT_PRIMARY, cursor: "pointer", fontSize: 14,
+            }}
           >
             Fermer
           </button>
         </div>
       )}
 
-      {/* ══ INTAKE — Orb vocale ════════════════════════════════════════════════ */}
+      {/* ══ INTAKE — Blob IA ═════════════════════════════════════════════════════ */}
       {showOrb && !loadError && (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 32, position: "relative", zIndex: 1 }}>
-          {/* Orb canvas */}
-          <div style={{ position: "relative", width: "min(320px, 80vw)", height: "min(320px, 80vw)" }}>
-            <canvas
-              ref={orbCanvasRef}
-              style={{ width: "100%", height: "100%", display: "block" }}
-            />
-          </div>
+        <div style={{
+          display: "flex", flexDirection: "column",
+          alignItems: "center", gap: 36,
+        }}>
+          <AiBlob speaking={isAiSpeaking} firstName={firstName} />
 
-          {/* Status text */}
-          <div style={{ textAlign: "center" }}>
-            {status === "loading" && (
-              <p style={{ color: TEXT_MUTED, fontSize: 14, letterSpacing: "0.08em", animation: "sos-pulse 2s ease-in-out infinite" }}>
-                Connexion en cours…
+          <div style={{ textAlign: "center", minHeight: 24 }}>
+            {phase === "loading" && (
+              <p style={{
+                color: TEXT_MUTED, fontSize: 13, letterSpacing: "0.09em",
+                animation: "sos-pulse 2s ease-in-out infinite",
+              }}>
+                Connexion…
               </p>
             )}
-            {status === "intake" && (
-              <p style={{ color: isPatientSpeaking ? ACCENT : TEXT_MUTED, fontSize: 15, letterSpacing: "0.04em", transition: "color 0.3s" }}>
+            {phase === "intake" && (
+              <p style={{
+                color: isPatientSpeaking ? "#00e5b4" : TEXT_MUTED,
+                fontSize: 14, letterSpacing: "0.05em",
+                transition: "color 0.3s",
+              }}>
                 {isPatientSpeaking ? "Je t'écoute…" : "Lâche tout au micro"}
               </p>
             )}
@@ -803,165 +1004,96 @@ export default function SOSExercise({
         </div>
       )}
 
-      {/* ══ TRACING ════════════════════════════════════════════════════════════ */}
+      {/* ══ TRACING ══════════════════════════════════════════════════════════════ */}
       {showTrace && (
-        <div
-          style={{ position: "absolute", inset: 0, touchAction: "none", userSelect: "none" }}
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-        >
+        <div style={{ position: "absolute", inset: 0 }}>
           <canvas
             ref={traceCanvasRef}
             style={{ width: "100%", height: "100%", display: "block" }}
           />
 
-          {/* Breathwork label */}
+          {/* Breath label */}
           <div style={{
-            position: "absolute", bottom: 60, left: 0, right: 0,
+            position: "absolute", bottom: 56, left: 0, right: 0,
             textAlign: "center",
-            animation: "sos-fade-in 0.4s ease",
+            pointerEvents: "none",
           }}>
             <p style={{
-              fontSize: 22, fontWeight: 300, letterSpacing: "0.18em",
-              color: breathPhase === "inspire" ? "rgba(0,229,180,0.85)" : "rgba(0,229,180,0.5)",
+              fontSize: 20, fontWeight: 300, letterSpacing: "0.20em",
               textTransform: "uppercase",
-              transition: "color 0.8s ease",
+              color: breathPhase === "inspire"
+                ? "rgba(0,229,180,0.82)"
+                : "rgba(0,229,180,0.45)",
+              transition: "color 0.9s ease",
             }}>
               {breathPhase === "inspire" ? "Inspire" : "Expire"}
             </p>
           </div>
 
-          {/* Pause indicator */}
-          {tracePaused && (
-            <div style={{
-              position: "absolute", top: "50%", left: "50%",
-              transform: "translate(-50%, -50%)",
-              textAlign: "center", pointerEvents: "none",
-              animation: "sos-fade-in 0.3s ease",
-            }}>
-              <p style={{ color: "rgba(255,204,0,0.7)", fontSize: 14, letterSpacing: "0.06em" }}>
-                Pose ton pouce pour continuer
-              </p>
-            </div>
-          )}
-
-          {/* Mini wave (bottom) */}
+          {/* Letter counter */}
           <div style={{
-            position: "absolute", bottom: 20, left: 0, right: 0,
-            display: "flex", justifyContent: "center", gap: 3,
+            position: "absolute", top: 24, left: 0, right: 0,
+            textAlign: "center", pointerEvents: "none",
           }}>
-            {Array.from({ length: 7 }, (_, i) => (
-              <div key={i} style={{
-                width: 3, borderRadius: 2,
-                background: ACCENT,
-                height: isAiSpeaking ? `${6 + Math.sin(Date.now() * 0.005 + i) * 6}px` : "3px",
-                opacity: 0.5,
-                transition: "height 0.15s ease",
-              }} />
-            ))}
+            <p style={{ color: TEXT_MUTED, fontSize: 11, letterSpacing: "0.12em" }}>
+              {currentLetterIdx + 1} / {chosenWord.length}
+            </p>
           </div>
         </div>
       )}
 
-      {/* ══ REVEAL ═════════════════════════════════════════════════════════════ */}
+      {/* ══ REVEAL ═══════════════════════════════════════════════════════════════ */}
       {showReveal && (
         <div style={{
           display: "flex", flexDirection: "column",
-          alignItems: "center", justifyContent: "center",
-          gap: 0, position: "relative", zIndex: 1,
-          animation: "sos-fade-in 0.5s ease",
+          alignItems: "center", gap: 0,
+          animation: "sos-fade 0.6s ease",
         }}>
-          {/* The word */}
-          <div style={{
-            fontSize: "clamp(72px, 22vw, 140px)",
-            fontWeight: 900,
-            letterSpacing: "0.08em",
-            color: revealReady ? ACCENT : "transparent",
-            textShadow: revealReady
-              ? `0 0 40px ${ACCENT_GLOW}, 0 0 80px rgba(0,229,180,0.3), 0 0 160px rgba(0,229,180,0.15)`
-              : "none",
-            transform: revealReady ? "scale(1)" : "scale(0.5)",
-            opacity: revealReady ? 1 : 0,
-            transition: "all 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
-            userSelect: "none",
-          }}>
-            {chosenWord}
-          </div>
-
-          {/* Subtitle */}
-          {revealReady && (
-            <p style={{
-              marginTop: 28,
-              color: TEXT_MUTED, fontSize: 14, letterSpacing: "0.06em",
-              animation: "sos-fade-in 0.6s ease 0.8s both",
-            }}>
-              Tu l'as tracé toi-même
-            </p>
-          )}
+          <WordReveal word={chosenWord} ready={revealReady} />
         </div>
       )}
 
-      {/* ══ TRANSITION ═════════════════════════════════════════════════════════ */}
+      {/* ══ TRANSITION ═══════════════════════════════════════════════════════════ */}
       {showTrans && (
         <div style={{
           display: "flex", flexDirection: "column",
-          alignItems: "center", gap: 28, position: "relative", zIndex: 1,
-          animation: "sos-fade-in 0.6s ease",
+          alignItems: "center", gap: 32,
+          animation: "sos-fade 0.6s ease",
         }}>
           {/* Word fading */}
           <div style={{
-            fontSize: "clamp(48px, 14vw, 90px)",
+            fontSize: "clamp(44px, 12vw, 82px)",
             fontWeight: 900, letterSpacing: "0.08em",
-            color: ACCENT, opacity: 0.35,
-            textShadow: `0 0 30px ${ACCENT_GLOW}`,
+            color: "#00e5b4", opacity: 0.28,
+            textShadow: "0 0 28px rgba(0,229,180,0.5)",
             userSelect: "none",
           }}>
             {chosenWord}
           </div>
 
-          {/* Orb mini */}
-          <div style={{
-            width: "min(200px, 50vw)", height: "min(200px, 50vw)",
-            position: "relative",
-          }}>
-            <canvas
-              ref={orbCanvasRef}
-              style={{ width: "100%", height: "100%" }}
-            />
+          {/* Mini blob */}
+          <div style={{ transform: "scale(0.7)", marginTop: -16 }}>
+            <AiBlob speaking={isAiSpeaking} firstName={firstName} />
           </div>
 
-          <p style={{ color: TEXT_MUTED, fontSize: 14, textAlign: "center", maxWidth: 260, lineHeight: 1.7 }}>
-            {closingTranscript
-              ? "Merci. Ton jumeau prend le relais dans le chat."
-              : "Partage en quelques mots comment tu te sens maintenant…"}
+          <p style={{
+            color: TEXT_MUTED, fontSize: 13,
+            textAlign: "center", maxWidth: 240, lineHeight: 1.75,
+          }}>
+            {isAiSpeaking ? "…" : "Partage en quelques mots comment tu te sens"}
           </p>
-
-          {closingTranscript && (
-            <button
-              onClick={() => { onTransitionToChat(closingTranscript); cleanup(); }}
-              style={{
-                padding: "12px 32px", borderRadius: 12,
-                background: ACCENT, border: "none",
-                color: "#000", fontSize: 15, fontWeight: 700,
-                cursor: "pointer",
-              }}
-            >
-              Continuer dans le chat →
-            </button>
-          )}
         </div>
       )}
 
-      {/* ── Keyframes ──────────────────────────────────────────────────────── */}
+      {/* Keyframes */}
       <style>{`
-        @keyframes sos-fade-in {
-          from { opacity: 0; transform: translateY(12px); }
+        @keyframes sos-fade {
+          from { opacity: 0; transform: translateY(10px); }
           to   { opacity: 1; transform: translateY(0); }
         }
         @keyframes sos-pulse {
-          0%, 100% { opacity: 0.4; }
-          50%       { opacity: 0.85; }
+          0%, 100% { opacity: 0.35; }
+          50%       { opacity: 0.80; }
         }
       `}</style>
     </div>
