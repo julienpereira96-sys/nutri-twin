@@ -468,6 +468,7 @@ export default function SOSExercise({
   const greetingDoneRef     = useRef(false);   // first AI turn complete
   const intakeSignalSentRef = useRef(false);   // TCC validation signal sent
   const patientHasSpokenRef = useRef(false);   // patient said something
+  const repromptSentRef     = useRef(false);   // gentle re-prompt sent after first silence
 
   // Stable message handler ref (avoids stale closure on WS onmessage)
   const handleWSMessageRef  = useRef<((evt: { data: string }) => void) | null>(null);
@@ -629,12 +630,15 @@ export default function SOSExercise({
     if (phaseRef.current !== "intake") return;
     intakeSignalSentRef.current = true;
 
+    const signal = patientHasSpokenRef.current
+      // Patient a parlé → valide + transition vers l'exercice
+      ? "[Le patient a terminé de s'exprimer. Valide son émotion chaleureusement en 2-3 phrases. Puis annonce doucement l'exercice respiratoire du tracé — ne révèle pas le mot.]"
+      // Patient n'a pas répondu → accueille le silence, guide directement
+      : "[Le patient n'a pas répondu. C'est normal. Dis-lui doucement que ce n'est pas grave, qu'il n'a pas besoin de parler, et guide-le directement vers l'exercice respiratoire. 1-2 phrases apaisantes, pas de question.]";
+
     wsRef.current?.send(JSON.stringify({
       clientContent: {
-        turns: [{
-          role: "user",
-          parts: [{ text: "[Le patient a terminé de s'exprimer. Valide son émotion chaleureusement en 2-3 phrases (pas plus). Puis annonce doucement l'exercice respiratoire du tracé — ne révèle pas le mot.]" }],
-        }],
+        turns: [{ role: "user", parts: [{ text: signal }] }],
         turnComplete: true,
       },
     }));
@@ -652,7 +656,7 @@ export default function SOSExercise({
         clientContent: {
           turns: [{
             role: "user",
-            parts: [{ text: `[SOS activé pour ${firstName}. Commence l'accueil maintenant en parlant directement, voix douce et lente.]` }],
+            parts: [{ text: `[SOS activé pour ${firstName}. Commence l'accueil maintenant. Voix douce et lente. 2-3 phrases max. Termine par une phrase qui invite le patient à se livrer — pas forcément une question, mais quelque chose qui appelle naturellement à parler, comme "Dis-moi ce qui se passe" ou "Je suis là, tu peux tout me dire".]` }],
           }],
           turnComplete: true,
         },
@@ -701,16 +705,32 @@ export default function SOSExercise({
       const p = phaseRef.current;
 
       if (p === "loading" && !greetingDoneRef.current) {
-        // First AI turn (greeting) done
+        // Premier tour IA (accueil) terminé → intake
         greetingDoneRef.current = true;
         setPhase("intake");
         phaseRef.current = "intake";
-        // Hard fallback: if patient never speaks, advance after 14s
+        // 6s sans réponse → relance douce de Gemini
         silenceTimerRef.current = setTimeout(() => {
-          if (phaseRef.current === "intake") triggerIntakeTransition();
-        }, 14000);
+          if (phaseRef.current === "intake" && !patientHasSpokenRef.current && !repromptSentRef.current) {
+            repromptSentRef.current = true;
+            wsRef.current?.send(JSON.stringify({
+              clientContent: {
+                turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu. Relance-le très doucement en une seule phrase, ton bienveillant et sans pression. Même un souffle ou un mot suffit.]" }] }],
+                turnComplete: true,
+              },
+            }));
+          }
+        }, 6000);
+      } else if (p === "intake" && repromptSentRef.current && !intakeSignalSentRef.current) {
+        // Re-prompt terminé → fenêtre finale 8s avant de passer à l'exercice
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+        if (!patientHasSpokenRef.current) {
+          silenceTimerRef.current = setTimeout(() => {
+            if (phaseRef.current === "intake") triggerIntakeTransition();
+          }, 8000);
+        }
       } else if (p === "intake" && intakeSignalSentRef.current) {
-        // TCC validation done → begin tracing
+        // Validation TCC terminée → tracé
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         beginTracing();
       } else if (p === "transition") {
@@ -985,21 +1005,13 @@ export default function SOSExercise({
           <AiBlob speaking={isAiSpeaking} firstName={firstName} />
 
           <div style={{ textAlign: "center", minHeight: 24 }}>
-            {phase === "loading" && (
+            {phase === "intake" && !isAiSpeaking && (
               <p style={{
-                color: TEXT_MUTED, fontSize: 13, letterSpacing: "0.09em",
-                animation: "sos-pulse 2s ease-in-out infinite",
-              }}>
-                Connexion…
-              </p>
-            )}
-            {phase === "intake" && (
-              <p style={{
-                color: isPatientSpeaking ? "#00e5b4" : TEXT_MUTED,
+                color: "#00e5b4",
                 fontSize: 14, letterSpacing: "0.05em",
-                transition: "color 0.3s",
+                animation: "sos-fade 0.8s ease",
               }}>
-                {isPatientSpeaking ? "Je t'écoute…" : "Lâche tout au micro"}
+                Je t'écoute…
               </p>
             )}
           </div>
