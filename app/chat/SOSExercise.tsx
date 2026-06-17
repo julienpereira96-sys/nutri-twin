@@ -469,13 +469,15 @@ export default function SOSExercise({
   const intakeSignalSentRef = useRef(false);   // TCC validation signal sent
   const patientHasSpokenRef = useRef(false);   // patient said something
   const repromptSentRef     = useRef(false);   // gentle re-prompt sent after first silence
+  const isAiSpeakingRef     = useRef(false);   // mirrors isAiSpeaking for use in callbacks
 
   // Stable message handler ref (avoids stale closure on WS onmessage)
   const handleWSMessageRef  = useRef<((evt: { data: string }) => void) | null>(null);
 
-  // Keep phase ref in sync
+  // Keep refs in sync
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   useEffect(() => { breathPhaseRef.current = breathPhase; }, [breathPhase]);
+  useEffect(() => { isAiSpeakingRef.current = isAiSpeaking; }, [isAiSpeaking]);
 
   // ── Audio queue ─────────────────────────────────────────────────────────────
   const playNextChunk = useCallback(() => {
@@ -705,32 +707,13 @@ export default function SOSExercise({
       const p = phaseRef.current;
 
       if (p === "loading" && !greetingDoneRef.current) {
-        // Premier tour IA (accueil) terminé → intake
+        // Accueil terminé côté WS — les timers de silence démarreront
+        // uniquement quand l'audio aura fini de jouer (useEffect isAiSpeaking)
         greetingDoneRef.current = true;
         setPhase("intake");
         phaseRef.current = "intake";
-        // 6s sans réponse → relance douce de Gemini
-        silenceTimerRef.current = setTimeout(() => {
-          if (phaseRef.current === "intake" && !patientHasSpokenRef.current && !repromptSentRef.current) {
-            repromptSentRef.current = true;
-            wsRef.current?.send(JSON.stringify({
-              clientContent: {
-                turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu. Relance-le très doucement en une seule phrase, ton bienveillant et sans pression. Même un souffle ou un mot suffit.]" }] }],
-                turnComplete: true,
-              },
-            }));
-          }
-        }, 6000);
-      } else if (p === "intake" && repromptSentRef.current && !intakeSignalSentRef.current) {
-        // Re-prompt terminé → fenêtre finale 8s avant de passer à l'exercice
-        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-        if (!patientHasSpokenRef.current) {
-          silenceTimerRef.current = setTimeout(() => {
-            if (phaseRef.current === "intake") triggerIntakeTransition();
-          }, 8000);
-        }
       } else if (p === "intake" && intakeSignalSentRef.current) {
-        // Validation TCC terminée → tracé
+        // Validation TCC terminée → tracé (idem : audio peut encore jouer, beginTracing attend)
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         beginTracing();
       } else if (p === "transition") {
@@ -769,21 +752,57 @@ export default function SOSExercise({
     if (wsRef.current) wsRef.current.onmessage = handleWSMessage;
   }, [handleWSMessage]);
 
-  // ── Silence detection in intake ──────────────────────────────────────────────
+  // ── Silence detection — piloté par isAiSpeaking + isPatientSpeaking ──────────
+  //
+  // Règle fondamentale : on ne démarre JAMAIS un timer de silence pendant que
+  // Gemini parle. turnComplete arrive avant la fin de l'audio → on attend que
+  // la file audio soit vide (isAiSpeaking → false) pour commencer à compter.
+  //
+  // Cas 1 — AI vient de finir de parler en intake
+  //   → Si patient n'a pas encore parlé : 6s → relance douce
+  //   → Si patient a parlé puis s'est tu (et AI aussi) : 5s → transition TCC
+  // Cas 2 — Patient parle → annuler les timers, noter qu'il a parlé
+  //   (guard : ne compter que si AI ne parle pas — évite le feedback micro/haut-parleur)
   useEffect(() => {
     if (phase !== "intake") return;
-    if (isPatientSpeaking) {
+
+    // Patient speaking — ne compter que si l'IA ne parle pas (feedback micro)
+    if (isPatientSpeaking && !isAiSpeakingRef.current) {
       patientHasSpokenRef.current = true;
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-    } else if (patientHasSpokenRef.current) {
-      // Patient was speaking and stopped → 5s silence → trigger TCC transition
+      return;
+    }
+
+    // AI vient de finir de parler (isAiSpeaking passe de true à false)
+    if (!isAiSpeaking) {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = setTimeout(() => {
-        if (phaseRef.current === "intake") triggerIntakeTransition();
-      }, 5000);
+
+      if (patientHasSpokenRef.current) {
+        // Patient a parlé + silence → 5s → transition TCC
+        silenceTimerRef.current = setTimeout(() => {
+          if (phaseRef.current === "intake") triggerIntakeTransition();
+        }, 5000);
+      } else if (!repromptSentRef.current && !intakeSignalSentRef.current) {
+        // Patient n'a pas encore parlé → 6s → relance douce
+        silenceTimerRef.current = setTimeout(() => {
+          if (phaseRef.current !== "intake" || patientHasSpokenRef.current || repromptSentRef.current) return;
+          repromptSentRef.current = true;
+          wsRef.current?.send(JSON.stringify({
+            clientContent: {
+              turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu. Relance-le très doucement en une seule phrase, ton bienveillant et sans pression. Même un souffle ou un mot suffit.]" }] }],
+              turnComplete: true,
+            },
+          }));
+        }, 6000);
+      } else if (repromptSentRef.current && !patientHasSpokenRef.current && !intakeSignalSentRef.current) {
+        // Re-prompt terminé, toujours pas de réponse → 8s → exercice
+        silenceTimerRef.current = setTimeout(() => {
+          if (phaseRef.current === "intake") triggerIntakeTransition();
+        }, 8000);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPatientSpeaking, phase]);
+  }, [isAiSpeaking, isPatientSpeaking, phase]);
 
   // Transition phase: set it 16s after reveal starts (Gemini has time to speak)
   useEffect(() => {
