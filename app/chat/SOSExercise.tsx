@@ -848,9 +848,11 @@ export default function SOSExercise({
           model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
-            outputAudioTranscription: {},
-            inputAudioTranscription:  {},
           },
+          // Transcription fields at setup level (not inside generationConfig)
+          // Vertex AI BidiGenerateContent spec — may be silently ignored if unsupported
+          outputAudioTranscription: {},
+          inputAudioTranscription:  {},
           systemInstruction: {
             parts: [{ text: systemPrompt }],
           },
