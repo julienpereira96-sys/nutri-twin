@@ -643,8 +643,8 @@ export default function SOSExercise({
     const signal = patientHasSpokenRef.current
       // Patient a parlé → valide + explique l'exercice
       ? "[Le patient a terminé de s'exprimer. Valide son émotion chaleureusement en 1-2 phrases. Puis guide-le vers l'exercice : il va suivre un point lumineux avec sa respiration — inspirer quand il monte, expirer quand il descend. Dis-lui de toucher l'écran quand il est prêt. Voix douce, 3-4 phrases max. Ne révèle pas le mot.]"
-      // Patient n'a pas répondu → accueille le silence, explique l'exercice
-      : "[Le patient n'a pas répondu. C'est normal. Dis-lui doucement que ce n'est pas grave, qu'il n'a pas besoin de parler. Puis guide-le vers l'exercice : il va suivre un point lumineux avec sa respiration — inspirer quand il monte, expirer quand il descend. Dis-lui de toucher l'écran quand il est prêt. 2-3 phrases apaisantes, pas de question.]";
+      // Patient n'a pas répondu → guide directement, SANS valider une émotion inexistante
+      : "[IMPORTANT: Le patient n'a dit aucun mot — zéro. N'accueille AUCUNE émotion, n'utilise pas 'c'est normal de te sentir comme ça' ni aucune formule qui suppose qu'il a exprimé quelque chose. Dis uniquement qu'il n'a pas besoin de parler pour faire l'exercice. Puis guide-le : il va suivre un point lumineux avec sa respiration — inspirer quand il monte, expirer quand il descend. Dis-lui de toucher l'écran quand il est prêt. 2 phrases max, ton doux, pas de question.]";
 
     wsRef.current?.send(JSON.stringify({
       clientContent: {
