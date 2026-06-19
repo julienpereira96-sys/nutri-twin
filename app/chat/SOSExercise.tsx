@@ -12,7 +12,7 @@
  * Phase transition: outputAudioTranscription accumulé → un seul write Supabase sur close WS
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
 import ParticleCanvas from "./ParticleCanvas";
@@ -258,6 +258,7 @@ export default function SOSExercise({
   // Audio queue
   const audioQueueRef       = useRef<{ data: Float32Array; rate: number }[]>([]);
   const isPlayingRef        = useRef(false);
+  const currentSourceRef    = useRef<AudioBufferSourceNode | null>(null);
   const onQueueEmptyRef     = useRef<(() => void) | null>(null);
 
   // Transcription
@@ -305,6 +306,7 @@ export default function SOSExercise({
     src.buffer = buf;
     src.connect(ctx.destination);
     src.onended = playNextChunk;
+    currentSourceRef.current = src;
     src.start(0);
   }, []);
 
@@ -314,6 +316,11 @@ export default function SOSExercise({
   }, [playNextChunk]);
 
   const flushAudio = useCallback(() => {
+    // Stop immédiat du chunk en cours — évite le "son fantôme" après interruption
+    if (currentSourceRef.current) {
+      try { currentSourceRef.current.stop(); } catch { /* déjà terminé */ }
+      currentSourceRef.current = null;
+    }
     audioQueueRef.current = [];
     isPlayingRef.current  = false;
     setIsAiSpeaking(false);
@@ -664,7 +671,8 @@ export default function SOSExercise({
     micSrc.connect(analyser);
 
     // eslint-disable-next-line @typescript-eslint/no-deprecated
-    const proc = audioCtx.createScriptProcessor(4096, 1, 1);
+    // Buffer 1024 @ 16kHz = 64ms par callback (vs 256ms à 4096) — latence réduite 4×
+    const proc = audioCtx.createScriptProcessor(1024, 1, 1);
     processorRef.current = proc;
     micSrc.connect(proc);
     // NE PAS connecter proc à destination : évite l'écho micro → hauts-parleurs
@@ -734,10 +742,12 @@ export default function SOSExercise({
   }, []);
 
   // ── Animation loop — analyser polling uniquement ──────────────────────────────
+  // Guard : on ne met à jour isPatientSpeaking que pendant la phase intake.
+  // Pendant le tracé, les re-renders 60fps détruisent l'animation des particules.
   useEffect(() => {
     const loop = () => {
       animFrameRef.current = requestAnimationFrame(loop);
-      if (analyserRef.current) {
+      if (analyserRef.current && phaseRef.current === "intake") {
         const buf = new Uint8Array(analyserRef.current.frequencyBinCount);
         analyserRef.current.getByteFrequencyData(buf);
         const avg = buf.reduce((s, v) => s + v, 0) / buf.length;
@@ -755,6 +765,13 @@ export default function SOSExercise({
   const showReveal = phase === "reveal";
   const showTrans  = phase === "transition";
 
+  // Référence stable — évite de recréer le tableau à chaque render ce qui
+  // réinitialiserait les 300 particules (dépendance [word, letterColors] dans ParticleCanvas)
+  const letterColors = useMemo(
+    () => LETTER_COLORS.slice(0, chosenWord.length),
+    [chosenWord],
+  );
+
   return (
     <div
       style={{
@@ -770,7 +787,7 @@ export default function SOSExercise({
       {/* ── ParticleCanvas — toujours monté pendant l'exercice ─────────────────── */}
       <ParticleCanvas
         word={showTrace || showReveal ? chosenWord : null}
-        letterColors={LETTER_COLORS.slice(0, chosenWord.length)}
+        letterColors={letterColors}
         letterIdx={currentLetterIdx}
         breathPhase={breathPhase}
         expireStart={expireStart}

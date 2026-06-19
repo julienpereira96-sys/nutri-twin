@@ -18,6 +18,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
           position: "fixed", inset: 0, zIndex: 400,
           background: "#0b0f0d",
           display: "flex", alignItems: "center", justifyContent: "center",
+          // La transition est utilisée par page.tsx pour faire disparaître
+          // le splash via JS (opacity → 0) sans jamais monter un doublon React
+          transition: "opacity 0.45s ease",
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 28, transform: "translateY(-24px)" }}>

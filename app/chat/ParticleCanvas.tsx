@@ -1,14 +1,10 @@
 "use client";
 
 /**
- * ParticleCanvas.tsx — v2
+ * ParticleCanvas.tsx
  *
- * Moteur de particules revu pour un effet visible sur mobile :
- *  - N_PARTICLES = 700 (vs 300 avant) → ~116 par lettre pour un mot de 6 lettres
- *  - Tailles 1.5–4px (vs 0.6–1.7px avant)
- *  - Attraction inspire : G=250, cap 5.5 px/frame → rush visible vers le centre
- *  - Formation expire  : SPRING_K=0.025, stagger max 25% de EXPIRE_MS → lettres nettes en <2s
- *  - Fond initialisé en noir avant le premier RAF → plus de flash blanc
+ * Composant canvas particules contrôlé par props.
+ * Contient aussi le SVG du mot (invisible pendant l'exercice, illuminé à la révélation).
  *
  * Fonctionnement :
  *  • word = null    → particules libres (fond ambiant)
@@ -22,14 +18,12 @@ import { useEffect, useRef, useCallback } from "react";
 import { buildWordSVG } from "./letterPaths";
 
 // ─── Constantes physique ──────────────────────────────────────────────────────
-const N_PARTICLES  = 700;
-const N_PTS        = 120;    // points de chemin par lettre (plus dense = meilleur rendu)
-const G            = 250;    // gravité d'attraction inspire (était 90)
-const G_CAP        = 5.5;    // vitesse max par frame inspire (était 2.6)
-const INSPIRE_FRIC = 0.87;   // friction inspire (était 0.91 → trop fort)
-const SPRING_K     = 0.025;  // ressort expire (était 0.006 → trop faible)
-const SPRING_FRIC  = 0.85;   // friction expire (était 0.92)
-const STAGGER_MAX  = 0.25;   // stagger max = 25% de EXPIRE_MS (était 62%)
+const N_PARTICLES  = 300;
+const N_PTS        = 100;   // points de chemin par lettre
+const G            = 90;    // gravité d'attraction inspire
+const INSPIRE_FRIC = 0.91;
+const SPRING_K     = 0.006;
+const SPRING_FRIC  = 0.92;
 
 type PState = "free" | "attracting" | "settling" | "fading";
 
@@ -54,15 +48,13 @@ class Particle {
     const nPer = Math.max(1, Math.floor(N_PARTICLES / nLet));
     this.x          = Math.random() * W;
     this.y          = Math.random() * H;
-    this.vx         = (Math.random() - 0.5) * 0.8;
-    this.vy         = (Math.random() - 0.5) * 0.8;
-    // Alpha de base plus élevé pour des particules plus visibles
-    this.baseAlpha  = 0.18 + Math.random() * 0.28;
+    this.vx         = (Math.random() - 0.5) * 0.6;
+    this.vy         = (Math.random() - 0.5) * 0.6;
+    this.baseAlpha  = 0.12 + Math.random() * 0.22;
     this.alpha      = this.baseAlpha;
     this.letterIdx  = Math.min(Math.floor(idx / nPer), nLet - 1);
     this.color      = colors[this.letterIdx % colors.length];
-    // Tailles plus grandes : 1.5 à 4px (était 0.6–1.7px)
-    this.size       = 1.5 + Math.random() * 2.5;
+    this.size       = 0.6 + Math.random() * 1.1;
     this.targetX    = 0;
     this.targetY    = 0;
     this.revealTime = 0;
@@ -106,7 +98,7 @@ export default function ParticleCanvas({
   const svgRef         = useRef<SVGSVGElement>(null);
   const pathRefs       = useRef<(SVGPathElement | null)[]>([]);
 
-  // Références mutables pour la boucle RAF (évite les stale closures)
+  // Références mutable pour la boucle RAF (évite les stale closures)
   const particlesRef    = useRef<Particle[]>([]);
   const letPtsRef       = useRef<[number, number][]>([]);
   const revealFadeRef   = useRef(1.0);
@@ -134,7 +126,6 @@ export default function ParticleCanvas({
     const ctm = pathEl.getScreenCTM();
     if (!ctm) return;
     const len = pathEl.getTotalLength();
-    if (len === 0) return;
     letPtsRef.current = Array.from({ length: N_PTS }, (_, i) => {
       const local  = pathEl.getPointAtLength((i / (N_PTS - 1)) * len);
       const screen = local.matrixTransform(ctm);
@@ -151,10 +142,9 @@ export default function ParticleCanvas({
     const n     = group.length;
     group.forEach((p, i) => {
       const ptIdx    = Math.min(Math.round((i / Math.max(1, n - 1)) * (N_PTS - 1)), N_PTS - 1);
-      p.targetX      = pts[ptIdx][0] + (Math.random() - 0.5) * 2;
-      p.targetY      = pts[ptIdx][1] + (Math.random() - 0.5) * 2;
-      // Stagger MAX = 25% de EXPIRE_MS (était 62%) → tous les points se forment en <1.4s
-      p.revealTime   = (i / Math.max(1, n)) * expMs * STAGGER_MAX;
+      p.targetX      = pts[ptIdx][0] + (Math.random() - 0.5) * 3;
+      p.targetY      = pts[ptIdx][1] + (Math.random() - 0.5) * 3;
+      p.revealTime   = (i / Math.max(1, n)) * expMs * 0.62;
       p.state        = "settling";
     });
   }, []);
@@ -183,7 +173,8 @@ export default function ParticleCanvas({
   useEffect(() => {
     if (!word || breathPhase !== "expire") return;
     const li = letterIdx;
-    // Double RAF pour être sûr que le SVG est bien rendu dans le DOM
+    // Double RAF : le SVG vient d'apparaître dans le DOM quand word passe null→mot.
+    // Un seul RAF ne suffit pas pour que le navigateur calcule getScreenCTM().
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         computeLetterPts(li);
@@ -213,9 +204,6 @@ export default function ParticleCanvas({
       W = window.innerWidth; H = window.innerHeight;
       canvas.width  = W * dpr; canvas.height = H * dpr;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      // Fond immédiatement noir pour éviter le flash blanc initial
-      ctx.fillStyle = "rgb(6,8,16)";
-      ctx.fillRect(0, 0, W, H);
     };
     resize();
     window.addEventListener("resize", resize);
@@ -236,60 +224,55 @@ export default function ParticleCanvas({
 
       // Fade global au reveal
       if (rev) {
-        revealFadeRef.current = Math.max(0, revealFadeRef.current - 0.005);
+        revealFadeRef.current = Math.max(0, revealFadeRef.current - 0.004);
       }
 
       // ── Physique ─────────────────────────────────────────────────────────
-      const cx = W / 2, cy = H / 2;
-
       for (const p of parts) {
         switch (p.state) {
 
           case "fading": {
-            p.alpha = Math.max(0, p.alpha - 0.008);
+            p.alpha = Math.max(0, p.alpha - 0.006);
             p.vx   *= 0.98; p.vy *= 0.98;
             break;
           }
 
           case "attracting": {
-            const dx   = cx - p.x;
-            const dy   = cy - p.y;
+            const dx   = W / 2 - p.x;
+            const dy   = H / 2 - p.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < 8) {
-              p.vx *= 0.55; p.vy *= 0.55;
+            if (dist < 6) {
+              p.vx *= 0.60; p.vy *= 0.60;
             } else {
-              // Force plus forte et cap relevé pour un rush visible
-              const f    = Math.min(G / dist, G_CAP);
-              const fric = dist < 60 ? 0.72 : INSPIRE_FRIC;
+              const f    = Math.min(G / dist, 2.6);
+              const fric = dist < 40 ? 0.76 : INSPIRE_FRIC;
               p.vx += (dx / dist) * f;
               p.vy += (dy / dist) * f;
               p.vx *= fric; p.vy *= fric;
             }
-            p.alpha = Math.min(0.88, p.alpha + 0.012);
+            p.alpha = Math.min(0.72, p.alpha + 0.008);
             break;
           }
 
           case "settling": {
             const elapsed = Date.now() - expireStartRef.current;
             if (elapsed >= p.revealTime) {
-              // Spring fort vers la cible
               p.vx  += (p.targetX - p.x) * SPRING_K;
               p.vy  += (p.targetY - p.y) * SPRING_K;
               p.vx  *= SPRING_FRIC; p.vy *= SPRING_FRIC;
-              p.alpha = Math.min(1.0, p.alpha + 0.025);
+              p.alpha = Math.min(0.95, p.alpha + 0.016);
             } else {
-              // Légère dérive avant d'être capturé
-              p.vx *= 0.96; p.vy *= 0.96;
-              p.alpha = Math.min(0.55, p.alpha + 0.008);
+              p.vx *= 0.97; p.vy *= 0.97;
+              p.alpha = Math.min(0.50, p.alpha + 0.005);
             }
             break;
           }
 
           default: {
-            // free — dérive légère
-            p.vx += (Math.random() - 0.5) * 0.025;
-            p.vy += (Math.random() - 0.5) * 0.025;
-            p.vx *= 0.97; p.vy *= 0.97;
+            // free – dérive légère
+            p.vx += (Math.random() - 0.5) * 0.02;
+            p.vy += (Math.random() - 0.5) * 0.02;
+            p.vx *= 0.98; p.vy *= 0.98;
             p.alpha = p.baseAlpha;
           }
         }
@@ -307,15 +290,15 @@ export default function ParticleCanvas({
         // Opacité globale du groupe selon contexte
         let batchAlpha: number;
         if (rev) {
-          batchAlpha = revealFadeRef.current * 0.95;
+          batchAlpha = revealFadeRef.current * 0.9;
         } else if (!w) {
-          batchAlpha = 0.30; // ambiant — un peu plus visible qu'avant (0.22)
+          batchAlpha = 0.22; // ambiant
         } else if (col < li) {
-          batchAlpha = 0.85; // lettre déjà formée
+          batchAlpha = 0.80; // lettre déjà formée
         } else if (col === li) {
-          batchAlpha = bp === "inspire" ? 0.65 : 0.95;
+          batchAlpha = bp === "inspire" ? 0.55 : 0.90;
         } else {
-          batchAlpha = 0.22; // lettre future (fond)
+          batchAlpha = 0.18; // lettre future (fond)
         }
 
         if (batchAlpha < 0.01) continue;
@@ -334,28 +317,24 @@ export default function ParticleCanvas({
       }
       ctx.globalAlpha = 1;
 
-      // ── Point focal au centre pendant inspire ─────────────────────────────
+      // ── Point focal au centre (inspire) ──────────────────────────────────
       if (w && bp === "inspire" && !rev) {
         const col = cols[li % cols.length];
-
-        // Halo large et doux
-        ctx.globalAlpha = 0.08;
-        ctx.beginPath(); ctx.arc(cx, cy, 44, 0, Math.PI * 2);
+        const cx  = W / 2, cy = H / 2;
+        ctx.globalAlpha = 0.06;
+        ctx.beginPath(); ctx.arc(cx, cy, 32, 0, Math.PI * 2);
         ctx.fillStyle = col; ctx.fill();
 
-        // Halo intermédiaire
-        ctx.globalAlpha = 0.28;
-        ctx.beginPath(); ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+        ctx.globalAlpha = 0.22;
+        ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2);
         ctx.fillStyle = col; ctx.fill();
 
-        // Point central lumineux
-        ctx.globalAlpha = 0.80;
-        ctx.beginPath(); ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+        ctx.globalAlpha = 0.70;
+        ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2);
         ctx.fillStyle = "#e0f2fe"; ctx.fill();
 
-        // Noyau blanc pur
         ctx.globalAlpha = 1;
-        ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(cx, cy, 2.4, 0, Math.PI * 2);
         ctx.fillStyle = "#ffffff"; ctx.fill();
 
         ctx.globalAlpha = 1;
@@ -390,7 +369,6 @@ export default function ParticleCanvas({
           height:        "100%",
           pointerEvents: "none",
           zIndex:        2,
-          background:    "rgb(6,8,16)", // fond immédiat avant le premier RAF
         }}
       />
 
