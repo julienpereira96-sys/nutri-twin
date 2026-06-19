@@ -18,12 +18,15 @@ import { useEffect, useRef, useCallback } from "react";
 import { buildWordSVG } from "./letterPaths";
 
 // ─── Constantes physique ──────────────────────────────────────────────────────
-const N_PARTICLES  = 300;
-const N_PTS        = 100;   // points de chemin par lettre
-const G            = 90;    // gravité d'attraction inspire
-const INSPIRE_FRIC = 0.91;
-const SPRING_K     = 0.006;
-const SPRING_FRIC  = 0.92;
+const N_PARTICLES     = 300;
+const N_PTS           = 100;   // points de chemin par lettre
+const G               = 90;    // gravité d'attraction inspire
+const INSPIRE_FRIC    = 0.91;
+const SPRING_K        = 0.006;
+const SPRING_FRIC     = 0.92;
+// Point focal inspire : centré horizontalement, juste au-dessus du label Inspire/Expire
+// Le label est à bottom:56 + hauteur ~20px → on met le point à ~120px du bas
+const FOCAL_BOTTOM_PX = 120;
 
 type PState = "free" | "attracting" | "settling" | "fading";
 
@@ -238,8 +241,9 @@ export default function ParticleCanvas({
           }
 
           case "attracting": {
+            const focalY = H - FOCAL_BOTTOM_PX;
             const dx   = W / 2 - p.x;
-            const dy   = H / 2 - p.y;
+            const dy   = focalY - p.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < 6) {
               p.vx *= 0.60; p.vy *= 0.60;
@@ -317,10 +321,11 @@ export default function ParticleCanvas({
       }
       ctx.globalAlpha = 1;
 
-      // ── Point focal au centre (inspire) ──────────────────────────────────
+      // ── Point focal (inspire) — juste au-dessus du label Inspire/Expire ─────
       if (w && bp === "inspire" && !rev) {
-        const col = cols[li % cols.length];
-        const cx  = W / 2, cy = H / 2;
+        const col    = cols[li % cols.length];
+        const cx     = W / 2;
+        const cy     = H - FOCAL_BOTTOM_PX;
         ctx.globalAlpha = 0.06;
         ctx.beginPath(); ctx.arc(cx, cy, 32, 0, Math.PI * 2);
         ctx.fillStyle = col; ctx.fill();

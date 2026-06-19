@@ -722,10 +722,12 @@ export default function SOSExercise({
     };
 
     ws.onclose = (evt) => {
-      if (phaseRef.current === "loading") {
+      const p = phaseRef.current;
+      if (p === "loading") {
         setLoadError(`Connexion fermée (${evt.code}). Vérifie ta connexion.`);
-      } else if (phaseRef.current !== "transition") {
-        // Déconnexion silencieuse en cours d'exercice
+      } else if (p !== "transition" && p !== "reveal") {
+        // Pas d'erreur pendant reveal : l'exercice est visuellement terminé,
+        // le mot est affiché — afficher une bannière gâcherait le moment.
         setWsError(`Connexion interrompue (${evt.code}). Tu peux continuer sans la voix.`);
       }
     };
