@@ -763,7 +763,8 @@ export default function SOSExercise({
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
         overflow: "hidden",
-        animation: "sos-fade 0.55s ease",
+        // Pas d'animation opacity ici — le fond doit couvrir instantanément le chat
+        // L'animation est sur le contenu interne uniquement
       }}
     >
       {/* ── ParticleCanvas — toujours monté pendant l'exercice ─────────────────── */}
@@ -919,26 +920,29 @@ export default function SOSExercise({
             </p>
           </div>
 
-          {/* Barre de progression lettre en cours */}
+          {/* Barre de progression — keyframe avec key unique pour reset garanti */}
           <div style={{
             position: "absolute", bottom: 32, left: "50%",
             transform: "translateX(-50%)",
             width: 180, height: 2,
             background: "rgba(255,255,255,0.06)",
             borderRadius: 2,
+            overflow: "hidden",
           }}>
-            <div style={{
-              height: "100%",
-              background: breathPhase === "inspire"
-                ? "rgba(6,182,212,0.70)"
-                : "rgba(0,229,180,0.55)",
-              borderRadius: 2,
-              // La largeur est animée par CSS : expire remplit, inspire se vide
-              width: breathPhase === "expire" ? "100%" : "0%",
-              transition: breathPhase === "expire"
-                ? `width ${EXPIRE_MS}ms linear`
-                : `width ${INSPIRE_MS}ms linear`,
-            }} />
+            <div
+              key={`bar-${currentLetterIdx}-${breathPhase}`}
+              style={{
+                height: "100%",
+                background: breathPhase === "expire"
+                  ? "rgba(0,229,180,0.65)"
+                  : "rgba(6,182,212,0.55)",
+                borderRadius: 2,
+                // Animation par keyframes → toujours relancée proprement via `key`
+                animation: breathPhase === "expire"
+                  ? `bar-fill-fwd ${EXPIRE_MS}ms linear forwards`
+                  : `bar-fill-bwd ${INSPIRE_MS}ms linear forwards`,
+              }}
+            />
           </div>
 
           {/* Letter counter */}
@@ -1012,6 +1016,15 @@ export default function SOSExercise({
           0%   { box-shadow: 0 0 0 0 rgba(0,229,180,0.55); }
           70%  { box-shadow: 0 0 0 14px rgba(0,229,180,0); }
           100% { box-shadow: 0 0 0 0 rgba(0,229,180,0); }
+        }
+        /* Barre de progression lettre — forward (expire) et backward (inspire) */
+        @keyframes bar-fill-fwd {
+          from { width: 0%; }
+          to   { width: 100%; }
+        }
+        @keyframes bar-fill-bwd {
+          from { width: 100%; }
+          to   { width: 0%; }
         }
       `}</style>
     </div>
