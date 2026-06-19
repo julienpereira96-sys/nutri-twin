@@ -1,24 +1,37 @@
 "use client";
 
 /**
- * useMicPermission — Lit l'état courant de la permission microphone.
+ * useMicPermission — Gestion du consentement microphone.
  *
- * NE déclenche JAMAIS de dialog native.
- * Retourne :
- *   "unknown"  → vérification en cours (bref flash initial)
- *   "granted"  → permission déjà accordée → on peut appeler getUserMedia sans dialog
- *   "prompt"   → permission pas encore demandée → un dialog apparaîtra
- *   "denied"   → permission refusée → getUserMedia échouera
- *
- * `statusRef` est utilisable dans les closures / useCallback sans dépendance réactive.
+ * Stratégie localStorage (sans race condition) :
+ *   - La première fois qu'un exercice vocal est lancé, on montre notre overlay
+ *     d'explication AVANT le dialog natif du navigateur.
+ *   - Dès que l'utilisateur clique "Commencer", on marque le consentement dans
+ *     localStorage → l'overlay ne réapparaît plus jamais.
+ *   - On lit aussi l'état réel via navigator.permissions pour détecter "denied"
+ *     (et afficher les instructions pour réactiver dans les réglages).
  */
 
 import { useEffect, useRef, useState } from "react";
 
 export type MicStatus = "unknown" | "granted" | "prompt" | "denied";
 
+const MIC_CONSENT_KEY = "nutritwin_mic_consent_v1";
+
+/** L'utilisateur a-t-il déjà vu et validé l'écran d'explication ? */
+export function hasMicConsent(): boolean {
+  try { return !!localStorage.getItem(MIC_CONSENT_KEY); } catch { return false; }
+}
+
+/** Marquer l'écran d'explication comme vu (appelé au clic "Commencer"). */
+export function markMicConsent(): void {
+  try { localStorage.setItem(MIC_CONSENT_KEY, "1"); } catch {}
+}
+
 export interface MicPermissionResult {
+  /** État lu via navigator.permissions (peut être "unknown" brièvement). */
   status: MicStatus;
+  /** Ref lisible dans les closures sans dépendance réactive. */
   statusRef: React.RefObject<MicStatus>;
 }
 
@@ -33,13 +46,10 @@ export function useMicPermission(): MicPermissionResult {
 
   useEffect(() => {
     if (typeof navigator === "undefined") return;
-
-    // navigator.permissions n'est pas dispo sur tous les browsers (Firefox Android partiel)
     if (typeof navigator.permissions?.query !== "function") {
-      update("prompt"); // fallback prudent : on supposera qu'il faut demander
+      update("prompt");
       return;
     }
-
     let perm: PermissionStatus | null = null;
     navigator.permissions
       .query({ name: "microphone" as PermissionName })
@@ -49,7 +59,6 @@ export function useMicPermission(): MicPermissionResult {
         r.onchange = () => update(r.state as MicStatus);
       })
       .catch(() => update("prompt"));
-
     return () => { if (perm) perm.onchange = null; };
   }, []);
 

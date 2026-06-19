@@ -15,7 +15,7 @@ import SOSExercise from "./SOSExercise";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import MicConsentOverlay from "./MicConsentOverlay";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
-import { useMicPermission } from "@/hooks/useMicPermission";
+import { useMicPermission, hasMicConsent, markMicConsent } from "@/hooks/useMicPermission";
 import {
   IconCheckRing,
   IconWave,
@@ -1348,11 +1348,12 @@ export default function ChatPage() {
     // MicConsentOverlay pour contextualiser la demande native du navigateur.
     // Les exercices sans micro (journal, marche, adaptive) passent directement.
     const needsMic = ["breathing", "ancrage", "manger", "ecriture", "defusion", "sos"].includes(toolId);
-    // "prompt"  → première fois : on explique avant le dialog natif
-    // "denied"  → refus précédent : on ré-affiche l'overlay avec instructions réglages
-    // "unknown" → pas encore lu (rare) : on laisse passer, l'exercice gère l'erreur
-    // "granted" → déjà accordé : on passe directement
-    if (needsMic && (micStatusRef.current === "prompt" || micStatusRef.current === "denied")) {
+    // Stratégie localStorage — sans race condition avec navigator.permissions :
+    //   • !hasMicConsent()            → l'utilisateur n'a jamais vu l'explication → overlay
+    //   • micStatusRef === "denied"   → a refusé le dialog natif → overlay instructions réglages
+    //   • sinon                       → permission déjà accordée → exercice direct
+    const isDenied = micStatusRef.current === "denied";
+    if (needsMic && (!hasMicConsent() || isDenied)) {
       setPendingTool({ toolId, sosContext, forcedOrigin });
       setShowMicConsent(true);
       return;
@@ -1846,6 +1847,7 @@ export default function ChatPage() {
           }
           denied={micStatusRef.current === "denied"}
           onStart={() => {
+            markMicConsent(); // marquer "a vu l'explication" → plus jamais d'overlay
             setShowMicConsent(false);
             const p = pendingTool;
             setPendingTool(null);

@@ -108,7 +108,7 @@ function getRMS(data: Float32Array): number {
 }
 
 // ─── Wave Orb (remplace AiBlob) ──────────────────────────────────────────────
-function WaveOrb({ speaking, firstName }: { speaking: boolean; firstName: string }) {
+function WaveOrb({ speaking, firstName }: { speaking: boolean; firstName?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const speakRef  = useRef(speaking);
   speakRef.current = speaking;
@@ -130,11 +130,13 @@ function WaveOrb({ speaking, firstName }: { speaking: boolean; firstName: string
       ctx.arc(S, S, S - 1, 0, Math.PI * 2);
       ctx.clip();
 
-      // Fond radial
-      const bg = ctx.createRadialGradient(S * 0.85, S * 0.7, 0, S, S, S);
-      bg.addColorStop(0,   "rgba(14,165,233,0.18)");
-      bg.addColorStop(0.4, "rgba(6,182,212,0.08)");
-      bg.addColorStop(1,   "rgba(8,14,40,0.98)");
+      // Fond uniforme sombre — pas de dégradé décentré qui crée un "cercle intérieur"
+      ctx.fillStyle = "rgb(8,14,40)";
+      ctx.fillRect(0, 0, S * 2, S * 2);
+      // Lueur centrale subtile et CENTRÉE
+      const bg = ctx.createRadialGradient(S, S, 0, S, S, S * 0.8);
+      bg.addColorStop(0,   "rgba(6,182,212,0.07)");
+      bg.addColorStop(1,   "rgba(6,182,212,0)");
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, S * 2, S * 2);
 
@@ -230,6 +232,7 @@ export default function SOSExercise({
   // ── UI state ────────────────────────────────────────────────────────────────
   const [phase,           setPhase]           = useState<SOSPhase>("loading");
   const [loadError,       setLoadError]       = useState<string | null>(null);
+  const [wsError,         setWsError]         = useState<string | null>(null);
   const [isAiSpeaking,    setIsAiSpeaking]    = useState(false);
   const [isPatientSpeaking, setIsPatientSpeaking] = useState(false);
   const [breathPhase,      setBreathPhase]      = useState<BreathPhase>("inspire");
@@ -266,7 +269,7 @@ export default function SOSExercise({
   const currentLetterIdxRef = useRef(0);
   const letterStartTimeRef  = useRef(0);
   const breathPhaseRef      = useRef<BreathPhase>("inspire");
-  const isTracingMutedRef   = useRef(false);
+  // isTracingMutedRef supprimé — Gemini peut parler pendant le tracé
 
   // Flow control
   const greetingDoneRef     = useRef(false);   // first AI turn complete
@@ -345,16 +348,16 @@ export default function SOSExercise({
     setCurrentLetterIdx(idx);
     letterStartTimeRef.current = Date.now();
 
-    // Breathing cues via TTS (no Gemini cost, pure local)
+    // Breathing cues via TTS — avec comptage pour occuper toute la durée
     setBreathPhase("inspire");
     breathPhaseRef.current = "inspire";
-    speakTherapeutic("Inspire...", { skipPrep: true, rate: 0.70, volume: 0.60 });
+    speakTherapeutic("Inspire... deux... trois... quatre...", { skipPrep: true, rate: 0.62, volume: 0.55 });
 
     const t1 = setTimeout(() => {
       setBreathPhase("expire");
       breathPhaseRef.current = "expire";
       setExpireStart(Date.now());
-      speakTherapeutic("Expire, relâche...", { skipPrep: true, rate: 0.68, volume: 0.60 });
+      speakTherapeutic("Expire... deux... trois... quatre... cinq...", { skipPrep: true, rate: 0.60, volume: 0.55 });
     }, INSPIRE_MS);
     breathTimerRef.current.push(t1);
 
@@ -368,7 +371,6 @@ export default function SOSExercise({
         breathTimerRef.current.forEach(clearTimeout);
         breathTimerRef.current = [];
         cancelSpeech();
-        isTracingMutedRef.current = false;
         setPhase("reveal");
         phaseRef.current = "reveal";
         // Illuminate SVG letters after 600ms
@@ -411,13 +413,13 @@ export default function SOSExercise({
     setPhase("tracing");
     phaseRef.current = "tracing";
 
-    // Mute Gemini
-    isTracingMutedRef.current = true;
+    // Gemini reste actif pour donner des encouragements discrets entre les cycles
+    // On lui demande de rester très bref pour ne pas couvrir les cues TTS
     wsRef.current?.send(JSON.stringify({
       clientContent: {
         turns: [{
           role: "user",
-          parts: [{ text: "[Phase respiration et tracé en cours. Reste silencieux jusqu'à nouvel ordre.]" }],
+          parts: [{ text: `[Le tracé respiratoire commence maintenant. Donne de très brefs encouragements entre les souffles — une phrase douce toutes les 2 lettres environ. Les instructions de respiration sont données localement (Inspire/Expire), donc ne les répète pas.]` }],
         }],
         turnComplete: true,
       },
@@ -476,10 +478,8 @@ export default function SOSExercise({
       for (const part of parts) {
         const id = part.inlineData as Record<string, unknown> | undefined;
         if (id?.mimeType && typeof id.mimeType === "string" && id.mimeType.startsWith("audio/pcm")) {
-          if (!isTracingMutedRef.current) {
-            const sr = parseInt((id.mimeType.match(/rate=(\d+)/)?.[1]) ?? "24000", 10);
-            enqueueAudio(id.data as string, sr);
-          }
+          const sr = parseInt((id.mimeType.match(/rate=(\d+)/)?.[1]) ?? "24000", 10);
+          enqueueAudio(id.data as string, sr);
         }
       }
     }
@@ -667,7 +667,7 @@ export default function SOSExercise({
     const proc = audioCtx.createScriptProcessor(4096, 1, 1);
     processorRef.current = proc;
     micSrc.connect(proc);
-    proc.connect(audioCtx.destination);
+    // NE PAS connecter proc à destination : évite l'écho micro → hauts-parleurs
 
     proc.onaudioprocess = (e: AudioProcessingEvent) => {
       const p = phaseRef.current;
@@ -705,11 +705,20 @@ export default function SOSExercise({
 
     ws.onmessage = (evt) => handleWSMessageRef.current?.(evt);
 
-    ws.onerror = () => setLoadError("Connexion Gemini Live échouée.");
+    ws.onerror = () => {
+      if (phaseRef.current === "loading") {
+        setLoadError("Connexion Gemini Live échouée.");
+      } else {
+        setWsError("Connexion interrompue.");
+      }
+    };
 
     ws.onclose = (evt) => {
       if (phaseRef.current === "loading") {
         setLoadError(`Connexion fermée (${evt.code}). Vérifie ta connexion.`);
+      } else if (phaseRef.current !== "transition") {
+        // Déconnexion silencieuse en cours d'exercice
+        setWsError(`Connexion interrompue (${evt.code}). Tu peux continuer sans la voix.`);
       }
     };
 
@@ -769,20 +778,43 @@ export default function SOSExercise({
         EXPIRE_MS={EXPIRE_MS}
       />
 
-      {/* Close button (only during loading/intake) */}
-      {showOrb && (
-        <button
-          onClick={() => { cleanup(); onClose(); }}
-          aria-label="Fermer"
-          style={{
-            position: "absolute", top: 18, right: 18, zIndex: 10,
-            width: 36, height: 36, borderRadius: "50%",
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            color: TEXT_MUTED, fontSize: 20, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >×</button>
+      {/* Bouton fermer — toujours visible */}
+      <button
+        onClick={() => { cleanup(); onClose(); }}
+        aria-label="Fermer"
+        style={{
+          position: "absolute", top: 18, right: 18, zIndex: 20,
+          width: 36, height: 36, borderRadius: "50%",
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          color: TEXT_MUTED, fontSize: 20, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >×</button>
+
+      {/* Bannière d'erreur WS (déconnexion en cours d'exercice) */}
+      {wsError && (
+        <div style={{
+          position: "absolute", top: 64, left: "50%", transform: "translateX(-50%)",
+          zIndex: 20, maxWidth: 300, textAlign: "center",
+          background: "rgba(248,113,113,0.10)",
+          border: "1px solid rgba(248,113,113,0.28)",
+          borderRadius: 12, padding: "10px 16px",
+        }}>
+          <p style={{ margin: 0, color: "#f87171", fontSize: 13, lineHeight: 1.5 }}>
+            {wsError}
+          </p>
+          <button
+            onClick={() => { setWsError(null); void initSession(); }}
+            style={{
+              marginTop: 8, fontSize: 12,
+              background: "none", border: "none",
+              color: "#f87171", cursor: "pointer", textDecoration: "underline",
+            }}
+          >
+            Réessayer
+          </button>
+        </div>
       )}
 
       {/* ── Error ─────────────────────────────────────────────────────────────── */}
@@ -812,7 +844,7 @@ export default function SOSExercise({
           alignItems: "center", gap: 36,
           position: "relative", zIndex: 5,
         }}>
-          <WaveOrb speaking={isAiSpeaking} firstName={firstName} />
+          <WaveOrb speaking={isAiSpeaking || isPatientSpeaking} firstName={firstName} />
 
           <div style={{ textAlign: "center", minHeight: 24 }}>
             {phase === "intake" && !isAiSpeaking && (
@@ -887,13 +919,35 @@ export default function SOSExercise({
             </p>
           </div>
 
+          {/* Barre de progression lettre en cours */}
+          <div style={{
+            position: "absolute", bottom: 32, left: "50%",
+            transform: "translateX(-50%)",
+            width: 180, height: 2,
+            background: "rgba(255,255,255,0.06)",
+            borderRadius: 2,
+          }}>
+            <div style={{
+              height: "100%",
+              background: breathPhase === "inspire"
+                ? "rgba(6,182,212,0.70)"
+                : "rgba(0,229,180,0.55)",
+              borderRadius: 2,
+              // La largeur est animée par CSS : expire remplit, inspire se vide
+              width: breathPhase === "expire" ? "100%" : "0%",
+              transition: breathPhase === "expire"
+                ? `width ${EXPIRE_MS}ms linear`
+                : `width ${INSPIRE_MS}ms linear`,
+            }} />
+          </div>
+
           {/* Letter counter */}
           <div style={{
             position: "absolute", top: 24, left: 0, right: 0,
             textAlign: "center",
           }}>
             <p style={{ color: TEXT_MUTED, fontSize: 11, letterSpacing: "0.12em" }}>
-              {currentLetterIdx + 1} / {chosenWord.length}
+              Lettre {currentLetterIdx + 1} / {chosenWord.length}
             </p>
           </div>
         </div>
