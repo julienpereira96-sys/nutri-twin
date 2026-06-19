@@ -15,6 +15,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
+import ParticleCanvas from "./ParticleCanvas";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const TEXT_MUTED   = "rgba(255,255,255,0.38)";
@@ -79,76 +80,6 @@ function selectWord(transcript: string): string {
   return list[Math.floor(Math.random() * list.length)];
 }
 
-// ─── Parametric letter curves ──────────────────────────────────────────────────
-// Each variant: t ∈ [0,1] → [x, y] in normalised [0,1]²
-// t 0→0.5 = inspire half; t 0.5→1 = expire half
-// Paths are abstract — patient doesn't see the letter, only the motion
-const CURVE_FNS: Array<(t: number) => [number, number]> = [
-  // 0 — Lemniscate horizontale (figure-8)
-  t => [
-    0.5 + 0.36 * Math.sin(t * Math.PI * 2),
-    0.5 + 0.26 * Math.sin(t * Math.PI * 4),
-  ],
-  // 1 — Cardioid
-  t => {
-    const θ = t * Math.PI * 2;
-    const r = 0.24 * (1 - Math.cos(θ));
-    return [0.5 + r * Math.cos(θ - Math.PI / 2), 0.54 + r * Math.sin(θ - Math.PI / 2)];
-  },
-  // 2 — Rose à 3 pétales
-  t => {
-    const θ = t * Math.PI * 2;
-    const r = 0.31 * Math.cos(3 * θ);
-    return [0.5 + r * Math.cos(θ), 0.5 + r * Math.sin(θ)];
-  },
-  // 3 — Lissajous 3:2
-  t => [
-    0.5 + 0.36 * Math.sin(3 * t * Math.PI * 2 + Math.PI / 2),
-    0.5 + 0.31 * Math.sin(2 * t * Math.PI * 2),
-  ],
-  // 4 — Trefoil knot (projection)
-  t => {
-    const θ = t * Math.PI * 2;
-    return [
-      0.5 + 0.28 * (Math.sin(θ) + 2 * Math.sin(2 * θ)) / 3,
-      0.5 + 0.28 * (Math.cos(θ) - 2 * Math.cos(2 * θ)) / 3,
-    ];
-  },
-  // 5 — Epitrochoid
-  t => {
-    const θ = t * Math.PI * 2;
-    const R = 0.22, r = 0.09, d = 0.17;
-    return [
-      0.5 + (R - r) * Math.cos(θ) + d * Math.cos((R / r - 1) * θ),
-      0.5 + (R - r) * Math.sin(θ) - d * Math.sin((R / r - 1) * θ),
-    ];
-  },
-  // 6 — Spirale rentrante
-  t => {
-    const θ = t * Math.PI * 6;
-    const r2 = 0.36 * (1 - t * 0.65);
-    return [0.5 + r2 * Math.cos(θ), 0.5 + r2 * Math.sin(θ)];
-  },
-  // 7 — Hypotrochoid
-  t => {
-    const θ = t * Math.PI * 2;
-    const R = 0.26, r = 0.08, d = 0.19;
-    return [
-      0.5 + (R - r) * Math.cos(θ) + d * Math.cos(((R - r) / r) * θ),
-      0.5 + (R - r) * Math.sin(θ) - d * Math.sin(((R - r) / r) * θ),
-    ];
-  },
-];
-
-const CURVE_POINT_COUNT = 360;
-
-function getCurvePoints(letterIndex: number): [number, number][] {
-  const fn = CURVE_FNS[letterIndex % CURVE_FNS.length];
-  return Array.from({ length: CURVE_POINT_COUNT }, (_, i) =>
-    fn(i / (CURVE_POINT_COUNT - 1))
-  );
-}
-
 // ─── Audio helpers ────────────────────────────────────────────────────────────
 function float32ToPCM16Base64(f32: Float32Array): string {
   const i16 = new Int16Array(f32.length);
@@ -176,222 +107,98 @@ function getRMS(data: Float32Array): number {
   return Math.sqrt(sum / data.length);
 }
 
-// ─── SVG Blob (AI speaking visual) ───────────────────────────────────────────
-function AiBlob({ speaking, firstName }: { speaking: boolean; firstName: string }) {
+// ─── Wave Orb (remplace AiBlob) ──────────────────────────────────────────────
+function WaveOrb({ speaking, firstName }: { speaking: boolean; firstName: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const speakRef  = useRef(speaking);
+  speakRef.current = speaking;
+
+  useEffect(() => {
+    const c = canvasRef.current;
+    if (!c) return;
+    const S   = 220;
+    c.width   = S * 2; c.height = S * 2;
+    const ctx = c.getContext("2d")!;
+    let raf: number, t = 0;
+
+    const draw = () => {
+      raf = requestAnimationFrame(draw);
+      t  += 0.016;
+      ctx.clearRect(0, 0, S * 2, S * 2);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(S, S, S - 1, 0, Math.PI * 2);
+      ctx.clip();
+
+      // Fond radial
+      const bg = ctx.createRadialGradient(S * 0.85, S * 0.7, 0, S, S, S);
+      bg.addColorStop(0,   "rgba(14,165,233,0.18)");
+      bg.addColorStop(0.4, "rgba(6,182,212,0.08)");
+      bg.addColorStop(1,   "rgba(8,14,40,0.98)");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, S * 2, S * 2);
+
+      // Couches de vagues remplies
+      const spk = speakRef.current;
+      const layers = spk
+        ? [[13, 2.8, 0, 0.28], [8, 2.0, Math.PI * 0.65, 0.16], [5, 1.4, Math.PI * 1.35, 0.09]]
+        : [[ 3, 1.7, 0, 0.18], [2, 1.3, Math.PI * 0.65, 0.11], [1.2, 1.0, Math.PI * 1.35, 0.06]];
+
+      const yBase = S * 1.12;
+
+      for (const [amp, freq, phaseOff, alpha] of layers) {
+        ctx.beginPath();
+        for (let x = 0; x <= S * 2; x += 3) {
+          const y = yBase - (amp as number) * Math.sin(
+            (freq as number) * x / (S * 0.44) + t * 2.1 + (phaseOff as number)
+          );
+          x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.lineTo(S * 2, S * 2);
+        ctx.lineTo(0, S * 2);
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(0, yBase - (amp as number), 0, S * 2);
+        grad.addColorStop(0, `rgba(6,182,212,${alpha as number})`);
+        grad.addColorStop(1, `rgba(6,182,212,0.01)`);
+        ctx.fillStyle = grad;
+        ctx.fill();
+      }
+      ctx.restore();
+    };
+
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+  }, []); // lancé une seule fois
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
       <div style={{ position: "relative" }}>
-        {/* Static ambient glow — no JS, no blur recalc */}
         <div style={{
-          position: "absolute",
-          inset: -32,
-          background: "radial-gradient(circle, rgba(0,229,180,0.11) 0%, transparent 68%)",
-          borderRadius: "50%",
-          pointerEvents: "none",
+          position: "absolute", inset: -32,
+          background: "radial-gradient(circle, rgba(6,182,212,0.11) 0%, transparent 68%)",
+          borderRadius: "50%", pointerEvents: "none",
         }} />
-        <svg
-          width="230" height="230" viewBox="0 0 230 230"
-          style={{ display: "block", willChange: "transform" }}
-          aria-hidden
-        >
-          <defs>
-            {/* SVG filter — GPU-accelerated, zero JS per frame */}
-            <filter id="sos-blob-f" x="-35%" y="-35%" width="170%" height="170%">
-              <feTurbulence
-                type="fractalNoise"
-                baseFrequency="0.009 0.007"
-                numOctaves="3"
-                seed="4"
-                result="noise"
-              >
-                <animate
-                  attributeName="baseFrequency"
-                  values={
-                    speaking
-                      ? "0.009 0.007;0.020 0.015;0.009 0.007"
-                      : "0.009 0.007;0.013 0.010;0.009 0.007"
-                  }
-                  dur={speaking ? "1.3s" : "3.8s"}
-                  repeatCount="indefinite"
-                />
-                <animate attributeName="seed" values="4;7;12;4" dur="5s" repeatCount="indefinite" />
-              </feTurbulence>
-              <feDisplacementMap
-                in="SourceGraphic"
-                in2="noise"
-                scale={speaking ? "32" : "16"}
-                xChannelSelector="R"
-                yChannelSelector="G"
-              />
-            </filter>
-            <radialGradient id="sos-blob-g" cx="44%" cy="38%" r="56%">
-              <stop offset="0%"   stopColor="#e0faf5" stopOpacity="0.96" />
-              <stop offset="28%"  stopColor="#00e5b4" stopOpacity="0.90" />
-              <stop offset="62%"  stopColor="#0ea5e9" stopOpacity="0.74" />
-              <stop offset="88%"  stopColor="#7c3aed" stopOpacity="0.50" />
-              <stop offset="100%" stopColor="#7c3aed" stopOpacity="0"    />
-            </radialGradient>
-          </defs>
-          <circle cx="115" cy="115" r="72" fill="url(#sos-blob-g)" filter="url(#sos-blob-f)" />
-        </svg>
+        <canvas
+          ref={canvasRef}
+          style={{
+            width: 220, height: 220,
+            borderRadius: "50%",
+            border: "1px solid rgba(6,182,212,0.18)",
+            boxShadow: speaking
+              ? "0 0 32px rgba(6,182,212,0.22), 0 0 64px rgba(6,182,212,0.08)"
+              : "0 0 14px rgba(6,182,212,0.08)",
+            display: "block",
+            transition: "box-shadow 0.6s ease",
+          }}
+        />
       </div>
       <p style={{
-        color: TEXT_MUTED,
-        fontSize: 12,
-        letterSpacing: "0.16em",
-        fontWeight: 300,
+        color: TEXT_MUTED, fontSize: 12,
+        letterSpacing: "0.16em", fontWeight: 300,
         textTransform: "uppercase",
       }}>
         {firstName}
       </p>
-    </div>
-  );
-}
-
-// ─── Canvas helpers ───────────────────────────────────────────────────────────
-interface CompletedLetter {
-  points: [number, number][];
-  color: string;
-}
-
-function renderTraceCanvas(
-  canvas: HTMLCanvasElement,
-  completed: CompletedLetter[],
-  currentPoints: [number, number][],
-  progress: number, // 0–1 within current letter
-  color: string,
-  breathPhase: "inspire" | "expire",
-  dpr: number,
-) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  const W = canvas.width;
-  const H = canvas.height;
-  ctx.clearRect(0, 0, W, H);
-
-  const px = (p: [number, number]): [number, number] => [p[0] * W, p[1] * H];
-
-  // Draw completed letter traces (low opacity)
-  for (const lt of completed) {
-    if (lt.points.length < 2) continue;
-    ctx.beginPath();
-    const [x0, y0] = px(lt.points[0]);
-    ctx.moveTo(x0, y0);
-    for (let i = 1; i < lt.points.length; i++) {
-      const [x, y] = px(lt.points[i]);
-      ctx.lineTo(x, y);
-    }
-    ctx.globalAlpha = 0.20;
-    ctx.strokeStyle = lt.color;
-    ctx.lineWidth = 1.4 * dpr;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.shadowBlur = 5 * dpr;
-    ctx.shadowColor = lt.color;
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
-  }
-
-  if (currentPoints.length < 2) return;
-
-  const endIdx = Math.min(
-    Math.floor(progress * (currentPoints.length - 1)),
-    currentPoints.length - 1,
-  );
-
-  // Ghost (entire future path)
-  ctx.beginPath();
-  const [gx0, gy0] = px(currentPoints[0]);
-  ctx.moveTo(gx0, gy0);
-  for (let i = 1; i < currentPoints.length; i++) {
-    const [x, y] = px(currentPoints[i]);
-    ctx.lineTo(x, y);
-  }
-  ctx.globalAlpha = 0.055;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1.5 * dpr;
-  ctx.stroke();
-  ctx.globalAlpha = 1;
-
-  // Completed portion
-  if (endIdx > 0) {
-    ctx.beginPath();
-    const [ax0, ay0] = px(currentPoints[0]);
-    ctx.moveTo(ax0, ay0);
-    for (let i = 1; i <= endIdx; i++) {
-      const [x, y] = px(currentPoints[i]);
-      ctx.lineTo(x, y);
-    }
-    ctx.shadowBlur = 10 * dpr;
-    ctx.shadowColor = color;
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2.4 * dpr;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-  }
-
-  // Guide dot — pulses with breath phase
-  const [dx, dy] = px(currentPoints[Math.max(0, endIdx)]);
-  const pulse = breathPhase === "inspire" ? 1.15 : 0.88;
-  const dotR  = 7 * dpr * pulse;
-  const glowR = 28 * dpr * pulse;
-
-  ctx.beginPath();
-  ctx.arc(dx, dy, glowR, 0, Math.PI * 2);
-  ctx.fillStyle = color + "44";
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(dx, dy, dotR, 0, Math.PI * 2);
-  ctx.fillStyle = "#fff";
-  ctx.shadowBlur = 10 * dpr;
-  ctx.shadowColor = color;
-  ctx.fill();
-  ctx.shadowBlur = 0;
-}
-
-// ─── Word reveal ──────────────────────────────────────────────────────────────
-function WordReveal({ word, ready }: { word: string; ready: boolean }) {
-  return (
-    <div style={{
-      display: "flex", flexDirection: "column",
-      alignItems: "center", gap: 24,
-      animation: "sos-fade 0.7s ease",
-    }}>
-      <div style={{ display: "flex", gap: "clamp(2px,1.8vw,10px)" }}>
-        {word.split("").map((ch, i) => (
-          <span
-            key={i}
-            style={{
-              fontSize: "clamp(48px, 13vw, 96px)",
-              fontWeight: 900,
-              letterSpacing: "0.05em",
-              color: ready ? LETTER_COLORS[i % LETTER_COLORS.length] : "transparent",
-              textShadow: ready
-                ? `0 0 28px ${LETTER_COLORS[i % LETTER_COLORS.length]}99, 0 0 56px ${LETTER_COLORS[i % LETTER_COLORS.length]}33`
-                : "none",
-              opacity: ready ? 1 : 0,
-              transform: ready ? "scale(1) translateY(0)" : "scale(0.55) translateY(20px)",
-              transition: `all 0.65s cubic-bezier(0.34,1.56,0.64,1) ${i * 110}ms`,
-              display: "inline-block",
-              userSelect: "none",
-            }}
-          >
-            {ch}
-          </span>
-        ))}
-      </div>
-      {ready && (
-        <p style={{
-          color: TEXT_MUTED, fontSize: 13, letterSpacing: "0.09em",
-          animation: "sos-fade 0.5s ease 1.1s both",
-        }}>
-          Tu l'as tracé toi-même
-        </p>
-      )}
     </div>
   );
 }
@@ -425,11 +232,11 @@ export default function SOSExercise({
   const [loadError,       setLoadError]       = useState<string | null>(null);
   const [isAiSpeaking,    setIsAiSpeaking]    = useState(false);
   const [isPatientSpeaking, setIsPatientSpeaking] = useState(false);
-  const [breathPhase,     setBreathPhase]     = useState<BreathPhase>("inspire");
+  const [breathPhase,      setBreathPhase]      = useState<BreathPhase>("inspire");
   const [currentLetterIdx, setCurrentLetterIdx] = useState(0);
-  const [completedLetters, setCompletedLetters] = useState<CompletedLetter[]>([]);
-  const [chosenWord,      setChosenWord]      = useState("CALME");
-  const [revealReady,     setRevealReady]     = useState(false);
+  const [chosenWord,       setChosenWord]       = useState("CALME");
+  const [expireStart,      setExpireStart]      = useState<number | null>(null);
+  const [litLetters,       setLitLetters]       = useState<boolean[]>([]);
 
   // ── Refs ────────────────────────────────────────────────────────────────────
   const phaseRef            = useRef<SOSPhase>("loading");
@@ -438,9 +245,7 @@ export default function SOSExercise({
   const analyserRef         = useRef<AnalyserNode | null>(null);
   const mediaStreamRef      = useRef<MediaStream | null>(null);
   const processorRef        = useRef<ScriptProcessorNode | null>(null);
-  const traceCanvasRef      = useRef<HTMLCanvasElement | null>(null);
   const animFrameRef        = useRef<number>(0);
-  const dprRef              = useRef(1);
 
   // Timers
   const hardTimerRef        = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -459,7 +264,6 @@ export default function SOSExercise({
   // Tracing
   const chosenWordRef       = useRef("CALME");
   const currentLetterIdxRef = useRef(0);
-  const completedLettersRef = useRef<CompletedLetter[]>([]);
   const letterStartTimeRef  = useRef(0);
   const breathPhaseRef      = useRef<BreathPhase>("inspire");
   const isTracingMutedRef   = useRef(false);
@@ -549,18 +353,13 @@ export default function SOSExercise({
     const t1 = setTimeout(() => {
       setBreathPhase("expire");
       breathPhaseRef.current = "expire";
+      setExpireStart(Date.now());
       speakTherapeutic("Expire, relâche...", { skipPrep: true, rate: 0.68, volume: 0.60 });
     }, INSPIRE_MS);
     breathTimerRef.current.push(t1);
 
     const t2 = setTimeout(() => {
       if (phaseRef.current !== "tracing") return;
-      // Letter done: archive it
-      const pts = getCurvePoints(idx);
-      const col  = LETTER_COLORS[idx % LETTER_COLORS.length];
-      const newCompleted = [...completedLettersRef.current, { points: pts, color: col }];
-      completedLettersRef.current = newCompleted;
-      setCompletedLetters(newCompleted);
 
       if (idx + 1 < word.length) {
         startLetterAt(idx + 1, word);
@@ -572,7 +371,8 @@ export default function SOSExercise({
         isTracingMutedRef.current = false;
         setPhase("reveal");
         phaseRef.current = "reveal";
-        setTimeout(() => setRevealReady(true), 600);
+        // Illuminate SVG letters after 600ms
+        setTimeout(() => setLitLetters(Array(word.length).fill(true)), 600);
 
         // Ask Gemini to celebrate (unmuted now)
         setTimeout(() => {
@@ -605,8 +405,8 @@ export default function SOSExercise({
   const beginTracing = useCallback(() => {
     // Le mot est déjà sélectionné dans enterReadyPhase
     const word = chosenWordRef.current;
-    completedLettersRef.current = [];
-    setCompletedLetters([]);
+    setLitLetters([]);
+    setExpireStart(null);
 
     setPhase("tracing");
     phaseRef.current = "tracing";
@@ -622,14 +422,6 @@ export default function SOSExercise({
         turnComplete: true,
       },
     }));
-
-    // Resize canvas
-    const canvas = traceCanvasRef.current;
-    if (canvas) {
-      const dpr = dprRef.current;
-      canvas.width  = canvas.offsetWidth  * dpr;
-      canvas.height = canvas.offsetHeight * dpr;
-    }
 
     startLetterAt(0, word);
   }, [startLetterAt]);
@@ -928,51 +720,24 @@ export default function SOSExercise({
 
   // ── Mount ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    dprRef.current = window.devicePixelRatio || 1;
     void initSession();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Animation loop ───────────────────────────────────────────────────────────
+  // ── Animation loop — analyser polling uniquement ──────────────────────────────
   useEffect(() => {
-    const dpr = dprRef.current;
-
-    // Analyser polling (runs every phase for amplitude)
-    let t = 0;
     const loop = () => {
-      t++;
       animFrameRef.current = requestAnimationFrame(loop);
-
-      // Patient speaking detection from analyser
       if (analyserRef.current) {
         const buf = new Uint8Array(analyserRef.current.frequencyBinCount);
         analyserRef.current.getByteFrequencyData(buf);
         const avg = buf.reduce((s, v) => s + v, 0) / buf.length;
         setIsPatientSpeaking(avg / 60 > 0.12);
       }
-
-      // Tracing phase: draw canvas at 60fps
-      if (phaseRef.current === "tracing" && traceCanvasRef.current) {
-        const elapsed  = Date.now() - letterStartTimeRef.current;
-        const progress = Math.min(1, elapsed / CYCLE_MS);
-        const idx      = currentLetterIdxRef.current;
-        const pts      = getCurvePoints(idx);
-        const col      = LETTER_COLORS[idx % LETTER_COLORS.length];
-        renderTraceCanvas(
-          traceCanvasRef.current,
-          completedLettersRef.current,
-          pts,
-          progress,
-          col,
-          breathPhaseRef.current,
-          dpr,
-        );
-      }
     };
-
     animFrameRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animFrameRef.current);
-  }, []); // runs once — reads everything via refs
+  }, []); // lancé une seule fois
 
   // ── Render ────────────────────────────────────────────────────────────────────
   const showOrb    = phase === "loading" || phase === "intake";
@@ -992,6 +757,18 @@ export default function SOSExercise({
         animation: "sos-fade 0.55s ease",
       }}
     >
+      {/* ── ParticleCanvas — toujours monté pendant l'exercice ─────────────────── */}
+      <ParticleCanvas
+        word={showTrace || showReveal ? chosenWord : null}
+        letterColors={LETTER_COLORS.slice(0, chosenWord.length)}
+        letterIdx={currentLetterIdx}
+        breathPhase={breathPhase}
+        expireStart={expireStart}
+        isReveal={showReveal}
+        litLetters={litLetters}
+        EXPIRE_MS={EXPIRE_MS}
+      />
+
       {/* Close button (only during loading/intake) */}
       {showOrb && (
         <button
@@ -1028,13 +805,14 @@ export default function SOSExercise({
         </div>
       )}
 
-      {/* ══ INTAKE — Blob IA ═════════════════════════════════════════════════════ */}
+      {/* ══ INTAKE — Wave Orb ═══════════════════════════════════════════════════ */}
       {showOrb && !loadError && (
         <div style={{
           display: "flex", flexDirection: "column",
           alignItems: "center", gap: 36,
+          position: "relative", zIndex: 5,
         }}>
-          <AiBlob speaking={isAiSpeaking} firstName={firstName} />
+          <WaveOrb speaking={isAiSpeaking} firstName={firstName} />
 
           <div style={{ textAlign: "center", minHeight: 24 }}>
             {phase === "intake" && !isAiSpeaking && (
@@ -1055,14 +833,14 @@ export default function SOSExercise({
         <div
           onClick={beginTracing}
           style={{
-            position: "absolute", inset: 0,
+            position: "absolute", inset: 0, zIndex: 5,
             display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center",
             gap: 48, cursor: "pointer",
             animation: "sos-fade 0.6s ease",
           }}
         >
-          <AiBlob speaking={false} firstName={firstName} />
+          <WaveOrb speaking={false} firstName={firstName} />
 
           <div style={{
             display: "flex", flexDirection: "column",
@@ -1089,26 +867,20 @@ export default function SOSExercise({
         </div>
       )}
 
-      {/* ══ TRACING ══════════════════════════════════════════════════════════════ */}
+      {/* ══ TRACING — overlays uniquement (ParticleCanvas gère le visuel) ════════ */}
       {showTrace && (
-        <div style={{ position: "absolute", inset: 0 }}>
-          <canvas
-            ref={traceCanvasRef}
-            style={{ width: "100%", height: "100%", display: "block" }}
-          />
-
+        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 6 }}>
           {/* Breath label */}
           <div style={{
             position: "absolute", bottom: 56, left: 0, right: 0,
             textAlign: "center",
-            pointerEvents: "none",
           }}>
             <p style={{
               fontSize: 20, fontWeight: 300, letterSpacing: "0.20em",
               textTransform: "uppercase",
               color: breathPhase === "inspire"
-                ? "rgba(0,229,180,0.82)"
-                : "rgba(0,229,180,0.45)",
+                ? "rgba(6,182,212,0.85)"
+                : "rgba(6,182,212,0.42)",
               transition: "color 0.9s ease",
             }}>
               {breathPhase === "inspire" ? "Inspire" : "Expire"}
@@ -1118,7 +890,7 @@ export default function SOSExercise({
           {/* Letter counter */}
           <div style={{
             position: "absolute", top: 24, left: 0, right: 0,
-            textAlign: "center", pointerEvents: "none",
+            textAlign: "center",
           }}>
             <p style={{ color: TEXT_MUTED, fontSize: 11, letterSpacing: "0.12em" }}>
               {currentLetterIdx + 1} / {chosenWord.length}
@@ -1127,15 +899,17 @@ export default function SOSExercise({
         </div>
       )}
 
-      {/* ══ REVEAL ═══════════════════════════════════════════════════════════════ */}
-      {showReveal && (
-        <div style={{
-          display: "flex", flexDirection: "column",
-          alignItems: "center", gap: 0,
-          animation: "sos-fade 0.6s ease",
+      {/* ══ REVEAL — SVG géré par ParticleCanvas, on ajoute juste le sous-titre ══ */}
+      {showReveal && litLetters.some(Boolean) && (
+        <p style={{
+          position: "absolute", bottom: 72, left: 0, right: 0,
+          textAlign: "center",
+          color: TEXT_MUTED, fontSize: 13, letterSpacing: "0.09em",
+          animation: "sos-fade 0.5s ease 1.6s both",
+          zIndex: 6, pointerEvents: "none",
         }}>
-          <WordReveal word={chosenWord} ready={revealReady} />
-        </div>
+          Tu l'as tracé toi-même
+        </p>
       )}
 
       {/* ══ TRANSITION ═══════════════════════════════════════════════════════════ */}
@@ -1156,9 +930,9 @@ export default function SOSExercise({
             {chosenWord}
           </div>
 
-          {/* Mini blob */}
+          {/* Mini wave orb */}
           <div style={{ transform: "scale(0.7)", marginTop: -16 }}>
-            <AiBlob speaking={isAiSpeaking} firstName={firstName} />
+            <WaveOrb speaking={isAiSpeaking} firstName={firstName} />
           </div>
 
           <p style={{
