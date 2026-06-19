@@ -13,7 +13,9 @@ import MarcheExercise from "./MarcheExercise";
 import AdaptiveCoachingExercise from "./AdaptiveCoachingExercise";
 import SOSExercise from "./SOSExercise";
 import PwaInstallPrompt from "./PwaInstallPrompt";
+import MicConsentOverlay from "./MicConsentOverlay";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
+import { useMicPermission } from "@/hooks/useMicPermission";
 import {
   IconCheckRing,
   IconWave,
@@ -745,6 +747,12 @@ export default function ChatPage() {
   // ─── Full-screen coaching adaptatif overlay ───
   const [showAdaptiveCoachingExercise, setShowAdaptiveCoachingExercise] = useState(false);
   const [adaptiveCoachingSosContext, setAdaptiveCoachingSosContext] = useState("");
+  // ─── Consentement microphone ─────────────────────────────────────────────────
+  // Affiche MicConsentOverlay UNE SEULE FOIS (si permission "prompt") avant le
+  // premier exercice vocal. Après accord, le navigateur retient la permission.
+  const { statusRef: micStatusRef } = useMicPermission();
+  const [pendingTool, setPendingTool] = useState<{ toolId: string; sosContext: string; forcedOrigin?: "pratique" } | null>(null);
+  const [showMicConsent, setShowMicConsent] = useState(false);
   const [ancrageStep, setAncrageStep] = useState(0);
   const [marcheStep, setMarcheStep] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1035,25 +1043,10 @@ export default function ChatPage() {
     return () => { clearInterval(interval); document.removeEventListener("visibilitychange", onVisible); };
   }, [patientId]);
 
-  // ─── Microphone permission warmup ───────────────────────────────────────────
-  // Demande la permission micro une seule fois dès que la session est chargée,
-  // pour que les exercices vocaux ne re-demandent plus l'autorisation à chaque fois.
-  useEffect(() => {
-    if (!patientId) return;
-    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return;
-    const warm = () =>
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => { stream.getTracks().forEach(t => t.stop()); })
-        .catch(() => { /* user declined — on n'insiste pas */ });
-
-    if (typeof navigator.permissions?.query === "function") {
-      void navigator.permissions.query({ name: "microphone" as PermissionName })
-        .then(r => { if (r.state === "prompt") void warm(); })
-        .catch(() => void warm());
-    } else {
-      void warm();
-    }
-  }, [patientId]);
+  // ─── Microphone permission ───────────────────────────────────────────────────
+  // Le warmup anticipé est intentionnellement supprimé.
+  // La permission est demandée uniquement quand un exercice vocal est lancé,
+  // précédée de MicConsentOverlay (explication + CTA) si l'état est "prompt".
 
   // ─── Realtime : message épinglé praticien ───────────────────────────────────
   // S'abonne aux UPDATE sur la ligne du patient dès que patientId est connu.
@@ -1349,6 +1342,22 @@ export default function ChatPage() {
   // forcedOrigin: "pratique" pour la bibliothèque d'exercices (geste proactif délibéré,
   // toujours traité comme "Exercice pratiqué", jamais comme une crise non résolue).
   const handleToolSelect = useCallback(async (toolId: string, sosContext: string, forcedOrigin?: "pratique") => {
+    // ── Consentement microphone ──────────────────────────────────────────────
+    // Les exercices vocaux (Gemini Live) nécessitent le micro.
+    // Si la permission n'a pas encore été accordée, on affiche d'abord
+    // MicConsentOverlay pour contextualiser la demande native du navigateur.
+    // Les exercices sans micro (journal, marche, adaptive) passent directement.
+    const needsMic = ["breathing", "ancrage", "manger", "ecriture", "defusion", "sos"].includes(toolId);
+    // "prompt"  → première fois : on explique avant le dialog natif
+    // "denied"  → refus précédent : on ré-affiche l'overlay avec instructions réglages
+    // "unknown" → pas encore lu (rare) : on laisse passer, l'exercice gère l'erreur
+    // "granted" → déjà accordé : on passe directement
+    if (needsMic && (micStatusRef.current === "prompt" || micStatusRef.current === "denied")) {
+      setPendingTool({ toolId, sosContext, forcedOrigin });
+      setShowMicConsent(true);
+      return;
+    }
+
     // Enregistrer l'événement (sos_events) en arrière-plan — alimente le Dashboard
     // ("Crises désamorcées" / "Exercices pratiqués") et la 🏆 victoire automatique.
     if (patientId && practitionerIdFromDb) {
@@ -1819,6 +1828,35 @@ export default function ChatPage() {
       )}
 
       {renderTool()}
+
+      {/* ─── Consentement microphone (première utilisation) ──────────────────
+           Affiché UNE SEULE FOIS avant le premier exercice vocal si la permission
+           n'est pas encore accordée. Après accord, le navigateur retient la
+           permission et cet overlay ne réapparaîtra jamais.
+      ─────────────────────────────────────────────────────────────────────── */}
+      {showMicConsent && pendingTool && (
+        <MicConsentOverlay
+          exerciseName={
+            pendingTool.toolId === "breathing" ? "La cohérence cardiaque" :
+            pendingTool.toolId === "ancrage"   ? "L'ancrage sensoriel"   :
+            pendingTool.toolId === "manger"    ? "La pleine conscience alimentaire" :
+            pendingTool.toolId === "ecriture"  ? "L'écriture cathartique" :
+            pendingTool.toolId === "defusion"  ? "La défusion cognitive"  :
+            "L'exercice SOS"
+          }
+          denied={micStatusRef.current === "denied"}
+          onStart={() => {
+            setShowMicConsent(false);
+            const p = pendingTool;
+            setPendingTool(null);
+            void handleToolSelect(p.toolId, p.sosContext, p.forcedOrigin);
+          }}
+          onClose={() => {
+            setShowMicConsent(false);
+            setPendingTool(null);
+          }}
+        />
+      )}
 
       {/* ─── Breathing exercise full-screen overlay ─── */}
       {showBreathingExercise && (
@@ -2589,6 +2627,11 @@ export default function ChatPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* ── Carte PWA — intégrée dans l'écran d'accueil, pas de popup ── */}
+                <div style={{ display: "flex", justifyContent: "center" }}>
+                  <PwaInstallPrompt />
+                </div>
               </div>
             </div>
           )}
@@ -2795,8 +2838,6 @@ export default function ChatPage() {
       `}</style>
     </div>
 
-    {/* ── PWA Install Prompt — cycle de vie totalement indépendant ── */}
-    <PwaInstallPrompt />
     </>
   );
 }
