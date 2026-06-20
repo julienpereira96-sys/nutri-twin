@@ -366,6 +366,7 @@ export default function SOSExercise({
   const transitionPatientTextRef    = useRef("");     // ce que le patient a dit pendant transition
   const closingTimerARef            = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closingTimerBRef            = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bargeInTimerRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Stable message handler ref (avoids stale closure on WS onmessage)
   const handleWSMessageRef  = useRef<((evt: { data: string }) => void) | null>(null);
@@ -433,6 +434,7 @@ export default function SOSExercise({
     breathTimerRef.current = [];
     if (closingTimerARef.current) { clearTimeout(closingTimerARef.current); closingTimerARef.current = null; }
     if (closingTimerBRef.current) { clearTimeout(closingTimerBRef.current); closingTimerBRef.current = null; }
+    if (bargeInTimerRef.current)  { clearTimeout(bargeInTimerRef.current);  bargeInTimerRef.current  = null; }
     flushAudio();
   }, [cancelSpeech, flushAudio]);
 
@@ -822,7 +824,13 @@ export default function SOSExercise({
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: { sampleRate: 16000, channelCount: 1 },
+        audio: {
+          sampleRate: 16000,
+          channelCount: 1,
+          echoCancellation: true,   // filtre l'écho des hauts-parleurs → évite que Gemini se coupe lui-même
+          noiseSuppression: true,
+          autoGainControl: false,   // on gère le gain nous-mêmes via le seuil RMS du worklet
+        },
         video: false,
       });
       mediaStreamRef.current = stream;
@@ -864,8 +872,16 @@ export default function SOSExercise({
       const { type, buffer } = e.data;
 
       if (type === "start") {
-        // Barge-in : si Gemini parlait, on le coupe immédiatement
-        if (isAiSpeakingRef.current) flushAudio();
+        // Barge-in avec délai anti-écho :
+        // L'écho de Gemini dure < 150ms ; la vraie parole dure > 400ms.
+        // On attend 400ms avant de couper — si c'était de l'écho, le worklet
+        // aura déjà envoyé "end" et on annulera le timer.
+        if (isAiSpeakingRef.current) {
+          bargeInTimerRef.current = setTimeout(() => {
+            bargeInTimerRef.current = null;
+            if (isAiSpeakingRef.current) flushAudio();
+          }, 400);
+        }
         ws?.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
 
       } else if (type === "chunk" && buffer) {
@@ -876,6 +892,11 @@ export default function SOSExercise({
         }));
 
       } else if (type === "end") {
+        // Annuler un barge-in en attente (c'était de l'écho, pas de la parole)
+        if (bargeInTimerRef.current) {
+          clearTimeout(bargeInTimerRef.current);
+          bargeInTimerRef.current = null;
+        }
         ws?.send(JSON.stringify({ realtimeInput: { activityEnd: {} } }));
       }
     };
