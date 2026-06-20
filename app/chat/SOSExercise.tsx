@@ -197,10 +197,27 @@ function pcm16Base64ToFloat32(b64: string): Float32Array {
 }
 
 // ─── Wave Orb (remplace AiBlob) ──────────────────────────────────────────────
-function WaveOrb({ speaking, firstName }: { speaking: boolean; firstName?: string }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const speakRef  = useRef(speaking);
-  speakRef.current = speaking;
+// Couches idle/speaking interpolées en douceur — jamais de saut brutal d'amplitude.
+const WAVE_IDLE_LAYERS: [number, number, number, number][] = [
+  [3,   1.7, 0,              0.18],
+  [2,   1.3, Math.PI * 0.65, 0.11],
+  [1.2, 1.0, Math.PI * 1.35, 0.06],
+];
+const WAVE_SPEAK_LAYERS: [number, number, number, number][] = [
+  [13, 2.8, 0,              0.28],
+  [8,  2.0, Math.PI * 0.65, 0.16],
+  [5,  1.4, Math.PI * 1.35, 0.09],
+];
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+function WaveOrb({
+  speaking, firstName, analyser,
+}: { speaking: boolean; firstName?: string; analyser?: AnalyserNode | null }) {
+  const canvasRef   = useRef<HTMLCanvasElement>(null);
+  const speakRef    = useRef(speaking);
+  const analyserRef = useRef<AnalyserNode | null | undefined>(analyser);
+  speakRef.current    = speaking;
+  analyserRef.current = analyser;
 
   useEffect(() => {
     const c = canvasRef.current;
@@ -209,6 +226,12 @@ function WaveOrb({ speaking, firstName }: { speaking: boolean; firstName?: strin
     c.width   = S * 2; c.height = S * 2;
     const ctx = c.getContext("2d")!;
     let raf: number, t = 0;
+
+    // Lissage : transition idle ↔ speaking (intensité) + énergie audio réelle de
+    // Gemini (si un analyser est fourni) — tout est ease, jamais de saut net.
+    const intensity = { current: 0 };
+    const energy    = { current: 0 };
+    const freqBuf   = new Uint8Array(128); // fftSize 256 côté analyser → 128 bins
 
     const draw = () => {
       raf = requestAnimationFrame(draw);
@@ -229,27 +252,50 @@ function WaveOrb({ speaking, firstName }: { speaking: boolean; firstName?: strin
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, S * 2, S * 2);
 
-      // Couches de vagues remplies
+      // ── Lissage de l'intensité idle ↔ speaking (ease, pas de saut) ────────────
       const spk = speakRef.current;
-      const layers = spk
-        ? [[13, 2.8, 0, 0.28], [8, 2.0, Math.PI * 0.65, 0.16], [5, 1.4, Math.PI * 1.35, 0.09]]
-        : [[ 3, 1.7, 0, 0.18], [2, 1.3, Math.PI * 0.65, 0.11], [1.2, 1.0, Math.PI * 1.35, 0.06]];
+      intensity.current += ((spk ? 1 : 0) - intensity.current) * 0.08;
+
+      // ── Énergie réelle de la voix de Gemini (analyser branché sur sa sortie) ──
+      let rawEnergy = 0;
+      const an = analyserRef.current;
+      if (an && spk) {
+        an.getByteFrequencyData(freqBuf);
+        let sum = 0;
+        for (let i = 0; i < freqBuf.length; i++) sum += freqBuf[i];
+        rawEnergy = (sum / freqBuf.length) / 255; // 0..1
+      }
+      energy.current += (rawEnergy - energy.current) * 0.16;
+      // Le boost d'énergie est proportionnel à l'intensité "speaking" courante —
+      // il s'efface tout seul en revenant à l'idle, sans jamais sauter.
+      const energyMul = 1 + energy.current * intensity.current * 0.9;
+
+      // Couches de vagues remplies — interpolées entre idle et speaking
+      const k = intensity.current;
+      const layers = WAVE_IDLE_LAYERS.map((idle, i) => {
+        const spkL = WAVE_SPEAK_LAYERS[i];
+        return [
+          lerp(idle[0], spkL[0], k) * energyMul,
+          lerp(idle[1], spkL[1], k),
+          idle[2], // phaseOff identique idle/speak
+          lerp(idle[3], spkL[3], k),
+        ] as [number, number, number, number];
+      });
 
       const yBase = S * 1.12;
 
       for (const [amp, freq, phaseOff, alpha] of layers) {
         ctx.beginPath();
         for (let x = 0; x <= S * 2; x += 3) {
-          const y = yBase - (amp as number) * Math.sin(
-            (freq as number) * x / (S * 0.44) + t * 2.1 + (phaseOff as number)
-          );
+          // Onde qui se déploie de gauche à droite (sens naturel, apaisant)
+          const y = yBase - amp * Math.sin(freq * x / (S * 0.44) - t * 2.5 + phaseOff);
           x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         }
         ctx.lineTo(S * 2, S * 2);
         ctx.lineTo(0, S * 2);
         ctx.closePath();
-        const grad = ctx.createLinearGradient(0, yBase - (amp as number), 0, S * 2);
-        grad.addColorStop(0, `rgba(6,182,212,${alpha as number})`);
+        const grad = ctx.createLinearGradient(0, yBase - amp, 0, S * 2);
+        grad.addColorStop(0, `rgba(6,182,212,${alpha})`);
         grad.addColorStop(1, `rgba(6,182,212,0.01)`);
         ctx.fillStyle = grad;
         ctx.fill();
@@ -339,6 +385,9 @@ export default function SOSExercise({
   const phaseRef            = useRef<SOSPhase>("loading");
   const wsRef               = useRef<GeminiLiveClient | null>(null);
   const audioCtxRef         = useRef<AudioContext | null>(null);
+  // Branché sur la sortie audio de Gemini (voir playNextChunk) — lit l'énergie
+  // réelle de sa voix pour moduler l'amplitude du WaveOrb, pas de valeur fictive.
+  const outputAnalyserRef   = useRef<AnalyserNode | null>(null);
   const mediaStreamRef      = useRef<MediaStream | null>(null);
   const workletNodeRef      = useRef<AudioWorkletNode | null>(null);
 
@@ -371,6 +420,10 @@ export default function SOSExercise({
   const repromptSentRef        = useRef(false);   // gentle re-prompt sent after first silence
   const isAiSpeakingRef        = useRef(false);   // mirrors isAiSpeaking for use in callbacks
   // Clôture (intégrée dans la phase "reveal", pas de scène séparée)
+  // closingQuestionPendingRef : on a DÉCIDÉ d'enchaîner sur la clôture (évite le double envoi)
+  // closingQuestionSentRef    : la question est RÉELLEMENT partie sur le WS (ouvre le micro)
+  // Les deux doivent rester distincts — voir handleWSMessage pour le pourquoi.
+  const closingQuestionPendingRef   = useRef(false);
   const closingQuestionSentRef      = useRef(false);  // question ouverte déjà envoyée à Gemini
   const closingTurnCountRef         = useRef(0);     // nb de turnComplete depuis l'envoi de la question
   const patientRespondedInTransRef  = useRef(false);  // patient a répondu à la question de clôture
@@ -406,7 +459,9 @@ export default function SOSExercise({
     buf.getChannelData(0).set(data);
     const src = ctx.createBufferSource();
     src.buffer = buf;
-    src.connect(ctx.destination);
+    // Passe par l'analyser (si dispo) avant les haut-parleurs — WaveOrb lit
+    // l'énergie réelle de cette sortie pour moduler son amplitude.
+    src.connect(outputAnalyserRef.current ?? ctx.destination);
     src.onended = playNextChunk;
     currentSourceRef.current = src;
     src.start(0);
@@ -437,6 +492,7 @@ export default function SOSExercise({
     mediaStreamRef.current = null;
     audioCtxRef.current?.close().catch(() => {});
     audioCtxRef.current = null;
+    outputAnalyserRef.current = null;
     wsRef.current?.close();
     wsRef.current = null;
     if (hardTimerRef.current) clearTimeout(hardTimerRef.current);
@@ -647,14 +703,22 @@ export default function SOSExercise({
         } else {
           onQueueEmptyRef.current = enterReadyPhase;
         }
-      } else if (p === "reveal" && !closingQuestionSentRef.current) {
+      } else if (p === "reveal" && !closingQuestionPendingRef.current) {
         // C'est le turnComplete de la félicitation — on enchaîne dans LA MÊME scène
         // (mot toujours illuminé, pas de second décor) sur la question de clôture,
         // après une courte pause silencieuse une fois l'audio de félicitation terminé.
-        closingQuestionSentRef.current = true; // marqué tout de suite, évite tout double envoi
+        //
+        // IMPORTANT : closingQuestionSentRef ne passe à true qu'AU MOMENT RÉEL de
+        // l'envoi (dans le setTimeout ci-dessous), pas ici. Le gate du micro dans le
+        // worklet se base sur ce flag — le marquer trop tôt ouvrirait le micro pendant
+        // que l'IA parle encore. Le patient respire/bouge après le tracé, ça déclenche
+        // la validation anti-écho → flushAudio() → qui n'appelle jamais
+        // onQueueEmptyRef.current → sendClosingQuestion est abandonnée en silence.
+        closingQuestionPendingRef.current = true; // évite le double envoi, sans ouvrir le micro
         const sendClosingQuestion = () => {
           setTimeout(() => {
             if (phaseRef.current !== "reveal") return;
+            closingQuestionSentRef.current = true; // micro autorisé seulement maintenant
             setClosingQuestionAsked(true);
             wsRef.current?.send(JSON.stringify({
               clientContent: {
@@ -868,6 +932,13 @@ export default function SOSExercise({
     const audioCtx = new AudioContext({ sampleRate: 16000 });
     audioCtxRef.current = audioCtx;
     const micSrc = audioCtx.createMediaStreamSource(stream);
+
+    // Analyser sur la sortie audio de Gemini (voix du Jumeau) — lu en direct par
+    // WaveOrb pour moduler l'amplitude des vagues selon l'énergie réelle de la voix.
+    const outAnalyser = audioCtx.createAnalyser();
+    outAnalyser.fftSize = 256;
+    outAnalyser.connect(audioCtx.destination);
+    outputAnalyserRef.current = outAnalyser;
 
     // ── AudioWorklet — VAD + capture PCM sur thread audio dédié ─────────────
     // Blob URL : évite de servir un fichier statique depuis /public avec Next.js
@@ -1114,7 +1185,7 @@ export default function SOSExercise({
           alignItems: "center", gap: 36,
           position: "relative", zIndex: 5,
         }}>
-          <WaveOrb speaking={isAiSpeaking || isPatientSpeaking} firstName={firstName} />
+          <WaveOrb speaking={isAiSpeaking || isPatientSpeaking} firstName={firstName} analyser={outputAnalyserRef.current} />
 
           <div style={{ textAlign: "center", minHeight: 24 }}>
             {phase === "intake" && !isAiSpeaking && (
@@ -1142,7 +1213,7 @@ export default function SOSExercise({
             animation: "sos-fade 0.6s ease",
           }}
         >
-          <WaveOrb speaking={false} firstName={firstName} />
+          <WaveOrb speaking={false} firstName={firstName} analyser={outputAnalyserRef.current} />
 
           <div style={{
             display: "flex", flexDirection: "column",
