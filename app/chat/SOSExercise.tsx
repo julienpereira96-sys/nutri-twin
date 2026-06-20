@@ -122,6 +122,20 @@ class MicCapture extends AudioWorkletProcessor {
 registerProcessor('mic-capture', MicCapture);
 `;
 
+// ─── Phrases d'ancrage — murmurées en fin d'expire, alternées par lettre ──────
+// IMPORTANT : reste sur le même canal vocal dédié (useTherapeuticVoice), accolé
+// au cue "Expire...". On n'ouvre PAS de tour sur la connexion Gemini principale
+// pendant le tracé — risque de chevauchement audio (flushAudio() coupe la file
+// Gemini à chaque nouvelle lettre) et de coupure en plein murmure. Voir échange
+// du 2026-06-20 : un seul canal, prévisible, zéro aller-retour réseau.
+const ANCHOR_PHRASES = [
+  "Laisse aller.",
+  "Installe le calme.",
+  "Tu es en sécurité.",
+  "Reste avec ton souffle.",
+  "Tout doucement.",
+];
+
 // ─── Word bank (4–8 letters, 4 intensity levels) ──────────────────────────────
 const WORD_BANK = {
   /** 4 letters — crisis léger (~40s) */
@@ -358,6 +372,7 @@ export default function SOSExercise({
   const closingTimerARef            = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closingTimerBRef            = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bargeInTimerRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingChunksRef            = useRef<string[]>([]); // chunks b64 en attente de validation barge-in
 
   // Stable message handler ref (avoids stale closure on WS onmessage)
   const handleWSMessageRef  = useRef<((evt: { data: string }) => void) | null>(null);
@@ -424,6 +439,7 @@ export default function SOSExercise({
     if (closingTimerARef.current) { clearTimeout(closingTimerARef.current); closingTimerARef.current = null; }
     if (closingTimerBRef.current) { clearTimeout(closingTimerBRef.current); closingTimerBRef.current = null; }
     if (bargeInTimerRef.current)  { clearTimeout(bargeInTimerRef.current);  bargeInTimerRef.current  = null; }
+    pendingChunksRef.current = [];
     flushAudio();
   }, [cancelSpeech, flushAudio]);
 
@@ -447,7 +463,14 @@ export default function SOSExercise({
       setBreathPhase("expire");
       breathPhaseRef.current = "expire";
       setExpireStart(Date.now());
-      speakTherapeutic("Expire... deux... trois... quatre... cinq...", { skipPrep: true, rate: 0.60, volume: 0.55 });
+      // Murmure d'ancrage discret accolé au cue — jamais sur la 1ère lettre (encore
+      // en train de se poser) ni sur la dernière (transition directe vers le reveal)
+      const isFirst = idx === 0;
+      const isLast  = idx + 1 >= word.length;
+      const anchor  = (!isFirst && !isLast)
+        ? ` ${ANCHOR_PHRASES[(idx - 1) % ANCHOR_PHRASES.length]}`
+        : "";
+      speakTherapeutic(`Expire... deux... trois... quatre... cinq...${anchor}`, { skipPrep: true, rate: 0.60, volume: 0.55 });
     }, INSPIRE_MS);
     breathTimerRef.current.push(t1);
 
@@ -472,7 +495,7 @@ export default function SOSExercise({
             clientContent: {
               turns: [{
                 role: "user",
-                parts: [{ text: `[Le tracé est terminé. Le mot "${word}" vient d'apparaître lettre par lettre. Félicite ${firstName} chaleureusement en 1-2 phrases courtes, voix douce et fière. Rien d'autre pour l'instant.]` }],
+                parts: [{ text: `[Le tracé silencieux est terminé. Le mot "${word}" est entièrement illuminé. Félicite ${firstName} d'un ton bas, fier, calme et enveloppant. Dis-lui en une seule phrase courte la puissance de ce qu'il vient de faire (ex: "Regarde ce que ton souffle a ancré dans la matière."). Ne pose pas de question, laisse le mot résonner.]` }],
               }],
               turnComplete: true,
             },
@@ -524,7 +547,7 @@ export default function SOSExercise({
 
     const signal = patientHasSpokenRef.current
       // Patient a parlé → validation empathique + transition douce vers l'exercice
-      ? `[${firstName} vient de partager ce qu'il ressent. Réponds avec une chaleur authentique : reconnais précisément son vécu (nomme l'émotion ou la situation qu'il a exprimée), valide que c'est compréhensible, et montre que tu es là avec lui. 2 phrases sincères et personnalisées — pas de formules génériques. Ensuite, propose-lui doucement l'exercice : des points de lumière vont rassembler son souffle, une lettre à la fois, pour créer un mot qui lui appartient. Dis-lui de toucher l'écran quand il se sent prêt. Ton : proche, humain, bienveillant. 4 phrases max au total. Ne révèle pas le mot.]`
+      ? `[${firstName} vient de s'exprimer. Applique la validation empathique TCC : 1) Nomme l'émotion ou la sensation partagée pour valider son écoute. 2) Normalise en 1 phrase ("C'est tout à fait compréhensible que ton corps réagisse ainsi"). 3) Propose l'exercice : "Nous allons rassembler ce flux ensemble. Un point lumineux va guider ton souffle pour tracer un mot à l'écran. Quand tu te sens prêt à respirer avec moi, touche l'écran." Max 4 phrases. Ne révèle pas le mot.]`
       // Patient n'a pas répondu → accueil sans supposer d'émotion
       : `[${firstName} n'a pas encore parlé — ne suppose aucune émotion. Dis-lui simplement que c'est tout à fait bien, qu'il peut juste respirer avec toi. Présente l'exercice : des points de lumière vont suivre son souffle et former un mot pour lui. Quand il est prêt, il touche l'écran. 2 phrases douces, pas de question.]`;
 
@@ -548,7 +571,7 @@ export default function SOSExercise({
         clientContent: {
           turns: [{
             role: "user",
-            parts: [{ text: `[SOS activé pour ${firstName}. Commence l'accueil maintenant. Voix douce et lente. 2-3 phrases max. Termine par une phrase qui invite le patient à se livrer — pas forcément une question, mais quelque chose qui appelle naturellement à parler, comme "Dis-moi ce qui se passe" ou "Je suis là, tu peux tout me dire".]` }],
+            parts: [{ text: `[Core SOS activé pour ${firstName}. Commence l'accueil immédiatement. Ton de thérapeute TCC en urgence : voix extrêmement lente, feutrée et descendante. Maximum 2 phrases courtes pour stabiliser le patient. Pas de question anxiogène. Termine dans cet esprit, en invitant à respirer et à se reconnecter à ce qui se passe en lui maintenant — par exemple "Je suis là avec toi. Respire, et dis-moi ce qui se passe en toi."]` }],
           }],
           turnComplete: true,
         },
@@ -761,7 +784,7 @@ export default function SOSExercise({
       clientContent: {
         turns: [{
           role: "user",
-          parts: [{ text: `[Pose maintenant à ${firstName} une question de clôture douce et personnalisée — basée sur ce qu'il t'a partagé tout à l'heure. Une seule question courte, voix chaleureuse. Après sa réponse, tu peux conclure en 1 phrase avant de te taire.]` }],
+          parts: [{ text: `[Clôture de l'exercice. Formule une unique question ouverte, extrêmement douce, pour mesurer l'apaisement du patient par rapport au début (ex: "Comment te sens-tu maintenant, dans ton corps et dans ton esprit, après ce tracé ?"). Voix murmurée. Après sa réponse, tu n'auras le droit de prononcer qu'une seule phrase finale d'ancrage avant de te taire définitivement.]` }],
         }],
         turnComplete: true,
       },
@@ -865,32 +888,52 @@ export default function SOSExercise({
       if (p === "loading" || p === "ready" || p === "tracing" || p === "reveal") return;
 
       if (type === "start") {
-        // Barge-in avec délai anti-écho :
-        // L'écho de Gemini dure < 150ms ; la vraie parole dure > 400ms.
-        // On attend 400ms avant de couper — si c'était de l'écho, le worklet
-        // aura déjà envoyé "end" et on annulera le timer.
         if (isAiSpeakingRef.current) {
+          // Validation anti-écho : l'IA parle → on NE PRÉVIENT PAS le serveur
+          // tout de suite. L'écho dure < 150ms, la vraie parole dure > 400ms.
+          // Les chunks captés pendant ces 400ms sont bufferisés localement —
+          // rien ne part vers Gemini avant d'être sûr qu'il s'agit bien d'une
+          // interruption réelle (sinon le serveur coupe l'IA sur un faux positif).
+          pendingChunksRef.current = [];
           bargeInTimerRef.current = setTimeout(() => {
             bargeInTimerRef.current = null;
-            if (isAiSpeakingRef.current) flushAudio();
+            // 400ms écoulées sans "end" → parole confirmée (pas un écho)
+            if (isAiSpeakingRef.current) flushAudio(); // coupe l'IA seulement si elle parle encore
+            ws?.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
+            for (const b64 of pendingChunksRef.current) {
+              ws?.send(JSON.stringify({
+                realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } },
+              }));
+            }
+            pendingChunksRef.current = [];
           }, 400);
+        } else {
+          // IA silencieuse → aucune ambiguïté possible, démarrage immédiat
+          ws?.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
         }
-        ws?.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
 
       } else if (type === "chunk" && buffer) {
-        // Chunk PCM propre (filtré + validé par le worklet) → encoder + envoyer
+        // Chunk PCM propre (filtré + validé par le worklet) → encoder
         const b64 = float32ToPCM16Base64(new Float32Array(buffer));
-        ws?.send(JSON.stringify({
-          realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } },
-        }));
+        if (bargeInTimerRef.current) {
+          // Validation en cours → on bufferise, rien n'est envoyé à Gemini pour l'instant
+          pendingChunksRef.current.push(b64);
+        } else {
+          ws?.send(JSON.stringify({
+            realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } },
+          }));
+        }
 
       } else if (type === "end") {
-        // Annuler un barge-in en attente (c'était de l'écho, pas de la parole)
         if (bargeInTimerRef.current) {
+          // Le silence est revenu avant 400ms → c'était un écho, pas de la parole.
+          // On annule tout : aucun activityStart n'a été envoyé, donc rien à clôturer.
           clearTimeout(bargeInTimerRef.current);
           bargeInTimerRef.current = null;
+          pendingChunksRef.current = [];
+        } else {
+          ws?.send(JSON.stringify({ realtimeInput: { activityEnd: {} } }));
         }
-        ws?.send(JSON.stringify({ realtimeInput: { activityEnd: {} } }));
       }
     };
 
@@ -980,13 +1023,15 @@ export default function SOSExercise({
     >
       {/* ── ParticleCanvas — toujours monté pendant l'exercice ─────────────────── */}
       <ParticleCanvas
-        word={showTrace || showReveal ? chosenWord : null}
+        // Le mot reste affiché (SVG illuminé) pendant toute la transition — pas de
+        // coupure de scène : la clôture se déroule sur le même mot, toujours allumé.
+        word={showTrace || showReveal || showTrans ? chosenWord : null}
         letterColors={letterColors}
         letterIdx={currentLetterIdx}
         breathPhase={breathPhase}
         expireStart={expireStart}
         inspireStart={inspireStart}
-        isReveal={showReveal}
+        isReveal={showReveal || showTrans}
         litLetters={litLetters}
         INSPIRE_MS={INSPIRE_MS}
         EXPIRE_MS={EXPIRE_MS}
@@ -1184,26 +1229,20 @@ export default function SOSExercise({
         </p>
       )}
 
-      {/* ══ TRANSITION ═══════════════════════════════════════════════════════════ */}
+      {/* ══ TRANSITION ═══════════════════════════════════════════════════════════
+          Pas de scène séparée : le mot tracé reste illuminé (SVG géré par
+          ParticleCanvas, voir prop `word` plus haut) — on ajoute juste le calque
+          orbe + question par-dessus, en continuité directe avec le reveal. ══ */}
       {showTrans && (
         <div style={{
+          position: "absolute", bottom: 64, left: 0, right: 0,
           display: "flex", flexDirection: "column",
-          alignItems: "center", gap: 32,
+          alignItems: "center", gap: 24,
+          zIndex: 6,
           animation: "sos-fade 0.6s ease",
         }}>
-          {/* Word fading */}
-          <div style={{
-            fontSize: "clamp(44px, 12vw, 82px)",
-            fontWeight: 900, letterSpacing: "0.08em",
-            color: "#00e5b4", opacity: 0.28,
-            textShadow: "0 0 28px rgba(0,229,180,0.5)",
-            userSelect: "none",
-          }}>
-            {chosenWord}
-          </div>
-
           {/* Mini wave orb */}
-          <div style={{ transform: "scale(0.7)", marginTop: -16 }}>
+          <div style={{ transform: "scale(0.7)" }}>
             <WaveOrb speaking={isAiSpeaking} firstName={firstName} />
           </div>
 
