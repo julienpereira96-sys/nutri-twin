@@ -713,6 +713,19 @@ export default function SOSExercise({
     const inTrans = sc.inputTranscription as Record<string, unknown> | undefined;
     if (inTrans?.text && typeof inTrans.text === "string") {
       inputTranscriptRef.current += " " + (inTrans.text as string);
+      // Seul un contenu RÉELLEMENT transcrit par Gemini prouve que le patient a
+      // parlé — pas la simple détection RMS du Worklet (qui peut être un souffle,
+      // un raclement de gorge, ou le bruit d'une interruption sans contenu verbal).
+      // C'est ce flag qui décide, dans triggerIntakeTransition, entre "valider
+      // l'émotion exprimée" et "ne suppose aucune émotion, juste accompagner".
+      // Inclut "loading" : le patient peut parler dès le tout début de l'accueil,
+      // avant même le premier turnComplete qui bascule la phase sur "intake".
+      if (
+        (phaseRef.current === "intake" || phaseRef.current === "loading") &&
+        inTrans.text.trim().length > 0
+      ) {
+        patientHasSpokenRef.current = true;
+      }
       // La question de clôture a déjà été posée → le patient vient de répondre,
       // on annule les timers de relance
       if (phaseRef.current === "reveal" && closingQuestionSentRef.current) {
@@ -883,14 +896,18 @@ export default function SOSExercise({
   // Cas 1 — AI vient de finir de parler en intake
   //   → Si patient n'a pas encore parlé : 6s → relance douce
   //   → Si patient a parlé puis s'est tu (et AI aussi) : 5s → transition TCC
-  // Cas 2 — Patient parle → annuler les timers, noter qu'il a parlé
+  // Cas 2 — Patient parle → suspendre les timers (ne pas le couper), MAIS ne PAS
+  //   en déduire qu'il "a parlé" : un son qui dépasse le seuil RMS du Worklet
+  //   (souffle, raclement de gorge, bruit d'une interruption) n'est pas une preuve
+  //   de contenu verbal. La preuve réelle vient de la transcription Gemini
+  //   (inputTranscription, voir handleWSMessage) — patientHasSpokenRef n'est posé
+  //   à true que là-bas, jamais ici.
   //   (guard : ne compter que si AI ne parle pas — évite le feedback micro/haut-parleur)
   useEffect(() => {
     if (phase !== "intake") return;
 
     // Patient speaking — ne compter que si l'IA ne parle pas (feedback micro)
     if (isPatientSpeaking && !isAiSpeakingRef.current) {
-      patientHasSpokenRef.current = true;
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       return;
     }
@@ -1007,12 +1024,14 @@ export default function SOSExercise({
       if (type === "start") setIsPatientSpeaking(true);
       else if (type === "end") setIsPatientSpeaking(false);
 
-      // Gate WS : micro actif en intake, et en reveal seulement une fois la
+      // Gate WS : micro actif dès "loading" (le patient peut parler dès le tout
+      // début de l'accueil — Gemini doit pouvoir rebondir sur ce qu'il a dit,
+      // pas l'ignorer), pendant tout "intake", et en reveal seulement une fois la
       // question de clôture envoyée (avant ça, on est encore dans la félicitation
       // silencieuse côté patient — pas de scène "transition" séparée désormais).
       const p  = phaseRef.current;
       const ws = wsRef.current;
-      if (p === "loading" || p === "ready" || p === "tracing") return;
+      if (p === "ready" || p === "tracing") return;
       if (p === "reveal" && !closingQuestionSentRef.current) return;
 
       if (type === "start") {

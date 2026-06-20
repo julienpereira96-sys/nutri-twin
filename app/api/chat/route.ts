@@ -768,6 +768,27 @@ export async function POST(request: Request) {
           });
         } catch { /* silencieux */ }
 
+        // Persiste la paire patient/IA dans le fil de discussion — avant, ce bypass
+        // retournait directement la réponse sans jamais sauvegarder le message du
+        // patient (seul un extrait de 200 caractères survivait dans admin_alerts),
+        // donc le praticien ne voyait jamais le message exact dans l'historique.
+        await supabase.from("conversations").insert([
+          {
+            patient_id: patientId,
+            practitioner_id: practitionerId,
+            role: "user",
+            content: message,
+            session_id: sessionId ?? null,
+          },
+          {
+            patient_id: patientId,
+            practitioner_id: practitionerId,
+            role: "assistant",
+            content: criticalResponse,
+            session_id: sessionId ?? null,
+          },
+        ]);
+
         return new Response(criticalResponse, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
       }
     }
@@ -840,10 +861,10 @@ export async function POST(request: Request) {
 
       // Mapping sosContext → outils prioritaires
       const sosToolHints: Record<string, string> = {
-        "fringale": "manger ou body_scan",
+        "fringale": "manger ou ecriture",
         "stress": "breathing ou ancrage",
         "culpabilité": "defusion ou ecriture",
-        "coup de mou": "marche ou adaptive_coaching",
+        "coup de mou": "breathing ou ancrage",
       };
       const toolHint = sosContext
         ? Object.entries(sosToolHints).find(([key]) => sosContext.toLowerCase().includes(key))?.[1] ?? ""
@@ -861,12 +882,11 @@ DERNIERS ÉCHANGES :
 ${context || "Aucun échange récent."}
 
 RÈGLES :
-- Choisis l'outil parmi : breathing, ancrage, manger, marche, body_scan, defusion, ecriture, adaptive_coaching
+- Choisis l'outil parmi : breathing, ancrage, manger, defusion, ecriture
 ${toolHint ? `- TYPE DE CRISE DÉCLARÉ : "${sosContext}" → Privilégie : ${toolHint}` : ""}
 - ANTI-REDONDANCE : Outils récemment utilisés : ${recentTools || "aucun"}. Évite de reproposer le même.
 - Le twin_message : max 30 mots, valide l'émotion (70%), transition douce vers l'exercice.
 - Les steps du tool_script : personnalisés, jamais génériques, adaptés au profil du patient.
-- Si adaptive_coaching : génère des steps suivant une approche TCC (identifier pensée automatique, questionner, action concrète).
 
 Réponds UNIQUEMENT en JSON sans markdown ni backticks :
 {"tool_id":"breathing","twin_message":"Message personnalisé max 30 mots","tool_script":{"step_1":"instruction personnalisée","step_2":"instruction personnalisée","step_3":"instruction personnalisée"}}`;
@@ -898,9 +918,16 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
       }
     }
 
-    // ═══ POST-EXERCICE — question fixe personnalisée, zéro LLM, zéro effet de bord ═══
-    // Ce canal ne touche pas emotional_status, ne sauvegarde pas le message système,
-    // ne déclenche aucune analyse de crise. Seule la question fixe est renvoyée + persistée.
+    // ═══ POST-EXERCICE — question fixe personnalisée ═══
+    // Canal partagé par SOSExercise (clôture vocale) ET les 5 exercices de la
+    // bibliothèque (modale "Comment tu te sens ?"). Réponse chaleureuse par défaut,
+    // zéro friction pour le patient — MAIS double garde-fou sur ce texte libre :
+    //   1) grave  (red_critical)   → réponse de sécurité immédiate + alerte praticien
+    //   2) légère (red_behavioral) → dashboard praticien mis à jour, réponse inchangée
+    // Le message du patient est désormais toujours persisté (avant, seule la réponse
+    // de l'IA l'était). Le garde-fou mots-clés bruts (plus haut dans ce fichier)
+    // s'applique déjà avant d'arriver ici ; ceci ajoute la détection fine (implicite,
+    // sans mot-clé exact) via analyzeCrisisWithLLM, déjà utilisée dans le flux normal.
     if (isPostExercise && patientId && practitionerId) {
       const supabase = createSupabaseClient();
 
@@ -915,18 +942,78 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
       // Noms lisibles des exercices
       const toolNames: Record<string, string> = {
         breathing: "la cohérence cardiaque", ancrage: "l'ancrage sensoriel",
-        manger: "la pleine conscience alimentaire", marche: "la marche consciente",
-        body_scan: "le body scan", defusion: "la défusion cognitive",
-        ecriture: "l'écriture cathartique", adaptive_coaching: "le coaching TCC",
+        manger: "la pleine conscience alimentaire", defusion: "la défusion cognitive",
+        ecriture: "l'écriture cathartique",
       };
       const exerciseName = toolId ? (toolNames[toolId] ?? "l'exercice") : "l'exercice";
+      const trimmedMessage = message?.trim() ?? "";
 
-      // Si le patient a partagé son ressenti, générer un message de clôture Gemini
-      if (message?.trim()) {
+      if (trimmedMessage) {
+        // Toujours persister le ressenti du patient — traçabilité praticien complète,
+        // même si rien de préoccupant n'est détecté.
+        const { data: savedMsg } = await supabase.from("conversations").insert({
+          patient_id: patientId,
+          practitioner_id: practitionerId,
+          role: "user",
+          content: trimmedMessage,
+          session_id: null,
+        }).select("id").single();
+        const savedMessageId = (savedMsg as { id?: string } | null)?.id ?? null;
+
+        await supabase.from("patients").update({ last_patient_message_at: new Date().toISOString() }).eq("user_id", patientId);
+
+        // ── Double garde-fou sur ce texte libre ────────────────────────────────
+        const crisisAnalysis = await analyzeCrisisWithLLM(trimmedMessage, `Patient en fin de ${exerciseName}.`);
+
+        if (crisisAnalysis.level === "red_critical") {
+          await supabase.from("patients").update({
+            emotional_status: "red_critical",
+            emotional_insight: crisisAnalysis.murmure || "Urgence détectée en fin d'exercice",
+          }).eq("user_id", patientId);
+          const { data: cur } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
+          const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+          await supabase.from("patients").update({
+            admin_alerts: [...alerts, { type: "admin_alert", alert_type: "critical_llm", date: new Date().toISOString(), seen: false, murmure: crisisAnalysis.murmure, trigger_message_id: savedMessageId }],
+          }).eq("user_id", patientId);
+          try {
+            await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "" },
+              body: JSON.stringify({ patientId, practitionerId, alertType: "implicit_critical", message: trimmedMessage }),
+            });
+          } catch { /* silencieux */ }
+
+          // On remplace le message chaleureux générique par la réponse de sécurité —
+          // valider le ressenti serait inapproprié face à une urgence vitale.
+          const safeResponse = CRISIS_CRITICAL_RESPONSES.suicide;
+          await supabase.from("conversations").insert({
+            patient_id: patientId, practitioner_id: practitionerId, role: "assistant", content: safeResponse, session_id: null,
+          });
+          return new Response(safeResponse, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+        }
+
+        if (crisisAnalysis.level === "red_behavioral") {
+          await supabase.from("patients").update({
+            emotional_status: "red_behavioral",
+            emotional_insight: crisisAnalysis.murmure || "Alerte comportementale détectée en fin d'exercice",
+          }).eq("user_id", patientId);
+          const { data: cur } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
+          const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+          await supabase.from("patients").update({
+            admin_alerts: [...alerts, { type: "admin_alert", alert_type: "behavioral", date: new Date().toISOString(), seen: false, murmure: crisisAnalysis.murmure, trigger_message_id: savedMessageId }],
+          }).eq("user_id", patientId);
+          // Pas d'alerte email (pour ne pas spammer le praticien), pas d'override de
+          // la réponse : le message de clôture chaleureux habituel suit normalement.
+        }
+      }
+
+      // Si le patient a partagé son ressenti (et qu'aucune urgence vitale n'a été
+      // détectée ci-dessus), générer un message de clôture Gemini
+      if (trimmedMessage) {
         try {
           const closingPrompt = `Tu es le Jumeau Numérique bienveillant d'un nutritionniste.
 ${firstName ? `Le patient s'appelle ${firstName}.` : ""}
-Le patient vient de terminer ${exerciseName} et partage son ressenti : "${message.trim()}"
+Le patient vient de terminer ${exerciseName} et partage son ressenti : "${trimmedMessage}"
 
 Génère UN seul message de clôture chaleureux de 1 à 2 phrases courtes. Il doit :
 - Valider ce ressenti avec sincérité, sans effusion excessive
@@ -1221,9 +1308,8 @@ Max 150 mots. Sans markdown.`;
           if (resolvedSosEvent?.origin === "crise" && !victoryText) {
             const sosToolNames: Record<string, string> = {
               breathing: "la cohérence cardiaque", ancrage: "l'ancrage sensoriel",
-              manger: "la pleine conscience alimentaire", marche: "la marche consciente",
-              body_scan: "le body scan", defusion: "la défusion cognitive",
-              ecriture: "l'écriture cathartique", adaptive_coaching: "le coaching TCC",
+              manger: "la pleine conscience alimentaire", defusion: "la défusion cognitive",
+              ecriture: "l'écriture cathartique",
             };
             let resolvedToolId: string | null = null;
             try { resolvedToolId = (JSON.parse(resolvedSosEvent.raw_response ?? "{}") as { tool_id?: string }).tool_id ?? null; } catch { /* ignore */ }

@@ -5,12 +5,9 @@ import { createBrowserClient } from "@supabase/ssr";
 import JournalModal from "./JournalModal";
 import BreathingExercise from "./BreathingExercise";
 import AncrageExercise from "./AncrageExercise";
-import BodyScanExercise from "./BodyScanExercise";
 import MindfulEating from "./MindfulEating";
 import EcritureExercise from "./EcritureExercise";
 import DefusionExercise from "./DefusionExercise";
-import MarcheExercise from "./MarcheExercise";
-import AdaptiveCoachingExercise from "./AdaptiveCoachingExercise";
 import SOSExercise from "./SOSExercise";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import MicConsentOverlay from "./MicConsentOverlay";
@@ -176,20 +173,9 @@ const IconLayers = ({ size = 22, color = "currentColor" }: { size?: number; colo
     <polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>
   </svg>
 );
-const IconFootprints = ({ size = 22, color = "currentColor" }: { size?: number; color?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0z"/>
-    <path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0z"/>
-  </svg>
-);
 const IconStar = ({ size = 22, color = "currentColor" }: { size?: number; color?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-  </svg>
-);
-const IconBody = ({ size = 22, color = "currentColor" }: { size?: number; color?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="5" r="1.5"/><path d="M12 8v6"/><path d="M9 10.5l3 1.5 3-1.5"/><path d="M9 20l3-4 3 4"/>
   </svg>
 );
 const IconLeaf2 = ({ size = 22, color = "currentColor" }: { size?: number; color?: string }) => (
@@ -199,14 +185,11 @@ const IconLeaf2 = ({ size = 22, color = "currentColor" }: { size?: number; color
 );
 
 const TOOL_SVG_ICONS: Record<string, React.ReactElement> = {
-  body_scan: <IconBody size={28} color={CYAN} />,
   manger: <IconLeaf2 size={28} color={CYAN} />,
   breathing: <IconWind size={28} color={CYAN} />,
   ancrage: <IconEye size={28} color={CYAN} />,
   ecriture: <IconPen size={28} color={CYAN} />,
   defusion: <IconLayers size={28} color={CYAN} />,
-  marche: <IconFootprints size={28} color={CYAN} />,
-  adaptive_coaching: <IconStar size={28} color={CYAN} />,
 };
 
 const SearchIcon = ({ size = 14, color = TEXT_MUTED }: { size?: number; color?: string }) => (
@@ -467,11 +450,8 @@ const SOS_EXERCISE_META: Record<string, { label: string; icon: string }> = {
   breathing:        { label: "Calmer mon souffle",         icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" },
   ancrage:          { label: "Ancrer mes 5 sens",          icon: "M12 2a10 10 0 100 20A10 10 0 0012 2zm0 2a8 8 0 110 16A8 8 0 0112 4zm0 3a5 5 0 100 10A5 5 0 0012 7zm0 2a3 3 0 110 6A3 3 0 0112 9z" },
   manger:           { label: "Manger en pleine conscience", icon: "M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z" },
-  marche:           { label: "Faire quelques pas",         icon: "M13.49 5.48c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm-3.6 13.9l1-4.4 2.1 2v6h2v-7.5l-2.1-2 .6-3c1.3 1.5 3.3 2.5 5.5 2.5v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1l-5.2 2.2v4.7h2v-3.4l1.8-.7-1.6 8.1-4.9-1-.4 2 7 1.4z" },
-  body_scan:        { label: "Scanner mon corps",          icon: "M12 2c-4.42 0-8 3.58-8 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6s2.69-6 6-6 6 2.69 6 6-2.69 6-6 6zm0-10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z" },
   defusion:         { label: "Prendre de la distance",     icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" },
   ecriture:         { label: "Écrire pour me libérer",     icon: "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" },
-  adaptive_coaching:{ label: "Coaching personnalisé",      icon: "M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" },
 };
 
 // ═══ BIBLIOTHÈQUE D'EXERCICES — accès direct, hors situation de crise ═══
@@ -488,9 +468,8 @@ const LIBRARY_EXERCISES: { id: string; label: string; desc: string; icon: string
 function generateCelebration(firstName: string, toolId: string): string {
   const toolNames: Record<string, string> = {
     breathing: "la cohérence cardiaque", ancrage: "l'ancrage sensoriel",
-    manger: "la pleine conscience", marche: "la marche consciente",
-    body_scan: "le body scan", defusion: "la défusion cognitive",
-    ecriture: "l'écriture cathartique", adaptive_coaching: "ce moment de coaching",
+    manger: "la pleine conscience", defusion: "la défusion cognitive",
+    ecriture: "l'écriture cathartique",
   };
   const tool = toolNames[toolId] ?? "cet exercice";
   const name = firstName || "toi";
@@ -729,9 +708,6 @@ export default function ChatPage() {
   // ─── Full-screen ancrage overlay ───
   const [showAncrageExercise, setShowAncrageExercise] = useState(false);
   const [ancrageSosContext, setAncrageSosContext] = useState("");
-  // ─── Full-screen body scan overlay ───
-  const [showBodyScanExercise, setShowBodyScanExercise] = useState(false);
-  const [bodyScanSosContext, setBodyScanSosContext] = useState("");
   // ─── Full-screen manger pleine conscience overlay ───
   const [showMangerExercise, setShowMangerExercise] = useState(false);
   const [mangerSosContext, setMangerSosContext] = useState("");
@@ -741,12 +717,6 @@ export default function ChatPage() {
   // ─── Full-screen défusion cognitive overlay ───
   const [showDefusionExercise, setShowDefusionExercise] = useState(false);
   const [defusionSosContext, setDefusionSosContext] = useState("");
-  // ─── Full-screen marche consciente overlay ───
-  const [showMarcheExercise, setShowMarcheExercise] = useState(false);
-  const [marcheSosContext, setMarcheSosContext] = useState("");
-  // ─── Full-screen coaching adaptatif overlay ───
-  const [showAdaptiveCoachingExercise, setShowAdaptiveCoachingExercise] = useState(false);
-  const [adaptiveCoachingSosContext, setAdaptiveCoachingSosContext] = useState("");
   // ─── Consentement microphone ─────────────────────────────────────────────────
   // Affiche MicConsentOverlay UNE SEULE FOIS (si permission "prompt") avant le
   // premier exercice vocal. Après accord, le navigateur retient la permission.
@@ -754,7 +724,6 @@ export default function ChatPage() {
   const [pendingTool, setPendingTool] = useState<{ toolId: string; sosContext: string; forcedOrigin?: "pratique" } | null>(null);
   const [showMicConsent, setShowMicConsent] = useState(false);
   const [ancrageStep, setAncrageStep] = useState(0);
-  const [marcheStep, setMarcheStep] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const profilePhotoRef = useRef<HTMLInputElement>(null);
   // Timestamp du dernier upload photo depuis cet appareil — évite que Realtime écrase la nouvelle photo avec l'ancienne depuis le CDN
@@ -819,15 +788,6 @@ export default function ChatPage() {
     { count: 3, sense: "entendez", icon: <IconWave size={34} color={CYAN} /> },
     { count: 2, sense: "sentez", icon: <IconWind size={34} color={CYAN} /> },
     { count: 1, sense: "goûtez", icon: <IconLeaf2 size={34} color={CYAN} /> },
-  ];
-
-  const marcheSteps = [
-    "Levez-vous doucement. Sentez vos pieds sur le sol.",
-    "Commencez à marcher lentement. Chaque pas est intentionnel.",
-    "Observez votre environnement. Couleurs, formes, lumières.",
-    "Sentez l'air sur votre peau. La température autour de vous.",
-    "Synchronisez respiration et pas. Vous êtes présent.",
-    "Vous êtes ancré dans le moment présent.",
   ];
 
   // Scroll vers le bas : instantané pendant le stream (60fps typewriter), smooth quand loading s'arrête
@@ -1164,7 +1124,7 @@ export default function ChatPage() {
     setActiveTool(null);
     setBreathingStep("idle"); setBreathingCycle(0); setBreathingTimer(0);
     if (breathingIntervalRef.current) clearInterval(breathingIntervalRef.current);
-    setAncrageStep(0); setMarcheStep(0);
+    setAncrageStep(0);
   }, []);
 
   // ─── Exercice terminé : ferme la modale + follow-up IA via canal dédié ───
@@ -1206,13 +1166,6 @@ export default function ChatPage() {
     ]);
     setActiveTool({ id: "ancrage", data: null });
     setPostExerciseStep({ toolId: "ancrage", answer: "victoire" });
-  }, []);
-
-  // ─── Body scan overlay complete ──────────────────────────────────────────────
-  const handleBodyScanComplete = useCallback(() => {
-    setShowBodyScanExercise(false);
-    setActiveTool({ id: "body_scan", data: null });
-    setPostExerciseStep({ toolId: "body_scan", answer: "" });
   }, []);
 
   // ─── Manger pleine conscience overlay complete ───────────────────────────────
@@ -1285,20 +1238,6 @@ export default function ChatPage() {
     setPostExerciseStep({ toolId: "defusion", answer: "" });
   }, []);
 
-  // ─── Marche consciente overlay complete ──────────────────────────────────────
-  const handleMarcheComplete = useCallback(() => {
-    setShowMarcheExercise(false);
-    setActiveTool({ id: "marche", data: null });
-    setPostExerciseStep({ toolId: "marche", answer: "" });
-  }, []);
-
-  // ─── Coaching adaptatif overlay complete ─────────────────────────────────────
-  const handleAdaptiveCoachingComplete = useCallback(() => {
-    setShowAdaptiveCoachingExercise(false);
-    setActiveTool({ id: "adaptive_coaching", data: null });
-    setPostExerciseStep({ toolId: "adaptive_coaching", answer: "" });
-  }, []);
-
   // Soumission de la réponse post-exercice depuis la modale
   const handlePostExerciseSubmit = useCallback(async () => {
     if (!postExerciseStep) return;
@@ -1345,7 +1284,7 @@ export default function ChatPage() {
     // Les exercices vocaux (Gemini Live) nécessitent le micro.
     // Si la permission n'a pas encore été accordée, on affiche d'abord
     // MicConsentOverlay pour contextualiser la demande native du navigateur.
-    // Les exercices sans micro (journal, marche, adaptive) passent directement.
+    // Les exercices sans micro (journal) passent directement.
     const needsMic = ["breathing", "ancrage", "manger", "ecriture", "defusion", "sos"].includes(toolId);
     // Stratégie localStorage — sans race condition avec navigator.permissions :
     //   • !hasMicConsent()            → l'utilisateur n'a jamais vu l'explication → overlay
@@ -1846,16 +1785,6 @@ export default function ChatPage() {
         />
       )}
 
-      {/* ─── Body scan full-screen overlay ─── */}
-      {showBodyScanExercise && (
-        <BodyScanExercise
-          sosContext={bodyScanSosContext}
-          firstName={patientFirstName}
-          onCompleted={handleBodyScanComplete}
-          onClose={() => setShowBodyScanExercise(false)}
-        />
-      )}
-
       {/* ─── Manger en pleine conscience full-screen overlay ─── */}
       {/* ─── MindfulEating full-screen overlay ─── */}
       {showMangerExercise && patientId && practitionerIdFromDb && (
@@ -1890,26 +1819,6 @@ export default function ChatPage() {
           firstName={patientFirstName}
           onTransitionToChat={handleDefusionTransitionToChat}
           onClose={() => setShowDefusionExercise(false)}
-        />
-      )}
-
-      {/* ─── Marche consciente full-screen overlay ─── */}
-      {showMarcheExercise && (
-        <MarcheExercise
-          sosContext={marcheSosContext}
-          firstName={patientFirstName}
-          onCompleted={handleMarcheComplete}
-          onClose={() => setShowMarcheExercise(false)}
-        />
-      )}
-
-      {/* ─── Coaching adaptatif full-screen overlay ─── */}
-      {showAdaptiveCoachingExercise && (
-        <AdaptiveCoachingExercise
-          sosContext={adaptiveCoachingSosContext}
-          firstName={patientFirstName}
-          onCompleted={handleAdaptiveCoachingComplete}
-          onClose={() => setShowAdaptiveCoachingExercise(false)}
         />
       )}
 
