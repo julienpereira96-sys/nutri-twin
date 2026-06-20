@@ -77,10 +77,14 @@ export interface ParticleCanvasProps {
   breathPhase: "inspire" | "expire";
   /** Date.now() au début de la phase expire (pour calcul du stagger) */
   expireStart: number | null;
+  /** Date.now() au début de la phase inspire (pour l'anneau) */
+  inspireStart: number | null;
   /** Phase de révélation finale */
   isReveal: boolean;
   /** Quelles lettres SVG illuminer (longueur = word.length) */
   litLetters: boolean[];
+  /** Durée de l'inspiration en ms (pour l'anneau) */
+  INSPIRE_MS: number;
   /** Durée de l'expiration en ms (pour le calcul du stagger) */
   EXPIRE_MS: number;
 }
@@ -92,8 +96,10 @@ export default function ParticleCanvas({
   letterIdx,
   breathPhase,
   expireStart,
+  inspireStart,
   isReveal,
   litLetters,
+  INSPIRE_MS,
   EXPIRE_MS,
 }: ParticleCanvasProps) {
 
@@ -105,7 +111,11 @@ export default function ParticleCanvas({
   const particlesRef    = useRef<Particle[]>([]);
   const letPtsRef       = useRef<[number, number][]>([]);
   const revealFadeRef   = useRef(1.0);
-  const expireStartRef  = useRef<number>(0);
+  const expireStartRef      = useRef<number>(0);
+  // Refs dédiés à l'anneau (mis à jour immédiatement depuis les props, sans double-RAF)
+  const ringInspireStartRef = useRef<number>(0);
+  const ringExpireStartRef  = useRef<number>(0);
+  const inspireMsRef        = useRef(INSPIRE_MS);
 
   // Mirrors des props dans des refs (lus dans la boucle RAF)
   const letterIdxRef    = useRef(letterIdx);
@@ -121,6 +131,10 @@ export default function ParticleCanvas({
   wordRef.current        = word;
   colorsRef.current      = letterColors;
   expireMsRef.current    = EXPIRE_MS;
+  inspireMsRef.current   = INSPIRE_MS;
+  // Mise à jour immédiate pour l'anneau (pas de double-RAF nécessaire)
+  if (inspireStart != null) ringInspireStartRef.current = inspireStart;
+  if (expireStart  != null) ringExpireStartRef.current  = expireStart;
 
   // ── Calcul des points-cibles depuis le SVG ──────────────────────────────────
   const computeLetterPts = useCallback((li: number) => {
@@ -321,28 +335,73 @@ export default function ParticleCanvas({
       }
       ctx.globalAlpha = 1;
 
-      // ── Point focal (inspire) — juste au-dessus du label Inspire/Expire ─────
-      if (w && bp === "inspire" && !rev) {
-        const col    = cols[li % cols.length];
-        const cx     = W / 2;
-        const cy     = H - FOCAL_BOTTOM_PX;
-        ctx.globalAlpha = 0.06;
-        ctx.beginPath(); ctx.arc(cx, cy, 32, 0, Math.PI * 2);
-        ctx.fillStyle = col; ctx.fill();
+      // ── Point focal + anneau respiratoire ────────────────────────────────────
+      // Visible pendant tout le tracé (inspire ET expire) pour rythmer le souffle.
+      // Anneau :
+      //   • Inspire → se remplit de 0 à 100% (particules affluent, poumons se remplissent)
+      //   • Expire  → se vide de 100 à 0%   (particules forment la lettre, poumons se vident)
+      if (w && !rev) {
+        const col   = cols[li % cols.length];
+        const cx    = W / 2;
+        const cy    = H - FOCAL_BOTTOM_PX;
+        const RING_R = 28;
 
-        ctx.globalAlpha = 0.22;
-        ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-        ctx.fillStyle = col; ctx.fill();
+        // Fraction de l'anneau selon la phase
+        let ringFraction: number;
+        if (bp === "inspire") {
+          const elapsed = ringInspireStartRef.current > 0
+            ? Date.now() - ringInspireStartRef.current : 0;
+          ringFraction = Math.min(1, elapsed / inspireMsRef.current);
+        } else {
+          const elapsed = ringExpireStartRef.current > 0
+            ? Date.now() - ringExpireStartRef.current : 0;
+          ringFraction = Math.max(0, 1 - elapsed / expireMsRef.current);
+        }
 
-        ctx.globalAlpha = 0.70;
-        ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-        ctx.fillStyle = "#e0f2fe"; ctx.fill();
+        // Arc de progression (toujours dessiné, même à 0 fraction pour l'anneau de fond)
+        // Fond de l'anneau — très subtil
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(cx, cy, RING_R, 0, Math.PI * 2);
+        ctx.strokeStyle = col;
+        ctx.lineWidth   = 2;
+        ctx.globalAlpha = 0.10;
+        ctx.stroke();
 
-        ctx.globalAlpha = 1;
-        ctx.beginPath(); ctx.arc(cx, cy, 2.4, 0, Math.PI * 2);
-        ctx.fillStyle = "#ffffff"; ctx.fill();
+        // Arc rempli
+        if (ringFraction > 0.01) {
+          const startAngle = -Math.PI / 2;
+          const endAngle   = startAngle + 2 * Math.PI * ringFraction;
+          ctx.beginPath();
+          ctx.arc(cx, cy, RING_R, startAngle, endAngle);
+          ctx.strokeStyle = col;
+          ctx.lineWidth   = 2.5;
+          ctx.lineCap     = "round";
+          ctx.globalAlpha = 0.50 + ringFraction * 0.35;
+          ctx.stroke();
+        }
+        ctx.restore();
 
-        ctx.globalAlpha = 1;
+        // Point central et lueur — uniquement pendant l'inspire
+        if (bp === "inspire") {
+          ctx.globalAlpha = 0.06;
+          ctx.beginPath(); ctx.arc(cx, cy, 32, 0, Math.PI * 2);
+          ctx.fillStyle = col; ctx.fill();
+
+          ctx.globalAlpha = 0.22;
+          ctx.beginPath(); ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+          ctx.fillStyle = col; ctx.fill();
+
+          ctx.globalAlpha = 0.70;
+          ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+          ctx.fillStyle = "#e0f2fe"; ctx.fill();
+
+          ctx.globalAlpha = 1;
+          ctx.beginPath(); ctx.arc(cx, cy, 2.4, 0, Math.PI * 2);
+          ctx.fillStyle = "#ffffff"; ctx.fill();
+
+          ctx.globalAlpha = 1;
+        }
       }
     };
 

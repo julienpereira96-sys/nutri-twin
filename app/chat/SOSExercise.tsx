@@ -133,12 +133,11 @@ const WORD_BANK = {
   moderate: [
     "CALME", "LIBRE", "FORCE", "REPOS", "ANCRE", "DIGNE",
     "APAISE", "SEREIN", "SOLIDE", "LIBERE", "VIVANT", "SOURIS",
-    "LUMIER",
   ],
   /** 7–8 letters — crisis sévère (~70–80s) */
   intense: [
     "APAISER", "LIBERER", "SOULAGE", "CALMONS", "RESPIRE", "LIBERTE",
-    "SERENITE", "SOLIDITE", "SOULAGER", "APAISONS",
+    "SERENITE", "SOLIDITE", "SOULAGER", "APAISONS", "LUMIERE",
   ],
 };
 
@@ -180,12 +179,6 @@ function pcm16Base64ToFloat32(b64: string): Float32Array {
   const f32 = new Float32Array(i16.length);
   for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
   return f32;
-}
-
-function getRMS(data: Float32Array): number {
-  let sum = 0;
-  for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
-  return Math.sqrt(sum / data.length);
 }
 
 // ─── Wave Orb (remplace AiBlob) ──────────────────────────────────────────────
@@ -317,6 +310,7 @@ export default function SOSExercise({
   const [isAiSpeaking,    setIsAiSpeaking]    = useState(false);
   const [isPatientSpeaking, setIsPatientSpeaking] = useState(false);
   const [breathPhase,      setBreathPhase]      = useState<BreathPhase>("inspire");
+  const [inspireStart,     setInspireStart]     = useState<number | null>(null);
   const [currentLetterIdx, setCurrentLetterIdx] = useState(0);
   const [chosenWord,       setChosenWord]       = useState("CALME");
   const [expireStart,      setExpireStart]      = useState<number | null>(null);
@@ -327,10 +321,8 @@ export default function SOSExercise({
   const phaseRef            = useRef<SOSPhase>("loading");
   const wsRef               = useRef<GeminiLiveClient | null>(null);
   const audioCtxRef         = useRef<AudioContext | null>(null);
-  const analyserRef         = useRef<AnalyserNode | null>(null);
   const mediaStreamRef      = useRef<MediaStream | null>(null);
   const workletNodeRef      = useRef<AudioWorkletNode | null>(null);
-  const animFrameRef        = useRef<number>(0);
 
   // Timers
   const hardTimerRef        = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -361,7 +353,6 @@ export default function SOSExercise({
   const repromptSentRef        = useRef(false);   // gentle re-prompt sent after first silence
   const isAiSpeakingRef        = useRef(false);   // mirrors isAiSpeaking for use in callbacks
   const closingTurnCountRef         = useRef(0);     // nb de turnComplete pendant transition
-  const closingNudgeSentRef         = useRef(false);  // relance douce envoyée
   const patientRespondedInTransRef  = useRef(false);  // patient a parlé pendant transition
   const transitionPatientTextRef    = useRef("");     // ce que le patient a dit pendant transition
   const closingTimerARef            = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -424,10 +415,8 @@ export default function SOSExercise({
     mediaStreamRef.current = null;
     audioCtxRef.current?.close().catch(() => {});
     audioCtxRef.current = null;
-    analyserRef.current = null;
     wsRef.current?.close();
     wsRef.current = null;
-    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     if (hardTimerRef.current) clearTimeout(hardTimerRef.current);
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     breathTimerRef.current.forEach(clearTimeout);
@@ -451,6 +440,7 @@ export default function SOSExercise({
     flushAudio();
     setBreathPhase("inspire");
     breathPhaseRef.current = "inspire";
+    setInspireStart(Date.now());
     speakTherapeutic("Inspire... deux... trois... quatre...", { skipPrep: true, rate: 0.62, volume: 0.55 });
 
     const t1 = setTimeout(() => {
@@ -512,6 +502,10 @@ export default function SOSExercise({
 
     setPhase("tracing");
     phaseRef.current = "tracing";
+    // Purge le worklet : évite que des chunks accumulés pendant l'intake
+    // soient envoyés à Gemini dès le début de la phase transition
+    workletNodeRef.current?.port.postMessage({ type: "reset" });
+    setInspireStart(null);
 
     // Gemini reste silencieux pendant le tracé — le TTS local gère les cues
     // (Inspire/Expire à chaque lettre). On ne lui envoie rien pour éviter tout
@@ -540,7 +534,7 @@ export default function SOSExercise({
         turnComplete: true,
       },
     }));
-  }, []);
+  }, [firstName]);
 
   // ── WS message handler ───────────────────────────────────────────────────────
   const handleWSMessage = useCallback((event: { data: string }) => {
@@ -649,7 +643,6 @@ export default function SOSExercise({
           // Gemini vient de poser la question → démarrer le timer 5s (relance si silence)
           const timerA = setTimeout(() => {
             if (phaseRef.current !== "transition" || patientRespondedInTransRef.current) return;
-            closingNudgeSentRef.current = true;
             wsRef.current?.send(JSON.stringify({
               clientContent: {
                 turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu. Dis-lui en une phrase douce qu'il peut prendre son temps, même un seul mot suffit.]" }] }],
@@ -687,7 +680,7 @@ export default function SOSExercise({
     }
   }, [
     enqueueAudio, flushAudio, firstName,
-    triggerIntakeTransition, beginTracing,
+    triggerIntakeTransition,
     patientId, practitionerId, onTransitionToChat, cleanup,
   ]);
 
@@ -842,11 +835,7 @@ export default function SOSExercise({
     // 3. AudioContext
     const audioCtx = new AudioContext({ sampleRate: 16000 });
     audioCtxRef.current = audioCtx;
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 256;
-    analyserRef.current = analyser;
     const micSrc = audioCtx.createMediaStreamSource(stream);
-    micSrc.connect(analyser);
 
     // ── AudioWorklet — VAD + capture PCM sur thread audio dédié ─────────────
     // Blob URL : évite de servir un fichier statique depuis /public avec Next.js
@@ -864,12 +853,16 @@ export default function SOSExercise({
     // NE PAS connecter workletNode à destination : évite l'écho micro → hauts-parleurs
 
     workletNode.port.onmessage = (e: MessageEvent<{ type: string; buffer?: ArrayBuffer }>) => {
+      const { type, buffer } = e.data;
+
+      // Piloter l'état "patient parle" depuis le worklet — remplace la boucle analyser FFT
+      if (type === "start") setIsPatientSpeaking(true);
+      else if (type === "end") setIsPatientSpeaking(false);
+
+      // Gate WS : n'envoyer qu'en phase active (intake ou transition)
       const p  = phaseRef.current;
       const ws = wsRef.current;
-      // Ignorer les messages si la phase ne nécessite pas de capture micro
       if (p === "loading" || p === "ready" || p === "tracing" || p === "reveal") return;
-
-      const { type, buffer } = e.data;
 
       if (type === "start") {
         // Barge-in avec délai anti-écho :
@@ -959,23 +952,6 @@ export default function SOSExercise({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Animation loop — analyser polling uniquement ──────────────────────────────
-  // Guard : on ne met à jour isPatientSpeaking que pendant la phase intake.
-  // Pendant le tracé, les re-renders 60fps détruisent l'animation des particules.
-  useEffect(() => {
-    const loop = () => {
-      animFrameRef.current = requestAnimationFrame(loop);
-      if (analyserRef.current && phaseRef.current === "intake") {
-        const buf = new Uint8Array(analyserRef.current.frequencyBinCount);
-        analyserRef.current.getByteFrequencyData(buf);
-        const avg = buf.reduce((s, v) => s + v, 0) / buf.length;
-        setIsPatientSpeaking(avg / 60 > 0.12);
-      }
-    };
-    animFrameRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(animFrameRef.current);
-  }, []); // lancé une seule fois
-
   // ── Render ────────────────────────────────────────────────────────────────────
   const showOrb    = phase === "loading" || phase === "intake";
   const showReady  = phase === "ready";
@@ -1009,8 +985,10 @@ export default function SOSExercise({
         letterIdx={currentLetterIdx}
         breathPhase={breathPhase}
         expireStart={expireStart}
+        inspireStart={inspireStart}
         isReveal={showReveal}
         litLetters={litLetters}
+        INSPIRE_MS={INSPIRE_MS}
         EXPIRE_MS={EXPIRE_MS}
       />
 
@@ -1169,14 +1147,14 @@ export default function SOSExercise({
               key={`bar-${currentLetterIdx}-${breathPhase}`}
               style={{
                 height: "100%",
-                background: breathPhase === "expire"
-                  ? "rgba(0,229,180,0.65)"
-                  : "rgba(6,182,212,0.55)",
+                background: LETTER_COLORS[currentLetterIdx % LETTER_COLORS.length],
                 borderRadius: 2,
-                // Animation par keyframes → toujours relancée proprement via `key`
-                animation: breathPhase === "expire"
-                  ? `bar-fill-fwd ${EXPIRE_MS}ms linear forwards`
-                  : `bar-fill-bwd ${INSPIRE_MS}ms linear forwards`,
+                // Inspire : 0 → 100% (poumons qui se remplissent)
+                // Expire  : 100 → 0% (poumons qui se vident, particules qui forment la lettre)
+                opacity: breathPhase === "inspire" ? 0.62 : 0.80,
+                animation: breathPhase === "inspire"
+                  ? `bar-fill-fwd ${INSPIRE_MS}ms linear forwards`
+                  : `bar-fill-bwd ${EXPIRE_MS}ms linear forwards`,
               }}
             />
           </div>
