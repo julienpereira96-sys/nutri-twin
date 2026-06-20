@@ -455,6 +455,12 @@ export default function SOSExercise({
   const closingFallbackRef          = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bargeInTimerRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingChunksRef            = useRef<string[]>([]); // chunks b64 en attente de validation barge-in
+  // true entre le moment où activityStart est RÉELLEMENT envoyé à Gemini (parole
+  // confirmée, pas un écho) et celui où activityEnd part en retour. Permet de
+  // laisser passer la clôture d'un tour déjà ouvert même si la phase a changé
+  // entre-temps (ex: barge-in qui force enterReadyPhase() avant que le patient
+  // ait fini de parler) — sinon le tour Gemini reste ouvert indéfiniment.
+  const activityOpenRef             = useRef(false);
 
   // Stable message handler ref (avoids stale closure on WS onmessage)
   const handleWSMessageRef  = useRef<((evt: { data: string }) => void) | null>(null);
@@ -545,6 +551,7 @@ export default function SOSExercise({
     if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
     if (bargeInTimerRef.current)    { clearTimeout(bargeInTimerRef.current);    bargeInTimerRef.current    = null; }
     pendingChunksRef.current = [];
+    activityOpenRef.current = false;
     flushAudio();
   }, [cancelSpeech, flushAudio]);
 
@@ -654,8 +661,11 @@ export default function SOSExercise({
     const signal = patientHasSpokenRef.current
       // Patient a parlé → validation empathique + transition douce vers l'exercice
       ? `[${firstName} vient de s'exprimer. Applique la validation empathique TCC : 1) Nomme l'émotion ou la sensation partagée pour valider son écoute. 2) Normalise en 1 phrase ("C'est tout à fait compréhensible que ton corps réagisse ainsi"). 3) Propose l'exercice : "Nous allons rassembler ce flux ensemble. Un point lumineux va guider ton souffle pour tracer un mot à l'écran. Quand tu te sens prêt à respirer avec moi, touche l'écran." Max 4 phrases. Ne révèle pas le mot.]`
-      // Patient n'a pas répondu → accueil sans supposer d'émotion
-      : `[${firstName} n'a pas encore parlé — ne suppose aucune émotion. Dis-lui simplement que c'est tout à fait bien, qu'il peut juste respirer avec toi. Présente l'exercice : des points de lumière vont suivre son souffle et former un mot pour lui. Quand il est prêt, il touche l'écran. 2 phrases douces, pas de question.]`;
+      // Patient n'a pas répondu → ne suppose aucune émotion précise, mais le simple
+      // fait d'avoir déclenché ce mode SOS est déjà un signal : il en avait besoin.
+      // Formulation libre pour Gemini — jamais la même phrase mot pour mot d'une
+      // session à l'autre, garde uniquement l'esprit de l'instruction.
+      : `[${firstName} n'a pas encore parlé — ne suppose aucune émotion précise. Pars du principe qu'avoir lancé ce mode était déjà le bon geste, qu'il en avait besoin sur l'instant, et dis-le-lui avec tes propres mots. Rassure-le : c'est tout à fait bien, il peut juste respirer avec toi, aucune réponse n'est attendue. Présente l'exercice : des points de lumière vont suivre son souffle et former un mot pour lui. Quand il est prêt, il touche l'écran. 2 phrases douces maximum, pas de question, formulation différente à chaque fois.]`;
 
     wsRef.current?.send(JSON.stringify({
       clientContent: {
@@ -928,7 +938,7 @@ export default function SOSExercise({
           repromptSentRef.current = true;
           wsRef.current?.send(JSON.stringify({
             clientContent: {
-              turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu. Relance-le très doucement en une seule phrase, ton bienveillant et sans pression. Même un souffle ou un mot suffit.]" }] }],
+              turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu. Relance-le très doucement, en une seule phrase courte, ton bienveillant et sans aucune pression — même un souffle ou un seul mot suffirait à le rassurer. Formule-la avec tes propres mots, jamais la même tournure que tes relances précédentes dans cette conversation.]" }] }],
               turnComplete: true,
             },
           }));
@@ -1031,8 +1041,18 @@ export default function SOSExercise({
       // silencieuse côté patient — pas de scène "transition" séparée désormais).
       const p  = phaseRef.current;
       const ws = wsRef.current;
-      if (p === "ready" || p === "tracing") return;
-      if (p === "reveal" && !closingQuestionSentRef.current) return;
+      // Si un tour Gemini est déjà ouvert (activityStart réellement envoyé pour
+      // cette prise de parole), on ne bloque JAMAIS chunk/end même si la phase a
+      // changé entre-temps — ex: un barge-in confirmé déclenche enterReadyPhase()
+      // (via flushAudio(true) → onQueueEmptyRef) avant que le patient ait fini de
+      // parler ; sans ce bypass, le gate ci-dessous aurait avalé le "end" et
+      // laissé le tour ouvert indéfiniment côté Gemini. "start" ne peut pas se
+      // représenter ici tant que activityOpenRef est vrai (le Worklet reste en
+      // état 'speaking' jusqu'au prochain "end").
+      if (!activityOpenRef.current) {
+        if (p === "ready" || p === "tracing") return;
+        if (p === "reveal" && !closingQuestionSentRef.current) return;
+      }
 
       if (type === "start") {
         if (isAiSpeakingRef.current) {
@@ -1054,6 +1074,7 @@ export default function SOSExercise({
             //   au lieu de le perdre en silence (sinon le patient reste bloqué).
             if (isAiSpeakingRef.current) flushAudio(true);
             ws?.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
+            activityOpenRef.current = true;
             for (const b64 of pendingChunksRef.current) {
               ws?.send(JSON.stringify({
                 realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } },
@@ -1064,6 +1085,7 @@ export default function SOSExercise({
         } else {
           // IA silencieuse → aucune ambiguïté possible, démarrage immédiat
           ws?.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
+          activityOpenRef.current = true;
         }
 
       } else if (type === "chunk" && buffer) {
@@ -1086,6 +1108,7 @@ export default function SOSExercise({
           bargeInTimerRef.current = null;
           pendingChunksRef.current = [];
         } else {
+          activityOpenRef.current = false;
           ws?.send(JSON.stringify({ realtimeInput: { activityEnd: {} } }));
         }
       }

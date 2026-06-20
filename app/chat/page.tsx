@@ -19,21 +19,13 @@ import {
   IconAward,
   IconSiren,
   IconPin,
-  IconLock,
 } from "./SosIcons";
-
-type WidgetMeta = {
-  toolId: string;
-  toolData: ToolData | null;
-  completed: boolean;
-};
 
 type ChatMessage = {
   role: "user" | "assistant" | "widget";
   content: string;
   imageUrl?: string;
   hidden?: boolean;
-  widgetMeta?: WidgetMeta;
   /** Set when Gemini detected acute distress — two exercise IDs to offer */
   sosTrigger?: [string, string];
 };
@@ -80,13 +72,6 @@ const quickActions = [
   "Comment rester motivé ?",
   "Pourquoi je ne vois pas de résultats ?",
 ];
-
-const TOOL_VARIANTS: Record<string, string[]> = {
-  breathing: ["Prenons un moment pour respirer ensemble.", "Votre corps a besoin de calme. On y va.", "La respiration est votre ancre. Suivez mon rythme.", "Trois minutes peuvent tout changer.", "Laissez votre souffle vous ramener ici."],
-  ancrage: ["Revenons dans le moment présent, pas à pas.", "Cinq sens, cinq instants de présence.", "On va ralentir le temps ensemble.", "Regardez autour de vous. Vous êtes en sécurité."],
-  marche: ["Chaque pas est une intention.", "Votre corps sait comment se ressourcer.", "On va déposer ce poids ensemble."],
-  manger: ["Ce repas mérite toute votre attention.", "Manger lentement est un acte de soin.", "Posez tout. Ce moment est pour vous."],
-};
 
 async function compressImage(file: File): Promise<{ base64: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
@@ -464,209 +449,6 @@ const LIBRARY_EXERCISES: { id: string; label: string; desc: string; icon: string
   { id: "ecriture", label: "Écriture cathartique", desc: "Déposer ce qui pèse, à son rythme", icon: SOS_EXERCISE_META.ecriture.icon },
   { id: "defusion", label: "Défusion cognitive", desc: "Prendre de la distance avec ses pensées", icon: SOS_EXERCISE_META.defusion.icon },
 ];
-
-function generateCelebration(firstName: string, toolId: string): string {
-  const toolNames: Record<string, string> = {
-    breathing: "la cohérence cardiaque", ancrage: "l'ancrage sensoriel",
-    manger: "la pleine conscience", defusion: "la défusion cognitive",
-    ecriture: "l'écriture cathartique",
-  };
-  const tool = toolNames[toolId] ?? "cet exercice";
-  const name = firstName || "toi";
-  const msgs = [
-    `Bien joué, ${name}. Tu as pris un moment pour toi avec ${tool}. Chaque geste de soin compte énormément.`,
-    `Tu l'as fait, ${name}. ${tool.charAt(0).toUpperCase() + tool.slice(1)}, c'est une vraie preuve de bienveillance envers toi-même.`,
-    `${name}, tu viens de choisir le calme plutôt que la réaction. C'est une compétence qui se renforce à chaque fois.`,
-  ];
-  return msgs[Math.floor(Math.random() * msgs.length)];
-}
-
-// ═══ INLINE WIDGET — Exercice conversationnel embarqué dans le chat ═══
-type InlineWidgetProps = {
-  toolId: string;
-  toolData: ToolData | null;
-  firstName: string;
-  frozen: boolean;
-  onComplete: (toolId: string) => void | Promise<void>;
-};
-
-const InlineWidget = ({ toolId, toolData, firstName, frozen, onComplete }: InlineWidgetProps) => {
-  type WidgetPhase = "exercise" | "done";
-  const [phase, setPhase] = useState<WidgetPhase>(frozen ? "done" : "exercise");
-  const [celebrationMsg, setCelebrationMsg] = useState(frozen ? generateCelebration(firstName, toolId) : "");
-
-  // Breathing
-  const [breathStep, setBreathStep] = useState<BreathingStep>("idle");
-  const [breathCycle, setBreathCycle] = useState(0);
-  const [breathTimer, setBreathTimer] = useState(0);
-  const breathRef = useRef<NodeJS.Timeout | null>(null);
-  // Ancrage / Marche
-  const [exStep, setExStep] = useState(0);
-
-  useEffect(() => () => { if (breathRef.current) clearInterval(breathRef.current); }, []);
-
-  const breathColor: Record<BreathingStep, string> = { idle: CYAN, inhale: CYAN, hold: "#6366f1", exhale: "#34d399", done: CYAN };
-  const breathLabel: Record<BreathingStep, string> = { idle: "", inhale: "Inspirez...", hold: "Retenez...", exhale: "Expirez...", done: "Bravo !" };
-
-  const startBreathing = () => {
-    let cycle = 1, step: BreathingStep = "inhale", timer = 5;
-    setBreathStep("inhale"); setBreathCycle(1); setBreathTimer(5);
-    const dur: Record<string, number> = { inhale: 5, hold: 4, exhale: 5 };
-    const interval = setInterval(() => {
-      timer--; setBreathTimer(timer);
-      if (timer <= 0) {
-        if (step === "inhale") { step = "hold"; timer = dur.hold; setBreathStep("hold"); setBreathTimer(timer); }
-        else if (step === "hold") { step = "exhale"; timer = dur.exhale; setBreathStep("exhale"); setBreathTimer(timer); }
-        else { cycle++; if (cycle <= 5) { step = "inhale"; timer = dur.inhale; setBreathStep("inhale"); setBreathCycle(cycle); setBreathTimer(timer); } else { setBreathStep("done"); clearInterval(interval); } }
-      }
-    }, 1000);
-    breathRef.current = interval;
-  };
-
-  const finishExercise = () => {
-    const msg = generateCelebration(firstName, toolId);
-    setCelebrationMsg(msg);
-    setPhase("done");
-    void onComplete(toolId);
-  };
-
-  const introMsg = toolData?.twin_message || (() => {
-    const v = TOOL_VARIANTS[toolId] ?? ["Prenons un moment ensemble."];
-    return v[Math.floor(Math.random() * v.length)];
-  })();
-
-  const ancrageSteps = [
-    { count: 5, sense: "voyez", icon: <IconEye size={34} color={CYAN} /> },
-    { count: 4, sense: "touchez", icon: <IconActivity size={34} color={CYAN} /> },
-    { count: 3, sense: "entendez", icon: <IconWave size={34} color={CYAN} /> },
-    { count: 2, sense: "sentez", icon: <IconWind size={34} color={CYAN} /> },
-    { count: 1, sense: "goûtez", icon: <IconLeaf2 size={34} color={CYAN} /> },
-  ];
-  const marcheSteps = [
-    "Levez-vous doucement. Sentez vos pieds sur le sol.",
-    "Commencez à marcher lentement. Chaque pas est intentionnel.",
-    "Observez votre environnement. Couleurs, formes, lumières.",
-    "Sentez l'air sur votre peau. La température autour de vous.",
-    "Synchronisez respiration et pas. Vous êtes présent.",
-    "Vous êtes ancré dans le moment présent.",
-  ];
-  const scriptSteps = Object.values(toolData?.tool_script ?? {});
-
-  const renderExercise = () => {
-    if (toolId === "breathing") return (
-      <div style={{ textAlign: "center" }}>
-        <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY }}>Respirer</p>
-        <p style={{ margin: "0 0 16px", fontSize: 12, color: TEXT_MUTED }}>5 cycles · 5s inhale · 4s pause · 5s exhale</p>
-        {breathStep === "idle" && <><p style={{ fontSize: 13, color: TEXT_SECONDARY, marginBottom: 16, lineHeight: 1.7 }}>La cohérence cardiaque réduit le stress et les envies de grignoter.</p><button onClick={startBreathing} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Commencer</button></>}
-        {breathStep !== "idle" && breathStep !== "done" && (<><p style={{ fontSize: 12, color: TEXT_MUTED, marginBottom: 12 }}>Cycle {breathCycle} / 5</p>
-          <div style={{ width: 100, height: 100, borderRadius: "50%", margin: "0 auto 16px", background: `radial-gradient(circle, ${breathColor[breathStep]}18, transparent)`, border: `1.5px solid ${breathColor[breathStep]}44`, display: "flex", alignItems: "center", justifyContent: "center", transition: "transform 1s ease", transform: breathStep === "inhale" ? "scale(1.15)" : breathStep === "exhale" ? "scale(0.88)" : "scale(1.05)" }}>
-            <span style={{ fontSize: 26, fontWeight: 700, color: breathColor[breathStep] }}>{breathTimer}</span>
-          </div>
-          <p style={{ fontSize: 18, fontWeight: 600, color: breathColor[breathStep], marginBottom: 12 }}>{breathLabel[breathStep]}</p></>)}
-        {breathStep === "done" && <><div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><IconCheckRing size={40} color={CYAN} strokeWidth={1.3} /></div><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 16 }}>Excellent ! Votre corps vous remercie.</p><button onClick={finishExercise} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Continuer →</button></>}
-      </div>
-    );
-
-    if (toolId === "ancrage") return (
-      <div style={{ textAlign: "center" }}>
-        <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY }}>S'apaiser</p>
-        <p style={{ margin: "0 0 14px", fontSize: 12, color: TEXT_MUTED }}>Technique 5-4-3-2-1</p>
-        {exStep < 5 ? (<><div style={{ fontSize: 36, marginBottom: 10 }}>{ancrageSteps[exStep].icon}</div>
-          <div style={{ background: CYAN_DIM, borderRadius: 14, padding: "14px", marginBottom: 14, border: `1px solid ${CYAN_BORDER}` }}>
-            <p style={{ margin: 0, fontSize: 24, fontWeight: 700, color: CYAN }}>{ancrageSteps[exStep].count}</p>
-            <p style={{ margin: "4px 0 0", fontSize: 14, color: TEXT_PRIMARY }}>chose{ancrageSteps[exStep].count > 1 ? "s" : ""} que vous <strong>{ancrageSteps[exStep].sense}</strong></p>
-          </div>
-          <button onClick={() => { if (exStep < 4) setExStep(s => s + 1); else finishExercise(); }} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{exStep < 4 ? "Suivant →" : "Terminer"}</button></>
-        ) : (<><div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><IconCheckRing size={40} color={CYAN} strokeWidth={1.3} /></div><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 14 }}>Ancré(e) dans le moment présent.</p><button onClick={finishExercise} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Continuer →</button></>)}
-      </div>
-    );
-
-    if (toolId === "marche") return (
-      <div style={{ textAlign: "center" }}>
-        <p style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY }}>Se vider la tête</p>
-        <p style={{ margin: "0 0 14px", fontSize: 12, color: TEXT_MUTED }}>Étape {Math.min(exStep + 1, marcheSteps.length)} / {marcheSteps.length}</p>
-        {exStep < marcheSteps.length ? (<>
-          <div style={{ background: CYAN_DIM, borderRadius: 14, padding: 16, marginBottom: 12, border: `1px solid ${CYAN_BORDER}`, minHeight: 72, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <p style={{ margin: 0, fontSize: 14, color: TEXT_PRIMARY, lineHeight: 1.7 }}>{marcheSteps[exStep]}</p>
-          </div>
-          <div style={{ height: 2, background: SURFACE, borderRadius: 1, marginBottom: 14 }}><div style={{ height: "100%", borderRadius: 1, background: CYAN, width: `${((exStep + 1) / marcheSteps.length) * 100}%`, transition: "width 0.3s" }} /></div>
-          <button onClick={() => { if (exStep < marcheSteps.length - 1) setExStep(s => s + 1); else finishExercise(); }} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>{exStep < marcheSteps.length - 1 ? "Suivant →" : "Terminer"}</button></>
-        ) : (<><div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}><IconCheckRing size={40} color={CYAN} strokeWidth={1.3} /></div><p style={{ fontSize: 14, color: TEXT_SECONDARY, marginBottom: 14 }}>Belle promenade ! Chaque pas conscient est une victoire.</p><button onClick={finishExercise} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>Continuer →</button></>)}
-      </div>
-    );
-
-    // body_scan, manger, ecriture, defusion, adaptive_coaching — liste d'étapes
-    const steps = scriptSteps.length > 0 ? scriptSteps : (() => {
-      const defaults: Record<string, string[]> = {
-        body_scan: ["Pose une main sur ton ventre. Ferme les yeux.", "Scan ton estomac : est-il vide, tendu, ou simplement agité ?", "Remonte vers ta gorge : y a-t-il une boule, une tension ?", "Observe ta tête : est-ce une pensée qui commande, ou ton corps ?", "Si c'est ton corps qui parle, mange. Si c'est ta tête, respire d'abord."],
-        manger: ["Pose ton téléphone. Regarde ton assiette.", "Respire trois fois lentement avant de commencer.", "Prends une bouchée. Mâche 20 fois en comptant.", "Dépose tes couverts entre chaque bouchée.", "Remarque les saveurs. Mange jusqu'à satiété, pas jusqu'à vide."],
-        ecriture: ["Prends une grande inspiration. Laisse venir.", "Écris sans filtre ce qui te pèse en ce moment.", "Ne te relis pas. Continue jusqu'à ce que la page soit pleine.", "Froisse le papier (ou efface) — c'est libéré. Personne ne lira.", "Observe : tu te sens plus léger(e) ?"],
-        defusion: ["Identifie la pensée qui te pèse. Écris-la mentalement.", "Dis-toi : 'J'ai la pensée que...' plutôt que 'Je suis...'", "Imagine cette pensée comme un nuage qui passe dans le ciel.", "Répète-la avec une voix de personnage de dessin animé.", "Observe : tu n'es pas cette pensée. Elle passe."],
-        adaptive_coaching: ["Prends une grande inspiration.", "Identifie la pensée qui te pèse.", "Questionne-la doucement : est-elle vraiment vraie ?", "Propose-toi une action simple et accessible.", "Reprends contact avec le moment présent."],
-      };
-      return defaults[toolId] ?? ["Respire. Tu as fait le bon choix.", "Chaque petit geste de soin compte.", "Tu prends soin de toi — c'est déjà une victoire."];
-    })();
-
-    return (
-      <div>
-        {toolId === "ecriture" && (
-          <div style={{ background: CYAN_DIM, border: `1px solid ${CYAN_BORDER}`, borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
-            <p style={{ margin: 0, fontSize: 12, color: CYAN, lineHeight: 1.6, display: "flex", alignItems: "center", gap: 6 }}><IconLock size={12} color={CYAN} strokeWidth={1.5} /> Ce que tu écris ici ne sera pas sauvegardé. C'est juste pour toi.</p>
-          </div>
-        )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-          {steps.map((step, i) => (
-            <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-              <div style={{ width: 20, height: 20, borderRadius: "50%", background: CYAN_DIM, border: `1px solid ${CYAN_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
-                <span style={{ fontSize: 9, fontWeight: 700, color: CYAN }}>{i + 1}</span>
-              </div>
-              <p style={{ margin: 0, fontSize: 13, color: TEXT_PRIMARY, lineHeight: 1.6 }}>{step}</p>
-            </div>
-          ))}
-        </div>
-        {toolId === "ecriture" && (
-          <textarea placeholder="Écris tout ce qui te pèse... sans filtre, sans jugement." rows={5}
-            style={{ width: "100%", borderRadius: 10, border: `1px solid ${CYAN_BORDER}`, background: "rgba(6,182,212,0.03)", color: TEXT_PRIMARY, padding: "12px", fontSize: 13, outline: "none", resize: "none", fontFamily: "inherit", lineHeight: 1.6, boxSizing: "border-box", marginBottom: 14 }} />
-        )}
-        <button onClick={finishExercise} style={{ width: "100%", height: 44, borderRadius: 12, background: CYAN, border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-          {toolId === "manger" ? "Bon appétit" : toolId === "ecriture" ? "J'ai vidé mon sac" : "Terminer"}
-        </button>
-      </div>
-    );
-  };
-
-  const containerStyle: React.CSSProperties = {
-    background: "#060f14",
-    border: `1px solid ${CYAN_BORDER}`,
-    borderRadius: 20,
-    padding: "18px 20px",
-    maxWidth: 460,
-    animation: "fadeUp 0.3s ease",
-    opacity: frozen && phase !== "done" ? 0.6 : 1,
-  };
-
-  // ─── Phase: exercise ───
-  if (phase === "exercise") return (
-    <div style={containerStyle}>
-      <div style={{ display: "flex", gap: 8, marginBottom: 14, padding: "9px 12px", background: CYAN_DIM, borderRadius: 10, border: `1px solid ${CYAN_BORDER}` }}>
-        <LeafIcon size={13} color={CYAN} />
-        <p style={{ margin: 0, fontSize: 13, color: TEXT_PRIMARY, lineHeight: 1.55 }}>{introMsg}</p>
-      </div>
-      {renderExercise()}
-    </div>
-  );
-
-  // ─── Phase: done (gelé) ───
-  return (
-    <div style={{ ...containerStyle, cursor: "default" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: celebrationMsg ? 12 : 0 }}>
-        <div style={{ width: 36, height: 36, borderRadius: "50%", background: CYAN_DIM, border: `1px solid ${CYAN_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconAward size={18} color={CYAN} strokeWidth={1.5} /></div>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: TEXT_PRIMARY }}>Exercice terminé</p>
-      </div>
-      {celebrationMsg && <p style={{ margin: 0, fontSize: 13, color: TEXT_SECONDARY, lineHeight: 1.7 }}>{celebrationMsg}</p>}
-    </div>
-  );
-};
 
 export default function ChatPage() {
   const [message, setMessage] = useState("");
@@ -1115,11 +897,6 @@ export default function ChatPage() {
 
   useEffect(() => () => { if (breathingIntervalRef.current) clearInterval(breathingIntervalRef.current); }, []);
 
-  const getVariant = (toolId: string) => {
-    const variants = TOOL_VARIANTS[toolId] ?? ["Prenons un moment ensemble."];
-    return variants[Math.floor(Math.random() * variants.length)];
-  };
-
   const closeTool = useCallback(() => {
     setActiveTool(null);
     setBreathingStep("idle"); setBreathingCycle(0); setBreathingTimer(0);
@@ -1132,12 +909,6 @@ export default function ChatPage() {
   //   - l'affichage du message système dans le fil patient
   //   - le déclenchement de l'analyse de crise
   //   - la mise à jour prématurée de emotional_status en BDD
-  // Appelée par InlineWidget quand l'exercice se termine
-  // → affiche le step post-exercice DANS la modale (pas d'injection dans le chat)
-  const handleExerciseComplete = useCallback((toolId: string) => {
-    setPostExerciseStep({ toolId, answer: "" });
-  }, []);
-
   // ─── Breathing overlay — clôture avec injection du résumé dans le chat ──────
   const handleBreathingTransitionToChat = useCallback((message: string) => {
     setShowBreathingExercise(false);
@@ -1345,22 +1116,11 @@ export default function ChatPage() {
       return;
     }
 
-    const defaultData: ToolData = { tool_id: toolId, twin_message: getVariant(toolId), tool_script: {} };
-    setActiveTool({ id: toolId, data: defaultData });
-    // Fetch en arrière-plan pour personnaliser
-    if (patientId && practitionerIdFromDb) {
-      try {
-        const res = await fetch("/api/chat", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: "", patientId, practitionerId: practitionerIdFromDb, isSOS: true, sosContext: `${sosContext} | outil: ${toolId}` }),
-        });
-        const data = await res.json() as { tool?: ToolData };
-        if (data.tool) {
-          setActiveTool(prev => prev ? { ...prev, data: data.tool! } : prev);
-        }
-      } catch { /* garder données par défaut */ }
-    }
-  }, [patientId, practitionerIdFromDb, getVariant]);
+    // Tous les outils de la bibliothèque (breathing, ancrage, manger, ecriture,
+    // defusion) sont interceptés ci-dessus via leurs overlays dédiés — il ne
+    // reste ici aucun toolId à traiter via activeTool/InlineWidget (supprimé,
+    // devenu mort depuis que les 5 exercices ont leur propre écran immersif).
+  }, [patientId, practitionerIdFromDb]);
 
   // ─── Parcours Post-Chat (Cas A) ─────────────────────────────────────────────
   // Déclenché quand le patient clique sur un bouton [TRIGGER_SOS] dans le chat.
@@ -1623,14 +1383,12 @@ export default function ChatPage() {
               </button>
             </div>
           ) : (
-            /* ─── Exercice normal ─── */
-            <InlineWidget
-              toolId={activeTool.id}
-              toolData={activeTool.data}
-              firstName={patientFirstName}
-              frozen={false}
-              onComplete={handleExerciseComplete}
-            />
+            // activeTool n'est jamais défini avec un toolId hors "journal" sans que
+            // postExerciseStep soit déjà posé dans le même batch d'état (voir les
+            // handlers handle*TransitionToChat/Complete ci-dessus) — cette branche
+            // est donc gardée par sécurité, sans rendu (l'ancien InlineWidget,
+            // devenu mort depuis le passage aux 5 overlays immersifs, a été retiré).
+            null
           )}
         </div>
       </div>
