@@ -3,13 +3,14 @@
 /**
  * SOSExercise V2 — Refonte complète
  *
- * Flow: loading → intake → ready → tracing → reveal → transition
+ * Flow: loading → intake → ready → tracing → reveal
  *
  * Phase loading  : WS ouvert, Gemini accueille, setup avec outputAudioTranscription
  * Phase intake   : Patient parle, RMS silence detection, inputTranscription capturé
  * Phase tracing  : Gemini muet, tracé lettre par lettre time-driven, TTS respiratoire
- * Phase reveal   : Mot révélé lettre par lettre en couleurs, Gemini célèbre
- * Phase transition: outputAudioTranscription accumulé → un seul write Supabase sur close WS
+ * Phase reveal   : Mot révélé + félicitation, PUIS — dans la même scène, mot
+ *                  toujours illuminé, pas de second décor — question de clôture.
+ *                  outputAudioTranscription accumulé → un seul write Supabase sur close WS
  */
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
@@ -294,7 +295,9 @@ function WaveOrb({ speaking, firstName }: { speaking: boolean; firstName?: strin
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type SOSPhase   = "loading" | "intake" | "ready" | "tracing" | "reveal" | "transition";
+// "reveal" couvre tout : illumination du mot, félicitation, ET question de
+// clôture — une seule scène continue, sans changement de décor ni second blob.
+type SOSPhase   = "loading" | "intake" | "ready" | "tracing" | "reveal";
 type BreathPhase = "inspire" | "expire";
 
 export interface SOSExerciseProps {
@@ -330,6 +333,7 @@ export default function SOSExercise({
   const [expireStart,      setExpireStart]      = useState<number | null>(null);
   const [litLetters,       setLitLetters]       = useState<boolean[]>([]);
   const [closingMsg,       setClosingMsg]       = useState<string | null>(null);
+  const [closingQuestionAsked, setClosingQuestionAsked] = useState(false);
 
   // ── Refs ────────────────────────────────────────────────────────────────────
   const phaseRef            = useRef<SOSPhase>("loading");
@@ -366,11 +370,14 @@ export default function SOSExercise({
   const patientHasSpokenRef    = useRef(false);   // patient said something
   const repromptSentRef        = useRef(false);   // gentle re-prompt sent after first silence
   const isAiSpeakingRef        = useRef(false);   // mirrors isAiSpeaking for use in callbacks
-  const closingTurnCountRef         = useRef(0);     // nb de turnComplete pendant transition
-  const patientRespondedInTransRef  = useRef(false);  // patient a parlé pendant transition
-  const transitionPatientTextRef    = useRef("");     // ce que le patient a dit pendant transition
+  // Clôture (intégrée dans la phase "reveal", pas de scène séparée)
+  const closingQuestionSentRef      = useRef(false);  // question ouverte déjà envoyée à Gemini
+  const closingTurnCountRef         = useRef(0);     // nb de turnComplete depuis l'envoi de la question
+  const patientRespondedInTransRef  = useRef(false);  // patient a répondu à la question de clôture
+  const transitionPatientTextRef    = useRef("");     // ce que le patient a dit en réponse
   const closingTimerARef            = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closingTimerBRef            = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closingFallbackRef          = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bargeInTimerRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingChunksRef            = useRef<string[]>([]); // chunks b64 en attente de validation barge-in
 
@@ -436,9 +443,10 @@ export default function SOSExercise({
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     breathTimerRef.current.forEach(clearTimeout);
     breathTimerRef.current = [];
-    if (closingTimerARef.current) { clearTimeout(closingTimerARef.current); closingTimerARef.current = null; }
-    if (closingTimerBRef.current) { clearTimeout(closingTimerBRef.current); closingTimerBRef.current = null; }
-    if (bargeInTimerRef.current)  { clearTimeout(bargeInTimerRef.current);  bargeInTimerRef.current  = null; }
+    if (closingTimerARef.current)   { clearTimeout(closingTimerARef.current);   closingTimerARef.current   = null; }
+    if (closingTimerBRef.current)   { clearTimeout(closingTimerBRef.current);   closingTimerBRef.current   = null; }
+    if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
+    if (bargeInTimerRef.current)    { clearTimeout(bargeInTimerRef.current);    bargeInTimerRef.current    = null; }
     pendingChunksRef.current = [];
     flushAudio();
   }, [cancelSpeech, flushAudio]);
@@ -489,7 +497,8 @@ export default function SOSExercise({
         // Illuminate SVG letters after 600ms
         setTimeout(() => setLitLetters(Array(word.length).fill(true)), 600);
 
-        // Gemini célèbre UNIQUEMENT — pas de question (elle viendra en phase transition)
+        // Gemini célèbre UNIQUEMENT — la question de clôture s'enchaîne automatiquement
+        // au turnComplete de cette félicitation (voir handleWSMessage, branche "reveal")
         setTimeout(() => {
           wsRef.current?.send(JSON.stringify({
             clientContent: {
@@ -598,8 +607,7 @@ export default function SOSExercise({
     // ── outputAudioTranscription (what Gemini said) ───────────────────────────
     const outTrans = sc.outputAudioTranscription as Record<string, unknown> | undefined;
     if (outTrans?.text && typeof outTrans.text === "string") {
-      const p = phaseRef.current;
-      if (p === "reveal" || p === "transition") {
+      if (phaseRef.current === "reveal") {
         outputTranscriptRef.current += outTrans.text as string;
       }
     }
@@ -608,8 +616,9 @@ export default function SOSExercise({
     const inTrans = sc.inputTranscription as Record<string, unknown> | undefined;
     if (inTrans?.text && typeof inTrans.text === "string") {
       inputTranscriptRef.current += " " + (inTrans.text as string);
-      // En phase transition : le patient vient de répondre → annuler les timers de relance
-      if (phaseRef.current === "transition") {
+      // La question de clôture a déjà été posée → le patient vient de répondre,
+      // on annule les timers de relance
+      if (phaseRef.current === "reveal" && closingQuestionSentRef.current) {
         patientRespondedInTransRef.current = true;
         transitionPatientTextRef.current  += " " + (inTrans.text as string);
         if (closingTimerARef.current) { clearTimeout(closingTimerARef.current); closingTimerARef.current = null; }
@@ -638,12 +647,54 @@ export default function SOSExercise({
         } else {
           onQueueEmptyRef.current = enterReadyPhase;
         }
-      } else if (p === "transition") {
+      } else if (p === "reveal" && !closingQuestionSentRef.current) {
+        // C'est le turnComplete de la félicitation — on enchaîne dans LA MÊME scène
+        // (mot toujours illuminé, pas de second décor) sur la question de clôture,
+        // après une courte pause silencieuse une fois l'audio de félicitation terminé.
+        closingQuestionSentRef.current = true; // marqué tout de suite, évite tout double envoi
+        const sendClosingQuestion = () => {
+          setTimeout(() => {
+            if (phaseRef.current !== "reveal") return;
+            setClosingQuestionAsked(true);
+            wsRef.current?.send(JSON.stringify({
+              clientContent: {
+                turns: [{
+                  role: "user",
+                  parts: [{ text: `[Clôture de l'exercice. Formule une unique question ouverte, extrêmement douce, pour mesurer l'apaisement du patient par rapport au début (ex: "Comment te sens-tu maintenant, dans ton corps et dans ton esprit, après ce tracé ?"). Voix murmurée. Après sa réponse, tu n'auras le droit de prononcer qu'une seule phrase finale d'ancrage avant de te taire définitivement.]` }],
+                }],
+                turnComplete: true,
+              },
+            }));
+            // Fallback sécurisé : si jamais aucune réponse n'arrive, fermer après 40s
+            closingFallbackRef.current = setTimeout(() => {
+              if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current) return;
+              const patientText = transitionPatientTextRef.current.trim();
+              const text = patientText || "[Le patient n'a pas répondu à la question de clôture]";
+              void fetch("/api/sos/log", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  patientId,
+                  practitionerId,
+                  closingMessage: text,
+                  word: chosenWordRef.current,
+                }),
+              }).catch(() => {});
+              onTransitionToChat(text);
+              cleanup();
+            }, 40000);
+          }, 2600); // laisse le mot "résonner" en silence avant la question
+        };
+        if (!isPlayingRef.current) sendClosingQuestion();
+        else onQueueEmptyRef.current = sendClosingQuestion;
+
+      } else if (p === "reveal" && closingQuestionSentRef.current) {
         closingTurnCountRef.current += 1;
         const turnN = closingTurnCountRef.current;
 
         if (patientRespondedInTransRef.current) {
           // Le patient a parlé et Gemini vient de lui répondre → fermer
+          if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
           const patientText = transitionPatientTextRef.current.trim();
           const doClose = () => {
             void fetch("/api/sos/log", {
@@ -665,7 +716,7 @@ export default function SOSExercise({
         } else if (turnN === 1) {
           // Gemini vient de poser la question → démarrer le timer 5s (relance si silence)
           const timerA = setTimeout(() => {
-            if (phaseRef.current !== "transition" || patientRespondedInTransRef.current) return;
+            if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current) return;
             wsRef.current?.send(JSON.stringify({
               clientContent: {
                 turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu. Dis-lui en une phrase douce qu'il peut prendre son temps, même un seul mot suffit.]" }] }],
@@ -674,10 +725,11 @@ export default function SOSExercise({
             }));
             // Timer 10s après la relance — fermeture si toujours pas de réponse
             const timerB = setTimeout(() => {
-              if (phaseRef.current !== "transition" || patientRespondedInTransRef.current) return;
+              if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current) return;
+              if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
               setClosingMsg("C'est tout à fait bien. Prends soin de toi.");
               setTimeout(() => {
-                if (phaseRef.current !== "transition") return;
+                if (phaseRef.current !== "reveal") return;
                 const text = "[Le patient n'a pas répondu à la question de clôture]";
                 void fetch("/api/sos/log", {
                   method: "POST",
@@ -765,53 +817,10 @@ export default function SOSExercise({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAiSpeaking, isPatientSpeaking, phase]);
 
-  // Reveal → Transition après 12s (Gemini a le temps de célébrer)
-  useEffect(() => {
-    if (phase !== "reveal") return;
-    const t = setTimeout(() => {
-      setPhase("transition");
-      phaseRef.current = "transition";
-    }, 12000);
-    return () => clearTimeout(t);
-  }, [phase]);
-
-  // Phase transition : poser la question de clôture + fallback si pas de réponse WS
-  useEffect(() => {
-    if (phase !== "transition") return;
-
-    // Demande la question de clôture à Gemini (micro actif pendant cette phase)
-    wsRef.current?.send(JSON.stringify({
-      clientContent: {
-        turns: [{
-          role: "user",
-          parts: [{ text: `[Clôture de l'exercice. Formule une unique question ouverte, extrêmement douce, pour mesurer l'apaisement du patient par rapport au début (ex: "Comment te sens-tu maintenant, dans ton corps et dans ton esprit, après ce tracé ?"). Voix murmurée. Après sa réponse, tu n'auras le droit de prononcer qu'une seule phrase finale d'ancrage avant de te taire définitivement.]` }],
-        }],
-        turnComplete: true,
-      },
-    }));
-
-    // Fallback sécurisé : si WS coupé et timers internes pas encore déclenchés, fermer après 40s
-    const fallback = setTimeout(() => {
-      if (phaseRef.current !== "transition") return;
-      const patientText = transitionPatientTextRef.current.trim();
-      const text = patientText || "[Le patient n'a pas répondu à la question de clôture]";
-      void fetch("/api/sos/log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patientId,
-          practitionerId,
-          closingMessage: text,
-          word: chosenWordRef.current,
-        }),
-      }).catch(() => {});
-      onTransitionToChat(text);
-      cleanup();
-    }, 40000);
-
-    return () => clearTimeout(fallback);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
+  // Note : il n'y a plus de timer "reveal → transition" ni d'effet séparé pour
+  // poser la question de clôture — tout se passe désormais dans le handler
+  // turnComplete (voir handleWSMessage, branche p === "reveal"), pour rester
+  // dans une seule et même scène continue, sans changement de décor.
 
   // ── Init session ─────────────────────────────────────────────────────────────
   const initSession = useCallback(async () => {
@@ -882,10 +891,13 @@ export default function SOSExercise({
       if (type === "start") setIsPatientSpeaking(true);
       else if (type === "end") setIsPatientSpeaking(false);
 
-      // Gate WS : n'envoyer qu'en phase active (intake ou transition)
+      // Gate WS : micro actif en intake, et en reveal seulement une fois la
+      // question de clôture envoyée (avant ça, on est encore dans la félicitation
+      // silencieuse côté patient — pas de scène "transition" séparée désormais).
       const p  = phaseRef.current;
       const ws = wsRef.current;
-      if (p === "loading" || p === "ready" || p === "tracing" || p === "reveal") return;
+      if (p === "loading" || p === "ready" || p === "tracing") return;
+      if (p === "reveal" && !closingQuestionSentRef.current) return;
 
       if (type === "start") {
         if (isAiSpeakingRef.current) {
@@ -977,7 +989,7 @@ export default function SOSExercise({
       const p = phaseRef.current;
       if (p === "loading") {
         setLoadError(`Connexion fermée (${evt.code}). Vérifie ta connexion.`);
-      } else if (p !== "transition" && p !== "reveal") {
+      } else if (p !== "reveal") {
         // Pas d'erreur pendant reveal : l'exercice est visuellement terminé,
         // le mot est affiché — afficher une bannière gâcherait le moment.
         setWsError(`Connexion interrompue (${evt.code}). Tu peux continuer sans la voix.`);
@@ -1000,7 +1012,6 @@ export default function SOSExercise({
   const showReady  = phase === "ready";
   const showTrace  = phase === "tracing";
   const showReveal = phase === "reveal";
-  const showTrans  = phase === "transition";
 
   // Référence stable — évite de recréer le tableau à chaque render ce qui
   // réinitialiserait les 300 particules (dépendance [word, letterColors] dans ParticleCanvas)
@@ -1023,15 +1034,15 @@ export default function SOSExercise({
     >
       {/* ── ParticleCanvas — toujours monté pendant l'exercice ─────────────────── */}
       <ParticleCanvas
-        // Le mot reste affiché (SVG illuminé) pendant toute la transition — pas de
-        // coupure de scène : la clôture se déroule sur le même mot, toujours allumé.
-        word={showTrace || showReveal || showTrans ? chosenWord : null}
+        // Le mot reste affiché (SVG illuminé) pendant tout le reveal, félicitation
+        // ET question de clôture incluses — une seule scène continue, jamais coupée.
+        word={showTrace || showReveal ? chosenWord : null}
         letterColors={letterColors}
         letterIdx={currentLetterIdx}
         breathPhase={breathPhase}
         expireStart={expireStart}
         inspireStart={inspireStart}
-        isReveal={showReveal || showTrans}
+        isReveal={showReveal}
         litLetters={litLetters}
         INSPIRE_MS={INSPIRE_MS}
         EXPIRE_MS={EXPIRE_MS}
@@ -1216,51 +1227,43 @@ export default function SOSExercise({
         </div>
       )}
 
-      {/* ══ REVEAL — SVG géré par ParticleCanvas, on ajoute juste le sous-titre ══ */}
+      {/* ══ REVEAL — une seule scène continue : mot illuminé (SVG géré par
+          ParticleCanvas) → félicitation → enchaîné directement sur la question
+          de clôture. Pas de second décor, pas de blob qui apparaît. ══ */}
       {showReveal && litLetters.some(Boolean) && (
-        <p style={{
-          position: "absolute", bottom: 72, left: 0, right: 0,
-          textAlign: "center",
-          color: TEXT_MUTED, fontSize: 13, letterSpacing: "0.09em",
-          animation: "sos-fade 0.5s ease 1.6s both",
-          zIndex: 6, pointerEvents: "none",
-        }}>
-          Tu l'as tracé toi-même
-        </p>
-      )}
-
-      {/* ══ TRANSITION ═══════════════════════════════════════════════════════════
-          Pas de scène séparée : le mot tracé reste illuminé (SVG géré par
-          ParticleCanvas, voir prop `word` plus haut) — on ajoute juste le calque
-          orbe + question par-dessus, en continuité directe avec le reveal. ══ */}
-      {showTrans && (
         <div style={{
           position: "absolute", bottom: 64, left: 0, right: 0,
           display: "flex", flexDirection: "column",
-          alignItems: "center", gap: 24,
-          zIndex: 6,
-          animation: "sos-fade 0.6s ease",
+          alignItems: "center", gap: 14,
+          zIndex: 6, pointerEvents: "none",
         }}>
-          {/* Mini wave orb */}
-          <div style={{ transform: "scale(0.7)" }}>
-            <WaveOrb speaking={isAiSpeaking} firstName={firstName} />
-          </div>
+          {!closingQuestionAsked && !closingMsg && (
+            <p style={{
+              color: TEXT_MUTED, fontSize: 13, letterSpacing: "0.09em",
+              animation: "sos-fade 0.5s ease 1.6s both",
+            }}>
+              Tu l'as tracé toi-même
+            </p>
+          )}
 
-          {closingMsg ? (
-            <p style={{
-              color: "#a0e4c8", fontSize: 15, fontWeight: 500,
-              textAlign: "center", maxWidth: 260, lineHeight: 1.75,
-              animation: "sos-fade 0.6s ease",
-            }}>
-              {closingMsg}
-            </p>
-          ) : (
-            <p style={{
-              color: TEXT_MUTED, fontSize: 13,
-              textAlign: "center", maxWidth: 240, lineHeight: 1.75,
-            }}>
-              {isAiSpeaking ? "…" : "Partage en quelques mots comment tu te sens"}
-            </p>
+          {closingQuestionAsked && (
+            closingMsg ? (
+              <p style={{
+                color: "#a0e4c8", fontSize: 15, fontWeight: 500,
+                textAlign: "center", maxWidth: 260, lineHeight: 1.75,
+                animation: "sos-fade 0.6s ease",
+              }}>
+                {closingMsg}
+              </p>
+            ) : (
+              <p style={{
+                color: TEXT_MUTED, fontSize: 13,
+                textAlign: "center", maxWidth: 240, lineHeight: 1.75,
+                animation: "sos-fade 0.6s ease",
+              }}>
+                {isAiSpeaking ? "…" : "Partage en quelques mots comment tu te sens"}
+              </p>
+            )
           )}
         </div>
       )}
