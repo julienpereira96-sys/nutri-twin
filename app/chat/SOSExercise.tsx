@@ -46,6 +46,11 @@ const HARD_TIMER_MS   = 6 * 60 * 1000;           // 6 min hard stop
 //   { type: 'start' }                    → patient commence à parler
 //   { type: 'chunk', buffer: ArrayBuffer } → chunk PCM Float32 (zero-copy transfer)
 //   { type: 'end' }                      → patient a fini de parler
+// Messages DEPUIS le main thread :
+//   { type: 'reset' }                       → vide l'état (changement de phase)
+//   { type: 'aiSpeaking', value: boolean }  → seuil RMS durci pendant que l'IA parle
+//                                              (évite que le retour haut-parleur déclenche
+//                                              une fausse parole — voir _RMS_THR_AI)
 const MIC_WORKLET_CODE = `
 class MicCapture extends AudioWorkletProcessor {
   constructor () {
@@ -56,8 +61,10 @@ class MicCapture extends AudioWorkletProcessor {
     this._siCnt = 0;           // frames consécutifs de silence (en mode speaking)
 
     // ── Paramètres (synchro avec le main thread) ─────────────────────────────
-    this._FRAME   = 512;   // samples par frame (16kHz → 32ms)
-    this._RMS_THR = 0.018; // seuil parole/respiration
+    this._FRAME        = 512;   // samples par frame (16kHz → 32ms)
+    this._RMS_THR_BASE = 0.018; // seuil parole/respiration — IA silencieuse
+    this._RMS_THR_AI   = 0.028; // seuil durci pendant que l'IA parle (anti-écho)
+    this._RMS_THR      = this._RMS_THR_BASE;
     this._SP_MIN  = 3;     // frames pour confirmer début de parole
     this._SI_MAX  = 25;    // frames pour confirmer fin (~800ms)
 
@@ -67,6 +74,8 @@ class MicCapture extends AudioWorkletProcessor {
         this._spCnt = 0;
         this._siCnt = 0;
         this._buf   = [];
+      } else if (e.data?.type === 'aiSpeaking') {
+        this._RMS_THR = e.data.value ? this._RMS_THR_AI : this._RMS_THR_BASE;
       }
     };
   }
@@ -257,25 +266,30 @@ function WaveOrb({
       intensity.current += ((spk ? 1 : 0) - intensity.current) * 0.08;
 
       // ── Énergie réelle de la voix de Gemini (analyser branché sur sa sortie) ──
-      let rawEnergy = 0;
+      // Plancher idle à 0.32 : jamais totalement figé au repos (pulsation douce,
+      // effet "assistant en veille"), et suit le volume réel dès que l'IA parle.
+      let rawEnergy = 0.32;
       const an = analyserRef.current;
-      if (an && spk) {
-        an.getByteFrequencyData(freqBuf);
-        let sum = 0;
-        for (let i = 0; i < freqBuf.length; i++) sum += freqBuf[i];
-        rawEnergy = (sum / freqBuf.length) / 255; // 0..1
+      if (spk) {
+        if (an) {
+          an.getByteFrequencyData(freqBuf);
+          let sum = 0;
+          for (let i = 0; i < freqBuf.length; i++) sum += freqBuf[i];
+          rawEnergy = (sum / freqBuf.length) / 255; // 0..1, suit le volume réel
+        } else {
+          rawEnergy = 0.55; // pas d'analyser dispo → amplitude "parlante" générique
+        }
       }
       energy.current += (rawEnergy - energy.current) * 0.16;
-      // Le boost d'énergie est proportionnel à l'intensité "speaking" courante —
-      // il s'efface tout seul en revenant à l'idle, sans jamais sauter.
-      const energyMul = 1 + energy.current * intensity.current * 0.9;
 
       // Couches de vagues remplies — interpolées entre idle et speaking
+      // (l'énergie réelle est appliquée directement dans la formule de l'onde,
+      // pas ici, pour ne jamais la compter deux fois)
       const k = intensity.current;
       const layers = WAVE_IDLE_LAYERS.map((idle, i) => {
         const spkL = WAVE_SPEAK_LAYERS[i];
         return [
-          lerp(idle[0], spkL[0], k) * energyMul,
+          lerp(idle[0], spkL[0], k),
           lerp(idle[1], spkL[1], k),
           idle[2], // phaseOff identique idle/speak
           lerp(idle[3], spkL[3], k),
@@ -287,8 +301,16 @@ function WaveOrb({
       for (const [amp, freq, phaseOff, alpha] of layers) {
         ctx.beginPath();
         for (let x = 0; x <= S * 2; x += 3) {
-          // Onde qui se déploie de gauche à droite (sens naturel, apaisant)
-          const y = yBase - amp * Math.sin(freq * x / (S * 0.44) - t * 2.5 + phaseOff);
+          // Onde STATIONNAIRE (effet "studio d'enregistrement Jarvis") :
+          // - enveloppe de position : fixe les bords gauche/droite à zéro, jamais
+          //   de mélange x/t dans le même sinus (sinon ça redevient une onde
+          //   progressive qui défile).
+          // - oscillation temporelle pure : la ligne oscille SUR PLACE.
+          // - l'énergie lissée module l'amplitude du produit des deux → l'onde
+          //   "monte" avec la voix sans jamais se mettre à voyager latéralement.
+          const envelope    = Math.sin((Math.PI * x) / (S * 2));
+          const oscillation = Math.sin(t * freq * 4 + phaseOff);
+          const y = yBase - amp * energy.current * envelope * oscillation;
           x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         }
         ctx.lineTo(S * 2, S * 2);
@@ -440,7 +462,14 @@ export default function SOSExercise({
   // Keep refs in sync
   useEffect(() => { phaseRef.current = phase; }, [phase]);
   useEffect(() => { breathPhaseRef.current = breathPhase; }, [breathPhase]);
-  useEffect(() => { isAiSpeakingRef.current = isAiSpeaking; }, [isAiSpeaking]);
+  useEffect(() => {
+    isAiSpeakingRef.current = isAiSpeaking;
+    // Durcit dynamiquement le seuil RMS du Worklet pendant que l'IA parle :
+    // évite que le retour haut-parleur (écho) ne soit confondu avec une vraie
+    // intention d'interruption du patient (sécurité clinique : le micro reste
+    // toujours ouvert, on ne fait que rendre le VAD plus exigeant).
+    workletNodeRef.current?.port.postMessage({ type: "aiSpeaking", value: isAiSpeaking });
+  }, [isAiSpeaking]);
 
   // ── Audio queue ─────────────────────────────────────────────────────────────
   const playNextChunk = useCallback(() => {
@@ -472,7 +501,11 @@ export default function SOSExercise({
     if (!isPlayingRef.current) playNextChunk();
   }, [playNextChunk]);
 
-  const flushAudio = useCallback(() => {
+  // `invokePending` : si une interruption patient VALIDÉE (vraie parole, pas écho)
+  // coupe l'IA en plein vol, le callback qui attendait la fin naturelle de l'audio
+  // (onQueueEmptyRef — ex. enterReadyPhase / sendClosingQuestion) ne doit pas être
+  // perdu en silence : on l'exécute immédiatement pour ne jamais bloquer le patient.
+  const flushAudio = useCallback((invokePending: boolean = false) => {
     // Stop immédiat du chunk en cours — évite le "son fantôme" après interruption
     if (currentSourceRef.current) {
       try { currentSourceRef.current.stop(); } catch { /* déjà terminé */ }
@@ -481,6 +514,14 @@ export default function SOSExercise({
     audioQueueRef.current = [];
     isPlayingRef.current  = false;
     setIsAiSpeaking(false);
+
+    if (invokePending) {
+      const cb = onQueueEmptyRef.current;
+      if (cb) {
+        onQueueEmptyRef.current = null;
+        cb();
+      }
+    }
   }, []);
 
   // ── Cleanup ─────────────────────────────────────────────────────────────────
@@ -683,7 +724,10 @@ export default function SOSExercise({
     }
 
     // ── Interrupted by patient ────────────────────────────────────────────────
-    if (sc.interrupted === true) flushAudio();
+    // Si ce signal arrive, c'est forcément une interruption déjà validée côté
+    // client (on n'envoie de l'audio à Gemini qu'après confirmation anti-écho
+    // locale) — on force donc aussi l'exécution du callback en attente.
+    if (sc.interrupted === true) flushAudio(true);
 
     // ── Turn complete ─────────────────────────────────────────────────────────
     if (sc.turnComplete === true) {
@@ -711,9 +755,10 @@ export default function SOSExercise({
         // IMPORTANT : closingQuestionSentRef ne passe à true qu'AU MOMENT RÉEL de
         // l'envoi (dans le setTimeout ci-dessous), pas ici. Le gate du micro dans le
         // worklet se base sur ce flag — le marquer trop tôt ouvrirait le micro pendant
-        // que l'IA parle encore. Le patient respire/bouge après le tracé, ça déclenche
-        // la validation anti-écho → flushAudio() → qui n'appelle jamais
-        // onQueueEmptyRef.current → sendClosingQuestion est abandonnée en silence.
+        // que l'IA parle encore. Défense en profondeur : même si le patient
+        // déclenche une interruption validée pendant ce délai, flushAudio(true)
+        // exécute désormais immédiatement onQueueEmptyRef.current (sendClosingQuestion)
+        // au lieu de l'abandonner en silence.
         closingQuestionPendingRef.current = true; // évite le double envoi, sans ouvrir le micro
         const sendClosingQuestion = () => {
           setTimeout(() => {
@@ -973,15 +1018,22 @@ export default function SOSExercise({
       if (type === "start") {
         if (isAiSpeakingRef.current) {
           // Validation anti-écho : l'IA parle → on NE PRÉVIENT PAS le serveur
-          // tout de suite. L'écho dure < 150ms, la vraie parole dure > 400ms.
-          // Les chunks captés pendant ces 400ms sont bufferisés localement —
+          // tout de suite. L'écho dure < 150ms, la vraie parole dure > 700ms.
+          // Les chunks captés pendant ces 700ms sont bufferisés localement —
           // rien ne part vers Gemini avant d'être sûr qu'il s'agit bien d'une
           // interruption réelle (sinon le serveur coupe l'IA sur un faux positif).
+          // Important clinique : on NE COUPE JAMAIS le micro pendant que l'IA
+          // parle (le patient doit pouvoir interrompre à tout moment) — on
+          // durcit seulement la validation (délai + seuil RMS dynamique côté
+          // Worklet) pour ne pas confondre écho et vraie intention.
           pendingChunksRef.current = [];
           bargeInTimerRef.current = setTimeout(() => {
             bargeInTimerRef.current = null;
-            // 400ms écoulées sans "end" → parole confirmée (pas un écho)
-            if (isAiSpeakingRef.current) flushAudio(); // coupe l'IA seulement si elle parle encore
+            // 700ms de parole continue sans "end" → interruption confirmée (pas un écho)
+            // → on coupe l'IA en cours ET on force le callback en attente
+            //   (enterReadyPhase / sendClosingQuestion) à s'exécuter immédiatement,
+            //   au lieu de le perdre en silence (sinon le patient reste bloqué).
+            if (isAiSpeakingRef.current) flushAudio(true);
             ws?.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
             for (const b64 of pendingChunksRef.current) {
               ws?.send(JSON.stringify({
@@ -989,7 +1041,7 @@ export default function SOSExercise({
               }));
             }
             pendingChunksRef.current = [];
-          }, 400);
+          }, 700);
         } else {
           // IA silencieuse → aucune ambiguïté possible, démarrage immédiat
           ws?.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
