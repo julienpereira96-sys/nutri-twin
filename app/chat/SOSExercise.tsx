@@ -39,9 +39,88 @@ const INSPIRE_MS      = 4500;
 const EXPIRE_MS       = 5500;
 const CYCLE_MS        = INSPIRE_MS + EXPIRE_MS; // 10s per letter
 const HARD_TIMER_MS   = 6 * 60 * 1000;           // 6 min hard stop
-const RMS_SILENCE       = 0.012;   // below = silent/breathing, skip PCM
-const VAD_SPEECH_FRAMES = 2;       // frames consécutifs au-dessus du seuil → activityStart (~128ms)
-const VAD_SILENCE_FRAMES = 19;     // frames consécutifs en-dessous du seuil → activityEnd (~1200ms)
+// ─── AudioWorklet — VAD + capture PCM (Blob URL pour éviter les galères Next.js) ──
+// Tourne sur le thread audio dédié : RMS, compteurs, streaming — zéro main thread.
+// Messages vers le main thread :
+//   { type: 'start' }                    → patient commence à parler
+//   { type: 'chunk', buffer: ArrayBuffer } → chunk PCM Float32 (zero-copy transfer)
+//   { type: 'end' }                      → patient a fini de parler
+const MIC_WORKLET_CODE = `
+class MicCapture extends AudioWorkletProcessor {
+  constructor () {
+    super();
+    this._buf   = [];          // accumulateur de samples
+    this._state = 'silent';    // 'silent' | 'speaking'
+    this._spCnt = 0;           // frames consécutifs avec parole
+    this._siCnt = 0;           // frames consécutifs de silence (en mode speaking)
+
+    // ── Paramètres (synchro avec le main thread) ─────────────────────────────
+    this._FRAME   = 512;   // samples par frame (16kHz → 32ms)
+    this._RMS_THR = 0.018; // seuil parole/respiration
+    this._SP_MIN  = 3;     // frames pour confirmer début de parole
+    this._SI_MAX  = 25;    // frames pour confirmer fin (~800ms)
+
+    this.port.onmessage = (e) => {
+      if (e.data?.type === 'reset') {
+        this._state = 'silent';
+        this._spCnt = 0;
+        this._siCnt = 0;
+        this._buf   = [];
+      }
+    };
+  }
+
+  static _rms (samples) {
+    let s = 0;
+    for (let i = 0; i < samples.length; i++) s += samples[i] * samples[i];
+    return Math.sqrt(s / samples.length);
+  }
+
+  process (inputs) {
+    const ch = inputs[0]?.[0];
+    if (!ch || ch.length === 0) return true;
+
+    for (let i = 0; i < ch.length; i++) this._buf.push(ch[i]);
+
+    while (this._buf.length >= this._FRAME) {
+      const frame   = new Float32Array(this._buf.splice(0, this._FRAME));
+      const rms     = MicCapture._rms(frame);
+      const isSnd   = rms >= this._RMS_THR;
+
+      if (this._state === 'silent') {
+        if (isSnd) {
+          this._spCnt++;
+          if (this._spCnt >= this._SP_MIN) {
+            this._state = 'speaking';
+            this._spCnt = 0;
+            this._siCnt = 0;
+            this.port.postMessage({ type: 'start' });
+          }
+        } else {
+          this._spCnt = 0;
+        }
+
+      } else { // speaking
+        // Envoyer TOUS les frames (y compris les silences courts au milieu d'une phrase)
+        this.port.postMessage({ type: 'chunk', buffer: frame.buffer }, [frame.buffer]);
+
+        if (!isSnd) {
+          this._siCnt++;
+          if (this._siCnt >= this._SI_MAX) {
+            this._state = 'silent';
+            this._siCnt = 0;
+            this.port.postMessage({ type: 'end' });
+          }
+        } else {
+          this._siCnt = 0;
+        }
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('mic-capture', MicCapture);
+`;
 
 // ─── Word bank (4–8 letters, 4 intensity levels) ──────────────────────────────
 const WORD_BANK = {
@@ -250,7 +329,7 @@ export default function SOSExercise({
   const audioCtxRef         = useRef<AudioContext | null>(null);
   const analyserRef         = useRef<AnalyserNode | null>(null);
   const mediaStreamRef      = useRef<MediaStream | null>(null);
-  const processorRef        = useRef<ScriptProcessorNode | null>(null);
+  const workletNodeRef      = useRef<AudioWorkletNode | null>(null);
   const animFrameRef        = useRef<number>(0);
 
   // Timers
@@ -281,11 +360,6 @@ export default function SOSExercise({
   const patientHasSpokenRef    = useRef(false);   // patient said something
   const repromptSentRef        = useRef(false);   // gentle re-prompt sent after first silence
   const isAiSpeakingRef        = useRef(false);   // mirrors isAiSpeaking for use in callbacks
-  // Manual VAD state
-  const vadStateRef        = useRef<"silent" | "speaking">("silent");
-  const vadSpeechCntRef    = useRef(0);   // frames consécutifs avec son
-  const vadSilenceCntRef   = useRef(0);   // frames consécutifs de silence après parole
-
   const closingTurnCountRef         = useRef(0);     // nb de turnComplete pendant transition
   const closingNudgeSentRef         = useRef(false);  // relance douce envoyée
   const patientRespondedInTransRef  = useRef(false);  // patient a parlé pendant transition
@@ -343,8 +417,8 @@ export default function SOSExercise({
   // ── Cleanup ─────────────────────────────────────────────────────────────────
   const cleanup = useCallback(() => {
     cancelSpeech();
-    processorRef.current?.disconnect();
-    processorRef.current = null;
+    workletNodeRef.current?.disconnect();
+    workletNodeRef.current = null;
     mediaStreamRef.current?.getTracks().forEach(t => t.stop());
     mediaStreamRef.current = null;
     audioCtxRef.current?.close().catch(() => {});
@@ -766,55 +840,43 @@ export default function SOSExercise({
     const micSrc = audioCtx.createMediaStreamSource(stream);
     micSrc.connect(analyser);
 
-    // eslint-disable-next-line @typescript-eslint/no-deprecated
-    // Buffer 1024 @ 16kHz = 64ms par callback (vs 256ms à 4096) — latence réduite 4×
-    const proc = audioCtx.createScriptProcessor(1024, 1, 1);
-    processorRef.current = proc;
-    micSrc.connect(proc);
-    // NE PAS connecter proc à destination : évite l'écho micro → hauts-parleurs
+    // ── AudioWorklet — VAD + capture PCM sur thread audio dédié ─────────────
+    // Blob URL : évite de servir un fichier statique depuis /public avec Next.js
+    const blob    = new Blob([MIC_WORKLET_CODE], { type: "application/javascript" });
+    const blobUrl = URL.createObjectURL(blob);
+    try {
+      await audioCtx.audioWorklet.addModule(blobUrl);
+    } finally {
+      URL.revokeObjectURL(blobUrl); // libérer immédiatement après chargement
+    }
 
-    proc.onaudioprocess = (e: AudioProcessingEvent) => {
-      const p = phaseRef.current;
-      // Micro actif pendant : intake (écoute TCC) + transition (réponse clôture)
-      // Désactivé pendant tracing/reveal pour ne pas perturber l'exercice
+    const workletNode = new AudioWorkletNode(audioCtx, "mic-capture");
+    workletNodeRef.current = workletNode;
+    micSrc.connect(workletNode);
+    // NE PAS connecter workletNode à destination : évite l'écho micro → hauts-parleurs
+
+    workletNode.port.onmessage = (e: MessageEvent<{ type: string; buffer?: ArrayBuffer }>) => {
+      const p  = phaseRef.current;
+      const ws = wsRef.current;
+      // Ignorer les messages si la phase ne nécessite pas de capture micro
       if (p === "loading" || p === "ready" || p === "tracing" || p === "reveal") return;
 
-      const data  = e.inputBuffer.getChannelData(0);
-      const rms   = getRMS(data);
-      const isSnd = rms >= RMS_SILENCE;
-      const ws    = wsRef.current;
+      const { type, buffer } = e.data;
 
-      if (isSnd) {
-        // ── Son détecté (parole probable) ────────────────────────────────────
-        vadSilenceCntRef.current = 0;
-        vadSpeechCntRef.current++;
+      if (type === "start") {
+        // Barge-in : si Gemini parlait, on le coupe immédiatement
+        if (isAiSpeakingRef.current) flushAudio();
+        ws?.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
 
-        // Confirmer le début de parole après VAD_SPEECH_FRAMES frames consécutifs
-        if (vadSpeechCntRef.current === VAD_SPEECH_FRAMES && vadStateRef.current === "silent") {
-          vadStateRef.current = "speaking";
-          ws?.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
-        }
+      } else if (type === "chunk" && buffer) {
+        // Chunk PCM propre (filtré + validé par le worklet) → encoder + envoyer
+        const b64 = float32ToPCM16Base64(new Float32Array(buffer));
+        ws?.send(JSON.stringify({
+          realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } },
+        }));
 
-        // Envoyer l'audio uniquement une fois la parole confirmée
-        if (vadStateRef.current === "speaking") {
-          const b64 = float32ToPCM16Base64(data);
-          ws?.send(JSON.stringify({
-            realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } },
-          }));
-        }
-      } else {
-        // ── Silence / respiration ─────────────────────────────────────────────
-        vadSpeechCntRef.current = 0;
-
-        if (vadStateRef.current === "speaking") {
-          vadSilenceCntRef.current++;
-          // Fin de parole confirmée après VAD_SILENCE_FRAMES frames silencieux (~1.2s)
-          if (vadSilenceCntRef.current >= VAD_SILENCE_FRAMES) {
-            vadStateRef.current      = "silent";
-            vadSilenceCntRef.current = 0;
-            ws?.send(JSON.stringify({ realtimeInput: { activityEnd: {} } }));
-          }
-        }
+      } else if (type === "end") {
+        ws?.send(JSON.stringify({ realtimeInput: { activityEnd: {} } }));
       }
     };
 
