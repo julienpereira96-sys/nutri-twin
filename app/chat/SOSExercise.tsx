@@ -39,7 +39,9 @@ const INSPIRE_MS      = 4500;
 const EXPIRE_MS       = 5500;
 const CYCLE_MS        = INSPIRE_MS + EXPIRE_MS; // 10s per letter
 const HARD_TIMER_MS   = 6 * 60 * 1000;           // 6 min hard stop
-const RMS_SILENCE     = 0.007;                    // below = silent, skip PCM
+const RMS_SILENCE       = 0.012;   // below = silent/breathing, skip PCM
+const VAD_SPEECH_FRAMES = 2;       // frames consécutifs au-dessus du seuil → activityStart (~128ms)
+const VAD_SILENCE_FRAMES = 19;     // frames consécutifs en-dessous du seuil → activityEnd (~1200ms)
 
 // ─── Word bank (4–8 letters, 4 intensity levels) ──────────────────────────────
 const WORD_BANK = {
@@ -240,6 +242,7 @@ export default function SOSExercise({
   const [chosenWord,       setChosenWord]       = useState("CALME");
   const [expireStart,      setExpireStart]      = useState<number | null>(null);
   const [litLetters,       setLitLetters]       = useState<boolean[]>([]);
+  const [closingMsg,       setClosingMsg]       = useState<string | null>(null);
 
   // ── Refs ────────────────────────────────────────────────────────────────────
   const phaseRef            = useRef<SOSPhase>("loading");
@@ -273,11 +276,22 @@ export default function SOSExercise({
   // isTracingMutedRef supprimé — Gemini peut parler pendant le tracé
 
   // Flow control
-  const greetingDoneRef     = useRef(false);   // first AI turn complete
-  const intakeSignalSentRef = useRef(false);   // TCC validation signal sent
-  const patientHasSpokenRef = useRef(false);   // patient said something
-  const repromptSentRef     = useRef(false);   // gentle re-prompt sent after first silence
-  const isAiSpeakingRef     = useRef(false);   // mirrors isAiSpeaking for use in callbacks
+  const greetingDoneRef        = useRef(false);   // first AI turn complete
+  const intakeSignalSentRef    = useRef(false);   // TCC validation signal sent
+  const patientHasSpokenRef    = useRef(false);   // patient said something
+  const repromptSentRef        = useRef(false);   // gentle re-prompt sent after first silence
+  const isAiSpeakingRef        = useRef(false);   // mirrors isAiSpeaking for use in callbacks
+  // Manual VAD state
+  const vadStateRef        = useRef<"silent" | "speaking">("silent");
+  const vadSpeechCntRef    = useRef(0);   // frames consécutifs avec son
+  const vadSilenceCntRef   = useRef(0);   // frames consécutifs de silence après parole
+
+  const closingTurnCountRef         = useRef(0);     // nb de turnComplete pendant transition
+  const closingNudgeSentRef         = useRef(false);  // relance douce envoyée
+  const patientRespondedInTransRef  = useRef(false);  // patient a parlé pendant transition
+  const transitionPatientTextRef    = useRef("");     // ce que le patient a dit pendant transition
+  const closingTimerARef            = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closingTimerBRef            = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Stable message handler ref (avoids stale closure on WS onmessage)
   const handleWSMessageRef  = useRef<((evt: { data: string }) => void) | null>(null);
@@ -343,6 +357,8 @@ export default function SOSExercise({
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     breathTimerRef.current.forEach(clearTimeout);
     breathTimerRef.current = [];
+    if (closingTimerARef.current) { clearTimeout(closingTimerARef.current); closingTimerARef.current = null; }
+    if (closingTimerBRef.current) { clearTimeout(closingTimerBRef.current); closingTimerBRef.current = null; }
     flushAudio();
   }, [cancelSpeech, flushAudio]);
 
@@ -355,7 +371,8 @@ export default function SOSExercise({
     setCurrentLetterIdx(idx);
     letterStartTimeRef.current = Date.now();
 
-    // Breathing cues via TTS — avec comptage pour occuper toute la durée
+    // Breathing cues via TTS — vider la file Gemini d'abord pour éviter tout chevauchement
+    flushAudio();
     setBreathPhase("inspire");
     breathPhaseRef.current = "inspire";
     speakTherapeutic("Inspire... deux... trois... quatre...", { skipPrep: true, rate: 0.62, volume: 0.55 });
@@ -383,13 +400,13 @@ export default function SOSExercise({
         // Illuminate SVG letters after 600ms
         setTimeout(() => setLitLetters(Array(word.length).fill(true)), 600);
 
-        // Ask Gemini to celebrate (unmuted now)
+        // Gemini célèbre UNIQUEMENT — pas de question (elle viendra en phase transition)
         setTimeout(() => {
           wsRef.current?.send(JSON.stringify({
             clientContent: {
               turns: [{
                 role: "user",
-                parts: [{ text: `[Le tracé est terminé. Le mot "${word}" vient d'apparaître sur l'écran lettre par lettre. Félicite ${firstName} chaleureusement, 2 phrases. Puis pose une question de clôture thérapeutique basée sur ce qu'il t'a partagé tout à l'heure. Voix douce et fière.]` }],
+                parts: [{ text: `[Le tracé est terminé. Le mot "${word}" vient d'apparaître lettre par lettre. Félicite ${firstName} chaleureusement en 1-2 phrases courtes, voix douce et fière. Rien d'autre pour l'instant.]` }],
               }],
               turnComplete: true,
             },
@@ -399,7 +416,7 @@ export default function SOSExercise({
     }, CYCLE_MS);
     breathTimerRef.current.push(t2);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cancelSpeech, speakTherapeutic, firstName]);
+  }, [cancelSpeech, flushAudio, speakTherapeutic, firstName]);
 
   // Phase "ready" — Gemini a fini de parler, patient doit toucher l'écran
   const enterReadyPhase = useCallback(() => {
@@ -420,19 +437,13 @@ export default function SOSExercise({
     setPhase("tracing");
     phaseRef.current = "tracing";
 
-    // Gemini reste actif pour donner des encouragements discrets entre les cycles
-    // On lui demande de rester très bref pour ne pas couvrir les cues TTS
-    wsRef.current?.send(JSON.stringify({
-      clientContent: {
-        turns: [{
-          role: "user",
-          parts: [{ text: `[Le tracé respiratoire commence maintenant. Donne de très brefs encouragements entre les souffles — une phrase douce toutes les 2 lettres environ. Les instructions de respiration sont données localement (Inspire/Expire), donc ne les répète pas.]` }],
-        }],
-        turnComplete: true,
-      },
-    }));
+    // Gemini reste silencieux pendant le tracé — le TTS local gère les cues
+    // (Inspire/Expire à chaque lettre). On ne lui envoie rien pour éviter tout
+    // chevauchement audio qui ferait disparaître les instructions de respiration.
 
-    startLetterAt(0, word);
+    // Délai 800ms avant la première lettre — laisse le patient souffler après le tap
+    const t0 = setTimeout(() => startLetterAt(0, word), 800);
+    breathTimerRef.current.push(t0);
   }, [startLetterAt]);
 
   // ── Signal patient silence → Gemini TCC validation ──────────────────────────
@@ -442,10 +453,10 @@ export default function SOSExercise({
     intakeSignalSentRef.current = true;
 
     const signal = patientHasSpokenRef.current
-      // Patient a parlé → valide + explique l'exercice
-      ? "[Le patient a terminé de s'exprimer. Valide son émotion chaleureusement en 1-2 phrases. Puis guide-le vers l'exercice : il va suivre un point lumineux avec sa respiration — inspirer quand il monte, expirer quand il descend. Dis-lui de toucher l'écran quand il est prêt. Voix douce, 3-4 phrases max. Ne révèle pas le mot.]"
-      // Patient n'a pas répondu → guide directement, SANS valider une émotion inexistante
-      : "[IMPORTANT: Le patient n'a dit aucun mot — zéro. N'accueille AUCUNE émotion, n'utilise pas 'c'est normal de te sentir comme ça' ni aucune formule qui suppose qu'il a exprimé quelque chose. Dis uniquement qu'il n'a pas besoin de parler pour faire l'exercice. Puis guide-le : il va suivre un point lumineux avec sa respiration — inspirer quand il monte, expirer quand il descend. Dis-lui de toucher l'écran quand il est prêt. 2 phrases max, ton doux, pas de question.]";
+      // Patient a parlé → validation empathique + transition douce vers l'exercice
+      ? `[${firstName} vient de partager ce qu'il ressent. Réponds avec une chaleur authentique : reconnais précisément son vécu (nomme l'émotion ou la situation qu'il a exprimée), valide que c'est compréhensible, et montre que tu es là avec lui. 2 phrases sincères et personnalisées — pas de formules génériques. Ensuite, propose-lui doucement l'exercice : des points de lumière vont rassembler son souffle, une lettre à la fois, pour créer un mot qui lui appartient. Dis-lui de toucher l'écran quand il se sent prêt. Ton : proche, humain, bienveillant. 4 phrases max au total. Ne révèle pas le mot.]`
+      // Patient n'a pas répondu → accueil sans supposer d'émotion
+      : `[${firstName} n'a pas encore parlé — ne suppose aucune émotion. Dis-lui simplement que c'est tout à fait bien, qu'il peut juste respirer avec toi. Présente l'exercice : des points de lumière vont suivre son souffle et former un mot pour lui. Quand il est prêt, il touche l'écran. 2 phrases douces, pas de question.]`;
 
     wsRef.current?.send(JSON.stringify({
       clientContent: {
@@ -504,6 +515,13 @@ export default function SOSExercise({
     const inTrans = sc.inputTranscription as Record<string, unknown> | undefined;
     if (inTrans?.text && typeof inTrans.text === "string") {
       inputTranscriptRef.current += " " + (inTrans.text as string);
+      // En phase transition : le patient vient de répondre → annuler les timers de relance
+      if (phaseRef.current === "transition") {
+        patientRespondedInTransRef.current = true;
+        transitionPatientTextRef.current  += " " + (inTrans.text as string);
+        if (closingTimerARef.current) { clearTimeout(closingTimerARef.current); closingTimerARef.current = null; }
+        if (closingTimerBRef.current) { clearTimeout(closingTimerBRef.current); closingTimerBRef.current = null; }
+      }
     }
 
     // ── Interrupted by patient ────────────────────────────────────────────────
@@ -528,27 +546,67 @@ export default function SOSExercise({
           onQueueEmptyRef.current = enterReadyPhase;
         }
       } else if (p === "transition") {
-        // Closing turn complete — close after audio finishes
-        const doClose = () => {
-          const text = outputTranscriptRef.current.trim() || "Je me sens mieux.";
-          void fetch("/api/sos/log", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              patientId,
-              practitionerId,
-              closingMessage: text,
-              word: chosenWordRef.current,
-            }),
-          }).catch(() => {});
-          onTransitionToChat(text);
-          cleanup();
-        };
-        if (!isPlayingRef.current) {
-          doClose();
-        } else {
-          onQueueEmptyRef.current = doClose;
+        closingTurnCountRef.current += 1;
+        const turnN = closingTurnCountRef.current;
+
+        if (patientRespondedInTransRef.current) {
+          // Le patient a parlé et Gemini vient de lui répondre → fermer
+          const patientText = transitionPatientTextRef.current.trim();
+          const doClose = () => {
+            void fetch("/api/sos/log", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                patientId,
+                practitionerId,
+                closingMessage: patientText,
+                word: chosenWordRef.current,
+              }),
+            }).catch(() => {});
+            onTransitionToChat(patientText);
+            cleanup();
+          };
+          if (!isPlayingRef.current) doClose();
+          else onQueueEmptyRef.current = doClose;
+
+        } else if (turnN === 1) {
+          // Gemini vient de poser la question → démarrer le timer 5s (relance si silence)
+          const timerA = setTimeout(() => {
+            if (phaseRef.current !== "transition" || patientRespondedInTransRef.current) return;
+            closingNudgeSentRef.current = true;
+            wsRef.current?.send(JSON.stringify({
+              clientContent: {
+                turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu. Dis-lui en une phrase douce qu'il peut prendre son temps, même un seul mot suffit.]" }] }],
+                turnComplete: true,
+              },
+            }));
+            // Timer 10s après la relance — fermeture si toujours pas de réponse
+            const timerB = setTimeout(() => {
+              if (phaseRef.current !== "transition" || patientRespondedInTransRef.current) return;
+              setClosingMsg("C'est tout à fait bien. Prends soin de toi.");
+              setTimeout(() => {
+                if (phaseRef.current !== "transition") return;
+                const text = "[Le patient n'a pas répondu à la question de clôture]";
+                void fetch("/api/sos/log", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    patientId,
+                    practitionerId,
+                    closingMessage: text,
+                    word: chosenWordRef.current,
+                  }),
+                }).catch(() => {});
+                onTransitionToChat(text);
+                cleanup();
+              }, 4000);
+            }, 10000);
+            closingTimerBRef.current = timerB;
+          }, 5000);
+          closingTimerARef.current = timerA;
+
         }
+        // turnN >= 2 et pas de réponse patient → c'était le nudge de Gemini → timer B déjà lancé
       }
     }
   }, [
@@ -615,14 +673,52 @@ export default function SOSExercise({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAiSpeaking, isPatientSpeaking, phase]);
 
-  // Transition phase: set it 16s after reveal starts (Gemini has time to speak)
+  // Reveal → Transition après 12s (Gemini a le temps de célébrer)
   useEffect(() => {
     if (phase !== "reveal") return;
     const t = setTimeout(() => {
       setPhase("transition");
       phaseRef.current = "transition";
-    }, 16000);
+    }, 12000);
     return () => clearTimeout(t);
+  }, [phase]);
+
+  // Phase transition : poser la question de clôture + fallback si pas de réponse WS
+  useEffect(() => {
+    if (phase !== "transition") return;
+
+    // Demande la question de clôture à Gemini (micro actif pendant cette phase)
+    wsRef.current?.send(JSON.stringify({
+      clientContent: {
+        turns: [{
+          role: "user",
+          parts: [{ text: `[Pose maintenant à ${firstName} une question de clôture douce et personnalisée — basée sur ce qu'il t'a partagé tout à l'heure. Une seule question courte, voix chaleureuse. Après sa réponse, tu peux conclure en 1 phrase avant de te taire.]` }],
+        }],
+        turnComplete: true,
+      },
+    }));
+
+    // Fallback sécurisé : si WS coupé et timers internes pas encore déclenchés, fermer après 40s
+    const fallback = setTimeout(() => {
+      if (phaseRef.current !== "transition") return;
+      const patientText = transitionPatientTextRef.current.trim();
+      const text = patientText || "[Le patient n'a pas répondu à la question de clôture]";
+      void fetch("/api/sos/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId,
+          practitionerId,
+          closingMessage: text,
+          word: chosenWordRef.current,
+        }),
+      }).catch(() => {});
+      onTransitionToChat(text);
+      cleanup();
+    }, 40000);
+
+    return () => clearTimeout(fallback);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
   // ── Init session ─────────────────────────────────────────────────────────────
@@ -679,14 +775,47 @@ export default function SOSExercise({
 
     proc.onaudioprocess = (e: AudioProcessingEvent) => {
       const p = phaseRef.current;
-      if (p === "loading" || p === "ready" || p === "tracing" || p === "reveal" || p === "transition") return;
-      const data = e.inputBuffer.getChannelData(0);
-      // RMS silence suppression — don't send silent frames
-      if (getRMS(data) < RMS_SILENCE) return;
-      const b64 = float32ToPCM16Base64(data);
-      wsRef.current?.send(JSON.stringify({
-        realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } },
-      }));
+      // Micro actif pendant : intake (écoute TCC) + transition (réponse clôture)
+      // Désactivé pendant tracing/reveal pour ne pas perturber l'exercice
+      if (p === "loading" || p === "ready" || p === "tracing" || p === "reveal") return;
+
+      const data  = e.inputBuffer.getChannelData(0);
+      const rms   = getRMS(data);
+      const isSnd = rms >= RMS_SILENCE;
+      const ws    = wsRef.current;
+
+      if (isSnd) {
+        // ── Son détecté (parole probable) ────────────────────────────────────
+        vadSilenceCntRef.current = 0;
+        vadSpeechCntRef.current++;
+
+        // Confirmer le début de parole après VAD_SPEECH_FRAMES frames consécutifs
+        if (vadSpeechCntRef.current === VAD_SPEECH_FRAMES && vadStateRef.current === "silent") {
+          vadStateRef.current = "speaking";
+          ws?.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
+        }
+
+        // Envoyer l'audio uniquement une fois la parole confirmée
+        if (vadStateRef.current === "speaking") {
+          const b64 = float32ToPCM16Base64(data);
+          ws?.send(JSON.stringify({
+            realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } },
+          }));
+        }
+      } else {
+        // ── Silence / respiration ─────────────────────────────────────────────
+        vadSpeechCntRef.current = 0;
+
+        if (vadStateRef.current === "speaking") {
+          vadSilenceCntRef.current++;
+          // Fin de parole confirmée après VAD_SILENCE_FRAMES frames silencieux (~1.2s)
+          if (vadSilenceCntRef.current >= VAD_SILENCE_FRAMES) {
+            vadStateRef.current      = "silent";
+            vadSilenceCntRef.current = 0;
+            ws?.send(JSON.stringify({ realtimeInput: { activityEnd: {} } }));
+          }
+        }
+      }
     };
 
     // 4. Open WS
@@ -700,8 +829,12 @@ export default function SOSExercise({
           generationConfig: {
             responseModalities: ["AUDIO"],
           },
+          // VAD manuel : on gère nous-mêmes activityStart / activityEnd
+          // → évite que la respiration ou les sons ambiants déclenchent un tour Gemini
+          realtimeInputConfig: {
+            automaticActivityDetection: { disabled: true },
+          },
           // Transcription fields at setup level (not inside generationConfig)
-          // Vertex AI BidiGenerateContent spec — may be silently ignored if unsupported
           outputAudioTranscription: {},
           inputAudioTranscription:  {},
           systemInstruction: {
@@ -930,9 +1063,10 @@ export default function SOSExercise({
             <p style={{
               fontSize: 20, fontWeight: 300, letterSpacing: "0.20em",
               textTransform: "uppercase",
+              // Couleur de la lettre en cours — plus vive à l'inspire, atténuée à l'expire
               color: breathPhase === "inspire"
-                ? "rgba(6,182,212,0.85)"
-                : "rgba(6,182,212,0.42)",
+                ? `${LETTER_COLORS[currentLetterIdx % LETTER_COLORS.length]}dd`
+                : `${LETTER_COLORS[currentLetterIdx % LETTER_COLORS.length]}66`,
               transition: "color 0.9s ease",
             }}>
               {breathPhase === "inspire" ? "Inspire" : "Expire"}
@@ -1012,12 +1146,22 @@ export default function SOSExercise({
             <WaveOrb speaking={isAiSpeaking} firstName={firstName} />
           </div>
 
-          <p style={{
-            color: TEXT_MUTED, fontSize: 13,
-            textAlign: "center", maxWidth: 240, lineHeight: 1.75,
-          }}>
-            {isAiSpeaking ? "…" : "Partage en quelques mots comment tu te sens"}
-          </p>
+          {closingMsg ? (
+            <p style={{
+              color: "#a0e4c8", fontSize: 15, fontWeight: 500,
+              textAlign: "center", maxWidth: 260, lineHeight: 1.75,
+              animation: "sos-fade 0.6s ease",
+            }}>
+              {closingMsg}
+            </p>
+          ) : (
+            <p style={{
+              color: TEXT_MUTED, fontSize: 13,
+              textAlign: "center", maxWidth: 240, lineHeight: 1.75,
+            }}>
+              {isAiSpeaking ? "…" : "Partage en quelques mots comment tu te sens"}
+            </p>
+          )}
         </div>
       )}
 
