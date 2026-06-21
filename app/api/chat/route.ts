@@ -1101,17 +1101,6 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
         return Response.json({ level: "none" });
       }
 
-      // Toujours persister ce que le patient a dit pendant l'intake — avant,
-      // ce texte n'apparaissait jamais dans l'historique de conversation.
-      const { data: savedMsg } = await supabase.from("conversations").insert({
-        patient_id: patientId,
-        practitioner_id: practitionerId,
-        role: "user",
-        content: trimmedMessage,
-        session_id: null,
-      }).select("id").single();
-      const savedMessageId = (savedMsg as { id?: string } | null)?.id ?? null;
-
       await supabase.from("patients").update({ last_patient_message_at: new Date().toISOString() }).eq("user_id", patientId);
 
       // Statut actuel — sert à décider si une résolution d'apaisement a lieu
@@ -1129,6 +1118,37 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       const level: CrisisAnalysis["level"] = isCriticalKeyword(trimmedMessage)
         ? "red_critical"
         : (await analyzeCrisisWithLLM(trimmedMessage, "Patient en pleine séance SOS (exercice de respiration guidée), phrase prononcée pendant l'intake vocal.")).level;
+
+      // Apaisement — calculé ici, avant toute décision de persistance, pour
+      // savoir dans le même mouvement si CETTE phrase précise mérite d'être
+      // gardée comme trace écrite (voir bloc juste en dessous).
+      const apaisementConfirme = level === "none" && currentEmotionalStatusSos === "red_behavioral"
+        ? await detectApaisementWithLLM(trimmedMessage)
+        : false;
+
+      // Persistance volontairement SÉLECTIVE dans `conversations` : seulement
+      // si cette phrase déclenche quelque chose de notable (alerte critique/
+      // comportementale, ou résolution d'apaisement) — jamais pour le
+      // bavardage neutre de l'intake. Avant, CHAQUE fragment de transcription
+      // (même anodin) était inséré ici, ce qui fragmentait le fil de
+      // discussion en bouts décousus ET polluait le contexte renvoyé à Gemini
+      // (getConversationHistory) avec du texte découpé arbitrairement par le
+      // flux de transcription. La carte "vision globale" (sos_events.
+      // intake_message, voir lib/sosClosures.ts) reste la source d'affichage
+      // normale du motif de l'exercice ; ce message-ci ne sert plus qu'à
+      // donner un point d'ancrage précis ("Aller au message") aux alertes et
+      // victoires réellement déclenchées.
+      let savedMessageId: string | null = null;
+      if (level !== "none" || apaisementConfirme) {
+        const { data: savedMsg } = await supabase.from("conversations").insert({
+          patient_id: patientId,
+          practitioner_id: practitionerId,
+          role: "user",
+          content: trimmedMessage,
+          session_id: null,
+        }).select("id").single();
+        savedMessageId = (savedMsg as { id?: string } | null)?.id ?? null;
+      }
 
       // Relie cette détection au sos_event de l'exercice en cours — sans ça,
       // rien sur l'événement lui-même n'indique qu'une alerte a eu lieu
@@ -1199,56 +1219,54 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       // depuis red_critical (verrou praticien absolu, même règle que le flux
       // principal). Tourne en arrière-plan, sans jamais interrompre
       // l'exercice en cours ni la conversation Gemini Live qui continue.
-      if (currentEmotionalStatusSos === "red_behavioral") {
-        const apaisementConfirme = await detectApaisementWithLLM(trimmedMessage);
-        if (apaisementConfirme) {
-          try {
-            type PendingSosEvent = { id: string; origin?: string | null; sos_context?: string | null; raw_response?: string | null };
-            const { data: pendingEventRaw } = await supabase
-              .from("sos_events")
-              .select("id, origin, sos_context, raw_response")
-              .eq("patient_id", patientId)
-              .eq("practitioner_id", practitionerId)
-              .eq("status", "pending")
-              .order("triggered_at", { ascending: false })
-              .limit(1)
-              .single();
-            const pendingEvent = pendingEventRaw as PendingSosEvent | null;
+      // apaisementConfirme déjà calculé plus haut (voir persistance sélective).
+      if (apaisementConfirme) {
+        try {
+          type PendingSosEvent = { id: string; origin?: string | null; sos_context?: string | null; raw_response?: string | null };
+          const { data: pendingEventRaw } = await supabase
+            .from("sos_events")
+            .select("id, origin, sos_context, raw_response")
+            .eq("patient_id", patientId)
+            .eq("practitioner_id", practitionerId)
+            .eq("status", "pending")
+            .order("triggered_at", { ascending: false })
+            .limit(1)
+            .single();
+          const pendingEvent = pendingEventRaw as PendingSosEvent | null;
 
-            // 🏆 Victoire auto — même logique que la résolution d'apaisement
-            // du flux principal : une crise réellement désamorcée (origin
-            // "crise" — toujours le cas pour "Mon Soutien") est une victoire.
-            let victoryText = "";
-            if (pendingEvent?.origin === "crise") {
-              const sosToolNames: Record<string, string> = {
-                breathing: "la cohérence cardiaque", ancrage: "l'ancrage sensoriel",
-                manger: "la pleine conscience alimentaire", defusion: "la défusion cognitive",
-                ecriture: "l'écriture cathartique",
-              };
-              let resolvedToolId: string | null = null;
-              try { resolvedToolId = (JSON.parse(pendingEvent.raw_response ?? "{}") as { tool_id?: string }).tool_id ?? null; } catch { /* ignore */ }
-              const exerciseLabel = resolvedToolId ? sosToolNames[resolvedToolId] ?? null : null;
-              const rawContext = (pendingEvent.sos_context ?? "").split("|")[0]?.trim();
-              const crisisLabel = rawContext && !rawContext.startsWith("[contexte chat récent]") && rawContext !== "Mon Soutien"
-                ? `une crise (${rawContext})`
-                : "un moment difficile";
-              victoryText = exerciseLabel ? `A surmonté ${crisisLabel} grâce à ${exerciseLabel}.` : `A surmonté ${crisisLabel} grâce à l'exercice SOS vocal.`;
-            }
+          // 🏆 Victoire auto — même logique que la résolution d'apaisement
+          // du flux principal : une crise réellement désamorcée (origin
+          // "crise" — toujours le cas pour "Mon Soutien") est une victoire.
+          let victoryText = "";
+          if (pendingEvent?.origin === "crise") {
+            const sosToolNames: Record<string, string> = {
+              breathing: "la cohérence cardiaque", ancrage: "l'ancrage sensoriel",
+              manger: "la pleine conscience alimentaire", defusion: "la défusion cognitive",
+              ecriture: "l'écriture cathartique",
+            };
+            let resolvedToolId: string | null = null;
+            try { resolvedToolId = (JSON.parse(pendingEvent.raw_response ?? "{}") as { tool_id?: string }).tool_id ?? null; } catch { /* ignore */ }
+            const exerciseLabel = resolvedToolId ? sosToolNames[resolvedToolId] ?? null : null;
+            const rawContext = (pendingEvent.sos_context ?? "").split("|")[0]?.trim();
+            const crisisLabel = rawContext && !rawContext.startsWith("[contexte chat récent]") && rawContext !== "Mon Soutien"
+              ? `une crise (${rawContext})`
+              : "un moment difficile";
+            victoryText = exerciseLabel ? `A surmonté ${crisisLabel} grâce à ${exerciseLabel}.` : `A surmonté ${crisisLabel} grâce à l'exercice SOS vocal.`;
+          }
 
-            await supabase.from("patients").update({
-              emotional_status: "green",
-              emotional_insight: "Apaisement exprimé pendant l'exercice SOS vocal",
-              ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString(), victory_message_id: savedMessageId } : {}),
-              last_patient_message_at: new Date().toISOString(),
-            }).eq("user_id", patientId);
+          await supabase.from("patients").update({
+            emotional_status: "green",
+            emotional_insight: "Apaisement exprimé pendant l'exercice SOS vocal",
+            ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString(), victory_message_id: savedMessageId } : {}),
+            last_patient_message_at: new Date().toISOString(),
+          }).eq("user_id", patientId);
 
-            if (pendingEvent?.id) {
-              await supabase.from("sos_events").update({ status: "success" }).eq("id", pendingEvent.id);
-            }
-          } catch { /* silencieux — ne doit jamais perturber l'exercice en cours */ }
+          if (pendingEvent?.id) {
+            await supabase.from("sos_events").update({ status: "success" }).eq("id", pendingEvent.id);
+          }
+        } catch { /* silencieux — ne doit jamais perturber l'exercice en cours */ }
 
-          return Response.json({ level: "none" });
-        }
+        return Response.json({ level: "none" });
       }
 
       return Response.json({ level: "none" });

@@ -66,7 +66,13 @@ class MicCapture extends AudioWorkletProcessor {
     this._RMS_THR_AI   = 0.028; // seuil durci pendant que l'IA parle (anti-écho)
     this._RMS_THR      = this._RMS_THR_BASE;
     this._SP_MIN  = 3;     // frames pour confirmer début de parole
-    this._SI_MAX  = 25;    // frames pour confirmer fin (~800ms)
+    // 41 frames ≈ 1.3s — volontairement plus tolérant qu'une simple respiration
+    // courte : à 800ms (ancienne valeur), une pause naturelle en pleine phrase
+    // (le patient qui reprend son souffle en racontant une détresse) était
+    // déjà interprétée comme une fin de tour → Gemini répondait à une phrase
+    // inachevée, puis se faisait couper quand le patient reprenait la parole
+    // (faux barge-in en cascade). Voir échange du 2026-06-21.
+    this._SI_MAX  = 41;    // frames pour confirmer fin (~1.3s)
 
     this.port.onmessage = (e) => {
       if (e.data?.type === 'reset') {
