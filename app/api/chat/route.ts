@@ -1119,36 +1119,22 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
         ? "red_critical"
         : (await analyzeCrisisWithLLM(trimmedMessage, "Patient en pleine séance SOS (exercice de respiration guidée), phrase prononcée pendant l'intake vocal.")).level;
 
-      // Apaisement — calculé ici, avant toute décision de persistance, pour
-      // savoir dans le même mouvement si CETTE phrase précise mérite d'être
-      // gardée comme trace écrite (voir bloc juste en dessous).
       const apaisementConfirme = level === "none" && currentEmotionalStatusSos === "red_behavioral"
         ? await detectApaisementWithLLM(trimmedMessage)
         : false;
 
-      // Persistance volontairement SÉLECTIVE dans `conversations` : seulement
-      // si cette phrase déclenche quelque chose de notable (alerte critique/
-      // comportementale, ou résolution d'apaisement) — jamais pour le
-      // bavardage neutre de l'intake. Avant, CHAQUE fragment de transcription
-      // (même anodin) était inséré ici, ce qui fragmentait le fil de
-      // discussion en bouts décousus ET polluait le contexte renvoyé à Gemini
-      // (getConversationHistory) avec du texte découpé arbitrairement par le
-      // flux de transcription. La carte "vision globale" (sos_events.
-      // intake_message, voir lib/sosClosures.ts) reste la source d'affichage
-      // normale du motif de l'exercice ; ce message-ci ne sert plus qu'à
-      // donner un point d'ancrage précis ("Aller au message") aux alertes et
-      // victoires réellement déclenchées.
-      let savedMessageId: string | null = null;
-      if (level !== "none" || apaisementConfirme) {
-        const { data: savedMsg } = await supabase.from("conversations").insert({
-          patient_id: patientId,
-          practitioner_id: practitionerId,
-          role: "user",
-          content: trimmedMessage,
-          session_id: null,
-        }).select("id").single();
-        savedMessageId = (savedMsg as { id?: string } | null)?.id ?? null;
-      }
+      // Volontairement JAMAIS écrit dans `conversations`, quel que soit le
+      // niveau détecté — ce que dit le patient pendant l'intake/clôture vocal
+      // ne doit apparaître nulle part dans le fil de discussion écrit, ni
+      // même de façon ponctuelle sur les alertes. La seule trace visible doit
+      // être la fiche "Exercice SOS terminé" (sos_events.intake_message /
+      // closing_message, voir lib/sosClosures.ts) — détail au clic, jamais de
+      // message épars lié à l'audio. Conséquence acceptée : crisis_trigger_
+      // message_id et le "Aller au message" de l'ancien bandeau admin_alerts
+      // restent à null pour les événements détectés pendant un exercice SOS
+      // vocal — seul le badge "Alerte détectée" sur la fiche (crisis_level_
+      // detected) signale l'alerte, sans lien profond vers un message.
+      const savedMessageId: string | null = null;
 
       // Relie cette détection au sos_event de l'exercice en cours — sans ça,
       // rien sur l'événement lui-même n'indique qu'une alerte a eu lieu

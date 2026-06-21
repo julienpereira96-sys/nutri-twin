@@ -472,20 +472,15 @@ export default function SOSExercise({
   const patientHasSpokenRef    = useRef(false);   // patient said something
   const repromptSentRef        = useRef(false);   // gentle re-prompt sent after first silence
   const isAiSpeakingRef        = useRef(false);   // mirrors isAiSpeaking for use in callbacks
-  // En phase "intake", le micro reste ouvert en continu (voir gate du
-  // Worklet) — donc chaque pause naturelle du patient (silence ≥ seuil VAD)
-  // ferme un activityEnd, et Gemini Live génère AUTOMATIQUEMENT une réponse à
-  // ce qu'il a entendu jusque-là, indépendamment de nos tours scriptés
-  // (accueil / relance 6s / validation TCC). Si le patient reprend sa phrase,
-  // le barge-in coupe cette réponse spontanée — et comme le contenu n'a pas
-  // vraiment changé entre deux pauses, Gemini tend à revalider la même chose
-  // ("c'est tout à fait normal de ressentir cette pression...") à plusieurs
-  // reprises. expectingReplyRef ne vaut true que pendant la fenêtre où NOUS
-  // avons explicitement invité Gemini à parler — toute audio reçue hors de
-  // cette fenêtre (réponse spontanée non sollicitée) est ignorée à la
-  // lecture (voir handleWSMessage), sans toucher à la transcription d'entrée
-  // ni au garde-fou de crise, qui continuent de fonctionner normalement.
-  const expectingReplyRef      = useRef(false);
+  // NOTE : une tentative de filtrer les réponses spontanées de Gemini pendant
+  // l'intake (expectingReplyRef) a été essayée puis annulée — un turnComplete
+  // n'étant pas étiqueté par tour, le mécanisme pouvait fermer la fenêtre
+  // d'écoute juste avant qu'un tour VOULU (la validation TCC) ne commence à
+  // streamer son audio, rendant Gemini muet pour de bon. Risque jugé pire que
+  // le symptôme (répétition occasionnelle) qu'il visait à corriger. Voir
+  // échange du 2026-06-21 — à reconsidérer un jour avec une approche qui ne
+  // dépend pas d'un simple booléen (ex: ne déclencher activityEnd que nous-
+  // mêmes, jamais depuis la détection de silence du Worklet).
   // Clôture (intégrée dans la phase "reveal", pas de scène séparée)
   // closingQuestionSentRef : le tour fusionné félicitation+question est RÉELLEMENT
   // parti sur le WS (ouvre le micro) — posé en synchrone au moment de l'envoi,
@@ -848,7 +843,6 @@ export default function SOSExercise({
     if (intakeSignalSentRef.current) return;
     if (phaseRef.current !== "intake") return;
     intakeSignalSentRef.current = true;
-    expectingReplyRef.current = true; // ce tour est sollicité — laisser jouer sa réponse
 
     const signal = patientHasSpokenRef.current
       // Patient a parlé → validation empathique intégrée + transition vers l'exercice
@@ -902,14 +896,7 @@ export default function SOSExercise({
     // vers Gemini APRÈS le changement de phase ; sa réponse à ce tour ne doit
     // jamais être jouée — ni audible (orphelin, sans retour visuel de l'orbe sur
     // l'écran "ready"), ni risquer de chevaucher les cues TTS pendant "tracing".
-    // "intake" : silencieux par défaut aussi — voir expectingReplyRef plus
-    // haut. Seules les réponses aux tours qu'on a explicitement sollicités
-    // (accueil, relance 6s, validation TCC) doivent être entendues ; toute
-    // réponse spontanée de Gemini à une simple pause de respiration du
-    // patient est ignorée ici, sans toucher à inputTranscription ni au
-    // garde-fou de crise (qui tournent indépendamment de l'audio joué).
-    const isSilentPhase = phaseRef.current === "ready" || phaseRef.current === "tracing"
-      || (phaseRef.current === "intake" && !expectingReplyRef.current);
+    const isSilentPhase = phaseRef.current === "ready" || phaseRef.current === "tracing";
     if (parts && !isSilentPhase) {
       for (const part of parts) {
         const id = part.inlineData as Record<string, unknown> | undefined;
@@ -979,10 +966,6 @@ export default function SOSExercise({
     // ── Turn complete ─────────────────────────────────────────────────────────
     if (sc.turnComplete === true) {
       const p = phaseRef.current;
-      // Ce tour (sollicité ou spontané) est terminé — on referme la fenêtre
-      // d'écoute. Le prochain tour ne sera audible que si on le sollicite à
-      // nouveau explicitement (voir expectingReplyRef plus haut).
-      expectingReplyRef.current = false;
 
       if (p === "loading" && !greetingDoneRef.current) {
         // Accueil terminé côté WS — les timers de silence démarreront
@@ -1120,7 +1103,6 @@ export default function SOSExercise({
         silenceTimerRef.current = setTimeout(() => {
           if (phaseRef.current !== "intake" || patientHasSpokenRef.current || repromptSentRef.current) return;
           repromptSentRef.current = true;
-          expectingReplyRef.current = true; // ce tour est sollicité — laisser jouer sa réponse
           wsRef.current?.send(JSON.stringify({
             clientContent: {
               turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu. Relance-le très doucement de manière courte et toujours avec un ton bienveillant et sans aucune pression. Formule-la avec tes propres mots. N'utilise pas de cliché comme \"prends ton temps\". Contente-toi d'offrir une présence rassurante et déculpabilisante. Varie impérativement ta formulation.]" }] }],
