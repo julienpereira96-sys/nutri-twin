@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { buildMurmureExpiry } from "@/lib/murmure";
+import { findClosuresInWindow, closureFeeling, type SosClosureEvent, type SosSummary } from "@/lib/sosClosures";
 
 const emerald = "#10b981";
 const amber = "#f59e0b";
@@ -350,7 +351,83 @@ type RealPatient = {
   sharing_status?: string; cabinet_id?: string;
 };
 
-type Conversation = { id: string; role: "user" | "assistant"; content: string; created_at: string; };
+type Conversation = {
+  id: string;
+  role: "user" | "assistant" | "widget";
+  content: string;
+  created_at: string;
+  /** role "widget" — carte "Exercice SOS terminé", jamais persistée en base
+   * (reconstruite à l'affichage depuis sos_events via lib/sosClosures.ts) */
+  sosSummary?: SosSummary;
+};
+
+// ═══ CARTE "EXERCICE SOS TERMINÉ" — vue praticien ═══
+// Équivalent dashboard de la carte côté patient (app/chat/page.tsx). Dupliquée
+// plutôt que partagée car le style diffère (couleurs/conteneur du dashboard),
+// mais alimentée par la même donnée brute (sos_events via /api/sos/closures) —
+// jamais un résumé généré par LLM, jamais persistée dans `conversations`.
+// Contrairement à la carte patient : affiche aussi un indicateur si une
+// alerte a été détectée PENDANT cet exercice précis (crisis_level_detected),
+// avec un lien "Aller au message" qui réutilise le mécanisme de scroll déjà
+// existant pour les victoires/alertes (setPendingScrollMessageId).
+function DashboardSosSummaryCard({
+  word, feeling, intake, crisisLevel, crisisMessageId, onGoToMessage,
+}: SosSummary & { onGoToMessage: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const hasCrisis = !!crisisLevel;
+  const alertColor = crisisLevel === "red_critical" ? coral : amber;
+  const alertBg = crisisLevel === "red_critical" ? "rgba(244,63,94,0.05)" : "rgba(245,158,11,0.05)";
+  const alertBorder = crisisLevel === "red_critical" ? "rgba(244,63,94,0.25)" : "rgba(245,158,11,0.25)";
+  return (
+    <div
+      onClick={() => setOpen(o => !o)}
+      role="button"
+      tabIndex={0}
+      style={{
+        display: "flex", flexDirection: "column", gap: open ? 8 : 0,
+        padding: "10px 14px", borderRadius: 12,
+        background: hasCrisis ? alertBg : "rgba(16,185,129,0.04)",
+        border: `1px solid ${hasCrisis ? alertBorder : "rgba(16,185,129,0.2)"}`,
+        cursor: "pointer", maxWidth: 340, transition: "all 0.2s",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={hasCrisis ? alertColor : emerald} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9.5" />
+          <path d="m8.5 12.5 2.5 2.5 4.5-5" />
+        </svg>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>Exercice SOS terminé</span>
+        {hasCrisis && (
+          <span style={{ fontSize: 10, fontWeight: 700, color: alertColor, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+            · Alerte détectée
+          </span>
+        )}
+        <svg
+          style={{ marginLeft: "auto", flexShrink: 0, opacity: 0.4, transform: open ? "rotate(90deg)" : "none", transition: "transform 0.2s" }}
+          width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        ><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      {open && (
+        <div style={{ fontSize: 12, lineHeight: 1.7, color: "#94a3b8", paddingLeft: 23 }}>
+          {intake && (
+            <p style={{ margin: "0 0 3px" }}>Ce qui a motivé l&apos;exercice : <span style={{ color: "rgba(255,255,255,0.85)", fontStyle: "italic" }}>« {intake} »</span></p>
+          )}
+          <p style={{ margin: "0 0 3px" }}>Mot tracé : <span style={{ color: "rgba(255,255,255,0.85)" }}>{word}</span></p>
+          <p style={{ margin: hasCrisis ? "0 0 6px" : 0 }}>Ressenti partagé : <span style={{ color: "rgba(255,255,255,0.85)", fontStyle: "italic" }}>« {feeling} »</span></p>
+          {hasCrisis && crisisMessageId && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onGoToMessage(crisisMessageId); }}
+              style={{ fontSize: 11, fontWeight: 600, color: alertColor, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}
+            >
+              Aller au message qui a déclenché l&apos;alerte
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 type ReportPeriod = "week" | "month" | "custom";
 type ActiveTab = "patients" | "vue_ensemble";
 type Document = { id: string; file_name: string; file_type: string; created_at: string; content?: string; };
@@ -554,6 +631,7 @@ export default function DashboardPage() {
   const [patients, setPatients] = useState<RealPatient[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [sosClosures, setSosClosures] = useState<SosClosureEvent[]>([]);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -993,6 +1071,15 @@ export default function DashboardPage() {
         }
       });
 
+    // Clôtures d'exercice SOS (sos_events.closing_message rempli) — fusionnées
+    // par horodatage dans displayedConversations, jamais écrites dans
+    // `conversations` (voir lib/sosClosures.ts). Pas besoin de polling ici :
+    // une clôture ne change plus une fois écrite par /api/sos/log.
+    fetch(`/api/sos/closures?patientId=${selectedPatientId}&practitionerId=${practitionerId}`)
+      .then(res => res.ok ? res.json() as Promise<{ events?: SosClosureEvent[] }> : null)
+      .then(data => setSosClosures(data?.events ?? []))
+      .catch(() => { /* silencieux */ });
+
     // Polling incrémental : seulement les nouveaux messages (quasi 0 octet si rien de nouveau)
     const interval = setInterval(async () => {
       if (!lastTs) return;
@@ -1042,7 +1129,29 @@ export default function DashboardPage() {
     };
   }, [practitionerId, onboardingDemoMode]);
 
-  const displayedConversations = onboardingDemoMode ? (DEMO_CONVERSATIONS_BY_PATIENT[selectedPatientId ?? "demo-1"] ?? DEMO_CONVERSATIONS) : conversations;
+  // Fusionne les clôtures SOS (sos_events) dans le fil par horodatage —
+  // jamais persistées dans `conversations` (voir lib/sosClosures.ts).
+  const mergedConversations = useMemo(() => {
+    if (conversations.length === 0 || sosClosures.length === 0) return conversations;
+    const inWindow = findClosuresInWindow(conversations.map(c => c.created_at), sosClosures);
+    if (inWindow.length === 0) return conversations;
+    const widgetRows: Conversation[] = inWindow.map(e => ({
+      id: `sos-${e.triggered_at}`,
+      role: "widget",
+      content: "",
+      created_at: e.triggered_at,
+      sosSummary: {
+        word: e.traced_word || "—",
+        feeling: closureFeeling(e.closing_message),
+        intake: e.intake_message?.trim() || null,
+        crisisLevel: e.crisis_level_detected,
+        crisisMessageId: e.crisis_trigger_message_id,
+      },
+    }));
+    return [...conversations, ...widgetRows].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  }, [conversations, sosClosures]);
+
+  const displayedConversations = onboardingDemoMode ? (DEMO_CONVERSATIONS_BY_PATIENT[selectedPatientId ?? "demo-1"] ?? DEMO_CONVERSATIONS) : mergedConversations;
   const displayedPatients = onboardingDemoMode ? demoPatients as unknown as RealPatient[] : patients;
 
   useEffect(() => {
@@ -2159,15 +2268,27 @@ export default function DashboardPage() {
                       const sameYear = d.getFullYear() === now.getFullYear();
                       const dateSepLabel = msgDay === todayDay ? "Aujourd'hui" : msgDay === yesterdayDay ? "Hier" : d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", ...(!sameYear ? { year: "numeric" } : {}) });
                       const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+                      const dateSep = showDateSep && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 0" }}>
+                          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
+                          <span style={{ fontSize: 10, color: "#4b5563", fontWeight: 500, whiteSpace: "nowrap" }}>{dateSepLabel}</span>
+                          <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
+                        </div>
+                      );
+                      if (message.role === "widget" && message.sosSummary) {
+                        return (
+                          <Fragment key={message.id}>
+                            {dateSep}
+                            <div data-message-id={message.id} data-message-date={message.created_at}
+                              style={{ display: "flex", justifyContent: "flex-start" }}>
+                              <DashboardSosSummaryCard {...message.sosSummary} onGoToMessage={setPendingScrollMessageId} />
+                            </div>
+                          </Fragment>
+                        );
+                      }
                       return (
                         <Fragment key={message.id}>
-                          {showDateSep && (
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 0" }}>
-                              <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
-                              <span style={{ fontSize: 10, color: "#4b5563", fontWeight: 500, whiteSpace: "nowrap" }}>{dateSepLabel}</span>
-                              <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
-                            </div>
-                          )}
+                          {dateSep}
                           <div data-message-id={message.id} data-message-date={message.created_at}
                             style={{ display: "flex", justifyContent: isPatient ? "flex-end" : "flex-start", transition: "all 0.3s" }}>
                             <div style={{ maxWidth: isPatient ? "78%" : "100%" }}>

@@ -144,6 +144,7 @@ type ChatRequest = {
   origin?: "crise" | "pratique"; // forcé par le client (ex: bibliothèque d'exercices → toujours "pratique")
   isPostExercise?: boolean; // follow-up chaud post-exercice — bypass total des effets de bord
   toolId?: string; // outil SOS utilisé (breathing, ancrage, etc.) — transmis avec isPostExercise
+  isSosIntakeCheck?: boolean; // check de crise en arrière-plan sur l'intake vocal de SOSExercise
 };
 
 // ═══ GARDE-FOU BRUT — urgences vitales absolues uniquement ═══
@@ -238,6 +239,30 @@ Réponds UNIQUEMENT en JSON sans markdown :
     return JSON.parse(raw.replace(/```json|```/g, "").trim()) as CrisisAnalysis;
   } catch {
     return { level: "none", murmure: "" };
+  }
+}
+
+// ═══ DÉTECTION APAISEMENT (SOS vocal uniquement) ═══
+// Symétrique du garde-fou crise, dans l'autre sens : repère un vrai signal de
+// retour au calme pendant l'exercice SOS vocal (isSosIntakeCheck), pour
+// résoudre emotional_status "red_behavioral" → "green" sans attendre le
+// prochain message écrit. N'est appelée que si le patient est déjà
+// red_behavioral — le contexte de détresse est donc déjà acquis, pas besoin
+// de le redemander à l'IA comme le fait le bloc "apaisement" du flux
+// principal (qui lui doit vérifier qu'une détresse a bien été exprimée plus
+// tôt DANS LA MÊME conversation écrite, contexte qu'on n'a pas ici).
+async function detectApaisementWithLLM(message: string): Promise<boolean> {
+  try {
+    const prompt = `Un patient suivi pour une détresse comportementale (statut "red_behavioral") vient de prononcer cette phrase à voix haute pendant un exercice de respiration guidée : "${message}"
+
+Réponds UNIQUEMENT par "oui" si cette phrase exprime un retour au calme réel et explicite (ex : "je me sens mieux", "ça va mieux", "j'ai soufflé", "c'est plus calme maintenant", "ça m'a aidé"). Réponds "non" dans tous les autres cas, y compris si l'amélioration est incertaine, partielle, ou si la phrase ne parle pas de son état émotionnel.
+
+non`;
+
+    const raw = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 10, temperature: 0 });
+    return raw.trim().toLowerCase().startsWith("oui");
+  } catch {
+    return false;
   }
 }
 
@@ -729,6 +754,7 @@ export async function POST(request: Request) {
       origin,
       isPostExercise,
       toolId,
+      isSosIntakeCheck,
     } = await request.json() as ChatRequest;
 
     // Auth
@@ -1053,6 +1079,179 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       return new Response(fallbackText, {
         headers: { "Content-Type": "text/plain; charset=utf-8" },
       });
+    }
+
+    // ═══ INTAKE VOCAL SOS — check de crise en arrière-plan ═══
+    // Appelé par SOSExercise.tsx à chaque fin de prise de parole pendant les
+    // phases "loading"/"intake", EN PARALLÈLE de la conversation Gemini Live
+    // qui continue de répondre normalement pendant ce temps. Avant ce garde-fou,
+    // tout ce que le patient disait pendant l'intake vocal ne vivait que dans
+    // le navigateur (inputTranscriptRef côté client), invisible pour le
+    // praticien si rien d'alarmant n'était redit à la question de clôture.
+    // Contrairement à isPostExercise, ce canal ne génère aucun texte de
+    // clôture — il renvoie uniquement le niveau détecté ; c'est SOSExercise
+    // qui décide quoi faire en direct (rien si red_behavioral, interruption +
+    // message de sécurité scripté — jamais improvisé par Gemini — si
+    // red_critical).
+    if (isSosIntakeCheck && patientId && practitionerId) {
+      const supabase = createSupabaseClient();
+      const trimmedMessage = message?.trim() ?? "";
+
+      if (!trimmedMessage) {
+        return Response.json({ level: "none" });
+      }
+
+      // Toujours persister ce que le patient a dit pendant l'intake — avant,
+      // ce texte n'apparaissait jamais dans l'historique de conversation.
+      const { data: savedMsg } = await supabase.from("conversations").insert({
+        patient_id: patientId,
+        practitioner_id: practitionerId,
+        role: "user",
+        content: trimmedMessage,
+        session_id: null,
+      }).select("id").single();
+      const savedMessageId = (savedMsg as { id?: string } | null)?.id ?? null;
+
+      await supabase.from("patients").update({ last_patient_message_at: new Date().toISOString() }).eq("user_id", patientId);
+
+      // Statut actuel — sert à décider si une résolution d'apaisement a lieu
+      // d'être (uniquement depuis red_behavioral, jamais depuis red_critical).
+      const { data: patientStatusRow } = await supabase
+        .from("patients")
+        .select("emotional_status")
+        .eq("user_id", patientId)
+        .single();
+      const currentEmotionalStatusSos = (patientStatusRow as { emotional_status?: string } | null)?.emotional_status ?? "green";
+
+      // Étage 1 — mots-clés bruts (zéro faux négatif, instantané, pas besoin
+      // d'attendre l'appel LLM pour une urgence vitale explicite).
+      // Étage 2 — analyzeCrisisWithLLM pour les formulations implicites.
+      const level: CrisisAnalysis["level"] = isCriticalKeyword(trimmedMessage)
+        ? "red_critical"
+        : (await analyzeCrisisWithLLM(trimmedMessage, "Patient en pleine séance SOS (exercice de respiration guidée), phrase prononcée pendant l'intake vocal.")).level;
+
+      // Relie cette détection au sos_event de l'exercice en cours — sans ça,
+      // rien sur l'événement lui-même n'indique qu'une alerte a eu lieu
+      // pendant cette session précise (seul patients.admin_alerts le sait,
+      // déconnecté de la carte "Exercice SOS terminé").
+      if (level === "red_critical" || level === "red_behavioral") {
+        try {
+          const { data: recentEvent } = await supabase
+            .from("sos_events")
+            .select("id")
+            .eq("patient_id", patientId)
+            .eq("practitioner_id", practitionerId)
+            .order("triggered_at", { ascending: false })
+            .limit(1)
+            .single();
+          if (recentEvent?.id) {
+            await supabase.from("sos_events").update({
+              crisis_level_detected: level,
+              crisis_trigger_message_id: savedMessageId,
+            }).eq("id", recentEvent.id);
+          }
+        } catch { /* silencieux */ }
+      }
+
+      if (level === "red_critical") {
+        const safetyText = CRISIS_CRITICAL_RESPONSES.suicide;
+        await supabase.from("patients").update({
+          emotional_status: "red_critical",
+          emotional_insight: "Urgence détectée pendant l'intake vocal SOS",
+        }).eq("user_id", patientId);
+        const { data: cur } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
+        const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+        await supabase.from("patients").update({
+          admin_alerts: [...alerts, { type: "admin_alert", alert_type: "critical_sos_intake", date: new Date().toISOString(), seen: false, message: trimmedMessage.slice(0, 200), trigger_message_id: savedMessageId }],
+        }).eq("user_id", patientId);
+
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "" },
+            body: JSON.stringify({ patientId, practitionerId, alertType: "sos_intake_critical", message: trimmedMessage }),
+          });
+        } catch { /* silencieux */ }
+
+        await supabase.from("conversations").insert({
+          patient_id: patientId, practitioner_id: practitionerId, role: "assistant", content: safetyText, session_id: null,
+        });
+
+        return Response.json({ level: "red_critical", safetyText });
+      }
+
+      if (level === "red_behavioral") {
+        await supabase.from("patients").update({
+          emotional_status: "red_behavioral",
+          emotional_insight: "Alerte comportementale détectée pendant l'intake vocal SOS",
+        }).eq("user_id", patientId);
+        const { data: cur } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
+        const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+        await supabase.from("patients").update({
+          admin_alerts: [...alerts, { type: "admin_alert", alert_type: "behavioral_sos_intake", date: new Date().toISOString(), seen: false, message: trimmedMessage.slice(0, 200), trigger_message_id: savedMessageId }],
+        }).eq("user_id", patientId);
+        // Pas d'alerte email (pour ne pas spammer le praticien), pas d'interruption
+        // de l'exercice en cours — Gemini Live continue normalement en direct.
+        return Response.json({ level: "red_behavioral" });
+      }
+
+      // ═══ Résolution apaisement — uniquement depuis red_behavioral, jamais
+      // depuis red_critical (verrou praticien absolu, même règle que le flux
+      // principal). Tourne en arrière-plan, sans jamais interrompre
+      // l'exercice en cours ni la conversation Gemini Live qui continue.
+      if (currentEmotionalStatusSos === "red_behavioral") {
+        const apaisementConfirme = await detectApaisementWithLLM(trimmedMessage);
+        if (apaisementConfirme) {
+          try {
+            type PendingSosEvent = { id: string; origin?: string | null; sos_context?: string | null; raw_response?: string | null };
+            const { data: pendingEventRaw } = await supabase
+              .from("sos_events")
+              .select("id, origin, sos_context, raw_response")
+              .eq("patient_id", patientId)
+              .eq("practitioner_id", practitionerId)
+              .eq("status", "pending")
+              .order("triggered_at", { ascending: false })
+              .limit(1)
+              .single();
+            const pendingEvent = pendingEventRaw as PendingSosEvent | null;
+
+            // 🏆 Victoire auto — même logique que la résolution d'apaisement
+            // du flux principal : une crise réellement désamorcée (origin
+            // "crise" — toujours le cas pour "Mon Soutien") est une victoire.
+            let victoryText = "";
+            if (pendingEvent?.origin === "crise") {
+              const sosToolNames: Record<string, string> = {
+                breathing: "la cohérence cardiaque", ancrage: "l'ancrage sensoriel",
+                manger: "la pleine conscience alimentaire", defusion: "la défusion cognitive",
+                ecriture: "l'écriture cathartique",
+              };
+              let resolvedToolId: string | null = null;
+              try { resolvedToolId = (JSON.parse(pendingEvent.raw_response ?? "{}") as { tool_id?: string }).tool_id ?? null; } catch { /* ignore */ }
+              const exerciseLabel = resolvedToolId ? sosToolNames[resolvedToolId] ?? null : null;
+              const rawContext = (pendingEvent.sos_context ?? "").split("|")[0]?.trim();
+              const crisisLabel = rawContext && !rawContext.startsWith("[contexte chat récent]") && rawContext !== "Mon Soutien"
+                ? `une crise (${rawContext})`
+                : "un moment difficile";
+              victoryText = exerciseLabel ? `A surmonté ${crisisLabel} grâce à ${exerciseLabel}.` : `A surmonté ${crisisLabel} grâce à l'exercice SOS vocal.`;
+            }
+
+            await supabase.from("patients").update({
+              emotional_status: "green",
+              emotional_insight: "Apaisement exprimé pendant l'exercice SOS vocal",
+              ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString(), victory_message_id: savedMessageId } : {}),
+              last_patient_message_at: new Date().toISOString(),
+            }).eq("user_id", patientId);
+
+            if (pendingEvent?.id) {
+              await supabase.from("sos_events").update({ status: "success" }).eq("id", pendingEvent.id);
+            }
+          } catch { /* silencieux — ne doit jamais perturber l'exercice en cours */ }
+
+          return Response.json({ level: "none" });
+        }
+      }
+
+      return Response.json({ level: "none" });
     }
 
     // ═══ FLOW PRINCIPAL ═══

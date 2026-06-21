@@ -365,7 +365,9 @@ function WaveOrb({
 // ─── Types ────────────────────────────────────────────────────────────────────
 // "reveal" couvre tout : illumination du mot, félicitation, ET question de
 // clôture — une seule scène continue, sans changement de décor ni second blob.
-type SOSPhase   = "loading" | "intake" | "ready" | "tracing" | "reveal";
+// "safety" : garde-fou critique déclenché pendant l'intake vocal (red_critical) —
+// interrompt tout le reste, écran dédié, message de sécurité scripté récité.
+type SOSPhase   = "loading" | "intake" | "ready" | "tracing" | "reveal" | "safety";
 type BreathPhase = "inspire" | "expire";
 
 export interface SOSExerciseProps {
@@ -373,7 +375,19 @@ export interface SOSExerciseProps {
   practitionerId:  string;
   firstName:       string;
   sosContext?:     string;
-  onTransitionToChat: (closingText: string) => void;
+  // word : le mot tracé pendant l'exercice. intake : ce que le patient a dit
+  // avant de toucher l'écran (figé dans intakeTranscriptRef à l'entrée en
+  // phase "ready"). Transmis avec le texte de clôture pour que page.tsx
+  // puisse construire la carte "Exercice SOS terminé" avec la vision globale
+  // (motif + ressenti final) sans aller-retour serveur — tout est déjà connu
+  // côté client au moment de la fermeture.
+  onTransitionToChat: (closingText: string, word: string, intake: string) => void;
+  // Appelé uniquement si le garde-fou critique se déclenche pendant l'intake
+  // vocal (red_critical) — distinct de onTransitionToChat car le texte ici est
+  // déjà la réponse de sécurité du serveur, pas ce que le patient a dit ; il ne
+  // doit surtout pas repasser par le pipeline isPostExercise (déjà traité côté
+  // serveur dans isSosIntakeCheck).
+  onCriticalSafety: (safetyText: string) => void;
   onClose: () => void;
 }
 
@@ -384,6 +398,7 @@ export default function SOSExercise({
   firstName,
   sosContext = "",
   onTransitionToChat,
+  onCriticalSafety,
   onClose,
 }: SOSExerciseProps) {
   const { speakTherapeutic, cancelSpeech } = useTherapeuticVoice();
@@ -402,6 +417,10 @@ export default function SOSExercise({
   const [litLetters,       setLitLetters]       = useState<boolean[]>([]);
   const [closingMsg,       setClosingMsg]       = useState<string | null>(null);
   const [closingQuestionAsked, setClosingQuestionAsked] = useState(false);
+  // Garde-fou critique sur l'intake vocal — texte de sécurité à réciter/afficher
+  // si analyzeCrisisWithLLM (ou le pré-filtre mots-clés) détecte du red_critical
+  // pendant que le patient parle, en phase "loading" ou "intake".
+  const [safetyText,       setSafetyText]       = useState<string | null>(null);
 
   // ── Refs ────────────────────────────────────────────────────────────────────
   const phaseRef            = useRef<SOSPhase>("loading");
@@ -427,6 +446,12 @@ export default function SOSExercise({
   // Transcription
   const inputTranscriptRef  = useRef("");
   const outputTranscriptRef = useRef("");
+  // Snapshot de inputTranscriptRef figé à l'entrée en phase "ready" (avant que
+  // la clôture ne vienne s'ajouter au même accumulateur) — ce que le patient a
+  // dit pendant l'intake, distinct de ce qu'il dit en réponse à la question de
+  // clôture. Envoyé à /api/sos/log pour donner au praticien la vision globale
+  // de l'exercice (ce qui l'a motivé + comment le patient se sent après).
+  const intakeTranscriptRef = useRef("");
 
   // Tracing
   const chosenWordRef       = useRef("CALME");
@@ -442,10 +467,9 @@ export default function SOSExercise({
   const repromptSentRef        = useRef(false);   // gentle re-prompt sent after first silence
   const isAiSpeakingRef        = useRef(false);   // mirrors isAiSpeaking for use in callbacks
   // Clôture (intégrée dans la phase "reveal", pas de scène séparée)
-  // closingQuestionPendingRef : on a DÉCIDÉ d'enchaîner sur la clôture (évite le double envoi)
-  // closingQuestionSentRef    : la question est RÉELLEMENT partie sur le WS (ouvre le micro)
-  // Les deux doivent rester distincts — voir handleWSMessage pour le pourquoi.
-  const closingQuestionPendingRef   = useRef(false);
+  // closingQuestionSentRef : le tour fusionné félicitation+question est RÉELLEMENT
+  // parti sur le WS (ouvre le micro) — posé en synchrone au moment de l'envoi,
+  // un seul tour, plus de mécanique à deux étages (voir startLetterAt).
   const closingQuestionSentRef      = useRef(false);  // question ouverte déjà envoyée à Gemini
   const closingTurnCountRef         = useRef(0);     // nb de turnComplete depuis l'envoi de la question
   const patientRespondedInTransRef  = useRef(false);  // patient a répondu à la question de clôture
@@ -461,6 +485,16 @@ export default function SOSExercise({
   // entre-temps (ex: barge-in qui force enterReadyPhase() avant que le patient
   // ait fini de parler) — sinon le tour Gemini reste ouvert indéfiniment.
   const activityOpenRef             = useRef(false);
+  // Garde-fou critique vocal : tourne pendant l'intake ET la clôture (phase
+  // "reveal", une fois la question de clôture envoyée) — toute la partie orale
+  // de l'exercice, jamais seulement l'ancien échange écrit (supprimé).
+  // checkedIntakeTextRef retient ce qui a déjà été envoyé à /api/chat
+  // (isSosIntakeCheck) pour ne renvoyer que le delta à chaque nouvelle
+  // vérification (évite de spammer `conversations` avec des messages qui se
+  // chevauchent) ; criticalDetectedRef empêche tout double déclenchement une
+  // fois le garde-fou critique parti.
+  const checkedIntakeTextRef        = useRef("");
+  const criticalDetectedRef         = useRef(false);
 
   // Stable message handler ref (avoids stale closure on WS onmessage)
   const handleWSMessageRef  = useRef<((evt: { data: string }) => void) | null>(null);
@@ -557,6 +591,98 @@ export default function SOSExercise({
 
   useEffect(() => () => cleanup(), [cleanup]);
 
+  // ── Garde-fou critique sur l'intake vocal ────────────────────────────────────
+  // Coupe immédiatement tout ce qui est en cours (Gemini Live, timers, audio) et
+  // bascule sur un écran de sécurité dédié, qui récite le texte renvoyé par le
+  // serveur via le canal TTS local déterministe — jamais Gemini qui improvise sa
+  // propre réponse à une disclosure aussi grave que celle qui vient d'être
+  // détectée (idées suicidaires, urgence vitale).
+  const handleCriticalSafety = useCallback((text: string) => {
+    if (criticalDetectedRef.current) return;
+    criticalDetectedRef.current = true;
+
+    if (hardTimerRef.current) clearTimeout(hardTimerRef.current);
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    breathTimerRef.current.forEach(clearTimeout);
+    breathTimerRef.current = [];
+    if (closingTimerARef.current)   { clearTimeout(closingTimerARef.current);   closingTimerARef.current   = null; }
+    if (closingTimerBRef.current)   { clearTimeout(closingTimerBRef.current);   closingTimerBRef.current   = null; }
+    if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
+    if (bargeInTimerRef.current)    { clearTimeout(bargeInTimerRef.current);    bargeInTimerRef.current    = null; }
+    pendingChunksRef.current = [];
+    activityOpenRef.current = false;
+
+    // Coupe l'audio Gemini en cours et ferme la connexion — tout le reste passe
+    // désormais exclusivement par le canal TTS local.
+    flushAudio();
+    wsRef.current?.close();
+    wsRef.current = null;
+
+    setPhase("safety");
+    phaseRef.current = "safety";
+    setSafetyText(text);
+    speakTherapeutic(text, { skipPrep: true, rate: 0.62, volume: 0.6 });
+
+    // Pas de callback de fin de lecture exposé par useTherapeuticVoice — délai
+    // fixe généreux (plancher 9s, ~380ms/mot) pour laisser le message de
+    // sécurité être lu et entendu avant de transitionner vers le chat.
+    const readDelayMs = Math.max(9000, text.split(/\s+/).length * 380);
+    setTimeout(() => {
+      void fetch("/api/sos/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId,
+          practitionerId,
+          closingMessage: text,
+          word: null,
+          emergencyExit: true,
+          // Tout ce que le patient a verbalisé jusqu'au déclenchement — qu'il
+          // s'agisse de l'intake pur ou d'intake+clôture si la disclosure est
+          // arrivée pendant la phase reveal (inputTranscriptRef n'est jamais
+          // remis à zéro en cours d'exercice).
+          intakeMessage: inputTranscriptRef.current.trim(),
+        }),
+      }).catch(() => {});
+      onCriticalSafety(text);
+      cleanup();
+    }, readDelayMs);
+  }, [flushAudio, speakTherapeutic, patientId, practitionerId, onCriticalSafety, cleanup]);
+
+  // Envoie le delta de transcription accumulé depuis la dernière vérification à
+  // /api/chat (isSosIntakeCheck), en arrière-plan, sans jamais bloquer ni couper
+  // la conversation Gemini Live en cours pendant l'attente de la réponse.
+  // Appelé pendant l'intake ET pendant la clôture (voir handleWSMessage).
+  const runVoiceCrisisCheck = useCallback(() => {
+    if (criticalDetectedRef.current) return;
+    const full = inputTranscriptRef.current;
+    const delta = full.slice(checkedIntakeTextRef.current.length).trim();
+    if (!delta) return;
+    checkedIntakeTextRef.current = full;
+
+    void (async () => {
+      try {
+        const res = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: delta,
+            patientId,
+            practitionerId,
+            isSosIntakeCheck: true,
+          }),
+        });
+        if (!res.ok) return;
+        const data = await res.json() as { level?: string; safetyText?: string };
+        if (data.level === "red_critical" && data.safetyText) {
+          handleCriticalSafety(data.safetyText);
+        }
+        // "red_behavioral"/"none" : déjà géré côté serveur (statut + alerte praticien
+        // en arrière-plan) — rien à changer dans l'exercice en cours.
+      } catch { /* silencieux — ne doit jamais perturber l'exercice en cours */ }
+    })();
+  }, [patientId, practitionerId, handleCriticalSafety]);
+
   // ── Begin tracing ────────────────────────────────────────────────────────────
   const startLetterAt = useCallback((idx: number, word: string) => {
     if (phaseRef.current !== "tracing") return;
@@ -601,24 +727,50 @@ export default function SOSExercise({
         // Illuminate SVG letters after 600ms
         setTimeout(() => setLitLetters(Array(word.length).fill(true)), 600);
 
-        // Gemini célèbre UNIQUEMENT — la question de clôture s'enchaîne automatiquement
-        // au turnComplete de cette félicitation (voir handleWSMessage, branche "reveal")
+        // Félicitation + question de clôture FUSIONNÉES en un seul tour — le
+        // micro s'ouvre dès cet envoi (closingQuestionSentRef posé en
+        // synchrone ici, pas après un second tour différé). Plus de pause
+        // fixe de 2.6s : "enchaîne directement, sans pause" est porté par le
+        // prompt lui-même. Voir handleWSMessage, branche "reveal" pour la
+        // suite (relance 5s, fallback 40s sans réponse, fermeture).
         setTimeout(() => {
+          if (phaseRef.current !== "reveal") return;
+          closingQuestionSentRef.current = true; // micro autorisé dès maintenant
+          setClosingQuestionAsked(true);
           wsRef.current?.send(JSON.stringify({
             clientContent: {
               turns: [{
                 role: "user",
-                parts: [{ text: `[Le tracé silencieux est terminé. Le mot "${word}" est entièrement illuminé. Félicite ${firstName} d'un ton bas, fier, calme et enveloppant. Dis-lui en une seule phrase courte la puissance de ce qu'il vient de faire (ex: "Regarde ce que ton souffle a ancré dans la matière."). Ne pose pas de question, laisse le mot résonner.]` }],
+                parts: [{ text: `[Le tracé silencieux est terminé et le mot "${word}" est entièrement illuminé à l'écran. Formule une intervention unique en deux temps, d'un ton bas, ancré et enveloppant : 1) Valide sobrement la fin de l'effort et la présence du mot. 2) Enchaîne directement, sans pause, avec une unique question ouverte et extrêmement douce pour mesurer son état par rapport au début de la crise. Reste très concis, voix murmurée, et attends sa réponse.]` }],
               }],
               turnComplete: true,
             },
           }));
+          // Fallback sécurisé : si jamais aucune réponse n'arrive, fermer après 40s
+          closingFallbackRef.current = setTimeout(() => {
+            if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current) return;
+            const patientText = transitionPatientTextRef.current.trim();
+            const text = patientText || "[Le patient n'a pas répondu à la question de clôture]";
+            void fetch("/api/sos/log", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                patientId,
+                practitionerId,
+                closingMessage: text,
+                word: chosenWordRef.current,
+                intakeMessage: intakeTranscriptRef.current,
+              }),
+            }).catch(() => {});
+            onTransitionToChat(text, chosenWordRef.current, intakeTranscriptRef.current);
+            cleanup();
+          }, 40000);
         }, 1600);
       }
     }, CYCLE_MS);
     breathTimerRef.current.push(t2);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cancelSpeech, flushAudio, speakTherapeutic, firstName]);
+  }, [cancelSpeech, flushAudio, speakTherapeutic, firstName, patientId, practitionerId, onTransitionToChat, cleanup]);
 
   // Phase "ready" — Gemini a fini de parler, patient doit toucher l'écran
   const enterReadyPhase = useCallback(() => {
@@ -626,6 +778,8 @@ export default function SOSExercise({
     const word = selectWord(inputTranscriptRef.current);
     chosenWordRef.current = word;
     setChosenWord(word);
+    // Figer l'intake ICI, avant que la clôture ne s'ajoute au même accumulateur
+    intakeTranscriptRef.current = inputTranscriptRef.current.trim();
     setPhase("ready");
     phaseRef.current = "ready";
   }, []);
@@ -638,6 +792,17 @@ export default function SOSExercise({
 
     setPhase("tracing");
     phaseRef.current = "tracing";
+
+    // Paradoxe du "mute gate" : si le patient parlait encore juste avant le
+    // tap (reliquat de phrase en cours d'envoi via activityOpenRef), ce tour
+    // reste ouvert côté serveur Gemini si on ne le ferme jamais explicitement
+    // — on espérerait alors un "end" du worklet qui n'arrivera peut-être
+    // qu'après coup. Fermeture immédiate et sans ambiguïté ici.
+    if (activityOpenRef.current) {
+      wsRef.current?.send(JSON.stringify({ realtimeInput: { activityEnd: {} } }));
+      activityOpenRef.current = false;
+    }
+
     // Purge le worklet : évite que des chunks accumulés pendant l'intake
     // soient envoyés à Gemini dès le début de la phase transition
     workletNodeRef.current?.port.postMessage({ type: "reset" });
@@ -659,13 +824,13 @@ export default function SOSExercise({
     intakeSignalSentRef.current = true;
 
     const signal = patientHasSpokenRef.current
-      // Patient a parlé → validation empathique + transition douce vers l'exercice
-      ? `[${firstName} vient de s'exprimer. Applique la validation empathique TCC : 1) Nomme l'émotion ou la sensation partagée pour valider son écoute. 2) Normalise en 1 phrase ("C'est tout à fait compréhensible que ton corps réagisse ainsi"). 3) Propose l'exercice : "Nous allons rassembler ce flux ensemble. Un point lumineux va guider ton souffle pour tracer un mot à l'écran. Quand tu te sens prêt à respirer avec moi, touche l'écran." Max 4 phrases. Ne révèle pas le mot.]`
+      // Patient a parlé → validation empathique intégrée + transition vers l'exercice
+      ? `[${firstName} vient de s'exprimer. Applique la validation empathique TCC de manière totalement intégrée et naturelle, sans formulation scolaire visible : reflète l'émotion ou la tension exprimée avec des mots justes, et normalise la réaction de manière sobre. Enchaîne immédiatement sur la proposition de l'exercice : une respiration guidée par un point de lumière qui va tracer un mot à l'écran pour l'aider à calmer sa crise. Il peut appuyer quand il veut sur l'écran pour démarrer l'exercice et se laisser guider. Ne révèle jamais le mot lui-même, tu ne le connais pas encore.]`
       // Patient n'a pas répondu → ne suppose aucune émotion précise, mais le simple
       // fait d'avoir déclenché ce mode SOS est déjà un signal : il en avait besoin.
       // Formulation libre pour Gemini — jamais la même phrase mot pour mot d'une
       // session à l'autre, garde uniquement l'esprit de l'instruction.
-      : `[${firstName} n'a pas encore parlé — ne suppose aucune émotion précise. Pars du principe qu'avoir lancé ce mode était déjà le bon geste, qu'il en avait besoin sur l'instant, et dis-le-lui avec tes propres mots. Rassure-le : c'est tout à fait bien, il peut juste respirer avec toi, aucune réponse n'est attendue. Présente l'exercice : des points de lumière vont suivre son souffle et former un mot pour lui. Quand il est prêt, il touche l'écran. 2 phrases douces maximum, pas de question, formulation différente à chaque fois.]`;
+      : `[${firstName} n'a pas encore parlé — ne suppose aucune émotion précise, mais pars du principe qu'avoir lancé ce mode était déjà le bon geste, qu'il en avait besoin sur l'instant. Dis-le-lui avec tes propres mots, de manière naturelle et sans structure scolaire visible. Rassure-le : c'est tout à fait bien, aucune réponse n'est attendue. Enchaîne sur la proposition de l'exercice : une respiration guidée par un point de lumière qui va tracer un mot à l'écran. Il peut appuyer quand il veut sur l'écran pour démarrer et se laisser guider. Ne révèle jamais le mot, tu ne le connais pas encore. Pas de question, formulation différente à chaque fois.]`;
 
     wsRef.current?.send(JSON.stringify({
       clientContent: {
@@ -687,7 +852,7 @@ export default function SOSExercise({
         clientContent: {
           turns: [{
             role: "user",
-            parts: [{ text: `[Core SOS activé pour ${firstName}. Commence l'accueil immédiatement. Ton de thérapeute TCC en urgence : voix extrêmement lente, feutrée et descendante. Maximum 2 phrases courtes pour stabiliser le patient. Pas de question anxiogène. Termine dans cet esprit, en invitant à respirer et à se reconnecter à ce qui se passe en lui maintenant — par exemple "Je suis là avec toi. Respire, et dis-moi ce qui se passe en toi."]` }],
+            parts: [{ text: `[Core SOS activé pour ${firstName}. Commence l'accueil immédiatement. Adopte une posture de thérapeute TCC en position d'écoute active d'urgence. Ta voix doit être posée, feutrée, basse et descendante pour induire le calme par synchronisation. Ton unique objectif ici est de créer un espace de sécurité pour que le patient dépose sa souffrance. Ne propose aucun exercice, ne parle pas de respiration, et ne pose aucune question fermée. Formule une intervention très courte et ouverte, basée sur son profil contextuel si pertinent, qui appelle uniquement à la confidence et lui permet de livrer librement ce qui ne va pas maintenant.]` }],
           }],
           turnComplete: true,
         },
@@ -701,7 +866,17 @@ export default function SOSExercise({
     // ── Audio chunks ──────────────────────────────────────────────────────────
     const modelTurn = sc.modelTurn as Record<string, unknown> | undefined;
     const parts = modelTurn?.parts as Array<Record<string, unknown>> | undefined;
-    if (parts) {
+    // "ready"/"tracing" sont des fenêtres volontairement silencieuses côté Gemini
+    // (le patient regarde l'écran "toucher pour commencer", ou écoute les cues de
+    // respiration du canal TTS local) — avant le fix activityOpenRef, rien ne
+    // pouvait atteindre Gemini pendant ces phases, donc cette garde n'avait
+    // jamais lieu d'être. Depuis ce fix, un barge-in confirmé juste avant un
+    // enterReadyPhase() forcé peut laisser la suite de l'énoncé du patient partir
+    // vers Gemini APRÈS le changement de phase ; sa réponse à ce tour ne doit
+    // jamais être jouée — ni audible (orphelin, sans retour visuel de l'orbe sur
+    // l'écran "ready"), ni risquer de chevaucher les cues TTS pendant "tracing".
+    const isSilentPhase = phaseRef.current === "ready" || phaseRef.current === "tracing";
+    if (parts && !isSilentPhase) {
       for (const part of parts) {
         const id = part.inlineData as Record<string, unknown> | undefined;
         if (id?.mimeType && typeof id.mimeType === "string" && id.mimeType.startsWith("audio/pcm")) {
@@ -735,6 +910,21 @@ export default function SOSExercise({
         inTrans.text.trim().length > 0
       ) {
         patientHasSpokenRef.current = true;
+      }
+      // Garde-fou critique : vérifie en arrière-plan, à chaque nouveau bout de
+      // transcription, qu'aucune disclosure grave ne vient de passer sous le
+      // radar — sans jamais bloquer ni couper Gemini Live, qui continue de
+      // répondre normalement en parallèle. Couvre toute la partie orale de
+      // l'exercice : intake (avant l'exo) ET clôture (phase "reveal", une fois
+      // la question de clôture envoyée) — plus seulement l'intake, depuis que
+      // l'ancien échange écrit (isPostExercise) a été supprimé côté SOSExercise.
+      if (
+        inTrans.text.trim().length > 0 &&
+        (phaseRef.current === "intake" ||
+          phaseRef.current === "loading" ||
+          (phaseRef.current === "reveal" && closingQuestionSentRef.current))
+      ) {
+        runVoiceCrisisCheck();
       }
       // La question de clôture a déjà été posée → le patient vient de répondre,
       // on annule les timers de relance
@@ -770,57 +960,11 @@ export default function SOSExercise({
         } else {
           onQueueEmptyRef.current = enterReadyPhase;
         }
-      } else if (p === "reveal" && !closingQuestionPendingRef.current) {
-        // C'est le turnComplete de la félicitation — on enchaîne dans LA MÊME scène
-        // (mot toujours illuminé, pas de second décor) sur la question de clôture,
-        // après une courte pause silencieuse une fois l'audio de félicitation terminé.
-        //
-        // IMPORTANT : closingQuestionSentRef ne passe à true qu'AU MOMENT RÉEL de
-        // l'envoi (dans le setTimeout ci-dessous), pas ici. Le gate du micro dans le
-        // worklet se base sur ce flag — le marquer trop tôt ouvrirait le micro pendant
-        // que l'IA parle encore. Défense en profondeur : même si le patient
-        // déclenche une interruption validée pendant ce délai, flushAudio(true)
-        // exécute désormais immédiatement onQueueEmptyRef.current (sendClosingQuestion)
-        // au lieu de l'abandonner en silence.
-        closingQuestionPendingRef.current = true; // évite le double envoi, sans ouvrir le micro
-        const sendClosingQuestion = () => {
-          setTimeout(() => {
-            if (phaseRef.current !== "reveal") return;
-            closingQuestionSentRef.current = true; // micro autorisé seulement maintenant
-            setClosingQuestionAsked(true);
-            wsRef.current?.send(JSON.stringify({
-              clientContent: {
-                turns: [{
-                  role: "user",
-                  parts: [{ text: `[Clôture de l'exercice. Formule une unique question ouverte, extrêmement douce, pour mesurer l'apaisement du patient par rapport au début (ex: "Comment te sens-tu maintenant, dans ton corps et dans ton esprit, après ce tracé ?"). Voix murmurée. Après sa réponse, tu n'auras le droit de prononcer qu'une seule phrase finale d'ancrage avant de te taire définitivement.]` }],
-                }],
-                turnComplete: true,
-              },
-            }));
-            // Fallback sécurisé : si jamais aucune réponse n'arrive, fermer après 40s
-            closingFallbackRef.current = setTimeout(() => {
-              if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current) return;
-              const patientText = transitionPatientTextRef.current.trim();
-              const text = patientText || "[Le patient n'a pas répondu à la question de clôture]";
-              void fetch("/api/sos/log", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  patientId,
-                  practitionerId,
-                  closingMessage: text,
-                  word: chosenWordRef.current,
-                }),
-              }).catch(() => {});
-              onTransitionToChat(text);
-              cleanup();
-            }, 40000);
-          }, 2600); // laisse le mot "résonner" en silence avant la question
-        };
-        if (!isPlayingRef.current) sendClosingQuestion();
-        else onQueueEmptyRef.current = sendClosingQuestion;
-
       } else if (p === "reveal" && closingQuestionSentRef.current) {
+        // Le tour fusionné félicitation+question de clôture (envoyé depuis
+        // startLetterAt) est désormais le SEUL tour Gemini de cette phase —
+        // ce turnComplete est donc forcément le sien (turnN === 1), et la
+        // suite (relance 5s, fermeture) s'enchaîne normalement ci-dessous.
         closingTurnCountRef.current += 1;
         const turnN = closingTurnCountRef.current;
 
@@ -837,9 +981,10 @@ export default function SOSExercise({
                 practitionerId,
                 closingMessage: patientText,
                 word: chosenWordRef.current,
+                intakeMessage: intakeTranscriptRef.current,
               }),
             }).catch(() => {});
-            onTransitionToChat(patientText);
+            onTransitionToChat(patientText, chosenWordRef.current, intakeTranscriptRef.current);
             cleanup();
           };
           if (!isPlayingRef.current) doClose();
@@ -851,7 +996,7 @@ export default function SOSExercise({
             if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current) return;
             wsRef.current?.send(JSON.stringify({
               clientContent: {
-                turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu. Dis-lui en une phrase douce qu'il peut prendre son temps, même un seul mot suffit.]" }] }],
+                turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu à la question de clôture. Relance-le très doucement, de manière courte, avec un ton bienveillant et sans aucune pression. Formule-la avec tes propres mots. N'utilise pas de cliché comme \"prends ton temps\". Contente-toi d'offrir une présence rassurante. Varie ta formulation.]" }] }],
                 turnComplete: true,
               },
             }));
@@ -871,9 +1016,10 @@ export default function SOSExercise({
                     practitionerId,
                     closingMessage: text,
                     word: chosenWordRef.current,
+                    intakeMessage: intakeTranscriptRef.current,
                   }),
                 }).catch(() => {});
-                onTransitionToChat(text);
+                onTransitionToChat(text, chosenWordRef.current, intakeTranscriptRef.current);
                 cleanup();
               }, 4000);
             }, 10000);
@@ -887,7 +1033,7 @@ export default function SOSExercise({
     }
   }, [
     enqueueAudio, flushAudio, firstName,
-    triggerIntakeTransition,
+    triggerIntakeTransition, runVoiceCrisisCheck,
     patientId, practitionerId, onTransitionToChat, cleanup,
   ]);
 
@@ -938,7 +1084,7 @@ export default function SOSExercise({
           repromptSentRef.current = true;
           wsRef.current?.send(JSON.stringify({
             clientContent: {
-              turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu. Relance-le très doucement, en une seule phrase courte, ton bienveillant et sans aucune pression — même un souffle ou un seul mot suffirait à le rassurer. Formule-la avec tes propres mots, jamais la même tournure que tes relances précédentes dans cette conversation.]" }] }],
+              turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu. Relance-le très doucement de manière courte et toujours avec un ton bienveillant et sans aucune pression. Formule-la avec tes propres mots. N'utilise pas de cliché comme \"prends ton temps\". Contente-toi d'offrir une présence rassurante et déculpabilisante. Varie impérativement ta formulation.]" }] }],
               turnComplete: true,
             },
           }));
@@ -1057,18 +1203,36 @@ export default function SOSExercise({
       if (type === "start") {
         if (isAiSpeakingRef.current) {
           // Validation anti-écho : l'IA parle → on NE PRÉVIENT PAS le serveur
-          // tout de suite. L'écho dure < 150ms, la vraie parole dure > 700ms.
-          // Les chunks captés pendant ces 700ms sont bufferisés localement —
+          // tout de suite. L'écho dure < 150ms, la vraie parole dure > 400ms.
+          // Les chunks captés pendant ces 400ms sont bufferisés localement —
           // rien ne part vers Gemini avant d'être sûr qu'il s'agit bien d'une
           // interruption réelle (sinon le serveur coupe l'IA sur un faux positif).
           // Important clinique : on NE COUPE JAMAIS le micro pendant que l'IA
           // parle (le patient doit pouvoir interrompre à tout moment) — on
           // durcit seulement la validation (délai + seuil RMS dynamique côté
-          // Worklet) pour ne pas confondre écho et vraie intention.
+          // Worklet) pour ne pas confondre écho et vraie intention. Le seuil RMS
+          // durci (_RMS_THR_AI) est désormais la défense principale contre
+          // l'écho — ce délai redescend donc de 700ms à 400ms pour ne pas faire
+          // attendre inutilement un patient qui interrompt vraiment (ex: pour
+          // signaler une urgence), surtout combiné au seuil dynamique.
           pendingChunksRef.current = [];
           bargeInTimerRef.current = setTimeout(() => {
             bargeInTimerRef.current = null;
-            // 700ms de parole continue sans "end" → interruption confirmée (pas un écho)
+            // "Barge-in fantôme" : ce timer a été créé 400ms plus tôt, sur la
+            // base de la phase d'ALORS. Si un tap (beginTracing) ou une autre
+            // transition de phase a eu lieu pendant ce délai, envoyer
+            // activityStart maintenant briserait le silence sacré du tracé
+            // (ou parasiterait reveal/safety). Liste blanche : on ne laisse
+            // passer que si on est encore dans une phase où cette activité a
+            // un sens — "ready" inclus volontairement (cas où le patient
+            // n'a pas encore tapé, c'est justement ce que activityOpenRef
+            // sert à couvrir). On abandonne proprement sinon, sans toucher au WS.
+            const p = phaseRef.current;
+            if (p !== "loading" && p !== "intake" && p !== "ready") {
+              pendingChunksRef.current = [];
+              return;
+            }
+            // 400ms de parole continue sans "end" → interruption confirmée (pas un écho)
             // → on coupe l'IA en cours ET on force le callback en attente
             //   (enterReadyPhase / sendClosingQuestion) à s'exécuter immédiatement,
             //   au lieu de le perdre en silence (sinon le patient reste bloqué).
@@ -1081,7 +1245,7 @@ export default function SOSExercise({
               }));
             }
             pendingChunksRef.current = [];
-          }, 700);
+          }, 400);
         } else {
           // IA silencieuse → aucune ambiguïté possible, démarrage immédiat
           ws?.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
@@ -1154,9 +1318,12 @@ export default function SOSExercise({
       const p = phaseRef.current;
       if (p === "loading") {
         setLoadError(`Connexion fermée (${evt.code}). Vérifie ta connexion.`);
-      } else if (p !== "reveal") {
+      } else if (p !== "reveal" && p !== "safety") {
         // Pas d'erreur pendant reveal : l'exercice est visuellement terminé,
         // le mot est affiché — afficher une bannière gâcherait le moment.
+        // Pas d'erreur pendant safety non plus : c'est handleCriticalSafety
+        // lui-même qui ferme délibérément le WS — une bannière de déconnexion
+        // viendrait parasiter l'écran de sécurité.
         setWsError(`Connexion interrompue (${evt.code}). Tu peux continuer sans la voix.`);
       }
     };
@@ -1177,6 +1344,7 @@ export default function SOSExercise({
   const showReady  = phase === "ready";
   const showTrace  = phase === "tracing";
   const showReveal = phase === "reveal";
+  const showSafety = phase === "safety";
 
   // Référence stable — évite de recréer le tableau à chaque render ce qui
   // réinitialiserait les 300 particules (dépendance [word, letterColors] dans ParticleCanvas)
@@ -1269,6 +1437,34 @@ export default function SOSExercise({
           >
             Fermer
           </button>
+        </div>
+      )}
+
+      {/* ══ SAFETY — garde-fou critique, écran dédié, aucun autre élément ═══════ */}
+      {showSafety && safetyText && (
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 10,
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center",
+          textAlign: "center", padding: 32,
+          background: "#060810",
+        }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: "50%",
+            background: "rgba(248,113,113,0.10)",
+            border: "1px solid rgba(248,113,113,0.30)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            marginBottom: 24,
+          }}>
+            <span style={{ fontSize: 26 }}>🌿</span>
+          </div>
+          <p style={{
+            color: "rgba(255,255,255,0.92)", fontSize: 17, lineHeight: 1.8,
+            maxWidth: 360, fontWeight: 400,
+            animation: "sos-fade 0.6s ease",
+          }}>
+            {safetyText}
+          </p>
         </div>
       )}
 

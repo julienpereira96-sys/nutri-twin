@@ -13,6 +13,7 @@ import PwaInstallPrompt from "./PwaInstallPrompt";
 import MicConsentOverlay from "./MicConsentOverlay";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 import { useMicPermission, hasMicConsent, markMicConsent } from "@/hooks/useMicPermission";
+import { mergeSosClosures, type SosClosureEvent, type SosSummary } from "@/lib/sosClosures";
 import {
   IconCheckRing,
   IconWave,
@@ -28,6 +29,8 @@ type ChatMessage = {
   hidden?: boolean;
   /** Set when Gemini detected acute distress — two exercise IDs to offer */
   sosTrigger?: [string, string];
+  /** role "widget" — carte de notification "Exercice SOS terminé" */
+  sosSummary?: SosSummary;
 };
 
 type BreathingStep = "idle" | "inhale" | "hold" | "exhale" | "done";
@@ -450,6 +453,52 @@ const LIBRARY_EXERCISES: { id: string; label: string; desc: string; icon: string
   { id: "defusion", label: "Défusion cognitive", desc: "Prendre de la distance avec ses pensées", icon: SOS_EXERCISE_META.defusion.icon },
 ];
 
+// ═══ CARTE DE NOTIFICATION "EXERCICE SOS TERMINÉ" ═══
+// Remplace l'ancien double échange écrit (bulle "user" + réponse isPostExercise)
+// une fois SOSExercise fermé normalement — l'échange de clôture est déjà 100%
+// oral à l'intérieur de l'exercice (question, réponse, ancrage final, tout en
+// voix). Carte compacte, repliée par défaut, distincte d'une bulle de chat —
+// au clic elle déplie le mot tracé et le ressenti partagé, en texte simple
+// (template, pas un résumé généré par LLM — source unique de vérité : les
+// champs bruts déjà stockés dans sos_events via /api/sos/log).
+function SosSummaryCard({ word, feeling, intake }: SosSummary) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      onClick={() => setOpen(o => !o)}
+      role="button"
+      tabIndex={0}
+      style={{
+        display: "flex", flexDirection: "column", gap: open ? 10 : 0,
+        padding: "12px 16px", borderRadius: 14,
+        background: "rgba(16,185,129,0.04)",
+        border: "1px solid rgba(16,185,129,0.15)",
+        cursor: "pointer", maxWidth: 360, transition: "all 0.2s",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ width: 28, height: 28, borderRadius: 9, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <IconCheckRing size={15} color="rgba(16,185,129,0.9)" />
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.75)" }}>Exercice SOS terminé</span>
+        <svg
+          style={{ marginLeft: "auto", flexShrink: 0, opacity: 0.4, transform: open ? "rotate(90deg)" : "none", transition: "transform 0.2s" }}
+          width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        ><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      {open && (
+        <div style={{ fontSize: 13, lineHeight: 1.7, color: "rgba(255,255,255,0.55)", paddingLeft: 38 }}>
+          {intake && (
+            <p style={{ margin: "0 0 4px" }}>Ce qui a motivé l&apos;exercice : <span style={{ color: "rgba(255,255,255,0.8)", fontStyle: "italic" }}>« {intake} »</span></p>
+          )}
+          <p style={{ margin: "0 0 4px" }}>Mot tracé : <span style={{ color: "rgba(255,255,255,0.8)" }}>{word}</span></p>
+          <p style={{ margin: 0 }}>Comment je me sens après : <span style={{ color: "rgba(255,255,255,0.8)", fontStyle: "italic" }}>« {feeling} »</span></p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ChatPage() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -658,6 +707,25 @@ export default function ChatPage() {
     if (data) { setSessions(data as Session[]); setFilteredSessions(data as Session[]); }
   }, []);
 
+  // Reconstruit la carte "Exercice SOS terminé" au bon endroit chronologique
+  // dans un fil déjà chargé, à partir de sos_events (closing_message rempli)
+  // — jamais depuis `conversations` (voir lib/sosClosures.ts pour le pourquoi).
+  // Appelé après chaque chargement de fil (mount + changement de session) ;
+  // silencieux en cas d'échec, l'absence de carte n'est jamais bloquante.
+  const hydrateSosClosures = useCallback(async (
+    pid: string,
+    practId: string,
+    rows: { role: "user" | "assistant"; content: string; created_at: string }[],
+  ) => {
+    try {
+      const res = await fetch(`/api/sos/closures?patientId=${pid}&practitionerId=${practId}`);
+      if (!res.ok) return;
+      const data = await res.json() as { events?: SosClosureEvent[] };
+      if (!data.events?.length) return;
+      setMessages(mergeSosClosures(rows, data.events) as ChatMessage[]);
+    } catch { /* silencieux */ }
+  }, []);
+
   const completeOnboarding = useCallback(async (pid: string) => {
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     await supabase.from("patients").update({ onboarding_done: true }).eq("user_id", pid);
@@ -708,8 +776,11 @@ export default function ChatPage() {
         setPractitionerIdFromDb(practId);
         const { data: pract } = await supabase.from("practitioners").select("first_name, last_name, plan").eq("user_id", practId).single();
         if (pract) { const p = pract as { first_name: string; last_name: string; plan: string }; setPractitionerPlan(p.plan || "essentiel"); }
-        const { data: hist } = await supabase.from("conversations").select("role, content").eq("patient_id", data.user.id).eq("practitioner_id", practId).is("session_id", null).order("created_at", { ascending: true });
-        if (hist?.length) setMessages(hist as ChatMessage[]);
+        const { data: hist } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", data.user.id).eq("practitioner_id", practId).is("session_id", null).order("created_at", { ascending: true });
+        if (hist?.length) {
+          setMessages(hist as ChatMessage[]);
+          void hydrateSosClosures(data.user.id, practId, hist as { role: "user" | "assistant"; content: string; created_at: string }[]);
+        }
       }
       const { data: pat } = await supabase.from("patients").select("first_name, last_name, onboarding_done, emotional_status, practitioner_pinned_message").eq("user_id", data.user.id).single();
       if (pat) {
@@ -769,7 +840,7 @@ export default function ChatPage() {
     });
 
     return () => { subscription.unsubscribe(); };
-  }, [loadSessions]);
+  }, [loadSessions, hydrateSosClosures]);
 
   // ─── Heartbeat "dernière connexion" ─────────────────────────────────────────
   // Rafraîchit last_seen_at toutes les 5 min tant que l'onglet est visible, et
@@ -1154,36 +1225,41 @@ export default function ChatPage() {
     } catch { /* silencieux */ }
   };
 
-  // handleSOSTransitionToChat : appelé quand SOSExercise termine
-  // Injecte la réponse de clôture du patient comme message dans le chat
-  const handleSOSTransitionToChat = useCallback((closingText: string) => {
+  // handleSOSTransitionToChat : appelé quand SOSExercise termine normalement.
+  // L'échange de clôture (question, réponse, ancrage final) est déjà 100% oral
+  // à l'intérieur de l'exercice — plus de round-trip écrit ici (ancien double
+  // coût : bulle "user" injectée + nouvelle réponse Gemini isPostExercise sur
+  // un texte déjà traité à l'oral). Le garde-fou critique tourne déjà en
+  // direct pendant la clôture orale (runVoiceCrisisCheck côté SOSExercise),
+  // donc rien à reproduire ici non plus. On se contente d'une carte de
+  // notification compacte, dépliable, avec le mot tracé et le ressenti.
+  const handleSOSTransitionToChat = useCallback((closingText: string, word: string, intake: string) => {
     setShowSOSExercise(false);
-    if (closingText?.trim()) {
-      setMessages(prev => [...prev,
-        { role: "user", content: closingText.trim() },
-      ]);
-      // Trigger a closing Gemini response via the regular chat API
-      setTimeout(() => {
-        void (async () => {
-          if (!patientId || !practitionerIdFromDb) return;
-          try {
-            await fetch("/api/chat", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                message: closingText.trim(),
-                patientId,
-                practitionerId: practitionerIdFromDb,
-                sessionId: currentSessionId ?? undefined,
-                isPostExercise: true,
-                toolId: "sos_exercise",
-              }),
-            });
-          } catch { /* silencieux */ }
-        })();
-      }, 800);
+    const trimmed = closingText?.trim() ?? "";
+    const isPlaceholder = !trimmed || trimmed.startsWith("[");
+    const feeling = isPlaceholder ? "Aucun ressenti partagé à voix haute" : trimmed;
+    // crisisLevel/crisisMessageId restent null ici — connus seulement côté
+    // serveur (isSosIntakeCheck). Au prochain chargement du fil (reload,
+    // changement de session), hydrateSosClosures les complètera depuis
+    // sos_events. Léger délai d'affichage, jamais une perte d'information.
+    setMessages(prev => [...prev,
+      { role: "widget", content: "", sosSummary: { word: word || "—", feeling, intake: intake?.trim() || null, crisisLevel: null, crisisMessageId: null } },
+    ]);
+  }, []);
+
+  // handleSOSCriticalSafety : appelé uniquement si le garde-fou critique se
+  // déclenche pendant l'intake vocal de SOSExercise (red_critical détecté
+  // alors que le patient parlait). Le message patient, la réponse de sécurité,
+  // l'alerte praticien et le statut emotional_status ont déjà été persistés
+  // côté serveur (isSosIntakeCheck) — on injecte juste la réponse de sécurité
+  // dans le fil visible, sans repasser par le pipeline isPostExercise (qui
+  // referait une analyse de crise sur un texte qui n'est pas du patient).
+  const handleSOSCriticalSafety = useCallback((safetyText: string) => {
+    setShowSOSExercise(false);
+    if (safetyText?.trim()) {
+      setMessages(prev => [...prev, { role: "assistant", content: safetyText.trim() }]);
     }
-  }, [patientId, practitionerIdFromDb, currentSessionId]);
+  }, []);
 
   const createSession = async (firstMessage: string) => {
     if (!patientId || !practitionerIdFromDb) return null;
@@ -1195,8 +1271,13 @@ export default function ChatPage() {
   const loadSession = async (sessionId: string) => {
     if (!patientId || !practitionerIdFromDb) return;
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-    const { data } = await supabase.from("conversations").select("role, content").eq("patient_id", patientId).eq("practitioner_id", practitionerIdFromDb).eq("session_id", sessionId).order("created_at", { ascending: true });
-    if (data) { setMessages(data as ChatMessage[]); setCurrentSessionId(sessionId); if (isMobile) setSidebarOpen(false); }
+    const { data } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", patientId).eq("practitioner_id", practitionerIdFromDb).eq("session_id", sessionId).order("created_at", { ascending: true });
+    if (data) {
+      setMessages(data as ChatMessage[]);
+      setCurrentSessionId(sessionId);
+      if (isMobile) setSidebarOpen(false);
+      void hydrateSosClosures(patientId, practitionerIdFromDb, data as { role: "user" | "assistant"; content: string; created_at: string }[]);
+    }
   };
 
   const deleteSession = async (sessionId: string) => {
@@ -1588,6 +1669,7 @@ export default function ChatPage() {
           firstName={patientFirstName}
           sosContext={sosSosContext}
           onTransitionToChat={handleSOSTransitionToChat}
+          onCriticalSafety={handleSOSCriticalSafety}
           onClose={() => setShowSOSExercise(false)}
         />
       )}
@@ -2285,6 +2367,14 @@ export default function ChatPage() {
                           </div>
                           <span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", fontStyle: "italic", animation: "nt-analyse 1.8s ease-in-out infinite" }}>Analyse en cours</span>
                         </div>
+                      </div>
+                    );
+                  }
+                  if (msg.role === "widget" && msg.sosSummary) {
+                    return (
+                      <div key={index} ref={el => { messageRefs.current[index] = el; }}
+                        style={{ display: "flex", justifyContent: "flex-start", animation: "fadeUp 0.25s ease" }}>
+                        <SosSummaryCard {...msg.sosSummary} />
                       </div>
                     );
                   }
