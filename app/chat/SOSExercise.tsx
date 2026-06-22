@@ -492,6 +492,7 @@ export default function SOSExercise({
   const closingTimerARef            = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closingTimerBRef            = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closingFallbackRef          = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const finalClosingSentRef         = useRef(false);   // tour de clôture finale envoyé à Gemini (fallback si patient silencieux)
   const bargeInTimerRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingChunksRef            = useRef<string[]>([]); // chunks b64 en attente de validation barge-in
   // true entre le moment où activityStart est RÉELLEMENT envoyé à Gemini (parole
@@ -612,6 +613,7 @@ export default function SOSExercise({
     if (closingTimerARef.current)   { clearTimeout(closingTimerARef.current);   closingTimerARef.current   = null; }
     if (closingTimerBRef.current)   { clearTimeout(closingTimerBRef.current);   closingTimerBRef.current   = null; }
     if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
+    finalClosingSentRef.current = false;
     if (bargeInTimerRef.current)    { clearTimeout(bargeInTimerRef.current);    bargeInTimerRef.current    = null; }
     pendingChunksRef.current = [];
     activityOpenRef.current = false;
@@ -637,6 +639,7 @@ export default function SOSExercise({
     if (closingTimerARef.current)   { clearTimeout(closingTimerARef.current);   closingTimerARef.current   = null; }
     if (closingTimerBRef.current)   { clearTimeout(closingTimerBRef.current);   closingTimerBRef.current   = null; }
     if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
+    finalClosingSentRef.current = false;
     if (bargeInTimerRef.current)    { clearTimeout(bargeInTimerRef.current);    bargeInTimerRef.current    = null; }
     pendingChunksRef.current = [];
     activityOpenRef.current = false;
@@ -1046,7 +1049,9 @@ export default function SOSExercise({
           // Gemini vient de poser la question → démarrer le timer 5s (relance si silence)
           dbg("reveal turnN=1 : pas de réponse patient -> programme relance 5s");
           const timerA = setTimeout(() => {
-            if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current) return;
+            // Même garde-fou que pour l'intake : on ne coupe jamais une
+            // réponse de Gemini en cours (spontanée ou non).
+            if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current || isAiSpeakingRef.current) return;
             dbg("SEND relance clôture 5s (clientContent)");
             wsRef.current?.send(JSON.stringify({
               clientContent: {
@@ -1054,35 +1059,53 @@ export default function SOSExercise({
                 turnComplete: true,
               },
             }));
-            // Timer 10s après la relance — fermeture si toujours pas de réponse
+            // Timer 10s après la relance — fermeture si toujours pas de réponse.
+            // Au lieu d'afficher un texte hardcodé, on laisse Gemini choisir
+            // une conclusion naturelle (voix + ton cohérents avec le reste de
+            // la session). La fermeture effective se fait dans le handler
+            // turnComplete sur la branche finalClosingSentRef ci-dessous.
             const timerB = setTimeout(() => {
               if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current) return;
               if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
-              setClosingMsg("C'est tout à fait bien. Prends soin de toi.");
-              setTimeout(() => {
-                if (phaseRef.current !== "reveal") return;
-                const text = "[Le patient n'a pas répondu à la question de clôture]";
-                void fetch("/api/sos/log", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    patientId,
-                    practitionerId,
-                    closingMessage: text,
-                    word: chosenWordRef.current,
-                    intakeMessage: intakeTranscriptRef.current,
-                  }),
-                }).catch(() => {});
-                onTransitionToChat(text, chosenWordRef.current, intakeTranscriptRef.current);
-                cleanup();
-              }, 4000);
+              finalClosingSentRef.current = true;
+              dbg("SEND clôture finale Gemini (patient silencieux — clientContent)");
+              wsRef.current?.send(JSON.stringify({
+                clientContent: {
+                  turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas répondu après la relance. Conclus cette session SOS très doucement en 1 à 2 phrases. Ne mentionne pas l'absence de réponse. Valorise simplement le travail accompli. Ton chaleureux, bref, sans pression ni cliché.]" }] }],
+                  turnComplete: true,
+                },
+              }));
             }, 10000);
             closingTimerBRef.current = timerB;
           }, 5000);
           closingTimerARef.current = timerA;
 
+        } else if (finalClosingSentRef.current) {
+          // Gemini vient de prononcer la conclusion finale (patient toujours silencieux)
+          // → fermer la session dès que l'audio est terminé.
+          dbg(`reveal turnN=${turnN} : conclusion finale Gemini -> doClose()`);
+          const text = "[Le patient n'a pas répondu à la question de clôture]";
+          const doClose = () => {
+            void fetch("/api/sos/log", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                patientId,
+                practitionerId,
+                closingMessage: text,
+                word: chosenWordRef.current,
+                intakeMessage: intakeTranscriptRef.current,
+              }),
+            }).catch(() => {});
+            onTransitionToChat(text, chosenWordRef.current, intakeTranscriptRef.current);
+            cleanup();
+          };
+          if (!isPlayingRef.current) doClose();
+          else onQueueEmptyRef.current = doClose;
+
         }
-        // turnN >= 2 et pas de réponse patient → c'était le nudge de Gemini → timer B déjà lancé
+        // turnN >= 2, pas de réponse patient, finalClosingSentRef pas encore posé
+        // → c'était la réponse de Gemini à la relance douce → timerB déjà en cours
       }
     }
   }, [
@@ -1128,13 +1151,22 @@ export default function SOSExercise({
 
       if (patientHasSpokenRef.current) {
         // Patient a parlé + silence → 5s → transition TCC
+        // Garde-fou : on revérifie isAiSpeakingRef AU MOMENT du déclenchement,
+        // pas seulement à la programmation. Gemini répond automatiquement à
+        // toute activité fermée (comportement natif de Live API, confirmé par
+        // logs [SOS-DEBUG]) avec ~1-1.2s de latence réseau — cette réponse
+        // spontanée peut démarrer APRÈS que ce minuteur ait été programmé.
+        // Si Gemini parle encore quand le minuteur arrive à échéance, on
+        // n'envoie rien : l'effet ci-dessus (déclenché par isAiSpeaking →
+        // false) reprogrammera alors un nouveau minuteur de 5s une fois que
+        // Gemini aura vraiment terminé, sans jamais le couper.
         silenceTimerRef.current = setTimeout(() => {
-          if (phaseRef.current === "intake") triggerIntakeTransition();
+          if (phaseRef.current === "intake" && !isAiSpeakingRef.current) triggerIntakeTransition();
         }, 5000);
       } else if (!repromptSentRef.current && !intakeSignalSentRef.current) {
         // Patient n'a pas encore parlé → 6s → relance douce
         silenceTimerRef.current = setTimeout(() => {
-          if (phaseRef.current !== "intake" || patientHasSpokenRef.current || repromptSentRef.current) return;
+          if (phaseRef.current !== "intake" || patientHasSpokenRef.current || repromptSentRef.current || isAiSpeakingRef.current) return;
           repromptSentRef.current = true;
           dbg("SEND relance 6s (clientContent)");
           wsRef.current?.send(JSON.stringify({
@@ -1146,8 +1178,10 @@ export default function SOSExercise({
         }, 6000);
       } else if (repromptSentRef.current && !patientHasSpokenRef.current && !intakeSignalSentRef.current) {
         // Re-prompt terminé, toujours pas de réponse → 8s → exercice
+        // Même garde-fou qu'au-dessus : on ne coupe jamais une réponse de
+        // Gemini en cours, même spontanée.
         silenceTimerRef.current = setTimeout(() => {
-          if (phaseRef.current === "intake") triggerIntakeTransition();
+          if (phaseRef.current === "intake" && !isAiSpeakingRef.current) triggerIntakeTransition();
         }, 8000);
       }
     }
