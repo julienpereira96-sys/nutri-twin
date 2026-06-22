@@ -93,12 +93,17 @@ export async function POST(request: NextRequest) {
 
   const supabase = createSupabaseClient();
 
-  // Fetch patient profile
+  // Fetch patient profile — `patients` n'a pas de colonne `practitioner_id`
+  // (relation patient↔praticien modélisée via la table de liaison
+  // `patient_practitioner`, jamais comme FK directe sur `patients`) ; filtrer
+  // dessus ici faisait systématiquement échouer .single() (0 ligne), d'où le
+  // fallback {} et "le patient" au lieu du prénom dans tout le system prompt.
+  // Même convention que toutes les autres routes : filtre uniquement sur
+  // user_id, practitionerId n'est plus utilisé pour cette requête.
   const { data: patientRaw } = await supabase
     .from("patients")
     .select("first_name, last_name, age, defi, pathologies, motivation, practitioner_instruction, emotional_status")
     .eq("user_id", patientId)
-    .eq("practitioner_id", practitionerId)
     .single();
 
   const patient = (patientRaw ?? {}) as PatientRow;

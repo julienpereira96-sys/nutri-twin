@@ -511,6 +511,17 @@ export default function SOSExercise({
   const checkedIntakeTextRef        = useRef("");
   const criticalDetectedRef         = useRef(false);
 
+  // ─── DEBUG TEMPORAIRE — diagnostic des tours qui s'enchaînent (2026-06-21) ──
+  // À retirer une fois le mécanisme confirmé/corrigé. N'affecte aucun
+  // comportement, juste de l'observabilité dans la console du navigateur.
+  // Date.now() n'est appelé qu'à l'intérieur de dbg() (jamais pendant le
+  // render) pour rester une fonction pure côté React.
+  const debugT0Ref = useRef<number | null>(null);
+  const dbg = useCallback((event: string) => {
+    if (debugT0Ref.current === null) debugT0Ref.current = Date.now();
+    console.log(`[SOS-DEBUG] +${Date.now() - debugT0Ref.current}ms | phase=${phaseRef.current} | ${event}`);
+  }, []);
+
   // Stable message handler ref (avoids stale closure on WS onmessage)
   const handleWSMessageRef  = useRef<((evt: { data: string }) => void) | null>(null);
 
@@ -532,10 +543,12 @@ export default function SOSExercise({
     if (!ctx || audioQueueRef.current.length === 0) {
       isPlayingRef.current = false;
       setIsAiSpeaking(false);
+      dbg("isAiSpeaking -> false (file audio vide)");
       const cb = onQueueEmptyRef.current;
       if (cb) { onQueueEmptyRef.current = null; cb(); }
       return;
     }
+    if (!isPlayingRef.current) dbg("isAiSpeaking -> true (premier chunk d'un nouveau tour)");
     isPlayingRef.current = true;
     setIsAiSpeaking(true);
     const { data, rate } = audioQueueRef.current.shift()!;
@@ -549,7 +562,7 @@ export default function SOSExercise({
     src.onended = playNextChunk;
     currentSourceRef.current = src;
     src.start(0);
-  }, []);
+  }, [dbg]);
 
   const enqueueAudio = useCallback((b64: string, sr = 24000) => {
     audioQueueRef.current.push({ data: pcm16Base64ToFloat32(b64), rate: sr });
@@ -561,6 +574,7 @@ export default function SOSExercise({
   // (onQueueEmptyRef — ex. enterReadyPhase / sendClosingQuestion) ne doit pas être
   // perdu en silence : on l'exécute immédiatement pour ne jamais bloquer le patient.
   const flushAudio = useCallback((invokePending: boolean = false) => {
+    if (invokePending) dbg("flushAudio(true) — coupure de l'audio Gemini en cours (interruption validée)");
     // Stop immédiat du chunk en cours — évite le "son fantôme" après interruption
     if (currentSourceRef.current) {
       try { currentSourceRef.current.stop(); } catch { /* déjà terminé */ }
@@ -577,7 +591,7 @@ export default function SOSExercise({
         cb();
       }
     }
-  }, []);
+  }, [dbg]);
 
   // ── Cleanup ─────────────────────────────────────────────────────────────────
   const cleanup = useCallback(() => {
@@ -758,6 +772,7 @@ export default function SOSExercise({
           if (phaseRef.current !== "reveal") return;
           closingQuestionSentRef.current = true; // micro autorisé dès maintenant
           setClosingQuestionAsked(true);
+          dbg("SEND félicitation+clôture fusionnées (clientContent) — micro autorisé dès maintenant");
           wsRef.current?.send(JSON.stringify({
             clientContent: {
               turns: [{
@@ -791,7 +806,7 @@ export default function SOSExercise({
     }, CYCLE_MS);
     breathTimerRef.current.push(t2);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cancelSpeech, flushAudio, speakTherapeutic, firstName, patientId, practitionerId, onTransitionToChat, cleanup]);
+  }, [cancelSpeech, flushAudio, speakTherapeutic, firstName, patientId, practitionerId, onTransitionToChat, cleanup, dbg]);
 
   // Phase "ready" — Gemini a fini de parler, patient doit toucher l'écran
   const enterReadyPhase = useCallback(() => {
@@ -843,6 +858,7 @@ export default function SOSExercise({
     if (intakeSignalSentRef.current) return;
     if (phaseRef.current !== "intake") return;
     intakeSignalSentRef.current = true;
+    dbg(`SEND validation TCC (clientContent) | patientHasSpoken=${patientHasSpokenRef.current}`);
 
     const signal = patientHasSpokenRef.current
       // Patient a parlé → validation empathique intégrée + transition vers l'exercice
@@ -859,7 +875,7 @@ export default function SOSExercise({
         turnComplete: true,
       },
     }));
-  }, [firstName]);
+  }, [firstName, dbg]);
 
   // ── WS message handler ───────────────────────────────────────────────────────
   const handleWSMessage = useCallback((event: { data: string }) => {
@@ -869,6 +885,7 @@ export default function SOSExercise({
 
     // ── setupComplete: send greeting ──────────────────────────────────────────
     if (msg.setupComplete !== undefined) {
+      dbg("SEND accueil (clientContent)");
       wsRef.current?.send(JSON.stringify({
         clientContent: {
           turns: [{
@@ -897,6 +914,13 @@ export default function SOSExercise({
     // jamais être jouée — ni audible (orphelin, sans retour visuel de l'orbe sur
     // l'écran "ready"), ni risquer de chevaucher les cues TTS pendant "tracing".
     const isSilentPhase = phaseRef.current === "ready" || phaseRef.current === "tracing";
+    if (parts && parts.length > 0) {
+      const hasAudio = parts.some(p => {
+        const id = p.inlineData as Record<string, unknown> | undefined;
+        return id?.mimeType && typeof id.mimeType === "string" && id.mimeType.startsWith("audio/pcm");
+      });
+      if (hasAudio) dbg(`RECV modelTurn audio chunk | ${isSilentPhase ? "IGNORÉ (phase silencieuse)" : "joué"}`);
+    }
     if (parts && !isSilentPhase) {
       for (const part of parts) {
         const id = part.inlineData as Record<string, unknown> | undefined;
@@ -966,6 +990,12 @@ export default function SOSExercise({
     // ── Turn complete ─────────────────────────────────────────────────────────
     if (sc.turnComplete === true) {
       const p = phaseRef.current;
+      const matchedBranch =
+        p === "loading" && !greetingDoneRef.current ? "loading->intake (fin accueil)"
+        : p === "intake" && intakeSignalSentRef.current ? "intake (fin validation TCC scriptée)"
+        : p === "reveal" && closingQuestionSentRef.current ? "reveal (fin tour félicitation/clôture/relance)"
+        : "AUCUNE BRANCHE — turnComplete spontané, probablement une réponse de Gemini qu'on n'a pas sollicitée";
+      dbg(`RECV turnComplete | branche=${matchedBranch}`);
 
       if (p === "loading" && !greetingDoneRef.current) {
         // Accueil terminé côté WS — les timers de silence démarreront
@@ -991,6 +1021,7 @@ export default function SOSExercise({
 
         if (patientRespondedInTransRef.current) {
           // Le patient a parlé et Gemini vient de lui répondre → fermer
+          dbg(`reveal turnN=${turnN} : patient avait répondu -> doClose()`);
           if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
           const patientText = transitionPatientTextRef.current.trim();
           const doClose = () => {
@@ -1013,8 +1044,10 @@ export default function SOSExercise({
 
         } else if (turnN === 1) {
           // Gemini vient de poser la question → démarrer le timer 5s (relance si silence)
+          dbg("reveal turnN=1 : pas de réponse patient -> programme relance 5s");
           const timerA = setTimeout(() => {
             if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current) return;
+            dbg("SEND relance clôture 5s (clientContent)");
             wsRef.current?.send(JSON.stringify({
               clientContent: {
                 turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu à la question de clôture. Relance-le très doucement, de manière courte, avec un ton bienveillant et sans aucune pression. Formule-la avec tes propres mots. N'utilise pas de cliché comme \"prends ton temps\". Contente-toi d'offrir une présence rassurante. Varie ta formulation.]" }] }],
@@ -1055,7 +1088,7 @@ export default function SOSExercise({
   }, [
     enqueueAudio, flushAudio, firstName,
     triggerIntakeTransition, runVoiceCrisisCheck,
-    patientId, practitionerId, onTransitionToChat, cleanup,
+    patientId, practitionerId, onTransitionToChat, cleanup, dbg,
   ]);
 
   // Keep handler ref in sync
@@ -1103,6 +1136,7 @@ export default function SOSExercise({
         silenceTimerRef.current = setTimeout(() => {
           if (phaseRef.current !== "intake" || patientHasSpokenRef.current || repromptSentRef.current) return;
           repromptSentRef.current = true;
+          dbg("SEND relance 6s (clientContent)");
           wsRef.current?.send(JSON.stringify({
             clientContent: {
               turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu. Relance-le très doucement de manière courte et toujours avec un ton bienveillant et sans aucune pression. Formule-la avec tes propres mots. N'utilise pas de cliché comme \"prends ton temps\". Contente-toi d'offrir une présence rassurante et déculpabilisante. Varie impérativement ta formulation.]" }] }],
@@ -1250,6 +1284,7 @@ export default function SOSExercise({
             // sert à couvrir). On abandonne proprement sinon, sans toucher au WS.
             const p = phaseRef.current;
             if (p !== "loading" && p !== "intake" && p !== "ready") {
+              dbg("BARGE-IN abandonné (phase a changé pendant les 400ms)");
               pendingChunksRef.current = [];
               return;
             }
@@ -1257,6 +1292,7 @@ export default function SOSExercise({
             // → on coupe l'IA en cours ET on force le callback en attente
             //   (enterReadyPhase / sendClosingQuestion) à s'exécuter immédiatement,
             //   au lieu de le perdre en silence (sinon le patient reste bloqué).
+            dbg(`BARGE-IN CONFIRMÉ | IA parlait=${isAiSpeakingRef.current} | SEND activityStart`);
             if (isAiSpeakingRef.current) flushAudio(true);
             ws?.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
             activityOpenRef.current = true;
@@ -1269,6 +1305,7 @@ export default function SOSExercise({
           }, 400);
         } else {
           // IA silencieuse → aucune ambiguïté possible, démarrage immédiat
+          dbg("SEND activityStart (immédiat, IA silencieuse)");
           ws?.send(JSON.stringify({ realtimeInput: { activityStart: {} } }));
           activityOpenRef.current = true;
         }
@@ -1289,10 +1326,12 @@ export default function SOSExercise({
         if (bargeInTimerRef.current) {
           // Le silence est revenu avant 400ms → c'était un écho, pas de la parole.
           // On annule tout : aucun activityStart n'a été envoyé, donc rien à clôturer.
+          dbg("BARGE-IN annulé (silence revenu <400ms — c'était un écho)");
           clearTimeout(bargeInTimerRef.current);
           bargeInTimerRef.current = null;
           pendingChunksRef.current = [];
         } else {
+          dbg("SEND activityEnd (pause détectée par le Worklet)");
           activityOpenRef.current = false;
           ws?.send(JSON.stringify({ realtimeInput: { activityEnd: {} } }));
         }
