@@ -493,6 +493,8 @@ export default function SOSExercise({
   const closingTimerBRef            = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closingFallbackRef          = useRef<ReturnType<typeof setTimeout> | null>(null);
   const finalClosingSentRef         = useRef(false);   // tour de clôture finale envoyé à Gemini (fallback si patient silencieux)
+  const intakeHintTimerRef          = useRef<ReturnType<typeof setTimeout> | null>(null); // 2-min : hint naturel vers l'exercice
+  const intakeCapTimerRef           = useRef<ReturnType<typeof setTimeout> | null>(null); // 3-min : filet de sécurité
   const bargeInTimerRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingChunksRef            = useRef<string[]>([]); // chunks b64 en attente de validation barge-in
   // true entre le moment où activityStart est RÉELLEMENT envoyé à Gemini (parole
@@ -614,6 +616,8 @@ export default function SOSExercise({
     if (closingTimerBRef.current)   { clearTimeout(closingTimerBRef.current);   closingTimerBRef.current   = null; }
     if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
     finalClosingSentRef.current = false;
+    if (intakeHintTimerRef.current) { clearTimeout(intakeHintTimerRef.current); intakeHintTimerRef.current = null; }
+    if (intakeCapTimerRef.current)  { clearTimeout(intakeCapTimerRef.current);  intakeCapTimerRef.current  = null; }
     if (bargeInTimerRef.current)    { clearTimeout(bargeInTimerRef.current);    bargeInTimerRef.current    = null; }
     pendingChunksRef.current = [];
     activityOpenRef.current = false;
@@ -640,6 +644,8 @@ export default function SOSExercise({
     if (closingTimerBRef.current)   { clearTimeout(closingTimerBRef.current);   closingTimerBRef.current   = null; }
     if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
     finalClosingSentRef.current = false;
+    if (intakeHintTimerRef.current) { clearTimeout(intakeHintTimerRef.current); intakeHintTimerRef.current = null; }
+    if (intakeCapTimerRef.current)  { clearTimeout(intakeCapTimerRef.current);  intakeCapTimerRef.current  = null; }
     if (bargeInTimerRef.current)    { clearTimeout(bargeInTimerRef.current);    bargeInTimerRef.current    = null; }
     pendingChunksRef.current = [];
     activityOpenRef.current = false;
@@ -886,6 +892,26 @@ export default function SOSExercise({
     try { msg = JSON.parse(event.data) as Record<string, unknown>; }
     catch { return; }
 
+    // ── toolCall : Gemini demande à déclencher l'exercice ─────────────────────
+    const toolCallMsg = msg.toolCall as { functionCalls?: Array<{ name: string; id: string }> } | undefined;
+    if (toolCallMsg?.functionCalls) {
+      for (const fc of toolCallMsg.functionCalls) {
+        if (fc.name === "demarrer_exercice_respiration" && phaseRef.current === "intake") {
+          dbg("RECV toolCall demarrer_exercice_respiration → triggerIntakeTransition()");
+          // Annuler les timers de plafond : Gemini a géré la transition lui-même
+          if (intakeHintTimerRef.current) { clearTimeout(intakeHintTimerRef.current); intakeHintTimerRef.current = null; }
+          if (intakeCapTimerRef.current)  { clearTimeout(intakeCapTimerRef.current);  intakeCapTimerRef.current  = null; }
+          triggerIntakeTransition();
+          // Répondre à l'appel d'outil pour que Gemini puisse conclure son tour
+          wsRef.current?.send(JSON.stringify({
+            toolResponse: {
+              functionResponses: [{ id: fc.id, response: { output: "ok" } }],
+            },
+          }));
+        }
+      }
+    }
+
     // ── setupComplete: send greeting ──────────────────────────────────────────
     if (msg.setupComplete !== undefined) {
       dbg("SEND accueil (clientContent)");
@@ -1006,6 +1032,26 @@ export default function SOSExercise({
         greetingDoneRef.current = true;
         setPhase("intake");
         phaseRef.current = "intake";
+
+        // ── Plafond intake : 2 paliers pour une transition naturelle ──────────
+        // À 2 min : on prépare Gemini à guider vers l'exercice (sans brusquerie)
+        intakeHintTimerRef.current = setTimeout(() => {
+          if (phaseRef.current !== "intake" || intakeSignalSentRef.current) return;
+          dbg("SEND hint 2min → Gemini guide vers l'exercice");
+          wsRef.current?.send(JSON.stringify({
+            clientContent: {
+              turns: [{ role: "user", parts: [{ text: "[Il est temps de guider doucement le patient vers l'exercice de respiration dans les prochains échanges. Termine naturellement la conversation avec bienveillance. Quand le moment est propice, appelle l'outil demarrer_exercice_respiration pour déclencher l'exercice.]" }] }],
+              turnComplete: true,
+            },
+          }));
+        }, 2 * 60 * 1000);
+
+        // À 3 min : filet de sécurité si Gemini n'a pas encore déclenché l'outil
+        intakeCapTimerRef.current = setTimeout(() => {
+          if (phaseRef.current !== "intake" || intakeSignalSentRef.current) return;
+          dbg("FORCE triggerIntakeTransition (cap 3min)");
+          triggerIntakeTransition();
+        }, 3 * 60 * 1000);
       } else if (p === "intake" && intakeSignalSentRef.current) {
         // Validation TCC terminée → attendre fin audio, puis écran "ready" (tap patient)
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
@@ -1394,6 +1440,13 @@ export default function SOSExercise({
           systemInstruction: {
             parts: [{ text: systemPrompt }],
           },
+          tools: [{
+            functionDeclarations: [{
+              name: "demarrer_exercice_respiration",
+              description: "Déclenche l'exercice de respiration guidée. À appeler quand le patient est prêt — parce qu'il l'a demandé explicitement (\"je veux respirer\", \"ok\", \"oui\", etc.) ou parce qu'il s'est suffisamment exprimé et qu'il est temps de passer à l'exercice. C'est le seul moyen de démarrer l'exercice à l'écran.",
+              parameters: { type: "object", properties: {} },
+            }],
+          }],
         },
       }));
     };
