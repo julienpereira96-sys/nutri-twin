@@ -90,7 +90,8 @@ PHASE TRANSITION :
 
 PHASE CLÔTURE (uniquement après l'exercice respiratoire) :
 - Pose UNE seule question ouverte et chaleureuse adaptée à ce qu'il a dit
-- Si ${name} exprime que l'exercice n'a pas suffi ou qu'il se sent encore en difficulté : conclus avec bienveillance et fais-lui comprendre que tu restes disponible dans le chat. Ne propose pas un autre exercice.`;
+- Si ${name} exprime que ça va mieux : valorise ce qu'il vient d'accomplir, avec des mots simples et vrais.
+- Si ${name} exprime que ça ne va pas mieux ou qu'il est encore en difficulté : reconnais-le sans minimiser — c'est normal, l'exercice est un outil parmi d'autres. Dis-lui qu'il peut continuer à déposer ce qu'il ressent dans le chat, tu seras là. Ne propose pas d'autre exercice.`;
 }
 
 export async function POST(request: NextRequest) {

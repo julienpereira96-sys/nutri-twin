@@ -226,8 +226,8 @@ const WAVE_SPEAK_LAYERS: [number, number, number, number][] = [
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 function WaveOrb({
-  speaking, firstName, analyser,
-}: { speaking: boolean; firstName?: string; analyser?: AnalyserNode | null }) {
+  speaking, firstName, analyser, size = 220,
+}: { speaking: boolean; firstName?: string; analyser?: AnalyserNode | null; size?: number }) {
   const canvasRef   = useRef<HTMLCanvasElement>(null);
   const speakRef    = useRef(speaking);
   const analyserRef = useRef<AnalyserNode | null | undefined>(analyser);
@@ -237,7 +237,7 @@ function WaveOrb({
   useEffect(() => {
     const c = canvasRef.current;
     if (!c) return;
-    const S   = 220;
+    const S   = size;
     c.width   = S * 2; c.height = S * 2;
     const ctx = c.getContext("2d")!;
     let raf: number, t = 0;
@@ -346,7 +346,7 @@ function WaveOrb({
         <canvas
           ref={canvasRef}
           style={{
-            width: 220, height: 220,
+            width: size, height: size,
             borderRadius: "50%",
             border: "1px solid rgba(6,182,212,0.18)",
             boxShadow: speaking
@@ -886,7 +886,7 @@ export default function SOSExercise({
 
     const signal = patientHasSpokenRef.current
       // Patient a parlé → validation empathique intégrée + transition vers l'exercice
-      ? `[${firstName} vient de s'exprimer. Parle-lui d'abord à voix haute : valide empathiquement ce qu'il vient de partager avec des mots justes et naturels, puis guide-le vers l'exercice de respiration — une lumière qui tracera un mot à l'écran pour l'aider à traverser ce moment. C'est seulement après avoir dit ces mots que tu appelles l'outil demarrer_exercice_respiration. Ne révèle jamais le mot lui-même.]`
+      ? `[${firstName} vient de s'exprimer. Parle-lui d'abord à voix haute : valide empathiquement ce qu'il vient de partager avec des mots justes et naturels, puis guide-le vers l'exercice en lui disant de se laisser guider par les phases de respiration — elles génèreront un mot lumineux à la fin. C'est seulement après avoir dit ces mots que tu appelles l'outil demarrer_exercice_respiration. Ne révèle jamais le mot lui-même.]`
       // Patient n'a pas répondu → ne suppose aucune émotion précise, mais le simple
       // fait d'avoir déclenché ce mode SOS est déjà un signal : il en avait besoin.
       // Formulation libre pour Gemini — jamais la même phrase mot pour mot d'une
@@ -926,7 +926,7 @@ export default function SOSExercise({
             dbg("toolCall: pas d'audio → guard empathie activé");
             waitingForEmpathyRef.current = true;
             const empSignal = patientHasSpokenRef.current
-              ? `[${firstName} vient de s'exprimer. Parle-lui d'abord à voix haute : valide empathiquement ce qu'il vient de partager avec des mots justes et naturels, puis guide-le vers l'exercice de respiration — une lumière qui tracera un mot à l'écran pour l'aider à traverser ce moment. Ne révèle jamais le mot lui-même.]`
+              ? `[${firstName} vient de s'exprimer. Parle-lui d'abord à voix haute : valide empathiquement ce qu'il vient de partager avec des mots justes et naturels, puis guide-le vers l'exercice en lui disant de se laisser guider par les phases de respiration — elles génèreront un mot lumineux à la fin. Ne révèle jamais le mot lui-même.]`
               : `[${firstName} n'a pas encore parlé — ne suppose aucune émotion précise, mais pars du principe qu'avoir lancé ce mode était déjà le bon geste, qu'il en avait besoin sur l'instant. Dis-le-lui avec tes propres mots, de manière naturelle et sans structure scolaire visible. Rassure-le : c'est tout à fait bien, aucune réponse n'est attendue. Enchaîne sur la proposition de l'exercice : une respiration guidée par un point de lumière qui va tracer un mot à l'écran. Il peut appuyer quand il veut sur l'écran pour démarrer et se laisser guider. Ne révèle jamais le mot, tu ne le connais pas encore. Pas de question, formulation différente à chaque fois.]`;
             wsRef.current?.send(JSON.stringify({
               clientContent: {
@@ -1114,8 +1114,10 @@ export default function SOSExercise({
         closingTurnCountRef.current += 1;
         const turnN = closingTurnCountRef.current;
 
-        if (patientRespondedInTransRef.current) {
-          // Le patient a parlé et Gemini vient de lui répondre → fermer
+        if (patientRespondedInTransRef.current && turnN >= 2) {
+          // Le patient a parlé ET Gemini lui a répondu (turnN≥2) → fermer.
+          // Guard turnN≥2 : évite de fermer sur le tour de félicitation/question
+          // (turnN=1) si le patient avait fait un son pendant que Gemini parlait.
           dbg(`reveal turnN=${turnN} : patient avait répondu -> doClose()`);
           if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
           const patientText = transitionPatientTextRef.current.trim();
@@ -1768,44 +1770,51 @@ export default function SOSExercise({
       )}
 
       {/* ══ REVEAL — une seule scène continue : mot illuminé (SVG géré par
-          ParticleCanvas) → félicitation → enchaîné directement sur la question
-          de clôture. Pas de second décor, pas de blob qui apparaît. ══ */}
+          ParticleCanvas) → félicitation → question de clôture avec WaveOrb. ══ */}
       {showReveal && litLetters.some(Boolean) && (
-        <div style={{
-          position: "absolute", bottom: 64, left: 0, right: 0,
-          display: "flex", flexDirection: "column",
-          alignItems: "center", gap: 14,
-          zIndex: 6, pointerEvents: "none",
-        }}>
-          {!closingQuestionAsked && !closingMsg && (
-            <p style={{
-              color: TEXT_MUTED, fontSize: 13, letterSpacing: "0.09em",
-              animation: "sos-fade 0.5s ease 1.6s both",
+        <>
+          {/* "Tu l'as tracé toi-même" — avant la question de clôture */}
+          {!closingQuestionAsked && (
+            <div style={{
+              position: "absolute", bottom: 64, left: 0, right: 0,
+              display: "flex", justifyContent: "center",
+              zIndex: 6, pointerEvents: "none",
             }}>
-              Tu l'as tracé toi-même
-            </p>
+              <p style={{
+                color: TEXT_MUTED, fontSize: 13, letterSpacing: "0.09em",
+                animation: "sos-fade 0.5s ease 1.6s both",
+              }}>
+                Tu l'as tracé toi-même
+              </p>
+            </div>
           )}
 
+          {/* WaveOrb + "Je t'écoute" — même UI que l'intake pendant la clôture */}
           {closingQuestionAsked && (
-            closingMsg ? (
-              <p style={{
-                color: "#a0e4c8", fontSize: 15, fontWeight: 500,
-                textAlign: "center", maxWidth: 260, lineHeight: 1.75,
-                animation: "sos-fade 0.6s ease",
-              }}>
-                {closingMsg}
-              </p>
-            ) : (
-              <p style={{
-                color: TEXT_MUTED, fontSize: 13,
-                textAlign: "center", maxWidth: 240, lineHeight: 1.75,
-                animation: "sos-fade 0.6s ease",
-              }}>
-                {isAiSpeaking ? "…" : "Partage en quelques mots comment tu te sens"}
-              </p>
-            )
+            <div style={{
+              position: "absolute", bottom: 40, left: 0, right: 0,
+              display: "flex", flexDirection: "column",
+              alignItems: "center", gap: 16,
+              zIndex: 6, pointerEvents: "none",
+              animation: "sos-fade 0.6s ease",
+            }}>
+              <WaveOrb
+                size={130}
+                speaking={isAiSpeaking || isPatientSpeaking}
+                analyser={outputAnalyserRef.current}
+              />
+              {!isAiSpeaking && (
+                <p style={{
+                  color: "#00e5b4", fontSize: 14,
+                  letterSpacing: "0.05em",
+                  animation: "sos-fade 0.8s ease",
+                }}>
+                  Je t'écoute…
+                </p>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
 
       {/* Keyframes */}
