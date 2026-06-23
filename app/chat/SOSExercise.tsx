@@ -559,9 +559,16 @@ export default function SOSExercise({
   // fois le garde-fou critique parti.
   const checkedIntakeTextRef        = useRef("");
   const criticalDetectedRef         = useRef(false);
-  // (empSignal supprimé — la description de l'outil et le system prompt suffisent
-  // pour que Gemini parle AVANT d'appeler l'outil. Un empSignal redondant causait
-  // une double proposition. Voir échange du 2026-06-23.)
+  // Détecte si Gemini a produit de l'audio APRÈS la fin du greeting
+  // (greetingDoneRef.current = true). Posé dans enqueueAudio.
+  // → true  : Gemini a déjà parlé → enterReadyPhase direct, pas d'empSignal
+  // → false : Gemini n'a rien dit → empSignal de secours pour forcer la parole
+  // Couvre "intake" ET le cas rare "loading post-greeting" (patient qui parle
+  // pendant l'accueil et Gemini qui répond avant le premier turnComplete).
+  const geminiSpokenPostGreetingRef = useRef(false);
+  // true si un empSignal de secours a déjà été envoyé sur ce toolCall —
+  // empêche d'en envoyer un second si Gemini rappelle l'outil après l'empSignal.
+  const toolCallEmpSentRef          = useRef(false);
 
   // ─── DEBUG TEMPORAIRE — diagnostic des tours qui s'enchaînent (2026-06-21) ──
   // À retirer une fois le mécanisme confirmé/corrigé. N'affecte aucun
@@ -620,6 +627,9 @@ export default function SOSExercise({
     // Premier chunk audio en phase reveal → Gemini a commencé à parler,
     // "Je t'écoute" ne s'affichera qu'après qu'il aura fini (pas avant).
     if (phaseRef.current === "reveal") setRevealGeminiHasSpoken(true);
+    // Tout chunk audio après la fin du greeting prouve que Gemini a parlé.
+    // → empSignal de secours inutile dans ce cas (évite la double confirmation).
+    if (greetingDoneRef.current) geminiSpokenPostGreetingRef.current = true;
     audioQueueRef.current.push({ data: pcm16Base64ToFloat32(b64), rate: sr });
     if (!isPlayingRef.current) playNextChunk();
   }, [playNextChunk, dbg]);
@@ -673,6 +683,8 @@ export default function SOSExercise({
     if (bargeInTimerRef.current)    { clearTimeout(bargeInTimerRef.current);    bargeInTimerRef.current    = null; }
     pendingChunksRef.current = [];
     activityOpenRef.current = false;
+    geminiSpokenPostGreetingRef.current = false;
+    toolCallEmpSentRef.current = false;
     flushAudio();
   }, [cancelSpeech, flushAudio]);
 
@@ -954,15 +966,33 @@ export default function SOSExercise({
           if (intakeCapTimerRef.current)  { clearTimeout(intakeCapTimerRef.current);  intakeCapTimerRef.current  = null; }
           intakeSignalSentRef.current = true;
 
-          // La description de l'outil garantit que Gemini a DÉJÀ parlé (empathie +
-          // proposition) avant d'appeler l'outil. Pas d'empSignal redondant ici —
-          // c'était la cause de la double confirmation. On attend simplement la fin
-          // de l'audio si nécessaire, puis on entre en phase "ready".
+          // Quatre cas possibles :
+          // 1. Audio en cours → Gemini parle EN CE MOMENT → attendre fin → ready
+          // 2. Gemini a parlé après le greeting → ready direct (pas d'empSignal)
+          // 3. Gemini silencieux, premier toolCall → empSignal de secours
+          // 4. Gemini silencieux, second toolCall (après empSignal) → ready direct
           if (isPlayingRef.current) {
             dbg("toolCall: audio en cours → onQueueEmptyRef = enterReadyPhase");
             if (!onQueueEmptyRef.current) onQueueEmptyRef.current = enterReadyPhase;
+          } else if (geminiSpokenPostGreetingRef.current) {
+            dbg("toolCall: Gemini avait déjà parlé → enterReadyPhase direct (pas d'empSignal)");
+            enterReadyPhase();
+          } else if (!toolCallEmpSentRef.current) {
+            // Gemini n'a rien dit avant d'appeler l'outil → on le force à parler
+            dbg("toolCall: Gemini silencieux → SEND empSignal de secours");
+            toolCallEmpSentRef.current = true;
+            wsRef.current?.send(JSON.stringify({
+              clientContent: {
+                turns: [{ role: "user", parts: [{ text: `[Avant de passer à l'exercice, parle d'abord à ${firstName} : valide empathiquement ce qu'il vient de partager avec des mots justes et naturels, puis invite-le à démarrer la respiration guidée. C'est seulement après avoir dit ces mots que tu appelles à nouveau l'outil demarrer_exercice_respiration.]` }] }],
+                turnComplete: true,
+              },
+            }));
+            // enterReadyPhase sera déclenché soit par le second toolCall
+            // (branche ci-dessous), soit par le turnComplete "intake + intakeSignalSentRef"
+            // si Gemini ne rappelle pas l'outil après avoir parlé.
           } else {
-            dbg("toolCall: → enterReadyPhase direct");
+            // Second toolCall après l'empSignal → Gemini a parlé → ready direct
+            dbg("toolCall: second appel après empSignal → enterReadyPhase direct");
             enterReadyPhase();
           }
 
