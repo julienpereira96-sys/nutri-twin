@@ -845,16 +845,22 @@ export default function SOSExercise({
           if (phaseRef.current !== "reveal") return;
           closingQuestionSentRef.current = true; // micro autorisé dès maintenant
           setClosingQuestionAsked(true);
-          dbg("SEND félicitation+clôture fusionnées (clientContent) — micro autorisé dès maintenant");
-          wsRef.current?.send(JSON.stringify({
-            clientContent: {
-              turns: [{
-                role: "user",
-                parts: [{ text: `[Le tracé silencieux est terminé et le mot "${word}" est entièrement illuminé à l'écran. Formule une intervention unique en deux temps, d'un ton bas, ancré et enveloppant : 1) Valide sobrement la fin de l'effort et la présence du mot. 2) Enchaîne directement, sans pause, avec une unique question ouverte et extrêmement douce pour mesurer son état par rapport au début de la crise. Reste très concis, voix murmurée, et attends sa réponse.]` }],
-              }],
-              turnComplete: true,
-            },
-          }));
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            dbg("SEND félicitation+clôture fusionnées (clientContent) — micro autorisé dès maintenant");
+            wsRef.current.send(JSON.stringify({
+              clientContent: {
+                turns: [{
+                  role: "user",
+                  parts: [{ text: `[Le tracé silencieux est terminé et le mot "${word}" est entièrement illuminé à l'écran. Formule une intervention unique en deux temps, d'un ton bas, ancré et enveloppant : 1) Valide sobrement la fin de l'effort et la présence du mot. 2) Enchaîne directement, sans pause, avec une unique question ouverte et extrêmement douce pour mesurer son état par rapport au début de la crise. Reste très concis, voix murmurée, et attends sa réponse.]` }],
+                }],
+                turnComplete: true,
+              },
+            }));
+          } else {
+            // WS fermée pendant le tracé — fallback TTS pour ne pas laisser le patient dans le silence
+            dbg("reveal: WS non OPEN → fallback TTS clôture");
+            speakTherapeutic(`Tu l'as tracé toi-même. Comment tu te sens maintenant, par rapport à tout à l'heure ?`, { skipPrep: true, rate: 0.60, volume: 0.55 });
+          }
           // Fallback sécurisé : si jamais aucune réponse n'arrive, fermer après 40s
           closingFallbackRef.current = setTimeout(() => {
             if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current) return;
@@ -966,6 +972,17 @@ export default function SOSExercise({
           if (intakeCapTimerRef.current)  { clearTimeout(intakeCapTimerRef.current);  intakeCapTimerRef.current  = null; }
           intakeSignalSentRef.current = true;
 
+          // Toujours répondre à l'appel d'outil EN PREMIER — Gemini attend ce
+          // message pour clore son tour "function call" avant d'accepter un
+          // nouveau tour utilisateur. Envoyer un clientContent avant le
+          // toolResponse viole le protocole et peut corrompre l'état de session
+          // (symptôme observé : la question de clôture en reveal reste sans réponse).
+          wsRef.current?.send(JSON.stringify({
+            toolResponse: {
+              functionResponses: [{ id: fc.id, response: { output: "ok" } }],
+            },
+          }));
+
           // Quatre cas possibles :
           // 1. Audio en cours → Gemini parle EN CE MOMENT → attendre fin → ready
           // 2. Gemini a parlé après le greeting → ready direct (pas d'empSignal)
@@ -995,13 +1012,6 @@ export default function SOSExercise({
             dbg("toolCall: second appel après empSignal → enterReadyPhase direct");
             enterReadyPhase();
           }
-
-          // Répondre à l'appel d'outil pour que Gemini puisse conclure son tour
-          wsRef.current?.send(JSON.stringify({
-            toolResponse: {
-              functionResponses: [{ id: fc.id, response: { output: "ok" } }],
-            },
-          }));
         }
       }
     }
