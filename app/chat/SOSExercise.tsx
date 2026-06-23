@@ -1195,21 +1195,7 @@ export default function SOSExercise({
     if (!isAiSpeaking) {
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
 
-      if (patientHasSpokenRef.current) {
-        // Patient a parlé + silence → 5s → transition TCC
-        // Garde-fou : on revérifie isAiSpeakingRef AU MOMENT du déclenchement,
-        // pas seulement à la programmation. Gemini répond automatiquement à
-        // toute activité fermée (comportement natif de Live API, confirmé par
-        // logs [SOS-DEBUG]) avec ~1-1.2s de latence réseau — cette réponse
-        // spontanée peut démarrer APRÈS que ce minuteur ait été programmé.
-        // Si Gemini parle encore quand le minuteur arrive à échéance, on
-        // n'envoie rien : l'effet ci-dessus (déclenché par isAiSpeaking →
-        // false) reprogrammera alors un nouveau minuteur de 5s une fois que
-        // Gemini aura vraiment terminé, sans jamais le couper.
-        silenceTimerRef.current = setTimeout(() => {
-          if (phaseRef.current === "intake" && !isAiSpeakingRef.current) triggerIntakeTransition();
-        }, 5000);
-      } else if (!repromptSentRef.current && !intakeSignalSentRef.current) {
+      if (!patientHasSpokenRef.current && !repromptSentRef.current && !intakeSignalSentRef.current) {
         // Patient n'a pas encore parlé → 6s → relance douce
         silenceTimerRef.current = setTimeout(() => {
           if (phaseRef.current !== "intake" || patientHasSpokenRef.current || repromptSentRef.current || isAiSpeakingRef.current) return;
