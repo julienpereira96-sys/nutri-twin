@@ -423,6 +423,9 @@ export default function SOSExercise({
   const [litLetters,       setLitLetters]       = useState<boolean[]>([]);
   const [closingMsg,       setClosingMsg]       = useState<string | null>(null);
   const [closingQuestionAsked, setClosingQuestionAsked] = useState(false);
+  // Posé à true dès que Gemini génère son premier chunk audio en phase reveal —
+  // empêche "Je t'écoute" de flasher avant qu'il ait parlé une seule fois.
+  const [revealGeminiHasSpoken, setRevealGeminiHasSpoken] = useState(false);
   // Garde-fou critique sur l'intake vocal — texte de sécurité à réciter/afficher
   // si analyzeCrisisWithLLM (ou le pré-filtre mots-clés) détecte du red_critical
   // pendant que le patient parle, en phase "loading" ou "intake".
@@ -579,6 +582,9 @@ export default function SOSExercise({
       if (empathyFallbackTimerRef.current) { clearTimeout(empathyFallbackTimerRef.current); empathyFallbackTimerRef.current = null; }
       dbg("waitingForEmpathy levé — Gemini génère de l'audio");
     }
+    // Premier chunk audio en phase reveal → Gemini a commencé à parler,
+    // "Je t'écoute" ne s'affichera qu'après qu'il aura fini (pas avant).
+    if (phaseRef.current === "reveal") setRevealGeminiHasSpoken(true);
     audioQueueRef.current.push({ data: pcm16Base64ToFloat32(b64), rate: sr });
     if (!isPlayingRef.current) playNextChunk();
   }, [playNextChunk, dbg]);
@@ -915,14 +921,23 @@ export default function SOSExercise({
           dbg(`RECV toolCall demarrer_exercice_respiration | isPlaying=${isPlayingRef.current}`);
           if (intakeHintTimerRef.current) { clearTimeout(intakeHintTimerRef.current); intakeHintTimerRef.current = null; }
           if (intakeCapTimerRef.current)  { clearTimeout(intakeCapTimerRef.current);  intakeCapTimerRef.current  = null; }
+          // Capturer AVANT d'écraser — distingue "triggerIntakeTransition avait
+          // déjà parlé" (wasAlreadySignalled=true) de "premier signal" (false).
+          const wasAlreadySignalled = intakeSignalSentRef.current;
           intakeSignalSentRef.current = true;
 
           if (isPlayingRef.current) {
             // Gemini a parlé avant d'appeler l'outil → attendre fin audio → ready
             dbg("toolCall: audio en cours → onQueueEmptyRef = enterReadyPhase");
             if (!onQueueEmptyRef.current) onQueueEmptyRef.current = enterReadyPhase;
+          } else if (wasAlreadySignalled) {
+            // triggerIntakeTransition avait déjà envoyé un signal ET l'audio est
+            // terminé → Gemini a déjà parlé, pas besoin d'un second empSignal.
+            // Transition directe pour éviter la double explication de l'exercice.
+            dbg("toolCall: wasAlreadySignalled=true, pas d'audio → enterReadyPhase direct");
+            enterReadyPhase();
           } else {
-            // Gemini a appelé l'outil sans parler → forcer l'empathie d'abord
+            // Gemini a appelé l'outil sans signal préalable et sans audio → empSignal
             dbg("toolCall: pas d'audio → guard empathie activé");
             waitingForEmpathyRef.current = true;
             const empSignal = patientHasSpokenRef.current
@@ -1140,39 +1155,39 @@ export default function SOSExercise({
           else onQueueEmptyRef.current = doClose;
 
         } else if (turnN === 1) {
-          // Gemini vient de poser la question → démarrer le timer 5s (relance si silence)
-          dbg("reveal turnN=1 : pas de réponse patient -> programme relance 5s");
-          const timerA = setTimeout(() => {
-            // Même garde-fou que pour l'intake : on ne coupe jamais une
-            // réponse de Gemini en cours (spontanée ou non).
-            if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current || isAiSpeakingRef.current) return;
-            dbg("SEND relance clôture 5s (clientContent)");
-            wsRef.current?.send(JSON.stringify({
-              clientContent: {
-                turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu à la question de clôture. Relance-le très doucement, de manière courte, avec un ton bienveillant et sans aucune pression. Formule-la avec tes propres mots. N'utilise pas de cliché comme \"prends ton temps\". Contente-toi d'offrir une présence rassurante. Varie ta formulation.]" }] }],
-                turnComplete: true,
-              },
-            }));
-            // Timer 10s après la relance — fermeture si toujours pas de réponse.
-            // Au lieu d'afficher un texte hardcodé, on laisse Gemini choisir
-            // une conclusion naturelle (voix + ton cohérents avec le reste de
-            // la session). La fermeture effective se fait dans le handler
-            // turnComplete sur la branche finalClosingSentRef ci-dessous.
-            const timerB = setTimeout(() => {
-              if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current) return;
-              if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
-              finalClosingSentRef.current = true;
-              dbg("SEND clôture finale Gemini (patient silencieux — clientContent)");
+          // Gemini vient de poser la question → démarrer le timer 5s APRÈS la
+          // fin de l'audio (pas depuis le turnComplete qui arrive avant que les
+          // chunks soient tous joués — sinon la relance part quasi-instantanément
+          // dès que l'audio se termine, sans laisser de vrai silence au patient).
+          dbg("reveal turnN=1 : programme relance 5s après fin audio");
+          const startTimerA = () => {
+            closingTimerARef.current = setTimeout(() => {
+              if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current || isAiSpeakingRef.current) return;
+              dbg("SEND relance clôture 5s (clientContent)");
               wsRef.current?.send(JSON.stringify({
                 clientContent: {
-                  turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas répondu après la relance. Conclus cette session SOS très doucement en 1 à 2 phrases. Ne mentionne pas l'absence de réponse. Valorise simplement le travail accompli. Ton chaleureux, bref, sans pression ni cliché.]" }] }],
+                  turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas encore répondu à la question de clôture. Relance-le très doucement, de manière courte, avec un ton bienveillant et sans aucune pression. Formule-la avec tes propres mots. N'utilise pas de cliché comme \"prends ton temps\". Contente-toi d'offrir une présence rassurante. Varie ta formulation.]" }] }],
                   turnComplete: true,
                 },
               }));
-            }, 10000);
-            closingTimerBRef.current = timerB;
-          }, 5000);
-          closingTimerARef.current = timerA;
+              const timerB = setTimeout(() => {
+                if (phaseRef.current !== "reveal" || patientRespondedInTransRef.current) return;
+                if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
+                finalClosingSentRef.current = true;
+                dbg("SEND clôture finale Gemini (patient silencieux — clientContent)");
+                wsRef.current?.send(JSON.stringify({
+                  clientContent: {
+                    turns: [{ role: "user", parts: [{ text: "[Le patient n'a pas répondu après la relance. Conclus cette session SOS très doucement en 1 à 2 phrases. Ne mentionne pas l'absence de réponse. Valorise simplement le travail accompli. Ton chaleureux, bref, sans pression ni cliché.]" }] }],
+                    turnComplete: true,
+                  },
+                }));
+              }, 10000);
+              closingTimerBRef.current = timerB;
+            }, 5000);
+          };
+          // Ancrer à la fin de l'audio, pas au turnComplete
+          if (!isPlayingRef.current) startTimerA();
+          else onQueueEmptyRef.current = startTimerA;
 
         } else if (finalClosingSentRef.current) {
           // Gemini vient de prononcer la conclusion finale (patient toujours silencieux)
@@ -1803,7 +1818,7 @@ export default function SOSExercise({
                 speaking={isAiSpeaking || isPatientSpeaking}
                 analyser={outputAnalyserRef.current}
               />
-              {!isAiSpeaking && (
+              {!isAiSpeaking && revealGeminiHasSpoken && (
                 <p style={{
                   color: "#00e5b4", fontSize: 14,
                   letterSpacing: "0.05em",
