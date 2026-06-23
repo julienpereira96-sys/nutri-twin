@@ -2218,35 +2218,33 @@ export default function ChatPage() {
           </div>
 
           {/* ═══ SIDEBAR BOTTOM — Profil ═══ */}
-          <div style={{ padding: isMobile ? "0 4px 44px" : "0 4px 24px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-            <button onClick={() => setShowProfileModal(true)} style={{ flexShrink: 0, background: "none", border: "none", padding: 0, cursor: "pointer", transition: "transform 0.15s, opacity 0.15s" }}
-              onMouseDown={e => { e.currentTarget.style.transform = "scale(0.92)"; }}
-              onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
-              onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.transform = "scale(0.92)"; }}
-              onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; }}>
-              <div style={{ width: 40, height: 40, borderRadius: "50%", border: "1px solid rgba(16,185,129,0.5)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {patientPhoto ? (
-                  <img src={patientPhoto} alt="avatar" style={{ width: 40, height: 40, objectFit: "cover" }} />
-                ) : (
-                  <div style={{ width: 40, height: 40, background: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#000" }}>{patientInitials}</div>
-                )}
-              </div>
-            </button>
+          <button
+            onClick={() => setShowProfileModal(true)}
+            style={{ padding: isMobile ? "8px 8px 44px" : "8px 8px 24px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0, background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left", borderRadius: 12, transition: "background 0.15s" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.transform = "scale(1)"; }}
+            onMouseDown={e => { e.currentTarget.style.transform = "scale(0.98)"; }}
+            onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; }}
+            onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.transform = "scale(0.98)"; }}
+            onTouchEnd={() => {}}>
+            {/* Avatar */}
+            <div style={{ width: 40, height: 40, borderRadius: "50%", border: "1px solid rgba(16,185,129,0.5)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {patientPhoto ? (
+                <img src={patientPhoto} alt="avatar" style={{ width: 40, height: 40, objectFit: "cover" }} />
+              ) : (
+                <div style={{ width: 40, height: 40, background: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#000" }}>{patientInitials}</div>
+              )}
+            </div>
+            {/* Nom + sous-titre */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: "0 0 1px", fontSize: 14, fontWeight: 700, color: TEXT_PRIMARY, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{patientFirstName || "Patient"}</p>
               <p style={{ margin: 0, fontSize: 11, color: TEXT_MUTED }}>Mon profil</p>
             </div>
-            <button onClick={() => setShowProfileModal(true)} style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", flexShrink: 0 }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.transform = "scale(1)"; }}
-              onMouseDown={e => { e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.18)"; }}
-              onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
-              onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.18)"; }}
-              onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}>
+            {/* Icône settings — visuelle uniquement, le clic est sur le parent */}
+            <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <SettingsIcon size={15} />
-            </button>
-          </div>
+            </div>
+          </button>
         </div>
       </aside>
 
@@ -2284,10 +2282,14 @@ export default function ChatPage() {
         <header style={{ background: "rgba(8,14,11,0.75)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", height: 60, display: "flex", alignItems: "center", flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}>
           <div style={{ flex: 1, padding: isMobile ? "0 16px" : "0 24px", display: "flex", alignItems: "center" }}>
             {(!sidebarOpen || isMobile) && (
-              <button onClick={() => setSidebarOpen(v => !v)} style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}>
-                <MenuIcon size={15} />
+              <button onClick={() => setSidebarOpen(v => !v)} style={{ width: isMobile ? 40 : 34, height: isMobile ? 40 : 34, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "scale(1)"; }}
+                onMouseDown={e => { e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
+                onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+                onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.28)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; }}
+                onTouchEnd={() => {}}>
+                <MenuIcon size={isMobile ? 16 : 15} />
               </button>
             )}
           </div>

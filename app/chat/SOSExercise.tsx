@@ -564,6 +564,10 @@ export default function SOSExercise({
   // immédiatement — on attend que Gemini réponde au signal empathique qu'on lui envoie.
   const waitingForEmpathyRef        = useRef(false);
   const empathyFallbackTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Posé à true dès que Gemini génère du son pendant l'intake — permet de
+  // détecter "Gemini a déjà parlé naturellement" et d'éviter l'empSignal
+  // redondant qui causait la double validation + double proposition de l'exercice.
+  const geminiHasSpokenInIntakeRef  = useRef(false);
 
   // ─── DEBUG TEMPORAIRE — diagnostic des tours qui s'enchaînent (2026-06-21) ──
   // À retirer une fois le mécanisme confirmé/corrigé. N'affecte aucun
@@ -625,6 +629,8 @@ export default function SOSExercise({
       if (empathyFallbackTimerRef.current) { clearTimeout(empathyFallbackTimerRef.current); empathyFallbackTimerRef.current = null; }
       dbg("waitingForEmpathy levé — Gemini génère de l'audio");
     }
+    // Mémoriser que Gemini a parlé pendant l'intake (évite l'empSignal redondant)
+    if (phaseRef.current === "intake") geminiHasSpokenInIntakeRef.current = true;
     // Premier chunk audio en phase reveal → Gemini a commencé à parler,
     // "Je t'écoute" ne s'affichera qu'après qu'il aura fini (pas avant).
     if (phaseRef.current === "reveal") setRevealGeminiHasSpoken(true);
@@ -978,6 +984,12 @@ export default function SOSExercise({
             // terminé → Gemini a déjà parlé, pas besoin d'un second empSignal.
             // Transition directe pour éviter la double explication de l'exercice.
             dbg("toolCall: wasAlreadySignalled=true, pas d'audio → enterReadyPhase direct");
+            enterReadyPhase();
+          } else if (geminiHasSpokenInIntakeRef.current) {
+            // Gemini a déjà parlé naturellement pendant l'intake (empathie + proposition)
+            // → l'empSignal serait redondant et causerait une double validation.
+            // Transition directe, sans second tour.
+            dbg("toolCall: Gemini avait déjà parlé → enterReadyPhase direct (no empSignal)");
             enterReadyPhase();
           } else {
             // Gemini a appelé l'outil sans signal préalable et sans audio → empSignal
