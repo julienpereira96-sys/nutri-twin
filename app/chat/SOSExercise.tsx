@@ -513,6 +513,11 @@ export default function SOSExercise({
   // fois le garde-fou critique parti.
   const checkedIntakeTextRef        = useRef("");
   const criticalDetectedRef         = useRef(false);
+  // Guard empathie : posé à true quand Gemini appelle l'outil sans audio.
+  // Bloque le turnComplete suivant (celui du tool call) pour ne pas transitionner
+  // immédiatement — on attend que Gemini réponde au signal empathique qu'on lui envoie.
+  const waitingForEmpathyRef        = useRef(false);
+  const empathyFallbackTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── DEBUG TEMPORAIRE — diagnostic des tours qui s'enchaînent (2026-06-21) ──
   // À retirer une fois le mécanisme confirmé/corrigé. N'affecte aucun
@@ -568,9 +573,15 @@ export default function SOSExercise({
   }, [dbg]);
 
   const enqueueAudio = useCallback((b64: string, sr = 24000) => {
+    // Dès que Gemini génère de l'audio, le guard empathie est levé
+    if (waitingForEmpathyRef.current) {
+      waitingForEmpathyRef.current = false;
+      if (empathyFallbackTimerRef.current) { clearTimeout(empathyFallbackTimerRef.current); empathyFallbackTimerRef.current = null; }
+      dbg("waitingForEmpathy levé — Gemini génère de l'audio");
+    }
     audioQueueRef.current.push({ data: pcm16Base64ToFloat32(b64), rate: sr });
     if (!isPlayingRef.current) playNextChunk();
-  }, [playNextChunk]);
+  }, [playNextChunk, dbg]);
 
   // `invokePending` : si une interruption patient VALIDÉE (vraie parole, pas écho)
   // coupe l'IA en plein vol, le callback qui attendait la fin naturelle de l'audio
@@ -616,9 +627,10 @@ export default function SOSExercise({
     if (closingTimerBRef.current)   { clearTimeout(closingTimerBRef.current);   closingTimerBRef.current   = null; }
     if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
     finalClosingSentRef.current = false;
-    if (intakeHintTimerRef.current) { clearTimeout(intakeHintTimerRef.current); intakeHintTimerRef.current = null; }
-    if (intakeCapTimerRef.current)  { clearTimeout(intakeCapTimerRef.current);  intakeCapTimerRef.current  = null; }
-    if (bargeInTimerRef.current)    { clearTimeout(bargeInTimerRef.current);    bargeInTimerRef.current    = null; }
+    if (intakeHintTimerRef.current)      { clearTimeout(intakeHintTimerRef.current);      intakeHintTimerRef.current      = null; }
+    if (intakeCapTimerRef.current)       { clearTimeout(intakeCapTimerRef.current);       intakeCapTimerRef.current       = null; }
+    if (empathyFallbackTimerRef.current) { clearTimeout(empathyFallbackTimerRef.current); empathyFallbackTimerRef.current = null; }
+    if (bargeInTimerRef.current)         { clearTimeout(bargeInTimerRef.current);         bargeInTimerRef.current         = null; }
     pendingChunksRef.current = [];
     activityOpenRef.current = false;
     flushAudio();
@@ -819,6 +831,9 @@ export default function SOSExercise({
 
   // Phase "ready" — Gemini a fini de parler, patient doit toucher l'écran
   const enterReadyPhase = useCallback(() => {
+    // Nettoyage guard empathie au cas où on arrive ici via le fallback 15s
+    waitingForEmpathyRef.current = false;
+    if (empathyFallbackTimerRef.current) { clearTimeout(empathyFallbackTimerRef.current); empathyFallbackTimerRef.current = null; }
     // Sélection du mot ici (avant le tap) pour ne pas recalculer au tap
     const word = selectWord(inputTranscriptRef.current);
     chosenWordRef.current = word;
@@ -897,11 +912,38 @@ export default function SOSExercise({
     if (toolCallMsg?.functionCalls) {
       for (const fc of toolCallMsg.functionCalls) {
         if (fc.name === "demarrer_exercice_respiration" && phaseRef.current === "intake") {
-          dbg("RECV toolCall demarrer_exercice_respiration → triggerIntakeTransition()");
-          // Annuler les timers de plafond : Gemini a géré la transition lui-même
+          dbg(`RECV toolCall demarrer_exercice_respiration | isPlaying=${isPlayingRef.current}`);
           if (intakeHintTimerRef.current) { clearTimeout(intakeHintTimerRef.current); intakeHintTimerRef.current = null; }
           if (intakeCapTimerRef.current)  { clearTimeout(intakeCapTimerRef.current);  intakeCapTimerRef.current  = null; }
-          triggerIntakeTransition();
+          intakeSignalSentRef.current = true;
+
+          if (isPlayingRef.current) {
+            // Gemini a parlé avant d'appeler l'outil → attendre fin audio → ready
+            dbg("toolCall: audio en cours → onQueueEmptyRef = enterReadyPhase");
+            if (!onQueueEmptyRef.current) onQueueEmptyRef.current = enterReadyPhase;
+          } else {
+            // Gemini a appelé l'outil sans parler → forcer l'empathie d'abord
+            dbg("toolCall: pas d'audio → guard empathie activé");
+            waitingForEmpathyRef.current = true;
+            const empSignal = patientHasSpokenRef.current
+              ? `[${firstName} vient de s'exprimer. Parle-lui d'abord à voix haute : valide empathiquement ce qu'il vient de partager avec des mots justes et naturels, puis guide-le vers l'exercice de respiration — une lumière qui tracera un mot à l'écran pour l'aider à traverser ce moment. Ne révèle jamais le mot lui-même.]`
+              : `[${firstName} n'a pas encore parlé — ne suppose aucune émotion précise, mais pars du principe qu'avoir lancé ce mode était déjà le bon geste, qu'il en avait besoin sur l'instant. Dis-le-lui avec tes propres mots, de manière naturelle et sans structure scolaire visible. Rassure-le : c'est tout à fait bien, aucune réponse n'est attendue. Enchaîne sur la proposition de l'exercice : une respiration guidée par un point de lumière qui va tracer un mot à l'écran. Il peut appuyer quand il veut sur l'écran pour démarrer et se laisser guider. Ne révèle jamais le mot, tu ne le connais pas encore. Pas de question, formulation différente à chaque fois.]`;
+            wsRef.current?.send(JSON.stringify({
+              clientContent: {
+                turns: [{ role: "user", parts: [{ text: empSignal }] }],
+                turnComplete: true,
+              },
+            }));
+            // Filet de sécurité : si Gemini reste muet 15s malgré le signal → transition quand même
+            empathyFallbackTimerRef.current = setTimeout(() => {
+              if (phaseRef.current === "intake") {
+                dbg("FORCE enterReadyPhase — empathy fallback 15s");
+                waitingForEmpathyRef.current = false;
+                enterReadyPhase();
+              }
+            }, 15000);
+          }
+
           // Répondre à l'appel d'outil pour que Gemini puisse conclure son tour
           wsRef.current?.send(JSON.stringify({
             toolResponse: {
@@ -1055,7 +1097,11 @@ export default function SOSExercise({
       } else if (p === "intake" && intakeSignalSentRef.current) {
         // Validation TCC terminée → attendre fin audio, puis écran "ready" (tap patient)
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-        if (!isPlayingRef.current) {
+        if (waitingForEmpathyRef.current) {
+          // Gemini vient de conclure le tour de l'appel d'outil sans avoir parlé.
+          // On attend qu'il réponde au signal empathique qu'on vient de lui envoyer.
+          dbg("turnComplete intake ignoré — waitingForEmpathy=true");
+        } else if (!isPlayingRef.current) {
           enterReadyPhase();
         } else {
           onQueueEmptyRef.current = enterReadyPhase;
@@ -1429,7 +1475,7 @@ export default function SOSExercise({
           tools: [{
             functionDeclarations: [{
               name: "demarrer_exercice_respiration",
-              description: "Déclenche l'exercice de respiration guidée. À appeler quand le patient est prêt — parce qu'il l'a demandé explicitement (\"je veux respirer\", \"ok\", \"oui\", etc.) ou parce qu'il s'est suffisamment exprimé et qu'il est temps de passer à l'exercice. C'est le seul moyen de démarrer l'exercice à l'écran.",
+              description: "Déclenche l'exercice de respiration guidée. N'appelle cet outil qu'après avoir répondu verbalement au patient avec empathie — jamais directement sans avoir parlé. À utiliser une fois que tu as validé son émotion à voix haute et proposé l'exercice. C'est le seul moyen de démarrer l'exercice à l'écran.",
               parameters: { type: "object", properties: {} },
             }],
           }],
