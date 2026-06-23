@@ -76,7 +76,8 @@ RÈGLES ABSOLUES — MODE SOS :
 7. Pour la clôture : pose UNE seule question ouverte et chaleureuse adaptée à ce qu'il a dit
 8. Choix du mot d'exercice mental (dans ton discours uniquement) : APAISE, LIBERE, CALME ou LIBRE — selon l'état détecté
 9. Ton = thérapeute bienveillant, jamais condescendant, jamais clinique
-10. Tu disposes de l'outil demarrer_exercice_respiration — appelle-le dès que ${name} est prêt (il l'a demandé explicitement, ou il s'est suffisamment exprimé). Ne propose JAMAIS l'exercice uniquement à voix haute : sans appel à cet outil, l'exercice ne démarre pas à l'écran.`;
+10. Tu disposes de l'outil demarrer_exercice_respiration — appelle-le dès que ${name} est prêt (il l'a demandé explicitement, ou il s'est suffisamment exprimé). Ne propose JAMAIS l'exercice uniquement à voix haute : sans appel à cet outil, l'exercice ne démarre pas à l'écran.
+11. Si ${name} exprime que l'exercice n'a pas suffi ou qu'il se sent encore en difficulté à la clôture, conclus avec bienveillance et fais-lui comprendre que tu restes disponible dans le chat pour continuer à l'accompagner. Ne propose pas un autre exercice.`;
 }
 
 export async function POST(request: NextRequest) {

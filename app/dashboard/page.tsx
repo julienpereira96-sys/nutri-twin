@@ -956,7 +956,7 @@ export default function DashboardPage() {
     if (expiredPatients.length > 0) {
       for (const ep of expiredPatients) {
         // Mettre à jour le statut en BDD silencieusement (fire-and-forget)
-        void supabase.from("patients").update({ emotional_status: "green", red_behavioral_until: null })
+        void supabase.from("patients").update({ emotional_status: "green", red_behavioral_until: null, emotional_insight: null })
           .eq("user_id", ep.id).then(() => {}, () => {});
         // Marquer les sos_events pending comme expired
         void supabase.from("sos_events").update({ status: "expired" })
@@ -1371,15 +1371,15 @@ export default function DashboardPage() {
         const existingArchived = (cur as { archived_alerts?: object[] } | null)?.archived_alerts ?? [];
         const newArchived = activeAlerts.map(a => ({ ...a, archived: true, archived_at: new Date().toISOString(), resolution: "practitioner_dismissed" }));
         await supabase.from("patients").update({
-          emotional_status: "green", admin_alerts: [], red_behavioral_until: null,
+          emotional_status: "green", admin_alerts: [], red_behavioral_until: null, emotional_insight: null,
           archived_alerts: [...existingArchived, ...newArchived],
         }).eq("user_id", patientId);
       } else {
-        await supabase.from("patients").update({ emotional_status: "green", admin_alerts: [], red_behavioral_until: null }).eq("user_id", patientId);
+        await supabase.from("patients").update({ emotional_status: "green", admin_alerts: [], red_behavioral_until: null, emotional_insight: null }).eq("user_id", patientId);
       }
       await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId }) });
     }
-    setPatients(prev => prev.map(p => p.id === patientId ? { ...p, emotional_status: "green", admin_alerts: [] } : p));
+    setPatients(prev => prev.map(p => p.id === patientId ? { ...p, emotional_status: "green", admin_alerts: [], emotional_insight: undefined } : p));
     setDemoPatients(prev => prev.map(p => p.id === patientId ? { ...p, emotional_status: "green", admin_alerts: [] } as typeof p : p));
     setShowInterventionBubble(false);
   };
@@ -2550,16 +2550,18 @@ export default function DashboardPage() {
 
                   {/* Alerte admin — uniquement les alertes nécessitant une action manuelle praticien.
                       Exclure :
-                        - type "alert"              → behavioral ancien format, auto-expire via red_behavioral_until
-                        - type "admin_alert" + alert_type "behavioral" → behavioral nouveau format LLM, même règle
+                        - type "alert"                                   → behavioral ancien format, auto-expire via red_behavioral_until
+                        - type "admin_alert" + alert_type "behavioral"   → behavioral nouveau format LLM, même règle
+                        - type "admin_alert" + alert_type "behavioral_sos_intake" → détection comportementale intake vocal SOS,
+                          signalée par la couleur ambre de la colonne gauche (pas besoin d'action manuelle supplémentaire)
                       Inclure : type "crisis" et type "admin_alert" + alert_type "identity_correction" / "critical_llm" */}
-                  {(selectedPatient.admin_alerts?.filter(a => !a.seen && a.type !== "alert" && !(a.type === "admin_alert" && a.alert_type === "behavioral")).length ?? 0) > 0 && !onboardingDemoMode && (
+                  {(selectedPatient.admin_alerts?.filter(a => !a.seen && a.type !== "alert" && !(a.type === "admin_alert" && a.alert_type === "behavioral") && !(a.type === "admin_alert" && a.alert_type === "behavioral_sos_intake")).length ?? 0) > 0 && !onboardingDemoMode && (
                     <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                         <AlertIcon size={13} color={amber} />
                         <span style={{ fontSize: 11, fontWeight: 700, color: amber }}>Action requise</span>
                       </div>
-                      {selectedPatient.admin_alerts?.filter(a => !a.seen && a.type !== "alert" && !(a.type === "admin_alert" && a.alert_type === "behavioral")).map((alert, i) => (
+                      {selectedPatient.admin_alerts?.filter(a => !a.seen && a.type !== "alert" && !(a.type === "admin_alert" && a.alert_type === "behavioral") && !(a.type === "admin_alert" && a.alert_type === "behavioral_sos_intake")).map((alert, i) => (
                         <div key={i} style={{ marginBottom: 8 }}>
                           <p style={{ margin: "0 0 6px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
                             {alert.type === "crisis" && alert.alert_type === "suicide" && "Le patient a exprimé des idées suicidaires."}

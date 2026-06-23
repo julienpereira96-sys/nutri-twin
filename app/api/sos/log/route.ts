@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
     const { data: recent } = await supabase
       .from("sos_events")
-      .select("id")
+      .select("id, status")
       .eq("patient_id", patientId)
       .eq("practitioner_id", practitionerId)
       .order("triggered_at", { ascending: false })
@@ -48,11 +48,28 @@ export async function POST(request: Request) {
       .single();
 
     if (recent?.id) {
+      // Résoudre le statut selon l'issue de l'exercice vocal —
+      // uniquement si encore "pending" (ne pas écraser success/failed/expired
+      // déjà positionné par isSosIntakeCheck ou sos-feedback).
+      //   "abandoned" → quitte prématurément (emergencyExit ou fermeture app)
+      //   "completed"  → exercice terminé normalement avec réponse de clôture,
+      //                  mais sans apaisement confirmé (neutre ou négatif)
+      let resolvedStatus: string | undefined;
+      if ((recent as { status?: string }).status === "pending") {
+        if (emergencyExit) {
+          resolvedStatus = "abandoned";
+        } else if (closingMessage?.trim()) {
+          resolvedStatus = "completed";
+        }
+        // Pas de closingMessage + pas emergencyExit → reste pending (patient silencieux)
+      }
+
       await supabase.from("sos_events").update({
         closing_message: closingMessage?.trim() || null,
         traced_word: word ?? null,
         emergency_exit: !!emergencyExit,
         intake_message: intakeMessage?.trim() || null,
+        ...(resolvedStatus ? { status: resolvedStatus } : {}),
       }).eq("id", recent.id);
     }
 

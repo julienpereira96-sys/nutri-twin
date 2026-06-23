@@ -94,10 +94,10 @@ export async function POST(request: Request) {
         .gte("created_at", `${dateFrom}T00:00:00`)
         .lte("created_at", `${dateTo}T23:59:59`)
         .order("created_at", { ascending: true }),
-      // SOS events (déclenchements avec contexte + exercice choisi)
+      // SOS events (déclenchements avec contexte + exercice choisi + issue)
       supabase
         .from("sos_events")
-        .select("triggered_at, sos_context, raw_response")
+        .select("triggered_at, sos_context, raw_response, status, origin, closing_message, intake_message")
         .eq("patient_id", patientId)
         .gte("triggered_at", `${dateFrom}T00:00:00`)
         .lte("triggered_at", `${dateTo}T23:59:59`)
@@ -159,36 +159,74 @@ export async function POST(request: Request) {
       manger: "Pleine conscience alimentaire", body_scan: "Body scan", defusion: "Défusion cognitive",
       ecriture: "Écriture cathartique", adaptive_coaching: "Coaching personnalisé",
     };
-    type SosEventReportRow = { triggered_at: string; sos_context: string; raw_response?: { tool_id?: string } | null };
+    type SosEventReportRow = {
+      triggered_at: string; sos_context: string;
+      raw_response?: { tool_id?: string } | null;
+      status?: string | null; origin?: string | null;
+      closing_message?: string | null; intake_message?: string | null;
+    };
     const sosEpisodesReport = (sosEventsRaw ?? []) as SosEventReportRow[];
 
     let sosSection = "";
     if (sosEpisodesReport.length > 0) {
-      // Compter les contextes déclencheurs
+      const byStatus = {
+        success:   sosEpisodesReport.filter(e => e.status === "success"),
+        completed: sosEpisodesReport.filter(e => e.status === "completed"),
+        abandoned: sosEpisodesReport.filter(e => e.status === "abandoned"),
+        failed:    sosEpisodesReport.filter(e => e.status === "failed"),
+        other:     sosEpisodesReport.filter(e => !["success","completed","abandoned","failed"].includes(e.status ?? "")),
+      };
+
+      const fmtEvent = (ev: SosEventReportRow, extra?: string) => {
+        const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+        const ctx = ev.sos_context?.split(" | ")[0] ?? "non précisé";
+        const toolId = (ev.raw_response as { tool_id?: string } | null)?.tool_id;
+        const exercise = toolId ? (toolNamesReport[toolId] ?? toolId) : "exercice non précisé";
+        const suffix = extra ? ` — ${extra}` : "";
+        return `  - ${date} : ${ctx} → ${exercise}${suffix}`;
+      };
+
+      const lines: string[] = [];
+
+      if (byStatus.success.length > 0) {
+        lines.push(`Crises désamorcées (${byStatus.success.length}) :`);
+        byStatus.success.forEach(ev => lines.push(fmtEvent(ev, ev.closing_message ? `ressenti : "${ev.closing_message.slice(0, 120)}"` : undefined)));
+      }
+      if (byStatus.completed.length > 0) {
+        lines.push(`Exercices terminés sans apaisement confirmé (${byStatus.completed.length}) :`);
+        byStatus.completed.forEach(ev => lines.push(fmtEvent(ev, ev.closing_message ? `ressenti : "${ev.closing_message.slice(0, 120)}"` : "aucun ressenti partagé")));
+      }
+      if (byStatus.failed.length > 0) {
+        lines.push(`Exercices sans effet / stress aggravé (${byStatus.failed.length}) :`);
+        byStatus.failed.forEach(ev => lines.push(fmtEvent(ev)));
+      }
+      if (byStatus.abandoned.length > 0) {
+        lines.push(`Sessions interrompues (${byStatus.abandoned.length}) :`);
+        byStatus.abandoned.forEach(ev => lines.push(fmtEvent(ev)));
+      }
+      if (byStatus.other.length > 0) {
+        lines.push(`Sessions sans issue connue (${byStatus.other.length}) :`);
+        byStatus.other.forEach(ev => lines.push(fmtEvent(ev)));
+      }
+
+      // Contextes et exercices les plus fréquents (vue globale)
       const contextCounts: Record<string, number> = {};
       const toolCounts: Record<string, number> = {};
       sosEpisodesReport.forEach(ev => {
         const ctx = ev.sos_context?.split(" | ")[0] ?? "non précisé";
         contextCounts[ctx] = (contextCounts[ctx] ?? 0) + 1;
-        const toolId = ev.raw_response?.tool_id;
+        const toolId = (ev.raw_response as { tool_id?: string } | null)?.tool_id;
         if (toolId) toolCounts[toolId] = (toolCounts[toolId] ?? 0) + 1;
       });
       const topContexts = Object.entries(contextCounts).sort((a, b) => b[1] - a[1]).map(([c, n]) => `${c} (${n}x)`).join(", ");
       const topTools = Object.entries(toolCounts).sort((a, b) => b[1] - a[1]).map(([t, n]) => `${toolNamesReport[t] ?? t} (${n}x)`).join(", ");
-      const episodesList = sosEpisodesReport.map(ev => {
-        const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
-        const ctx = ev.sos_context?.split(" | ")[0] ?? "non précisé";
-        const toolId = ev.raw_response?.tool_id;
-        const exercise = toolId ? (toolNamesReport[toolId] ?? toolId) : "exercice non précisé";
-        return `  - ${date} : ${ctx} → ${exercise}`;
-      }).join("\n");
 
       sosSection = `INTERVENTIONS MON SOUTIEN (période du ${dateFrom} au ${dateTo}) :
-- Volume : ${sosEpisodesReport.length} déclenchement${sosEpisodesReport.length > 1 ? "s" : ""}
-- Contextes principaux : ${topContexts || "non renseigné"}
-- Exercices choisis : ${topTools || "non renseigné"}
-- Détail chronologique :
-${episodesList}`;
+- Volume total : ${sosEpisodesReport.length} session${sosEpisodesReport.length > 1 ? "s" : ""}
+- Contextes déclencheurs : ${topContexts || "non renseigné"}
+- Exercices utilisés : ${topTools || "non renseigné"}
+${lines.join("\n")}`;
+
     } else if (events.length > 0) {
       // Fallback sur sos_feedback si pas d'events (données historiques avant migration)
       const withFeedback = events.filter(e => e.stress_before != null && e.stress_after != null);
