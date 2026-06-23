@@ -152,22 +152,61 @@ const ANCHOR_PHRASES = [
   "Tout doucement.",
 ];
 
-// ─── Word bank (4–8 letters, 4 intensity levels) ──────────────────────────────
-const WORD_BANK = {
-  /** 4 letters — crisis léger (~40s) */
+// ─── Word banks genrés (4–8 lettres, 3 niveaux d'intensité) ──────────────────
+//
+// Masculin : adjectifs accordés au masculin
+// Féminin  : formes féminines correspondantes
+//   • mild-F : invariables 4 lettres uniquement (JOIE, PAIX…)
+//              + les formes féminines courtes qui restent ≤5 lettres (DOUCE,
+//              BELLE, FORTE, VRAIE, SAINE) — légèrement plus long que le
+//              masculin mais thérapeutiquement équivalent pour un état léger.
+//   • moderate-F : formes féminines 5-6 lettres (ANCRÉE, LÉGÈRE, RELIÉE…)
+//   • intense-F : APAISÉE, SEREINE, VIVANTE (7 lettres) + mots invariables
+//                 + ASSURÉE (substitut de CONFIANT·E car CONFIANTE = 9 lettres)
+//
+// Lettres accentuées requises et définies dans letterPaths.ts :
+//   É → ANCRÉ/E, APAISÉ/E, LÉGÈRE, RELIÉE, LIBÉRÉ, LIBERTÉ, SÉRÉNITÉ, ASSURÉE…
+//   È → LÉGÈRE, LUMIÈRE
+//   Ê → RÊVE
+
+type WordLevel = "mild" | "moderate" | "intense";
+type WordBank  = Record<WordLevel, string[]>;
+
+const WORD_BANK_M: WordBank = {
+  /** 4 lettres — crise légère */
   mild: [
-    "DOUX", "PAIX", "BIEN", "FORT", "LIEN", "SOIN", "VRAI", "POSE",
-    "SAIN", "BEAU", "CIEL", "REVE",
+    "DOUX", "PAIX", "BIEN", "FORT", "LIEN", "SOIN",
+    "VRAI", "SAIN", "BEAU", "RÊVE", "AISE", "JOIE",
   ],
-  /** 5–6 letters — crisis modérée (~50–60s) */
+  /** 5–6 lettres — crise modérée */
   moderate: [
-    "CALME", "LIBRE", "FORCE", "REPOS", "ANCRE", "DIGNE",
-    "APAISE", "SEREIN", "SOLIDE", "LIBERE", "VIVANT", "SOURIS",
+    "CALME", "LIBRE", "FORCE", "REPOS", "ANCRÉ", "DIGNE",
+    "APAISÉ", "SEREIN", "SOLIDE", "VIVANT", "LÉGER", "RELIÉ", "DEBOUT",
   ],
-  /** 7–8 letters — crisis sévère (~70–80s) */
+  /** 7–8 lettres — crise sévère */
   intense: [
-    "APAISER", "LIBERER", "SOULAGE", "CALMONS", "RESPIRE", "LIBERTE",
-    "SERENITE", "SOLIDITE", "SOULAGER", "APAISONS", "LUMIERE",
+    "APAISER", "LIBÉRER", "SOULAGÉ", "RESPIRE", "LIBERTÉ",
+    "SÉRÉNITÉ", "LUMIÈRE", "DOUCEUR", "ANCRAGE", "COURAGE", "CONFIANT", "PRÉSENT",
+  ],
+};
+
+const WORD_BANK_F: WordBank = {
+  /** 4–5 lettres — les adjectifs 4L masc. deviennent 5L fém., ce qui reste
+   *  acceptable pour un état léger (Δ ≈ 10s d'exercice) */
+  mild: [
+    "JOIE", "PAIX", "BIEN", "LIEN", "SOIN", "RÊVE", "AISE",
+    "DOUCE", "BELLE", "FORTE", "VRAIE", "SAINE",
+  ],
+  /** 5–6 lettres — formes féminines adaptées */
+  moderate: [
+    "CALME", "LIBRE", "FORCE", "REPOS", "ANCRÉE", "DIGNE",
+    "SOLIDE", "LÉGÈRE", "RELIÉE", "DEBOUT", "SEREINE", "VIVANTE",
+  ],
+  /** 7–8 lettres — formes féminines + invariables */
+  intense: [
+    "APAISER", "LIBÉRER", "APAISÉE", "SEREINE", "VIVANTE",
+    "RESPIRE", "LIBERTÉ", "SÉRÉNITÉ", "LUMIÈRE", "DOUCEUR",
+    "ANCRAGE", "COURAGE", "ASSURÉE", "PRÉSENTE", "SOULAGÉE",
   ],
 };
 
@@ -181,12 +220,13 @@ const CALM_KEYWORDS = [
   "légèrement", "legèrement",
 ];
 
-function selectWord(transcript: string): string {
+function selectWord(transcript: string, gender: string): string {
   const lower = transcript.toLowerCase();
-  let level: keyof typeof WORD_BANK = "moderate";
+  let level: WordLevel = "moderate";
   if (CRISIS_KEYWORDS.some(k => lower.includes(k))) level = "intense";
   else if (CALM_KEYWORDS.some(k => lower.includes(k)))  level = "mild";
-  const list = WORD_BANK[level];
+  const bank = gender === "F" ? WORD_BANK_F : WORD_BANK_M;
+  const list = bank[level];
   return list[Math.floor(Math.random() * list.length)];
 }
 
@@ -468,6 +508,9 @@ export default function SOSExercise({
   const letterStartTimeRef  = useRef(0);
   const breathPhaseRef      = useRef<BreathPhase>("inspire");
   // isTracingMutedRef supprimé — Gemini peut parler pendant le tracé
+
+  // Patient gender — chargé depuis la context route, utilisé par selectWord()
+  const patientGenderRef       = useRef<string>("M"); // "M" | "F"
 
   // Flow control
   const greetingDoneRef        = useRef(false);   // first AI turn complete
@@ -841,7 +884,7 @@ export default function SOSExercise({
     waitingForEmpathyRef.current = false;
     if (empathyFallbackTimerRef.current) { clearTimeout(empathyFallbackTimerRef.current); empathyFallbackTimerRef.current = null; }
     // Sélection du mot ici (avant le tap) pour ne pas recalculer au tap
-    const word = selectWord(inputTranscriptRef.current);
+    const word = selectWord(inputTranscriptRef.current, patientGenderRef.current);
     chosenWordRef.current = word;
     setChosenWord(word);
     // Figer l'intake ICI, avant que la clôture ne s'ajoute au même accumulateur
@@ -1302,8 +1345,9 @@ export default function SOSExercise({
         body: JSON.stringify({ patientId, practitionerId }),
       });
       if (res.ok) {
-        const d = await res.json() as { systemPrompt?: string };
-        if (d.systemPrompt) systemPrompt = d.systemPrompt;
+        const d = await res.json() as { systemPrompt?: string; patientGender?: string };
+        if (d.systemPrompt)  systemPrompt = d.systemPrompt;
+        if (d.patientGender) patientGenderRef.current = d.patientGender;
       }
     } catch { /* use default */ }
 

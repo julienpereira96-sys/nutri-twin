@@ -169,12 +169,16 @@ export async function POST(request: Request) {
 
     let sosSection = "";
     if (sosEpisodesReport.length > 0) {
+      // Séparer crises (origine réelle) et pratique volontaire
+      const crisisEps  = sosEpisodesReport.filter(e => (e.origin ?? "crise") !== "pratique");
+      const pratiqEps  = sosEpisodesReport.filter(e => e.origin === "pratique");
+
       const byStatus = {
-        success:   sosEpisodesReport.filter(e => e.status === "success"),
-        completed: sosEpisodesReport.filter(e => e.status === "completed"),
-        abandoned: sosEpisodesReport.filter(e => e.status === "abandoned"),
-        failed:    sosEpisodesReport.filter(e => e.status === "failed"),
-        other:     sosEpisodesReport.filter(e => !["success","completed","abandoned","failed"].includes(e.status ?? "")),
+        success:   crisisEps.filter(e => e.status === "success"),
+        completed: crisisEps.filter(e => e.status === "completed"),
+        abandoned: crisisEps.filter(e => e.status === "abandoned"),
+        failed:    crisisEps.filter(e => e.status === "failed"),
+        other:     crisisEps.filter(e => !["success","completed","abandoned","failed"].includes(e.status ?? "")),
       };
 
       const fmtEvent = (ev: SosEventReportRow, extra?: string) => {
@@ -188,33 +192,45 @@ export async function POST(request: Request) {
 
       const lines: string[] = [];
 
-      if (byStatus.success.length > 0) {
-        lines.push(`Crises désamorcées (${byStatus.success.length}) :`);
-        byStatus.success.forEach(ev => lines.push(fmtEvent(ev, ev.closing_message ? `ressenti : "${ev.closing_message.slice(0, 120)}"` : undefined)));
-      }
-      if (byStatus.completed.length > 0) {
-        lines.push(`Exercices terminés sans apaisement confirmé (${byStatus.completed.length}) :`);
-        byStatus.completed.forEach(ev => lines.push(fmtEvent(ev, ev.closing_message ? `ressenti : "${ev.closing_message.slice(0, 120)}"` : "aucun ressenti partagé")));
-      }
-      if (byStatus.failed.length > 0) {
-        lines.push(`Exercices sans effet / stress aggravé (${byStatus.failed.length}) :`);
-        byStatus.failed.forEach(ev => lines.push(fmtEvent(ev)));
-      }
-      if (byStatus.abandoned.length > 0) {
-        lines.push(`Sessions interrompues (${byStatus.abandoned.length}) :`);
-        byStatus.abandoned.forEach(ev => lines.push(fmtEvent(ev)));
-      }
-      if (byStatus.other.length > 0) {
-        lines.push(`Sessions sans issue connue (${byStatus.other.length}) :`);
-        byStatus.other.forEach(ev => lines.push(fmtEvent(ev)));
+      // ── Crises (déclenchées par détresse) ──
+      if (crisisEps.length > 0) {
+        lines.push(`Épisodes de crise (${crisisEps.length}) :`);
+        if (byStatus.success.length > 0) {
+          lines.push(`  Désamorcées (${byStatus.success.length}) :`);
+          byStatus.success.forEach(ev => lines.push("  " + fmtEvent(ev, ev.closing_message ? `ressenti : "${ev.closing_message.slice(0, 120)}"` : undefined)));
+        }
+        if (byStatus.completed.length > 0) {
+          lines.push(`  Terminées sans apaisement confirmé (${byStatus.completed.length}) :`);
+          byStatus.completed.forEach(ev => lines.push("  " + fmtEvent(ev, ev.closing_message ? `ressenti : "${ev.closing_message.slice(0, 120)}"` : "aucun ressenti partagé")));
+        }
+        if (byStatus.failed.length > 0) {
+          lines.push(`  Sans effet / stress aggravé (${byStatus.failed.length}) :`);
+          byStatus.failed.forEach(ev => lines.push("  " + fmtEvent(ev)));
+        }
+        if (byStatus.abandoned.length > 0) {
+          lines.push(`  Interrompues (${byStatus.abandoned.length}) :`);
+          byStatus.abandoned.forEach(ev => lines.push("  " + fmtEvent(ev)));
+        }
+        if (byStatus.other.length > 0) {
+          lines.push(`  Issue inconnue (${byStatus.other.length}) :`);
+          byStatus.other.forEach(ev => lines.push("  " + fmtEvent(ev)));
+        }
       }
 
-      // Contextes et exercices les plus fréquents (vue globale)
+      // ── Pratique volontaire (hors crise) ──
+      if (pratiqEps.length > 0) {
+        lines.push(`Pratique volontaire (${pratiqEps.length} exercice${pratiqEps.length > 1 ? "s" : ""}) :`);
+        pratiqEps.forEach(ev => lines.push(fmtEvent(ev, ev.closing_message ? `ressenti : "${ev.closing_message.slice(0, 120)}"` : undefined)));
+      }
+
+      // Contextes déclencheurs (crises uniquement) et exercices les plus fréquents (tout)
       const contextCounts: Record<string, number> = {};
       const toolCounts: Record<string, number> = {};
-      sosEpisodesReport.forEach(ev => {
+      crisisEps.forEach(ev => {
         const ctx = ev.sos_context?.split(" | ")[0] ?? "non précisé";
         contextCounts[ctx] = (contextCounts[ctx] ?? 0) + 1;
+      });
+      sosEpisodesReport.forEach(ev => {
         const toolId = (ev.raw_response as { tool_id?: string } | null)?.tool_id;
         if (toolId) toolCounts[toolId] = (toolCounts[toolId] ?? 0) + 1;
       });
@@ -222,8 +238,8 @@ export async function POST(request: Request) {
       const topTools = Object.entries(toolCounts).sort((a, b) => b[1] - a[1]).map(([t, n]) => `${toolNamesReport[t] ?? t} (${n}x)`).join(", ");
 
       sosSection = `INTERVENTIONS MON SOUTIEN (période du ${dateFrom} au ${dateTo}) :
-- Volume total : ${sosEpisodesReport.length} session${sosEpisodesReport.length > 1 ? "s" : ""}
-- Contextes déclencheurs : ${topContexts || "non renseigné"}
+- Volume total : ${sosEpisodesReport.length} session${sosEpisodesReport.length > 1 ? "s" : ""} (${crisisEps.length} crise${crisisEps.length > 1 ? "s" : ""}, ${pratiqEps.length} pratique${pratiqEps.length > 1 ? "s" : ""} volontaire${pratiqEps.length > 1 ? "s" : ""})
+${crisisEps.length > 0 ? `- Contextes déclencheurs : ${topContexts || "non renseigné"}` : ""}
 - Exercices utilisés : ${topTools || "non renseigné"}
 ${lines.join("\n")}`;
 

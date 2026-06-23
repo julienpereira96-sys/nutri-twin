@@ -97,10 +97,10 @@ export const ALPHABET_PATHS: Record<string, LetterDef> = {
     d: "M 6,78 L 6,10 C 18,38 28,58 37,54 C 46,50 56,30 68,10 L 68,78",
   },
 
-  // N — deux verticaux + diagonale courbe
+  // N — deux verticaux + diagonale courbe (haut-gauche → bas-droit)
   N: {
     w: 66,
-    d: "M 10,78 L 10,10 C 24,34 44,54 58,10 L 58,78",
+    d: "M 10,78 L 10,10 C 24,38 44,52 58,78 L 58,10",
   },
 
   // O — ellipse fermée
@@ -173,6 +173,51 @@ export const ALPHABET_PATHS: Record<string, LetterDef> = {
   Z: {
     w: 62,
     d: "M 8,10 L 60,10 C 44,30 24,56 8,78 L 60,78",
+  },
+
+  // ─── Lettres accentuées ───────────────────────────────────────────────────
+  // Corps décalé vers le bas (y+14) pour laisser place à l'accent (y ≈ 2–16)
+
+  // É — E + accent aigu ( / haut-droit)
+  "É": {
+    w: 60,
+    d: "M 57,24 L 10,24 L 10,80 L 57,80 M 10,52 L 50,52 M 26,16 L 34,4",
+  },
+
+  // È — E + accent grave ( \\ haut-gauche)
+  "È": {
+    w: 60,
+    d: "M 57,24 L 10,24 L 10,80 L 57,80 M 10,52 L 50,52 M 34,4 L 26,16",
+  },
+
+  // Ê — E + accent circonflexe (^ pointe vers le haut)
+  "Ê": {
+    w: 60,
+    d: "M 57,24 L 10,24 L 10,80 L 57,80 M 10,52 L 50,52 M 22,18 L 30,5 L 38,18",
+  },
+
+  // À — A + accent grave
+  "À": {
+    w: 68,
+    d: "M 5,80 C 8,54 22,24 34,22 C 46,20 60,54 63,80 M 17,54 L 51,54 M 36,14 L 28,4",
+  },
+
+  // Â — A + accent circonflexe
+  "Â": {
+    w: 68,
+    d: "M 5,80 C 8,54 22,24 34,22 C 46,20 60,54 63,80 M 17,54 L 51,54 M 26,18 L 34,5 L 42,18",
+  },
+
+  // Ù — U + accent grave
+  "Ù": {
+    w: 66,
+    d: "M 10,20 L 10,62 C 10,80 22,88 34,88 C 46,88 58,80 58,62 L 58,20 M 36,12 L 28,2",
+  },
+
+  // Î — I + accent circonflexe
+  "Î": {
+    w: 44,
+    d: "M 10,24 L 36,24 M 23,24 L 23,80 M 10,80 L 36,80 M 19,18 L 23,6 L 27,18",
   },
 };
 

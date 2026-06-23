@@ -26,6 +26,7 @@ type PatientRow = {
   first_name: string;
   last_name: string;
   age: number | null;
+  sexe: string | null;
   defi: string | null;
   pathologies: string | null;
   motivation: string | null;
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
   // user_id, practitionerId n'est plus utilisé pour cette requête.
   const { data: patientRaw } = await supabase
     .from("patients")
-    .select("first_name, last_name, age, defi, pathologies, motivation, practitioner_instruction, emotional_status")
+    .select("first_name, last_name, age, sexe, defi, pathologies, motivation, practitioner_instruction, emotional_status")
     .eq("user_id", patientId)
     .single();
 
@@ -137,7 +138,8 @@ export async function POST(request: NextRequest) {
   const recentConvs = (convRaw ?? []) as ConversationRow[];
 
   const systemPrompt = buildSystemPrompt(patient, recentConvs);
-  const patientName = patient.first_name ?? "toi";
+  const patientName   = patient.first_name ?? "toi";
+  const patientGender = patient.sexe ?? "M"; // "M" | "F" — défaut masculin
 
-  return Response.json({ systemPrompt, patientName });
+  return Response.json({ systemPrompt, patientName, patientGender });
 }

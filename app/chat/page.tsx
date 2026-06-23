@@ -1243,7 +1243,7 @@ export default function ChatPage() {
     // changement de session), hydrateSosClosures les complètera depuis
     // sos_events. Léger délai d'affichage, jamais une perte d'information.
     setMessages(prev => [...prev,
-      { role: "widget", content: "", sosSummary: { word: word || "—", feeling, intake: intake?.trim() || null, crisisLevel: null, crisisMessageId: null } },
+      { role: "widget", content: "", sosSummary: { word: word || "—", feeling, intake: intake?.trim() || null, intakeMurmure: null, crisisLevel: null, crisisMessageId: null } },
     ]);
   }, []);
 
@@ -2054,14 +2054,14 @@ export default function ChatPage() {
                 Votre compagnon de suivi
               </span>
             </div>
-            <button onClick={() => setSidebarOpen(false)} style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", flexShrink: 0 }}
+            <button onClick={() => setSidebarOpen(false)} style={{ width: isMobile ? 40 : 32, height: isMobile ? 40 : 32, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", flexShrink: 0 }}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
               onMouseDown={e => { e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
               onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
-              onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
-              onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={TEXT_SECONDARY} strokeWidth="2" strokeLinecap="round">
+              onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.28)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; }}
+              onTouchEnd={() => { /* pas de revert : la sidebar se ferme via onClick, le bouton disparaît */ }}>
+              <svg width={isMobile ? 15 : 13} height={isMobile ? 15 : 13} viewBox="0 0 24 24" fill="none" stroke={TEXT_SECONDARY} strokeWidth="2" strokeLinecap="round">
                 <path d="M18 6L6 18M6 6l12 12"/>
               </svg>
             </button>
@@ -2391,14 +2391,9 @@ export default function ChatPage() {
                       </div>
                     );
                   }
-                  if (msg.role === "widget" && msg.sosSummary) {
-                    return (
-                      <div key={index} ref={el => { messageRefs.current[index] = el; }}
-                        style={{ display: "flex", justifyContent: "flex-start", animation: "fadeUp 0.25s ease" }}>
-                        <SosSummaryCard {...msg.sosSummary} />
-                      </div>
-                    );
-                  }
+                  // Cartes SOS (role "widget") — affichées uniquement côté praticien
+                  // (dashboard/page.tsx). Côté patient on les ignore silencieusement.
+                  if (msg.role === "widget") return null;
                   const q = chatSearch.trim().toLowerCase();
                   const matchIndices = q ? visibleMessages.reduce<number[]>((acc, m, i) => { if (m.content.toLowerCase().includes(q)) acc.push(i); return acc; }, []) : [];
                   const isChatMatch = q && msg.content.toLowerCase().includes(q);

@@ -371,7 +371,7 @@ type Conversation = {
 // avec un lien "Aller au message" qui réutilise le mécanisme de scroll déjà
 // existant pour les victoires/alertes (setPendingScrollMessageId).
 function DashboardSosSummaryCard({
-  word, feeling, intake, crisisLevel, crisisMessageId, onGoToMessage,
+  word, feeling, intake, intakeMurmure, crisisLevel, crisisMessageId, onGoToMessage,
 }: SosSummary & { onGoToMessage: (id: string) => void }) {
   const [open, setOpen] = useState(false);
   const hasCrisis = !!crisisLevel;
@@ -409,11 +409,18 @@ function DashboardSosSummaryCard({
       </div>
       {open && (
         <div style={{ fontSize: 12, lineHeight: 1.7, color: "#94a3b8", paddingLeft: 23 }}>
-          {intake && (
-            <p style={{ margin: "0 0 3px" }}>Ce qui a motivé l&apos;exercice : <span style={{ color: "rgba(255,255,255,0.85)", fontStyle: "italic" }}>« {intake} »</span></p>
+          {intakeMurmure && (
+            <p style={{ margin: "0 0 4px" }}>
+              <span style={{ color: "#64748b", fontSize: 11 }}>Interprétation clinique</span>
+              <br />
+              <span style={{ color: "rgba(255,255,255,0.9)", fontStyle: "italic" }}>« {intakeMurmure} »</span>
+            </p>
           )}
-          <p style={{ margin: "0 0 3px" }}>Mot tracé : <span style={{ color: "rgba(255,255,255,0.85)" }}>{word}</span></p>
-          <p style={{ margin: hasCrisis ? "0 0 6px" : 0 }}>Ressenti partagé : <span style={{ color: "rgba(255,255,255,0.85)", fontStyle: "italic" }}>« {feeling} »</span></p>
+          {intake && (
+            <p style={{ margin: "0 0 3px" }}>Ce que le patient a exprimé : <span style={{ color: "rgba(255,255,255,0.75)", fontStyle: "italic" }}>« {intake} »</span></p>
+          )}
+          <p style={{ margin: "0 0 3px" }}>Mot tracé : <span style={{ color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>{word}</span></p>
+          <p style={{ margin: hasCrisis ? "0 0 6px" : 0 }}>Ressenti après : <span style={{ color: "rgba(255,255,255,0.85)", fontStyle: "italic" }}>« {feeling} »</span></p>
           {hasCrisis && crisisMessageId && (
             <button
               onClick={(e) => { e.stopPropagation(); onGoToMessage(crisisMessageId); }}
@@ -1106,20 +1113,41 @@ export default function DashboardPage() {
     const alertInterval = setInterval(async () => {
       const ids = patientsRef.current.map(p => p.id);
       if (ids.length === 0) return;
-      const { data: fresh } = await supabase
-        .from("patients")
-        .select("user_id, admin_alerts, emotional_status, emotional_insight, latest_victory, victory_detected_at")
-        .in("user_id", ids);
+      const startOfCurrentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+      const [{ data: fresh }, { data: freshSos }] = await Promise.all([
+        supabase
+          .from("patients")
+          .select("user_id, admin_alerts, emotional_status, emotional_insight, latest_victory, victory_detected_at, last_seen_at, last_patient_message_at")
+          .in("user_id", ids),
+        supabase
+          .from("sos_events")
+          .select("patient_id, status, origin")
+          .in("patient_id", ids)
+          .gte("triggered_at", startOfCurrentMonth)
+          .eq("status", "success"),
+      ]);
       if (!fresh) return;
+      // Crises désamorcées ce mois par patient (recompte depuis la BDD)
+      const sosResolvedMap = new Map<string, number>();
+      for (const e of (freshSos ?? [])) {
+        if ((e.origin as string | null) === "pratique") continue;
+        const pid = e.patient_id as string;
+        sosResolvedMap.set(pid, (sosResolvedMap.get(pid) ?? 0) + 1);
+      }
       setPatients(prev => prev.map(p => {
-        const f = (fresh as { user_id: string; admin_alerts?: object[]; emotional_status?: string; emotional_insight?: string; latest_victory?: string; victory_detected_at?: string | null }[]).find(d => d.user_id === p.id);
+        const f = (fresh as { user_id: string; admin_alerts?: object[]; emotional_status?: string; emotional_insight?: string; latest_victory?: string; victory_detected_at?: string | null; last_seen_at?: string | null; last_patient_message_at?: string | null }[]).find(d => d.user_id === p.id);
         if (!f) return p;
+        // Recalculer lastActive : max entre valeur existante + nouvelles colonnes temps-réel
+        const candidates = [p.lastActive, f.last_seen_at, f.last_patient_message_at].filter((d): d is string => !!d);
+        const newLastActive = candidates.length > 0 ? [...candidates].sort().pop()! : p.lastActive;
         return { ...p,
           admin_alerts: (f.admin_alerts ?? p.admin_alerts) as typeof p.admin_alerts,
           emotional_status: (f.emotional_status ?? p.emotional_status) as typeof p.emotional_status,
           emotional_insight: f.emotional_insight ?? p.emotional_insight,
           latest_victory: f.latest_victory ?? p.latest_victory,
           victory_detected_at: f.victory_detected_at ?? p.victory_detected_at,
+          lastActive: newLastActive ?? p.lastActive,
+          sosResolved: sosResolvedMap.has(p.id) ? sosResolvedMap.get(p.id)! : p.sosResolved,
         };
       }));
     }, 30000);
@@ -1144,6 +1172,7 @@ export default function DashboardPage() {
         word: e.traced_word || "—",
         feeling: closureFeeling(e.closing_message),
         intake: e.intake_message?.trim() || null,
+        intakeMurmure: e.intake_murmure?.trim() || null,
         crisisLevel: e.crisis_level_detected,
         crisisMessageId: e.crisis_trigger_message_id,
       },
@@ -2482,24 +2511,21 @@ export default function DashboardPage() {
                               <span style={{ fontSize: 11, color: sos > 0 ? emerald : "#e2e8f0", fontWeight: 500 }}>
                                 {sos > 0 ? `${sos} ce mois` : "Aucune"}
                               </span>
-                              {sosEvts.length > 0 && (() => {
-                                const crisisEvts = sosEvts.filter(ev => ev.origin !== "pratique");
-                                const practiceEvts = sosEvts.filter(ev => ev.origin === "pratique");
-                                const renderRow = (ev: typeof sosEvts[number], idx: number, list: typeof sosEvts, withStatus: boolean) => {
+                              {(() => {
+                                // Popover : uniquement les crises réellement désamorcées (success + non pratique)
+                                const resolvedCrisisEvts = sosEvts.filter(ev => ev.status === "success" && (ev.origin ?? "crise") !== "pratique");
+                                if (resolvedCrisisEvts.length === 0) return null;
+                                const renderRow = (ev: typeof sosEvts[number], idx: number, list: typeof sosEvts) => {
                                   const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
                                   const context = ev.sos_context?.split(" | ")[0] ?? "–";
                                   const exercise = ev.tool_id ? (toolNames[ev.tool_id] ?? ev.tool_id) : "–";
-                                  const isSuccess = ev.status === "success";
-                                  const rowColor = withStatus ? (isSuccess ? emerald : "#f59e0b") : "#64748b";
-                                  const statusLabel = withStatus && !isSuccess ? " [Non résolu]" : "";
                                   return (
                                     <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: idx < list.length - 1 ? 6 : 0, paddingBottom: idx < list.length - 1 ? 6 : 0, borderBottom: idx < list.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                                      <span style={{ fontSize: 9, marginTop: 2, color: rowColor, flexShrink: 0 }}>●</span>
+                                      <span style={{ fontSize: 9, marginTop: 2, color: emerald, flexShrink: 0 }}>●</span>
                                       <span style={{ fontSize: 10, color: "#64748b", whiteSpace: "nowrap", paddingTop: 1 }}>{date}</span>
                                       <span style={{ fontSize: 10, color: "#94a3b8", flex: 1 }}>
                                         <span style={{ color: "#cbd5e1", textTransform: "capitalize" }}>{context}</span>
-                                        {exercise !== "–" && <><span style={{ color: "#475569" }}> → </span><span style={{ color: withStatus ? rowColor : "#94a3b8" }}>{exercise}</span></>}
-                                        {statusLabel && <span style={{ color: "#f59e0b", fontSize: 9, marginLeft: 3 }}>{statusLabel}</span>}
+                                        {exercise !== "–" && <><span style={{ color: "#475569" }}> → </span><span style={{ color: emerald }}>{exercise}</span></>}
                                       </span>
                                     </div>
                                   );
@@ -2511,7 +2537,7 @@ export default function DashboardPage() {
                                       style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 0, opacity: 0.7, transition: "opacity 0.15s" }}
                                       onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }}
                                       onMouseLeave={e => { e.currentTarget.style.opacity = "0.7"; }}
-                                      title="Voir le détail des crises et exercices"
+                                      title="Voir le détail des crises désamorcées"
                                     >
                                       <InfoCircleIcon size={13} color={emerald} />
                                     </button>
@@ -2523,19 +2549,9 @@ export default function DashboardPage() {
                                         boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
                                       }}>
                                         <div style={{ fontSize: 10, fontWeight: 700, color: emerald, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
-                                          Crises — ce mois
+                                          Crises désamorcées — ce mois
                                         </div>
-                                        {crisisEvts.length === 0 ? (
-                                          <span style={{ fontSize: 11, color: "#64748b" }}>Aucune crise ce mois</span>
-                                        ) : crisisEvts.map((ev, idx) => renderRow(ev, idx, crisisEvts, true))}
-                                        {practiceEvts.length > 0 && (
-                                          <>
-                                            <div style={{ fontSize: 10, fontWeight: 700, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", marginTop: 10, marginBottom: 8 }}>
-                                              Exercices pratiqués
-                                            </div>
-                                            {practiceEvts.map((ev, idx) => renderRow(ev, idx, practiceEvts, false))}
-                                          </>
-                                        )}
+                                        {resolvedCrisisEvts.map((ev, idx) => renderRow(ev, idx, resolvedCrisisEvts))}
                                       </div>
                                     )}
                                   </div>

@@ -26,6 +26,9 @@ export type SosClosureEvent = {
   // ce qui a motivé l'exercice (intake) + si une alerte a été détectée pendant
   // cette session précise, posé par /api/chat (branche isSosIntakeCheck).
   intake_message: string | null;
+  // Lecture clinique de l'intake par le LLM (murmure) — affiché dans la carte
+  // praticien comme "Interprétation clinique". Stocké par isSosIntakeCheck.
+  intake_murmure: string | null;
   crisis_level_detected: string | null;
   crisis_trigger_message_id: string | null;
 };
@@ -40,6 +43,7 @@ export type SosSummary = {
   word: string;
   feeling: string;
   intake: string | null;
+  intakeMurmure: string | null;
   crisisLevel: string | null;
   crisisMessageId: string | null;
 };
@@ -102,6 +106,7 @@ export function mergeSosClosures(rows: AnchoredRow[], events: SosClosureEvent[])
           word: e.traced_word || "—",
           feeling: closureFeeling(e.closing_message),
           intake: e.intake_message?.trim() || null,
+          intakeMurmure: e.intake_murmure?.trim() || null,
           crisisLevel: e.crisis_level_detected,
           crisisMessageId: e.crisis_trigger_message_id,
         },

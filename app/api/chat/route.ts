@@ -251,18 +251,23 @@ Réponds UNIQUEMENT en JSON sans markdown :
 // de le redemander à l'IA comme le fait le bloc "apaisement" du flux
 // principal (qui lui doit vérifier qu'une détresse a bien été exprimée plus
 // tôt DANS LA MÊME conversation écrite, contexte qu'on n'a pas ici).
-async function detectApaisementWithLLM(message: string): Promise<boolean> {
+type ApaisementResult = { confirmed: boolean; murmure: string };
+
+async function detectApaisementWithLLM(message: string): Promise<ApaisementResult> {
   try {
     const prompt = `Un patient suivi pour une détresse comportementale (statut "red_behavioral") vient de prononcer cette phrase à voix haute pendant un exercice de respiration guidée : "${message}"
 
-Réponds UNIQUEMENT par "oui" si cette phrase exprime un retour au calme réel et explicite (ex : "je me sens mieux", "ça va mieux", "j'ai soufflé", "c'est plus calme maintenant", "ça m'a aidé"). Réponds "non" dans tous les autres cas, y compris si l'amélioration est incertaine, partielle, ou si la phrase ne parle pas de son état émotionnel.
+Réponds en JSON strict (aucun texte avant ou après) :
+- confirmed : true si la phrase exprime un retour au calme réel et explicite (ex : "je me sens mieux", "ça va mieux", "j'ai soufflé", "c'est plus calme maintenant", "ça m'a aidé"). false dans tous les autres cas.
+- murmure : si confirmed=true, une phrase courte (max 12 mots) décrivant l'état au praticien. Si confirmed=false, chaîne vide.
 
-non`;
+{"confirmed":false,"murmure":""}`;
 
-    const raw = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 10, temperature: 0 });
-    return raw.trim().toLowerCase().startsWith("oui");
+    const raw = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 60, temperature: 0 });
+    const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as ApaisementResult;
+    return { confirmed: !!parsed.confirmed, murmure: parsed.murmure ?? "" };
   } catch {
-    return false;
+    return { confirmed: false, murmure: "" };
   }
 }
 
@@ -778,7 +783,7 @@ export async function POST(request: Request) {
       )).trim().toLowerCase();
 
       if (verifyText.includes("oui")) {
-        await supabase.from("patients").update({ emotional_status: "red_critical", emotional_insight: "Urgence vitale détectée" }).eq("user_id", patientId);
+        await supabase.from("patients").update({ emotional_status: "red_critical", emotional_insight: `Urgence vitale — ${message.slice(0, 80)}` }).eq("user_id", patientId);
         const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
         const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
         await supabase.from("patients").update({
@@ -1115,13 +1120,17 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       // Étage 1 — mots-clés bruts (zéro faux négatif, instantané, pas besoin
       // d'attendre l'appel LLM pour une urgence vitale explicite).
       // Étage 2 — analyzeCrisisWithLLM pour les formulations implicites.
-      const level: CrisisAnalysis["level"] = isCriticalKeyword(trimmedMessage)
-        ? "red_critical"
-        : (await analyzeCrisisWithLLM(trimmedMessage, "Patient en pleine séance SOS (exercice de respiration guidée), phrase prononcée pendant l'intake vocal.")).level;
+      // On conserve le résultat COMPLET (level + murmure) pour alimenter
+      // emotional_insight avec un motif précis, comme le fait isPostExercise.
+      const sosIntakeCrisisAnalysis: CrisisAnalysis = isCriticalKeyword(trimmedMessage)
+        ? { level: "red_critical", murmure: "" }
+        : await analyzeCrisisWithLLM(trimmedMessage, "Patient en pleine séance SOS (exercice de respiration guidée), phrase prononcée pendant l'intake vocal.");
+      const level = sosIntakeCrisisAnalysis.level;
 
-      const apaisementConfirme = level === "none" && currentEmotionalStatusSos === "red_behavioral"
+      const apaisementResult = level === "none" && currentEmotionalStatusSos === "red_behavioral"
         ? await detectApaisementWithLLM(trimmedMessage)
-        : false;
+        : { confirmed: false, murmure: "" };
+      const apaisementConfirme = apaisementResult.confirmed;
 
       // Volontairement JAMAIS écrit dans `conversations`, quel que soit le
       // niveau détecté — ce que dit le patient pendant l'intake/clôture vocal
@@ -1136,34 +1145,35 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       // detected) signale l'alerte, sans lien profond vers un message.
       const savedMessageId: string | null = null;
 
-      // Relie cette détection au sos_event de l'exercice en cours — sans ça,
-      // rien sur l'événement lui-même n'indique qu'une alerte a eu lieu
-      // pendant cette session précise (seul patients.admin_alerts le sait,
-      // déconnecté de la carte "Exercice SOS terminé").
-      if (level === "red_critical" || level === "red_behavioral") {
-        try {
-          const { data: recentEvent } = await supabase
-            .from("sos_events")
-            .select("id")
-            .eq("patient_id", patientId)
-            .eq("practitioner_id", practitionerId)
-            .order("triggered_at", { ascending: false })
-            .limit(1)
-            .single();
-          if (recentEvent?.id) {
-            await supabase.from("sos_events").update({
+      // Relie cette détection au sos_event de l'exercice en cours.
+      // Stocke aussi le murmure LLM (intake_murmure) pour la carte praticien,
+      // quelle que soit la sévérité — donnée clinique utile même sans alerte.
+      const murmureToStore = sosIntakeCrisisAnalysis.murmure;
+      try {
+        const { data: recentEvent } = await supabase
+          .from("sos_events")
+          .select("id")
+          .eq("patient_id", patientId)
+          .eq("practitioner_id", practitionerId)
+          .order("triggered_at", { ascending: false })
+          .limit(1)
+          .single();
+        if (recentEvent?.id) {
+          await supabase.from("sos_events").update({
+            ...(murmureToStore ? { intake_murmure: murmureToStore } : {}),
+            ...((level === "red_critical" || level === "red_behavioral") ? {
               crisis_level_detected: level,
               crisis_trigger_message_id: savedMessageId,
-            }).eq("id", recentEvent.id);
-          }
-        } catch { /* silencieux */ }
-      }
+            } : {}),
+          }).eq("id", recentEvent.id);
+        }
+      } catch { /* silencieux */ }
 
       if (level === "red_critical") {
         const safetyText = CRISIS_CRITICAL_RESPONSES.suicide;
         await supabase.from("patients").update({
           emotional_status: "red_critical",
-          emotional_insight: "Urgence détectée pendant l'intake vocal SOS",
+          emotional_insight: sosIntakeCrisisAnalysis.murmure || "Urgence détectée pendant l'exercice SOS",
         }).eq("user_id", patientId);
         const { data: cur } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
         const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
@@ -1189,7 +1199,7 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       if (level === "red_behavioral") {
         await supabase.from("patients").update({
           emotional_status: "red_behavioral",
-          emotional_insight: "Alerte comportementale détectée pendant l'intake vocal SOS",
+          emotional_insight: sosIntakeCrisisAnalysis.murmure || "Alerte comportementale détectée pendant l'exercice SOS",
         }).eq("user_id", patientId);
         const { data: cur } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
         const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
@@ -1242,7 +1252,7 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
 
           await supabase.from("patients").update({
             emotional_status: "green",
-            emotional_insight: "Apaisement exprimé pendant l'exercice SOS vocal",
+            emotional_insight: apaisementResult.murmure || "Apaisement exprimé pendant l'exercice SOS",
             ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString(), victory_message_id: savedMessageId } : {}),
             last_patient_message_at: new Date().toISOString(),
           }).eq("user_id", patientId);

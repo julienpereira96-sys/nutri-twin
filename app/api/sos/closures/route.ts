@@ -37,10 +37,10 @@ export async function GET(request: Request) {
   const supabase = createSupabaseClient();
   const { data } = await supabase
     .from("sos_events")
-    .select("triggered_at, traced_word, closing_message, intake_message, crisis_level_detected, crisis_trigger_message_id")
+    .select("triggered_at, traced_word, closing_message, intake_message, intake_murmure, crisis_level_detected, crisis_trigger_message_id")
     .eq("patient_id", patientId)
     .eq("practitioner_id", practitionerId)
-    .not("closing_message", "is", null)
+    .not("traced_word", "is", null)   // exercice arrivé au tracé (with ou sans réponse de clôture)
     .order("triggered_at", { ascending: true });
 
   return Response.json({ events: data ?? [] });
