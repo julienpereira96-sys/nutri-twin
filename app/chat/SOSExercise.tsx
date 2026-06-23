@@ -871,7 +871,7 @@ export default function SOSExercise({
 
     const signal = patientHasSpokenRef.current
       // Patient a parlé → validation empathique intégrée + transition vers l'exercice
-      ? `[${firstName} vient de s'exprimer. Applique la validation empathique TCC de manière totalement intégrée et naturelle, sans formulation scolaire visible : reflète l'émotion ou la tension exprimée avec des mots justes, et normalise la réaction de manière sobre. Enchaîne immédiatement sur la proposition de l'exercice : une respiration guidée par un point de lumière qui va tracer un mot à l'écran pour l'aider à calmer sa crise. Il peut appuyer quand il veut sur l'écran pour démarrer l'exercice et se laisser guider. Ne révèle jamais le mot lui-même, tu ne le connais pas encore.]`
+      ? `[${firstName} vient de s'exprimer. Parle-lui d'abord à voix haute : valide empathiquement ce qu'il vient de partager avec des mots justes et naturels, puis guide-le vers l'exercice de respiration — une lumière qui tracera un mot à l'écran pour l'aider à traverser ce moment. C'est seulement après avoir dit ces mots que tu appelles l'outil demarrer_exercice_respiration. Ne révèle jamais le mot lui-même.]`
       // Patient n'a pas répondu → ne suppose aucune émotion précise, mais le simple
       // fait d'avoir déclenché ce mode SOS est déjà un signal : il en avait besoin.
       // Formulation libre pour Gemini — jamais la même phrase mot pour mot d'une
