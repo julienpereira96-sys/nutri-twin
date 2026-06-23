@@ -559,15 +559,9 @@ export default function SOSExercise({
   // fois le garde-fou critique parti.
   const checkedIntakeTextRef        = useRef("");
   const criticalDetectedRef         = useRef(false);
-  // Guard empathie : posé à true quand Gemini appelle l'outil sans audio.
-  // Bloque le turnComplete suivant (celui du tool call) pour ne pas transitionner
-  // immédiatement — on attend que Gemini réponde au signal empathique qu'on lui envoie.
-  const waitingForEmpathyRef        = useRef(false);
-  const empathyFallbackTimerRef     = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Posé à true dès que Gemini génère du son pendant l'intake — permet de
-  // détecter "Gemini a déjà parlé naturellement" et d'éviter l'empSignal
-  // redondant qui causait la double validation + double proposition de l'exercice.
-  const geminiHasSpokenInIntakeRef  = useRef(false);
+  // (empSignal supprimé — la description de l'outil et le system prompt suffisent
+  // pour que Gemini parle AVANT d'appeler l'outil. Un empSignal redondant causait
+  // une double proposition. Voir échange du 2026-06-23.)
 
   // ─── DEBUG TEMPORAIRE — diagnostic des tours qui s'enchaînent (2026-06-21) ──
   // À retirer une fois le mécanisme confirmé/corrigé. N'affecte aucun
@@ -623,14 +617,6 @@ export default function SOSExercise({
   }, [dbg]);
 
   const enqueueAudio = useCallback((b64: string, sr = 24000) => {
-    // Dès que Gemini génère de l'audio, le guard empathie est levé
-    if (waitingForEmpathyRef.current) {
-      waitingForEmpathyRef.current = false;
-      if (empathyFallbackTimerRef.current) { clearTimeout(empathyFallbackTimerRef.current); empathyFallbackTimerRef.current = null; }
-      dbg("waitingForEmpathy levé — Gemini génère de l'audio");
-    }
-    // Mémoriser que Gemini a parlé pendant l'intake (évite l'empSignal redondant)
-    if (phaseRef.current === "intake") geminiHasSpokenInIntakeRef.current = true;
     // Premier chunk audio en phase reveal → Gemini a commencé à parler,
     // "Je t'écoute" ne s'affichera qu'après qu'il aura fini (pas avant).
     if (phaseRef.current === "reveal") setRevealGeminiHasSpoken(true);
@@ -682,10 +668,9 @@ export default function SOSExercise({
     if (closingTimerBRef.current)   { clearTimeout(closingTimerBRef.current);   closingTimerBRef.current   = null; }
     if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
     finalClosingSentRef.current = false;
-    if (intakeHintTimerRef.current)      { clearTimeout(intakeHintTimerRef.current);      intakeHintTimerRef.current      = null; }
-    if (intakeCapTimerRef.current)       { clearTimeout(intakeCapTimerRef.current);       intakeCapTimerRef.current       = null; }
-    if (empathyFallbackTimerRef.current) { clearTimeout(empathyFallbackTimerRef.current); empathyFallbackTimerRef.current = null; }
-    if (bargeInTimerRef.current)         { clearTimeout(bargeInTimerRef.current);         bargeInTimerRef.current         = null; }
+    if (intakeHintTimerRef.current) { clearTimeout(intakeHintTimerRef.current); intakeHintTimerRef.current = null; }
+    if (intakeCapTimerRef.current)  { clearTimeout(intakeCapTimerRef.current);  intakeCapTimerRef.current  = null; }
+    if (bargeInTimerRef.current)    { clearTimeout(bargeInTimerRef.current);    bargeInTimerRef.current    = null; }
     pendingChunksRef.current = [];
     activityOpenRef.current = false;
     flushAudio();
@@ -886,9 +871,6 @@ export default function SOSExercise({
 
   // Phase "ready" — Gemini a fini de parler, patient doit toucher l'écran
   const enterReadyPhase = useCallback(() => {
-    // Nettoyage guard empathie au cas où on arrive ici via le fallback 15s
-    waitingForEmpathyRef.current = false;
-    if (empathyFallbackTimerRef.current) { clearTimeout(empathyFallbackTimerRef.current); empathyFallbackTimerRef.current = null; }
     // Sélection du mot ici (avant le tap) pour ne pas recalculer au tap
     const word = selectWord(inputTranscriptRef.current, patientGenderRef.current);
     chosenWordRef.current = word;
@@ -970,48 +952,18 @@ export default function SOSExercise({
           dbg(`RECV toolCall demarrer_exercice_respiration | isPlaying=${isPlayingRef.current}`);
           if (intakeHintTimerRef.current) { clearTimeout(intakeHintTimerRef.current); intakeHintTimerRef.current = null; }
           if (intakeCapTimerRef.current)  { clearTimeout(intakeCapTimerRef.current);  intakeCapTimerRef.current  = null; }
-          // Capturer AVANT d'écraser — distingue "triggerIntakeTransition avait
-          // déjà parlé" (wasAlreadySignalled=true) de "premier signal" (false).
-          const wasAlreadySignalled = intakeSignalSentRef.current;
           intakeSignalSentRef.current = true;
 
+          // La description de l'outil garantit que Gemini a DÉJÀ parlé (empathie +
+          // proposition) avant d'appeler l'outil. Pas d'empSignal redondant ici —
+          // c'était la cause de la double confirmation. On attend simplement la fin
+          // de l'audio si nécessaire, puis on entre en phase "ready".
           if (isPlayingRef.current) {
-            // Gemini a parlé avant d'appeler l'outil → attendre fin audio → ready
             dbg("toolCall: audio en cours → onQueueEmptyRef = enterReadyPhase");
             if (!onQueueEmptyRef.current) onQueueEmptyRef.current = enterReadyPhase;
-          } else if (wasAlreadySignalled) {
-            // triggerIntakeTransition avait déjà envoyé un signal ET l'audio est
-            // terminé → Gemini a déjà parlé, pas besoin d'un second empSignal.
-            // Transition directe pour éviter la double explication de l'exercice.
-            dbg("toolCall: wasAlreadySignalled=true, pas d'audio → enterReadyPhase direct");
-            enterReadyPhase();
-          } else if (geminiHasSpokenInIntakeRef.current) {
-            // Gemini a déjà parlé naturellement pendant l'intake (empathie + proposition)
-            // → l'empSignal serait redondant et causerait une double validation.
-            // Transition directe, sans second tour.
-            dbg("toolCall: Gemini avait déjà parlé → enterReadyPhase direct (no empSignal)");
-            enterReadyPhase();
           } else {
-            // Gemini a appelé l'outil sans signal préalable et sans audio → empSignal
-            dbg("toolCall: pas d'audio → guard empathie activé");
-            waitingForEmpathyRef.current = true;
-            const empSignal = patientHasSpokenRef.current
-              ? `[${firstName} vient de s'exprimer. Parle-lui d'abord à voix haute : valide empathiquement ce qu'il vient de partager avec des mots justes et naturels, puis guide-le vers l'exercice en lui disant de se laisser guider par les phases de respiration — elles génèreront un mot lumineux à la fin. Ne révèle jamais le mot lui-même.]`
-              : `[${firstName} n'a pas encore parlé — ne suppose aucune émotion précise, mais pars du principe qu'avoir lancé ce mode était déjà le bon geste, qu'il en avait besoin sur l'instant. Dis-le-lui avec tes propres mots, de manière naturelle et sans structure scolaire visible. Rassure-le : c'est tout à fait bien, aucune réponse n'est attendue. Enchaîne sur la proposition de l'exercice : une respiration guidée par un point de lumière qui va tracer un mot à l'écran. Il peut appuyer quand il veut sur l'écran pour démarrer et se laisser guider. Ne révèle jamais le mot, tu ne le connais pas encore. Pas de question, formulation différente à chaque fois.]`;
-            wsRef.current?.send(JSON.stringify({
-              clientContent: {
-                turns: [{ role: "user", parts: [{ text: empSignal }] }],
-                turnComplete: true,
-              },
-            }));
-            // Filet de sécurité : si Gemini reste muet 15s malgré le signal → transition quand même
-            empathyFallbackTimerRef.current = setTimeout(() => {
-              if (phaseRef.current === "intake") {
-                dbg("FORCE enterReadyPhase — empathy fallback 15s");
-                waitingForEmpathyRef.current = false;
-                enterReadyPhase();
-              }
-            }, 15000);
+            dbg("toolCall: → enterReadyPhase direct");
+            enterReadyPhase();
           }
 
           // Répondre à l'appel d'outil pour que Gemini puisse conclure son tour
@@ -1165,13 +1117,9 @@ export default function SOSExercise({
           triggerIntakeTransition();
         }, 3 * 60 * 1000);
       } else if (p === "intake" && intakeSignalSentRef.current) {
-        // Validation TCC terminée → attendre fin audio, puis écran "ready" (tap patient)
+        // Validation TCC terminée (signal 3-min ou hint 2-min) → attendre fin audio → ready
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-        if (waitingForEmpathyRef.current) {
-          // Gemini vient de conclure le tour de l'appel d'outil sans avoir parlé.
-          // On attend qu'il réponde au signal empathique qu'on vient de lui envoyer.
-          dbg("turnComplete intake ignoré — waitingForEmpathy=true");
-        } else if (!isPlayingRef.current) {
+        if (!isPlayingRef.current) {
           enterReadyPhase();
         } else {
           onQueueEmptyRef.current = enterReadyPhase;
@@ -1548,7 +1496,7 @@ export default function SOSExercise({
           tools: [{
             functionDeclarations: [{
               name: "demarrer_exercice_respiration",
-              description: "Déclenche l'exercice de respiration guidée. N'appelle cet outil qu'après avoir répondu verbalement au patient avec empathie — jamais directement sans avoir parlé. À utiliser une fois que tu as validé son émotion à voix haute et proposé l'exercice. C'est le seul moyen de démarrer l'exercice à l'écran.",
+              description: "Déclenche l'exercice de respiration guidée. N'appelle cet outil que lorsque le patient a pu exprimer non seulement son émotion, mais aussi — même brièvement — la situation ou le contexte derrière. Si le patient n'a dit qu'un mot ou une émotion vague sans contexte, pose d'abord une question ouverte pour l'inviter à aller plus loin. Une fois qu'il s'est suffisamment exprimé, valide ce qu'il a partagé à voix haute et propose l'exercice — puis appelle cet outil. C'est le seul moyen de démarrer l'exercice à l'écran. Ne l'appelle jamais sans avoir parlé au patient.",
               parameters: { type: "object", properties: {} },
             }],
           }],
