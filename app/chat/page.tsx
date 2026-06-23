@@ -2054,9 +2054,13 @@ export default function ChatPage() {
                 Votre compagnon de suivi
               </span>
             </div>
-            <button onClick={() => setSidebarOpen(false)} style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}>
+            <button onClick={() => setSidebarOpen(false)} style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", flexShrink: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
+              onMouseDown={e => { e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.opacity = "0.7"; }}
+              onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
+              onTouchStart={e => { e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.opacity = "0.7"; }}
+              onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={TEXT_SECONDARY} strokeWidth="2" strokeLinecap="round">
                 <path d="M18 6L6 18M6 6l12 12"/>
               </svg>
