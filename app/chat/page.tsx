@@ -1878,9 +1878,13 @@ export default function ChatPage() {
         </button>
 
         <button onClick={() => { setShowProfileModal(false); setShowLogoutPatientModal(true); }}
-          style={{ width: "100%", height: 40, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }}
+          style={{ width: "100%", height: 40, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.15s" }}
           onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; e.currentTarget.style.color = "#f87171"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_SECONDARY; }}>
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_SECONDARY; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
+          onMouseDown={e => { e.currentTarget.style.transform = "scale(0.96)"; e.currentTarget.style.opacity = "0.75"; }}
+          onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
+          onTouchStart={e => { e.currentTarget.style.transform = "scale(0.96)"; e.currentTarget.style.opacity = "0.75"; }}
+          onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}>
           Se déconnecter
         </button>
 
@@ -1921,9 +1925,13 @@ export default function ChatPage() {
           await supabase.auth.signOut();
           window.location.href = "/patient-login";
         }}
-          style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+          style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
           onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; }}>
+          onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
+          onMouseDown={e => { e.currentTarget.style.transform = "scale(0.95)"; e.currentTarget.style.opacity = "0.75"; }}
+          onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
+          onTouchStart={e => { e.currentTarget.style.transform = "scale(0.95)"; e.currentTarget.style.opacity = "0.75"; }}
+          onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}>
           Se déconnecter
         </button>
       </div>
@@ -2207,7 +2215,12 @@ export default function ChatPage() {
 
           {/* ═══ SIDEBAR BOTTOM — Profil ═══ */}
           <div style={{ padding: isMobile ? "0 4px 44px" : "0 4px 24px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-            <button onClick={() => setShowProfileModal(true)} style={{ flexShrink: 0, background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+            <button onClick={() => setShowProfileModal(true)} style={{ flexShrink: 0, background: "none", border: "none", padding: 0, cursor: "pointer", transition: "transform 0.15s, opacity 0.15s" }}
+              onMouseDown={e => { e.currentTarget.style.transform = "scale(0.92)"; e.currentTarget.style.opacity = "0.75"; }}
+              onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
+              onTouchStart={e => { e.currentTarget.style.transform = "scale(0.92)"; e.currentTarget.style.opacity = "0.75"; }}
+              onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}>
               <div style={{ width: 40, height: 40, borderRadius: "50%", border: "1px solid rgba(16,185,129,0.5)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {patientPhoto ? (
                   <img src={patientPhoto} alt="avatar" style={{ width: 40, height: 40, objectFit: "cover" }} />
@@ -2220,9 +2233,13 @@ export default function ChatPage() {
               <p style={{ margin: "0 0 1px", fontSize: 14, fontWeight: 700, color: TEXT_PRIMARY, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{patientFirstName || "Patient"}</p>
               <p style={{ margin: 0, fontSize: 11, color: TEXT_MUTED }}>Mon profil</p>
             </div>
-            <button onClick={() => setShowProfileModal(true)} style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}
+            <button onClick={() => setShowProfileModal(true)} style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.05)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", flexShrink: 0 }}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}>
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
+              onMouseDown={e => { e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.opacity = "0.7"; }}
+              onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
+              onTouchStart={e => { e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.opacity = "0.7"; }}
+              onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}>
               <SettingsIcon size={15} />
             </button>
           </div>
