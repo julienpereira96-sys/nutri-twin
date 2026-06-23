@@ -1526,7 +1526,7 @@ export default function SOSExercise({
           tools: [{
             functionDeclarations: [{
               name: "demarrer_exercice_respiration",
-              description: "Déclenche l'exercice de respiration guidée. N'appelle cet outil que lorsque le patient a pu exprimer non seulement son émotion, mais aussi — même brièvement — la situation ou le contexte derrière. Si le patient n'a dit qu'un mot ou une émotion vague sans contexte, pose d'abord une question ouverte pour l'inviter à aller plus loin. Une fois qu'il s'est suffisamment exprimé, valide ce qu'il a partagé à voix haute et propose l'exercice — puis appelle cet outil. C'est le seul moyen de démarrer l'exercice à l'écran. Ne l'appelle jamais sans avoir parlé au patient.",
+              description: "Déclenche l'exercice de respiration guidée. Ne l'appelle qu'après avoir complété à voix haute les étapes suivantes dans l'ordre : 1) Creuser jusqu'à avoir à la fois l'émotion ET la raison ou le contexte derrière (si le patient n'a exprimé qu'une émotion vague, pose une question ouverte pour comprendre ce qui s'est passé). 2) Valider et montrer ta compréhension de ce qu'il vit — déculpabiliser si nécessaire, avec des mots justes et humains, sans minimiser. 3) Faire le lien entre ce qu'il vient de partager et l'intérêt concret de cet exercice pour lui — personnalise selon son contexte. 4) Lui proposer de démarrer quand il se sent prêt, comme une invitation naturelle — jamais une question fermée oui/non. C'est seulement après ces quatre étapes que tu appelles cet outil. C'est le seul moyen de démarrer l'exercice à l'écran.",
               parameters: { type: "object", properties: {} },
             }],
           }],
