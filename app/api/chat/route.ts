@@ -1127,7 +1127,11 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
         : await analyzeCrisisWithLLM(trimmedMessage, "Patient en pleine séance SOS (exercice de respiration guidée), phrase prononcée pendant l'intake vocal.");
       const level = sosIntakeCrisisAnalysis.level;
 
-      const apaisementResult = level === "none" && currentEmotionalStatusSos === "red_behavioral"
+      // Détection d'apaisement : tourne dès que level === "none", quel que
+      // soit l'état émotionnel de départ — le patient peut démarrer l'exercice
+      // depuis "green" (pratique) ou "red_behavioral" (crise), et dans les deux
+      // cas une phrase d'apaisement en clôture doit être enregistrée.
+      const apaisementResult = level === "none"
         ? await detectApaisementWithLLM(trimmedMessage)
         : { confirmed: false, murmure: "" };
       const apaisementConfirme = apaisementResult.confirmed;

@@ -569,6 +569,14 @@ export default function SOSExercise({
   // true si un empSignal de secours a déjà été envoyé sur ce toolCall —
   // empêche d'en envoyer un second si Gemini rappelle l'outil après l'empSignal.
   const toolCallEmpSentRef          = useRef(false);
+  // true dès que Gemini produit de l'audio APRÈS que le patient ait répondu à
+  // la question de clôture (phase "reveal"). C'est le seul signal fiable pour
+  // déclencher doClose() — évite de fermer si Gemini envoie un turnComplete
+  // sans audio (bug Gemini Live : réponse vide après la parole du patient).
+  const geminiRespondedAfterPatientRef = useRef(false);
+  // Timer de secours 8s : si Gemini reste silencieux après la réponse du
+  // patient (turnComplete sans audio), on fait un TTS de clôture puis on ferme.
+  const closingGeminiRespTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── DEBUG TEMPORAIRE — diagnostic des tours qui s'enchaînent (2026-06-21) ──
   // À retirer une fois le mécanisme confirmé/corrigé. N'affecte aucun
@@ -630,6 +638,18 @@ export default function SOSExercise({
     // Tout chunk audio après la fin du greeting prouve que Gemini a parlé.
     // → empSignal de secours inutile dans ce cas (évite la double confirmation).
     if (greetingDoneRef.current) geminiSpokenPostGreetingRef.current = true;
+    // Gemini produit de l'audio EN PHASE CLÔTURE, APRÈS la réponse du patient
+    // → c'est la confirmation que Gemini a bien répondu (et non un turnComplete
+    // silencieux) ; on autorise doClose() et on annule le timer de secours 8s.
+    if (phaseRef.current === "reveal" && patientRespondedInTransRef.current) {
+      if (!geminiRespondedAfterPatientRef.current) {
+        geminiRespondedAfterPatientRef.current = true;
+        if (closingGeminiRespTimerRef.current) {
+          clearTimeout(closingGeminiRespTimerRef.current);
+          closingGeminiRespTimerRef.current = null;
+        }
+      }
+    }
     audioQueueRef.current.push({ data: pcm16Base64ToFloat32(b64), rate: sr });
     if (!isPlayingRef.current) playNextChunk();
   }, [playNextChunk, dbg]);
@@ -685,6 +705,8 @@ export default function SOSExercise({
     activityOpenRef.current = false;
     geminiSpokenPostGreetingRef.current = false;
     toolCallEmpSentRef.current = false;
+    geminiRespondedAfterPatientRef.current = false;
+    if (closingGeminiRespTimerRef.current) { clearTimeout(closingGeminiRespTimerRef.current); closingGeminiRespTimerRef.current = null; }
     flushAudio();
   }, [cancelSpeech, flushAudio]);
 
@@ -704,9 +726,10 @@ export default function SOSExercise({
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     breathTimerRef.current.forEach(clearTimeout);
     breathTimerRef.current = [];
-    if (closingTimerARef.current)   { clearTimeout(closingTimerARef.current);   closingTimerARef.current   = null; }
-    if (closingTimerBRef.current)   { clearTimeout(closingTimerBRef.current);   closingTimerBRef.current   = null; }
-    if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
+    if (closingTimerARef.current)        { clearTimeout(closingTimerARef.current);        closingTimerARef.current        = null; }
+    if (closingTimerBRef.current)        { clearTimeout(closingTimerBRef.current);        closingTimerBRef.current        = null; }
+    if (closingFallbackRef.current)      { clearTimeout(closingFallbackRef.current);      closingFallbackRef.current      = null; }
+    if (closingGeminiRespTimerRef.current) { clearTimeout(closingGeminiRespTimerRef.current); closingGeminiRespTimerRef.current = null; }
     finalClosingSentRef.current = false;
     if (intakeHintTimerRef.current) { clearTimeout(intakeHintTimerRef.current); intakeHintTimerRef.current = null; }
     if (intakeCapTimerRef.current)  { clearTimeout(intakeCapTimerRef.current);  intakeCapTimerRef.current  = null; }
@@ -1105,12 +1128,43 @@ export default function SOSExercise({
         runVoiceCrisisCheck();
       }
       // La question de clôture a déjà été posée → le patient vient de répondre,
-      // on annule les timers de relance
+      // on annule les timers de relance et on démarre le timer de secours 8s
+      // (au cas où Gemini enverrait un turnComplete sans audio).
       if (phaseRef.current === "reveal" && closingQuestionSentRef.current) {
         patientRespondedInTransRef.current = true;
         transitionPatientTextRef.current  += " " + (inTrans.text as string);
         if (closingTimerARef.current) { clearTimeout(closingTimerARef.current); closingTimerARef.current = null; }
         if (closingTimerBRef.current) { clearTimeout(closingTimerBRef.current); closingTimerBRef.current = null; }
+        // Timer 8s : si Gemini ne produit pas d'audio en réponse (bug Gemini Live
+        // — turnComplete silencieux), on bascule sur un TTS de clôture bienveillant
+        // puis on ferme proprement. Le timer est annulé dans enqueueAudio dès que
+        // Gemini produit le moindre chunk audio après la réponse du patient.
+        if (!closingGeminiRespTimerRef.current) {
+          closingGeminiRespTimerRef.current = setTimeout(() => {
+            closingGeminiRespTimerRef.current = null;
+            if (phaseRef.current !== "reveal" || geminiRespondedAfterPatientRef.current) return;
+            dbg("reveal: Gemini silencieux 8s après réponse patient → TTS fallback + close");
+            if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
+            const patientText = transitionPatientTextRef.current.trim();
+            speakTherapeutic("Je suis là avec toi. Ce que tu viens de traverser compte vraiment.", { skipPrep: true, rate: 0.60, volume: 0.55 });
+            setTimeout(() => {
+              if (phaseRef.current !== "reveal") return;
+              void fetch("/api/sos/log", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  patientId,
+                  practitionerId,
+                  closingMessage: patientText || "[Clôture après silence Gemini]",
+                  word: chosenWordRef.current,
+                  intakeMessage: intakeTranscriptRef.current,
+                }),
+              }).catch(() => {});
+              onTransitionToChat(patientText || "", chosenWordRef.current, intakeTranscriptRef.current);
+              cleanup();
+            }, 4500);
+          }, 8000);
+        }
       }
     }
 
@@ -1165,19 +1219,19 @@ export default function SOSExercise({
           onQueueEmptyRef.current = enterReadyPhase;
         }
       } else if (p === "reveal" && closingQuestionSentRef.current) {
-        // Le tour fusionné félicitation+question de clôture (envoyé depuis
-        // startLetterAt) est désormais le SEUL tour Gemini de cette phase —
-        // ce turnComplete est donc forcément le sien (turnN === 1), et la
-        // suite (relance 5s, fermeture) s'enchaîne normalement ci-dessous.
         closingTurnCountRef.current += 1;
         const turnN = closingTurnCountRef.current;
+        dbg(`reveal turnN=${turnN} | patientRepondu=${patientRespondedInTransRef.current} | geminiAudio=${geminiRespondedAfterPatientRef.current} | finalClosing=${finalClosingSentRef.current}`);
 
-        if (patientRespondedInTransRef.current && turnN >= 2) {
-          // Le patient a parlé ET Gemini lui a répondu (turnN≥2) → fermer.
-          // Guard turnN≥2 : évite de fermer sur le tour de félicitation/question
-          // (turnN=1) si le patient avait fait un son pendant que Gemini parlait.
-          dbg(`reveal turnN=${turnN} : patient avait répondu -> doClose()`);
-          if (closingFallbackRef.current) { clearTimeout(closingFallbackRef.current); closingFallbackRef.current = null; }
+        // ── Fermeture normale : patient a répondu ET Gemini a parlé après ────────
+        // On ne ferme QUE si geminiRespondedAfterPatientRef est posé — ce flag
+        // est mis dans enqueueAudio quand Gemini produit de l'audio APRÈS que
+        // patientRespondedInTransRef soit true. Évite la fermeture silencieuse
+        // sur un turnComplete sans audio (bug Gemini Live).
+        if (patientRespondedInTransRef.current && geminiRespondedAfterPatientRef.current) {
+          dbg(`reveal turnN=${turnN} : Gemini a répondu avec audio → doClose()`);
+          if (closingFallbackRef.current)      { clearTimeout(closingFallbackRef.current);      closingFallbackRef.current      = null; }
+          if (closingGeminiRespTimerRef.current) { clearTimeout(closingGeminiRespTimerRef.current); closingGeminiRespTimerRef.current = null; }
           const patientText = transitionPatientTextRef.current.trim();
           const doClose = () => {
             void fetch("/api/sos/log", {
@@ -1197,7 +1251,32 @@ export default function SOSExercise({
           if (!isPlayingRef.current) doClose();
           else onQueueEmptyRef.current = doClose;
 
-        } else if (turnN === 1) {
+        // ── Clôture finale : patient silencieux, Gemini a conclu ─────────────────
+        } else if (finalClosingSentRef.current) {
+          dbg(`reveal turnN=${turnN} : conclusion finale Gemini → doClose()`);
+          const text = "[Le patient n'a pas répondu à la question de clôture]";
+          const doClose = () => {
+            void fetch("/api/sos/log", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                patientId,
+                practitionerId,
+                closingMessage: text,
+                word: chosenWordRef.current,
+                intakeMessage: intakeTranscriptRef.current,
+              }),
+            }).catch(() => {});
+            onTransitionToChat(text, chosenWordRef.current, intakeTranscriptRef.current);
+            cleanup();
+          };
+          if (!isPlayingRef.current) doClose();
+          else onQueueEmptyRef.current = doClose;
+
+        // ── Tour 1 et patient pas encore répondu : programmer timerA ────────────
+        // Guard !patientRespondedInTransRef : si le patient a fait un son PENDANT
+        // que Gemini posait la question (barge-in), timerA serait inutile.
+        } else if (turnN === 1 && !patientRespondedInTransRef.current) {
           // Gemini vient de poser la question → démarrer le timer 5s APRÈS la
           // fin de l'audio (pas depuis le turnComplete qui arrive avant que les
           // chunks soient tous joués — sinon la relance part quasi-instantanément
@@ -1232,37 +1311,16 @@ export default function SOSExercise({
           if (!isPlayingRef.current) startTimerA();
           else onQueueEmptyRef.current = startTimerA;
 
-        } else if (finalClosingSentRef.current) {
-          // Gemini vient de prononcer la conclusion finale (patient toujours silencieux)
-          // → fermer la session dès que l'audio est terminé.
-          dbg(`reveal turnN=${turnN} : conclusion finale Gemini -> doClose()`);
-          const text = "[Le patient n'a pas répondu à la question de clôture]";
-          const doClose = () => {
-            void fetch("/api/sos/log", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                patientId,
-                practitionerId,
-                closingMessage: text,
-                word: chosenWordRef.current,
-                intakeMessage: intakeTranscriptRef.current,
-              }),
-            }).catch(() => {});
-            onTransitionToChat(text, chosenWordRef.current, intakeTranscriptRef.current);
-            cleanup();
-          };
-          if (!isPlayingRef.current) doClose();
-          else onQueueEmptyRef.current = doClose;
-
         }
-        // turnN >= 2, pas de réponse patient, finalClosingSentRef pas encore posé
-        // → c'était la réponse de Gemini à la relance douce → timerB déjà en cours
+        // else : patient a répondu mais Gemini n'a pas encore produit d'audio
+        // (relance en cours de génération, ou Gemini génère sa réponse) —
+        // closingGeminiRespTimerRef actif, doClose viendra via enqueueAudio +
+        // prochain turnComplete, ou via le TTS fallback 8s.
       }
     }
   }, [
     enqueueAudio, flushAudio, firstName,
-    triggerIntakeTransition, runVoiceCrisisCheck,
+    triggerIntakeTransition, runVoiceCrisisCheck, speakTherapeutic,
     patientId, practitionerId, onTransitionToChat, cleanup, dbg,
   ]);
 
