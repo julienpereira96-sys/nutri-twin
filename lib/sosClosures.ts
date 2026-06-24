@@ -53,9 +53,12 @@ export type MergedRow =
   | { role: "widget"; content: string; sosSummary: SosSummary };
 
 // Marge après le dernier message du fil pour rattacher un événement qui se
-// clôture après le dernier message texte (cas le plus fréquent : l'exercice
-// est souvent la dernière chose que fait le patient dans une session).
-export const TRAILING_BUFFER_MS = 10 * 60 * 1000; // 10 min
+// clôture après le dernier message texte. 48h couvre tous les cas réels :
+// patient qui ouvre "Mon Soutien" directement sans avoir chatté depuis
+// longtemps, hard timer 6min, ou exercice déclenché en fin de journée après
+// une conversation du matin. La borne basse (LEADING_BUFFER_MS) suffit à
+// exclure les vieux événements sans rapport avec le fil affiché.
+export const TRAILING_BUFFER_MS = 48 * 60 * 60 * 1000; // 48h
 // Marge symétrique avant le premier message — couvre le cas où l'événement a
 // été déclenché juste avant que le premier message du fil ne soit horodaté.
 export const LEADING_BUFFER_MS = 60 * 1000; // 1 min

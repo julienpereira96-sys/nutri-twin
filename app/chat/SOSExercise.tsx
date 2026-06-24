@@ -870,11 +870,17 @@ export default function SOSExercise({
           setClosingQuestionAsked(true);
           if (wsRef.current?.readyState === WebSocket.OPEN) {
             dbg("SEND félicitation+clôture fusionnées (clientContent) — micro autorisé dès maintenant");
+            // Contexte intake injecté pour que Gemini puisse faire le lien entre
+            // le mot tracé et ce que le patient a partagé au début de l'exercice.
+            const intakeCtx = intakeTranscriptRef.current.trim();
+            const intakeHint = intakeCtx
+              ? ` Au début de l'exercice, le patient avait partagé : "${intakeCtx.slice(0, 300)}".`
+              : "";
             wsRef.current.send(JSON.stringify({
               clientContent: {
                 turns: [{
                   role: "user",
-                  parts: [{ text: `[Le tracé silencieux est terminé et le mot "${word}" est entièrement illuminé à l'écran. Formule une intervention unique en deux temps, d'un ton bas, ancré et enveloppant : 1) Valide sobrement la fin de l'effort et la présence du mot. 2) Enchaîne directement, sans pause, avec une unique question ouverte et extrêmement douce pour mesurer son état par rapport au début de la crise. Reste très concis, voix murmurée, et attends sa réponse.]` }],
+                  parts: [{ text: `[Le tracé silencieux est terminé et le mot "${word}" est entièrement illuminé à l'écran.${intakeHint} Formule une intervention unique en deux temps, d'un ton bas, ancré et enveloppant : 1) Valide sobrement la fin de l'effort, puis montre en une phrase courte et naturelle pourquoi ce mot précisément peut l'ancrer maintenant — en faisant le lien avec ce qu'il a partagé au début si tu as ce contexte. 2) Enchaîne directement, sans pause, avec une unique question ouverte et extrêmement douce pour mesurer son état par rapport au début. Reste très concis, voix murmurée, et attends sa réponse.]` }],
                 }],
                 turnComplete: true,
               },
@@ -912,15 +918,37 @@ export default function SOSExercise({
 
   // Phase "ready" — Gemini a fini de parler, patient doit toucher l'écran
   const enterReadyPhase = useCallback(() => {
-    // Sélection du mot ici (avant le tap) pour ne pas recalculer au tap
-    const word = selectWord(inputTranscriptRef.current, patientGenderRef.current);
-    chosenWordRef.current = word;
-    setChosenWord(word);
+    // Sélection synchrone immédiate (fallback) — identique à l'ancien comportement,
+    // garantit qu'un mot est toujours disponible même si le patient tape très vite.
+    const fallbackWord = selectWord(inputTranscriptRef.current, patientGenderRef.current);
+    chosenWordRef.current = fallbackWord;
+    setChosenWord(fallbackWord);
     // Figer l'intake ICI, avant que la clôture ne s'ajoute au même accumulateur
     intakeTranscriptRef.current = inputTranscriptRef.current.trim();
     setPhase("ready");
     phaseRef.current = "ready";
-  }, []);
+
+    // Sélection contextuelle asynchrone via LLM — override le mot si la réponse
+    // arrive AVANT que le patient ne touche l'écran (~400ms, patient met en
+    // général 2-5s). Fallback silencieux : le mot aléatoire ci-dessus reste en place.
+    const intakeSnap = intakeTranscriptRef.current;
+    const genderSnap = patientGenderRef.current;
+    void fetch("/api/sos/word", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ patientId, transcript: intakeSnap, gender: genderSnap }),
+    })
+      .then(r => r.ok ? r.json() as Promise<{ word?: string }> : null)
+      .then(data => {
+        if (!data?.word) return;
+        // Ne mettre à jour que si le patient n'a pas encore tapé (phase toujours "ready")
+        if (phaseRef.current !== "ready") return;
+        chosenWordRef.current = data.word;
+        setChosenWord(data.word);
+        dbg(`enterReadyPhase: mot LLM "${data.word}" (fallback était "${fallbackWord}")`);
+      })
+      .catch(() => {}); // fallback silencieux : mot aléatoire déjà en place
+  }, [patientId, dbg]);
 
   const beginTracing = useCallback(() => {
     // Le mot est déjà sélectionné dans enterReadyPhase
