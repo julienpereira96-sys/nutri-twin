@@ -1080,12 +1080,15 @@ export default function DashboardPage() {
 
     // Clôtures d'exercice SOS (sos_events.closing_message rempli) — fusionnées
     // par horodatage dans displayedConversations, jamais écrites dans
-    // `conversations` (voir lib/sosClosures.ts). Pas besoin de polling ici :
-    // une clôture ne change plus une fois écrite par /api/sos/log.
-    fetch(`/api/sos/closures?patientId=${selectedPatientId}&practitionerId=${practitionerId}`)
-      .then(res => res.ok ? res.json() as Promise<{ events?: SosClosureEvent[] }> : null)
-      .then(data => setSosClosures(data?.events ?? []))
-      .catch(() => { /* silencieux */ });
+    // `conversations` (voir lib/sosClosures.ts). Rechargées aussi dans le
+    // polling ci-dessous pour que le widget apparaisse sans rechargement manuel
+    // quand l'exercice se termine pendant que le praticien a le dashboard ouvert.
+    const loadSosClosures = () =>
+      fetch(`/api/sos/closures?patientId=${selectedPatientId}&practitionerId=${practitionerId}`)
+        .then(res => res.ok ? res.json() as Promise<{ events?: SosClosureEvent[] }> : null)
+        .then(data => { if (data) setSosClosures(data.events ?? []); })
+        .catch(() => { /* silencieux */ });
+    void loadSosClosures();
 
     // Polling incrémental : seulement les nouveaux messages (quasi 0 octet si rien de nouveau)
     const interval = setInterval(async () => {
@@ -1100,6 +1103,10 @@ export default function DashboardPage() {
         setConversations(prev => [...prev, ...(newMsgs as Conversation[])]);
         lastTs = (newMsgs as Conversation[]).at(-1)!.created_at;
       }
+      // Re-fetch des clôtures SOS à chaque cycle — détecte les exercices qui
+      // se terminent pendant la session ouverte du praticien (coût négligeable :
+      // la requête est légère et les données ne changent qu'en cas de nouvel exercice)
+      void loadSosClosures();
     }, 10000);
 
     return () => clearInterval(interval);

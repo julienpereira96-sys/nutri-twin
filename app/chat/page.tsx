@@ -519,6 +519,11 @@ export default function ChatPage() {
   );
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [profileScreen, setProfileScreen] = useState<"main" | "victoires" | "voix" | "password" | "legal">("main");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [imageCompressing, setImageCompressing] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
   const [pendingImage, setPendingImage] = useState<{ base64: string; mimeType: string; previewUrl: string } | null>(null);
@@ -1674,237 +1679,400 @@ export default function ChatPage() {
         />
       )}
 
-     {/* Modale profil */}
-{showProfileModal && (
-  <div onClick={() => setShowProfileModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-    <div onClick={e => e.stopPropagation()} style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 360, border: `1px solid ${ACCENT_BORDER}`, maxHeight: "90vh", overflowY: "auto", position: "relative" }}>
+     {/* Modale profil — design moderne (sous-écrans) */}
+{showProfileModal && (() => {
+  const closeModal = () => { setShowProfileModal(false); setProfileScreen("main"); };
 
-      {/* Croix de fermeture */}
-      <button onClick={() => setShowProfileModal(false)}
-        style={{ position: "absolute", top: 16, right: 16, width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: 16, transition: "all 0.15s" }}
+  // ── Rangée générique ─────────────────────────────────────────────────────
+  const Row = ({
+    icon, label, onClick, chevron, loading,
+  }: {
+    icon: React.ReactNode; label: string; onClick?: () => void;
+    chevron?: boolean; loading?: boolean;
+  }) => (
+    <button
+      onClick={onClick}
+      style={{
+        width: "100%", display: "flex", alignItems: "center", gap: 14,
+        padding: "0 20px", minHeight: 52, background: "none", border: "none",
+        borderBottom: "1px solid rgba(255,255,255,0.04)",
+        cursor: onClick ? "pointer" : "default", transition: "background 0.12s",
+        textAlign: "left",
+      }}
+      onMouseEnter={e => { if (onClick) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+      onTouchStart={e => { if (onClick) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+      onTouchEnd={e => { e.currentTarget.style.background = "none"; }}
+    >
+      <span style={{ width: 22, display: "flex", alignItems: "center", justifyContent: "center", color: TEXT_MUTED, flexShrink: 0 }}>
+        {icon}
+      </span>
+      <span style={{ flex: 1, fontSize: 15, color: TEXT_PRIMARY, textAlign: "left" }}>
+        {label}
+      </span>
+      {loading ? (
+        <span style={{ width: 15, height: 15, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.1)", borderTop: `2px solid ${ACCENT}`, display: "inline-block", animation: "spin 1s linear infinite", flexShrink: 0 }} />
+      ) : chevron ? (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+      ) : null}
+    </button>
+  );
+
+  // ── En-tête des sous-écrans ───────────────────────────────────────────────
+  const SubHeader = ({ title }: { title: string }) => (
+    <div style={{ display: "flex", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, gap: 8 }}>
+      <button
+        onClick={() => setProfileScreen("main")}
+        style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}
+        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <span style={{ flex: 1, textAlign: "center", fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY }}>{title}</span>
+      <button
+        onClick={closeModal}
+        style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: 16, flexShrink: 0, transition: "all 0.15s" }}
         onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#e2e8f0"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#64748b"; }}>
-        ×
-      </button>
+        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#64748b"; }}
+      >×</button>
+    </div>
+  );
 
-      {/* Avatar */}
-      <div style={{ textAlign: "center", marginBottom: 20 }}>
-        <div style={{ position: "relative", width: 80, height: 80, margin: "0 auto 8px" }}>
-          {patientPhoto ? (
-            <img src={patientPhoto} alt="avatar" style={{ width: 80, height: 80, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(16,185,129,0.5)" }} onError={() => setPatientPhoto(null)} />
-          ) : (
-            <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#10b981", border: "1px solid rgba(16,185,129,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, fontWeight: 700, color: "#000" }}>{patientInitials}</div>
-          )}
-          {/* Bouton crayon — modifier la photo */}
-          <button onClick={() => patientAvatarRef.current?.click()} disabled={uploadingPhoto}
-            style={{ position: "absolute", bottom: 0, right: 0, width: 28, height: 28, borderRadius: "50%", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.5)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }}>
-            {uploadingPhoto
-              ? <span style={{ width: 11, height: 11, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: `2px solid ${ACCENT}`, display: "inline-block", animation: "spin 1s linear infinite" }} />
-              : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-            }
-          </button>
-          <input ref={patientAvatarRef} type="file" accept="image/*" style={{ display: "none" }} onChange={async e => {
-            const file = e.target.files?.[0]; if (!file || !patientId) return;
-            setUploadingPhoto(true);
-            try {
-              const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-              const compressed = await compressImage(file);
-              const dataUrl = `data:image/jpeg;base64,${compressed.base64}`;
-              // Afficher immédiatement + persister en localStorage (contourne le CDN Supabase)
-              setPatientPhoto(dataUrl);
-              localStorage.setItem(`avatar_b64_${patientId}`, dataUrl);
-              const byteString = atob(compressed.base64);
-              const ab = new ArrayBuffer(byteString.length);
-              const ia = new Uint8Array(ab);
-              for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-              const blob = new Blob([ab], { type: "image/jpeg" });
-              await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "no-store" });
-              // Marquer l'upload local (ref + localStorage) pour ignorer le CDN stale pendant 30s
-              lastSelfUploadAtRef.current = Date.now();
-              localStorage.setItem(`avatar_upload_ts_${patientId}`, String(Date.now()));
-              // Déclenche le re-fetch sur les autres appareils via Realtime
-              await supabase.from("patients").update({ avatar_updated_at: new Date().toISOString() }).eq("user_id", patientId);
-            } catch { /* silencieux */ }
-            setUploadingPhoto(false);
-            if (patientAvatarRef.current) patientAvatarRef.current.value = "";
-          }} />
-        </div>
-        {/* Lien "Revenir aux initiales" — visible seulement si photo présente */}
-        {patientPhoto && (
-          <button
-            onClick={async () => {
-              if (!patientId) return;
-              const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-              await supabase.storage.from("Avatars").remove([`${patientId}/avatar.jpg`]);
-              localStorage.removeItem(`avatar_b64_${patientId}`);
-              // Garde 30s pour que le Realtime n'aille pas re-fetcher l'ancienne image depuis le CDN encore stale
-              lastSelfUploadAtRef.current = Date.now();
-              localStorage.setItem(`avatar_upload_ts_${patientId}`, String(Date.now()));
-              setPatientPhoto(null);
-              // Déclenche la suppression sur les autres appareils via Realtime
-              await supabase.from("patients").update({ avatar_updated_at: new Date().toISOString() }).eq("user_id", patientId);
-            }}
-            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: TEXT_MUTED, textDecoration: "underline", textDecorationStyle: "dotted", padding: "0 0 10px", display: "block", margin: "0 auto" }}
-            onMouseEnter={e => e.currentTarget.style.color = TEXT_SECONDARY}
-            onMouseLeave={e => e.currentTarget.style.color = TEXT_MUTED}>
-            Revenir aux initiales
-          </button>
-        )}
-        {!patientPhoto && <div style={{ height: 10 }} />}
+  return (
+    <div
+      onClick={closeModal}
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", zIndex: 100, display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? 0 : 20 }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ background: "#060908", borderRadius: isMobile ? "20px 20px 0 0" : 20, width: "100%", maxWidth: isMobile ? "100%" : 390, maxHeight: isMobile ? "88dvh" : "88vh", border: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", overflow: "hidden" }}
+      >
 
-        {/* Identité en lecture seule */}
-        <h3 style={{ margin: "0 0 2px", fontSize: 18, fontWeight: 700, color: TEXT_PRIMARY }}>{patientFirstName} {editLastName}</h3>
-        <p style={{ margin: "0 0 10px", fontSize: 12, color: TEXT_MUTED }}>{patientEmail}</p>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 20, padding: "4px 12px", marginBottom: 4 }}>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke={ACCENT} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          <span style={{ fontSize: 10, color: ACCENT, fontWeight: 600 }}>Identité vérifiée par votre praticien</span>
-        </div>
-        <div style={{ marginTop: 6 }}>
-        <button onClick={async () => {
-        try {
-          const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-          const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
-          const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
-          await supabase.from("patients").update({
-            admin_alerts: [...alerts, {
-              type: "admin_alert",
-              alert_type: "identity_correction",
-              date: new Date().toISOString(),
-              seen: false,
-            }]
-          }).eq("user_id", patientId);
-          setShowProfileModal(false);
-          alert("Votre praticien a été notifié. Il corrigera votre dossier prochainement.");
-        } catch {
-          alert("Une erreur est survenue. Veuillez réessayer.");
-        }
-      }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: TEXT_MUTED, textDecoration: "underline", textDecorationStyle: "dotted", padding: 0 }}
-        onMouseEnter={e => e.currentTarget.style.color = TEXT_SECONDARY}
-        onMouseLeave={e => e.currentTarget.style.color = TEXT_MUTED}>
-        Une erreur dans votre nom ? Prévenez votre praticien.
-      </button>
+        {/* ══════════════════ ÉCRAN PRINCIPAL ══════════════════ */}
+        {profileScreen === "main" && (
+          <>
+            {/* Bouton fermeture */}
+            <div style={{ display: "flex", justifyContent: "flex-end", padding: "14px 14px 0", flexShrink: 0 }}>
+              <button
+                onClick={closeModal}
+                style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: 16, transition: "all 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#e2e8f0"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#64748b"; }}
+              >×</button>
+            </div>
 
-        </div>
-      </div>
-
-      {/* Mes Victoires */}
-      {patientVictories.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}><IconAward size={13} color={TEXT_MUTED} strokeWidth={1.5} /> Mes Victoires</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {patientVictories.slice(-5).reverse().map((v, i) => (
-              <div key={i} style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, padding: "8px 12px", display: "flex", alignItems: "center", gap: 8 }}>
-                <IconAward size={14} color={ACCENT} strokeWidth={1.5} style={{ flexShrink: 0 }} />
-                <p style={{ margin: 0, fontSize: 12, color: TEXT_SECONDARY, lineHeight: 1.5 }}>{v}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Sélecteur de voix thérapeutique */}
-      {therapeuticVoices.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: TEXT_MUTED, letterSpacing: "0.1em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-            Voix thérapeutique
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {therapeuticVoices.map((v) => {
-              const isSelected = selectedTherapeuticVoice?.id === v.id;
-              return (
+            {/* Avatar + identité */}
+            <div style={{ textAlign: "center", padding: "10px 20px 18px", flexShrink: 0 }}>
+              <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 10px" }}>
+                {patientPhoto ? (
+                  <img src={patientPhoto} alt="avatar" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(16,185,129,0.5)" }} onError={() => setPatientPhoto(null)} />
+                ) : (
+                  <div style={{ width: 72, height: 72, borderRadius: "50%", background: "#10b981", border: "1px solid rgba(16,185,129,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, color: "#000" }}>{patientInitials}</div>
+                )}
                 <button
-                  key={v.id}
-                  onClick={() => {
-                    setTherapeuticVoice(v);
-                    const preview = `Bonjour ${patientFirstName || "toi"}, je suis là pour t'accompagner.`;
-                    previewTherapeuticVoice(v, preview);
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "9px 12px",
-                    borderRadius: 10,
-                    background: isSelected ? "rgba(16,185,129,0.10)" : "rgba(255,255,255,0.03)",
-                    border: isSelected ? `1px solid rgba(16,185,129,0.40)` : `1px solid ${BORDER}`,
-                    color: isSelected ? ACCENT : TEXT_SECONDARY,
-                    fontSize: 12,
-                    fontWeight: isSelected ? 600 : 400,
-                    cursor: "pointer",
-                    textAlign: "left",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 8,
-                    transition: "all 0.15s",
-                  }}
+                  onClick={() => patientAvatarRef.current?.click()} disabled={uploadingPhoto}
+                  style={{ position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.5)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }}
                 >
-                  <span style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {v.name}
-                      <span style={{ marginLeft: 6, fontSize: 10, opacity: 0.5, fontWeight: 400 }}>
-                        {v.gender === "FEMALE" ? "♀" : "♂"}
-                      </span>
-                    </span>
-                    <span style={{ fontSize: 10, opacity: 0.45, fontWeight: 400 }}>{v.description}</span>
-                  </span>
-                  {isSelected && (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                      <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                  )}
+                  {uploadingPhoto
+                    ? <span style={{ width: 10, height: 10, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: `2px solid ${ACCENT}`, display: "inline-block", animation: "spin 1s linear infinite" }} />
+                    : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  }
                 </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                <input
+                  ref={patientAvatarRef} type="file" accept="image/*" style={{ display: "none" }}
+                  onChange={async e => {
+                    const file = e.target.files?.[0]; if (!file || !patientId) return;
+                    setUploadingPhoto(true);
+                    try {
+                      const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+                      const compressed = await compressImage(file);
+                      const dataUrl = `data:image/jpeg;base64,${compressed.base64}`;
+                      setPatientPhoto(dataUrl);
+                      localStorage.setItem(`avatar_b64_${patientId}`, dataUrl);
+                      const byteString = atob(compressed.base64);
+                      const ab = new ArrayBuffer(byteString.length);
+                      const ia = new Uint8Array(ab);
+                      for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                      const blob = new Blob([ab], { type: "image/jpeg" });
+                      await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "no-store" });
+                      lastSelfUploadAtRef.current = Date.now();
+                      localStorage.setItem(`avatar_upload_ts_${patientId}`, String(Date.now()));
+                      await supabase.from("patients").update({ avatar_updated_at: new Date().toISOString() }).eq("user_id", patientId);
+                    } catch { /* silencieux */ }
+                    setUploadingPhoto(false);
+                    if (patientAvatarRef.current) patientAvatarRef.current.value = "";
+                  }}
+                />
+              </div>
 
-      {/* Actions */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-        <button onClick={async () => {
-          if (!patientId) return;
-          setExportingRGPD(true);
-          const res = await fetch(`/api/export-rgpd?patientId=${patientId}`);
-          const blob = await res.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a"); a.href = url; a.download = `nutritwin-export-${new Date().toISOString().split("T")[0]}.json`; a.click();
-          URL.revokeObjectURL(url);
-          setExportingRGPD(false);
-        }} disabled={exportingRGPD}
-          style={{ width: "100%", height: 40, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = TEXT_PRIMARY; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = TEXT_SECONDARY; }}>
-          {exportingRGPD ? "Export en cours..." : "📥 Télécharger mes données (RGPD)"}
-        </button>
+              {patientPhoto && (
+                <button
+                  onClick={async () => {
+                    if (!patientId) return;
+                    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+                    await supabase.storage.from("Avatars").remove([`${patientId}/avatar.jpg`]);
+                    localStorage.removeItem(`avatar_b64_${patientId}`);
+                    lastSelfUploadAtRef.current = Date.now();
+                    localStorage.setItem(`avatar_upload_ts_${patientId}`, String(Date.now()));
+                    setPatientPhoto(null);
+                    await supabase.from("patients").update({ avatar_updated_at: new Date().toISOString() }).eq("user_id", patientId);
+                  }}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: TEXT_MUTED, textDecoration: "underline", textDecorationStyle: "dotted", padding: "0 0 8px", display: "block", margin: "0 auto" }}
+                  onMouseEnter={e => e.currentTarget.style.color = TEXT_SECONDARY}
+                  onMouseLeave={e => e.currentTarget.style.color = TEXT_MUTED}
+                >Revenir aux initiales</button>
+              )}
 
-        <button onClick={() => { setShowProfileModal(false); setShowLogoutPatientModal(true); }}
-          style={{ width: "100%", height: 40, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.15s" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; e.currentTarget.style.color = "#f87171"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_SECONDARY; e.currentTarget.style.transform = "scale(1)"; }}
-          onMouseDown={e => { e.currentTarget.style.transform = "scale(0.96)"; e.currentTarget.style.background = "rgba(244,63,94,0.16)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.3)"; e.currentTarget.style.color = "#f87171"; }}
-          onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_SECONDARY; }}
-          onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.transform = "scale(0.96)"; e.currentTarget.style.background = "rgba(244,63,94,0.16)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.3)"; e.currentTarget.style.color = "#f87171"; }}
-          onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_SECONDARY; }}>
-          Se déconnecter
-        </button>
+              <h3 style={{ margin: "0 0 2px", fontSize: 20, fontWeight: 700, color: TEXT_PRIMARY }}>{patientFirstName} {editLastName}</h3>
+              <p style={{ margin: "0 0 10px", fontSize: 13, color: TEXT_MUTED }}>{patientEmail}</p>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 20, padding: "3px 10px" }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke={ACCENT} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <span style={{ fontSize: 10, color: ACCENT, fontWeight: 600 }}>Identité vérifiée par votre praticien</span>
+              </div>
+            </div>
 
-        <button onClick={() => { setShowProfileModal(false); setShowDeleteAccountModal(true); }}
-          style={{ width: "100%", height: 40, borderRadius: 10, background: "rgba(244,63,94,0.06)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }}
-          onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.12)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.35)"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.06)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; }}>
-          Clôturer mon accompagnement
-        </button>
-      </div>
+            {/* Rangées scrollables */}
+            <div style={{ flex: 1, overflowY: "auto", paddingBottom: isMobile ? "env(safe-area-inset-bottom, 12px)" : 12 }}>
 
-      {/* Liens légaux */}
-      <div style={{ display: "flex", gap: 16, justifyContent: "center" }}>
-        <a href="/confidentialite" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: TEXT_MUTED, textDecoration: "none" }}>Confidentialité</a>
-        <span style={{ color: TEXT_MUTED, fontSize: 11 }}>·</span>
-        <a href="/cgu" target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: TEXT_MUTED, textDecoration: "none" }}>CGU</a>
+              {/* Groupe 1 — personnalisation */}
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <Row
+                  icon={<IconAward size={18} strokeWidth={1.6} />}
+                  label="Mes victoires"
+                  chevron
+                  onClick={() => setProfileScreen("victoires")}
+                />
+                <Row
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>}
+                  label="Ma voix de suivi"
+                  chevron
+                  onClick={() => setProfileScreen("voix")}
+                />
+                <Row
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
+                  label="Mot de passe"
+                  chevron
+                  onClick={() => setProfileScreen("password")}
+                />
+              </div>
+
+              {/* Groupe 2 — données & support */}
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 6 }}>
+                <Row
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>}
+                  label="Télécharger mes données personnelles"
+                  loading={exportingRGPD}
+                  onClick={async () => {
+                    if (!patientId) return;
+                    setExportingRGPD(true);
+                    try {
+                      const res = await fetch(`/api/export-rgpd?patientId=${patientId}`);
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url; a.download = `nutritwin-export-${new Date().toISOString().split("T")[0]}.json`; a.click();
+                      URL.revokeObjectURL(url);
+                    } catch { /* silencieux */ }
+                    setExportingRGPD(false);
+                  }}
+                />
+                <Row
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
+                  label="Signaler une erreur dans mon dossier"
+                  onClick={async () => {
+                    try {
+                      const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+                      const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
+                      const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+                      await supabase.from("patients").update({
+                        admin_alerts: [...alerts, { type: "admin_alert", alert_type: "identity_correction", date: new Date().toISOString(), seen: false }]
+                      }).eq("user_id", patientId);
+                      closeModal();
+                      alert("Votre praticien a été notifié. Il corrigera votre dossier prochainement.");
+                    } catch { alert("Une erreur est survenue. Veuillez réessayer."); }
+                  }}
+                />
+              </div>
+
+              {/* Groupe 3 — session & légal */}
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 6 }}>
+                <Row
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>}
+                  label="Se déconnecter"
+                  onClick={() => { closeModal(); setShowLogoutPatientModal(true); }}
+                />
+                <Row
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>}
+                  label="Mentions légales"
+                  chevron
+                  onClick={() => setProfileScreen("legal")}
+                />
+              </div>
+
+              {/* Action destructive — très discrète */}
+              <div style={{ padding: "14px 20px 18px", display: "flex", justifyContent: "center" }}>
+                <button
+                  onClick={() => { closeModal(); setShowDeleteAccountModal(true); }}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "rgba(244,63,94,0.4)", padding: 0, transition: "color 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.color = "rgba(244,63,94,0.7)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = "rgba(244,63,94,0.4)"; }}
+                >
+                  Clôturer mon accompagnement
+                </button>
+              </div>
+
+            </div>
+          </>
+        )}
+
+        {/* ══════════════════ SOUS-ÉCRAN : VICTOIRES ══════════════════ */}
+        {profileScreen === "victoires" && (
+          <>
+            <SubHeader title="Mes victoires" />
+            <div style={{ flex: 1, overflowY: "auto", paddingBottom: 16 }}>
+              {patientVictories.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "48px 24px" }}>
+                  <div style={{ marginBottom: 10 }}><IconAward size={32} strokeWidth={1.2} color={TEXT_MUTED} /></div>
+                  <p style={{ margin: 0, fontSize: 14, color: TEXT_MUTED }}>Aucune victoire pour l'instant.</p>
+                  <p style={{ margin: "6px 0 0", fontSize: 12, color: TEXT_MUTED, opacity: 0.7 }}>Elles apparaîtront après vos exercices.</p>
+                </div>
+              ) : (
+                patientVictories.slice(-10).reverse().map((v, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                    <div style={{ flexShrink: 0, marginTop: 2 }}><IconAward size={15} color={ACCENT} strokeWidth={1.5} /></div>
+                    <p style={{ margin: 0, fontSize: 14, color: TEXT_SECONDARY, lineHeight: 1.55 }}>{v}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ══════════════════ SOUS-ÉCRAN : VOIX ══════════════════ */}
+        {profileScreen === "voix" && (
+          <>
+            <SubHeader title="Ma voix de suivi" />
+            <div style={{ flex: 1, overflowY: "auto", paddingBottom: 16 }}>
+              {therapeuticVoices.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "48px 24px", color: TEXT_MUTED, fontSize: 14 }}>
+                  Aucune voix disponible pour le moment.
+                </div>
+              ) : (
+                therapeuticVoices.map(v => {
+                  const isSelected = selectedTherapeuticVoice?.id === v.id;
+                  return (
+                    <button
+                      key={v.id}
+                      onClick={() => { setTherapeuticVoice(v); previewTherapeuticVoice(v, `Bonjour ${patientFirstName || "toi"}, je suis là pour t'accompagner.`); }}
+                      style={{ width: "100%", display: "flex", alignItems: "center", padding: "14px 20px", background: "none", border: "none", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer", gap: 14, transition: "background 0.12s", textAlign: "left" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+                      onTouchStart={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+                      onTouchEnd={e => { e.currentTarget.style.background = "none"; }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <p style={{ margin: "0 0 2px", fontSize: 15, color: isSelected ? ACCENT : TEXT_PRIMARY, fontWeight: isSelected ? 600 : 400 }}>
+                          {v.name}
+                          <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.4, fontWeight: 400 }}>{v.gender === "FEMALE" ? "♀" : "♂"}</span>
+                        </p>
+                        <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED }}>{v.description}</p>
+                      </div>
+                      {isSelected && (
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ══════════════════ SOUS-ÉCRAN : MOT DE PASSE ══════════════════ */}
+        {profileScreen === "password" && (
+          <>
+            <SubHeader title="Mot de passe" />
+            <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Nouveau mot de passe</label>
+                  <input
+                    type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••"
+                    style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "0 14px", fontSize: 15, outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
+                    onFocus={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.4)"; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Confirmer le mot de passe</label>
+                  <input
+                    type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••"
+                    style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "0 14px", fontSize: 15, outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
+                    onFocus={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.4)"; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                  />
+                </div>
+                {passwordMsg && (
+                  <p style={{ margin: 0, fontSize: 13, color: passwordMsg.type === "ok" ? ACCENT : "#f87171" }}>
+                    {passwordMsg.type === "ok" ? "✓ " : "⚠ "}{passwordMsg.text}
+                  </p>
+                )}
+                <button
+                  disabled={passwordLoading}
+                  onClick={async () => {
+                    if (!newPassword || newPassword.length < 6) { setPasswordMsg({ type: "err", text: "Minimum 6 caractères." }); return; }
+                    if (newPassword !== confirmPassword) { setPasswordMsg({ type: "err", text: "Les mots de passe ne correspondent pas." }); return; }
+                    setPasswordLoading(true); setPasswordMsg(null);
+                    try {
+                      const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+                      const { error } = await supabase.auth.updateUser({ password: newPassword });
+                      if (error) { setPasswordMsg({ type: "err", text: "Erreur lors de la mise à jour." }); }
+                      else { setPasswordMsg({ type: "ok", text: "Mot de passe mis à jour avec succès." }); setNewPassword(""); setConfirmPassword(""); }
+                    } catch { setPasswordMsg({ type: "err", text: "Une erreur est survenue." }); }
+                    setPasswordLoading(false);
+                  }}
+                  style={{ height: 44, borderRadius: 10, background: ACCENT, border: "none", color: "#000", fontSize: 15, fontWeight: 600, cursor: passwordLoading ? "not-allowed" : "pointer", opacity: passwordLoading ? 0.7 : 1, transition: "opacity 0.15s" }}
+                >
+                  {passwordLoading ? "Mise à jour..." : "Mettre à jour"}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* ══════════════════ SOUS-ÉCRAN : MENTIONS LÉGALES ══════════════════ */}
+        {profileScreen === "legal" && (
+          <>
+            <SubHeader title="Mentions légales" />
+            <div style={{ flex: 1, overflowY: "auto", paddingBottom: 16 }}>
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                {([
+                  { label: "Politique de confidentialité", href: "/confidentialite" },
+                  { label: "Conditions générales d'utilisation", href: "/cgu" },
+                ] as { label: string; href: string }[]).map(({ label, href }) => (
+                  <a
+                    key={href} href={href} target="_blank" rel="noopener noreferrer"
+                    style={{ display: "flex", alignItems: "center", padding: "0 20px", minHeight: 52, textDecoration: "none", borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.12s", gap: 14 }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span style={{ flex: 1, fontSize: 15, color: TEXT_PRIMARY }}>{label}</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                  </a>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
       </div>
     </div>
-  </div>
-)}
+  );
+})()}
 
 {/* Modale déconnexion patient */}
 {showLogoutPatientModal && (
@@ -2220,13 +2388,13 @@ export default function ChatPage() {
           {/* ═══ SIDEBAR BOTTOM — Profil ═══ */}
           <button
             onClick={() => setShowProfileModal(true)}
-            style={{ padding: isMobile ? "8px 8px 44px" : "8px 8px 24px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0, background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left", borderRadius: 12, transition: "background 0.15s" }}
+            style={{ padding: "10px 8px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0, background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left", borderRadius: 12, transition: "background 0.15s" }}
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.transform = "scale(1)"; }}
             onMouseDown={e => { e.currentTarget.style.transform = "scale(0.98)"; }}
             onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; }}
-            onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.background = "rgba(255,255,255,0.07)"; e.currentTarget.style.transform = "scale(0.98)"; }}
-            onTouchEnd={() => {}}>
+            onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.transform = "scale(0.98)"; }}
+            onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; }}>
             {/* Avatar */}
             <div style={{ width: 40, height: 40, borderRadius: "50%", border: "1px solid rgba(16,185,129,0.5)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               {patientPhoto ? (
@@ -2237,12 +2405,12 @@ export default function ChatPage() {
             </div>
             {/* Nom + sous-titre */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: "0 0 1px", fontSize: 14, fontWeight: 700, color: TEXT_PRIMARY, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{patientFirstName || "Patient"}</p>
-              <p style={{ margin: 0, fontSize: 11, color: TEXT_MUTED }}>Mon profil</p>
+              <p style={{ margin: "0 0 1px", fontSize: 15, fontWeight: 700, color: TEXT_PRIMARY, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{patientFirstName || "Patient"}</p>
+              <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED }}>Mon profil</p>
             </div>
-            {/* Icône settings — visuelle uniquement, le clic est sur le parent */}
-            <div style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <SettingsIcon size={15} />
+            {/* Icône settings — identique au bouton de fermeture de la modale profil */}
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <SettingsIcon size={15} color="#64748b" />
             </div>
           </button>
         </div>

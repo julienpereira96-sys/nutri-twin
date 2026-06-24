@@ -30,6 +30,47 @@ async function vertexGenerate(modelId: string, prompt: string, opts?: { maxOutpu
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
+// ─── Détection apaisement ─────────────────────────────────────────────────────
+// Copie légère de la même fonction dans /api/chat/route.ts — dupliquée ici pour
+// éviter les imports croisés entre routes Next.js. À garder en sync si le prompt
+// évolue.
+async function detectApaisementWithLLM(message: string): Promise<{ confirmed: boolean; murmure: string }> {
+  if (!message.trim()) return { confirmed: false, murmure: "" };
+  try {
+    const prompt = `Un patient vient de terminer un exercice de respiration/tracé guidé et a dit : "${message.trim().slice(0, 300)}"
+Réponds en JSON strict : {"confirmed": true/false, "murmure": "météo émotionnelle en 4-8 mots"}
+- confirmed: true UNIQUEMENT si la phrase exprime clairement un retour au calme (ex: "je me sens mieux", "ça va mieux", "je suis plus serein", "l'exercice m'a aidé").
+- murmure: description de l'état émotionnel final en 4-8 mots (ex: "Apaisée après l'exercice de tracé").
+- confirmed: false si le soulagement est partiel, incertain, ou si la phrase est neutre.`;
+    const raw = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 60, temperature: 0 });
+    const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as { confirmed?: boolean; murmure?: string };
+    return { confirmed: !!parsed.confirmed, murmure: parsed.murmure?.trim() ?? "" };
+  } catch {
+    return { confirmed: false, murmure: "" };
+  }
+}
+
+// ─── Synthèse globale intake + closing ────────────────────────────────────────
+// Génère une météo émotionnelle en 4-8 mots qui capture l'évolution complète
+// (motif d'entrée → état de sortie). Appelée uniquement si apaisement confirmé.
+async function generateGlobalInsight(intake: string, closing: string): Promise<string> {
+  const intakePart = intake.trim().slice(0, 250);
+  const closingPart = closing.trim().slice(0, 150);
+  if (!intakePart && !closingPart) return "";
+  try {
+    const prompt = `Un patient vient de terminer un exercice SOS.
+- Avant l'exercice : "${intakePart || "non renseigné"}"
+- Après l'exercice : "${closingPart || "non renseigné"}"
+Formule UNE météo émotionnelle globale en 4-8 mots qui capture l'évolution (avant → après).
+Exemples : "Culpabilité post-repas apaisée après tracé guidé", "Anxiété maîtrisée grâce à la respiration", "Tension traversée avec sérénité".
+Réponds uniquement avec la phrase, sans guillemets ni ponctuation finale.`;
+    const raw = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 30, temperature: 0 });
+    return raw.trim().replace(/^["']|["']$/g, "");
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Nettoie les transcriptions STT en français lisible.
  * Retourne { intake, closing } reformulés — "" si le texte est vide ou
@@ -139,6 +180,67 @@ export async function POST(request: Request) {
         intake_message: intakeClean || intakeMessage?.trim() || null,
         ...(resolvedStatus ? { status: resolvedStatus } : {}),
       }).eq("id", recent.id);
+
+      // ── Synthèse 2 — apaisement + météo globale ────────────────────────────
+      // Tourne uniquement si l'exercice s'est bien terminé avec une réponse de
+      // clôture (pas emergencyExit, pas abandon silencieux). On détecte
+      // l'apaisement sur le SEUL closingMessage — le texte propre de la réponse
+      // finale, sans les mots de crise de l'intake qui fausseraient l'analyse.
+      // Si confirmé : météo globale (intake + closing) → green + victoire.
+      // Si non confirmé : on ne touche pas emotional_insight (synthèse 1 reste).
+      if (!emergencyExit && (closingClean || closingMessage?.trim())) {
+        void (async () => {
+          try {
+            const closingForAnalysis = (closingClean || closingMessage?.trim()) ?? "";
+            const apaisement = await detectApaisementWithLLM(closingForAnalysis);
+            if (!apaisement.confirmed) return;
+
+            // Météo globale : intake + closing pour capturer l'évolution complète
+            const intakeForInsight = intakeClean || intakeMessage?.trim() || "";
+            const globalInsight = await generateGlobalInsight(intakeForInsight, closingForAnalysis);
+
+            // Victoire automatique si l'exercice était en réponse à une crise
+            const { data: eventFull } = await supabase
+              .from("sos_events")
+              .select("id, origin, sos_context, raw_response")
+              .eq("id", recent.id)
+              .single();
+            type EventFull = { id: string; origin?: string | null; sos_context?: string | null; raw_response?: string | null };
+            const ev = eventFull as EventFull | null;
+            let victoryText = "";
+            if (ev?.origin === "crise") {
+              const sosToolNames: Record<string, string> = {
+                breathing: "la cohérence cardiaque", ancrage: "l'ancrage sensoriel",
+                manger: "la pleine conscience alimentaire", defusion: "la défusion cognitive",
+                ecriture: "l'écriture cathartique",
+              };
+              let resolvedToolId: string | null = null;
+              try { resolvedToolId = (JSON.parse(ev.raw_response ?? "{}") as { tool_id?: string }).tool_id ?? null; } catch { /* ignore */ }
+              const exerciseLabel = resolvedToolId ? (sosToolNames[resolvedToolId] ?? null) : null;
+              const rawContext = (ev.sos_context ?? "").split("|")[0]?.trim();
+              const crisisLabel = rawContext && !rawContext.startsWith("[contexte chat récent]") && rawContext !== "Mon Soutien"
+                ? `une crise (${rawContext})`
+                : "un moment difficile";
+              victoryText = exerciseLabel
+                ? `A surmonté ${crisisLabel} grâce à ${exerciseLabel}.`
+                : `A surmonté ${crisisLabel} grâce à l'exercice SOS vocal.`;
+            }
+
+            await Promise.all([
+              supabase.from("patients").update({
+                emotional_status: "green",
+                emotional_insight: globalInsight || apaisement.murmure || "Apaisement après exercice SOS",
+                last_patient_message_at: new Date().toISOString(),
+                ...(victoryText ? {
+                  latest_victory: victoryText,
+                  victory_detected_at: new Date().toISOString(),
+                } : {}),
+              }).eq("user_id", patientId),
+              supabase.from("sos_events").update({ status: "success" }).eq("id", recent.id),
+            ]);
+          } catch { /* silencieux — ne doit jamais perturber la réponse client */ }
+        })();
+      }
     }
 
     return Response.json({ success: true });

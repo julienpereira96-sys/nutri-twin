@@ -145,6 +145,11 @@ type ChatRequest = {
   isPostExercise?: boolean; // follow-up chaud post-exercice — bypass total des effets de bord
   toolId?: string; // outil SOS utilisé (breathing, ancrage, etc.) — transmis avec isPostExercise
   isSosIntakeCheck?: boolean; // check de crise en arrière-plan sur l'intake vocal de SOSExercise
+  // Vrai uniquement sur le dernier appel isSosIntakeCheck (depuis enterReadyPhase,
+  // sur le transcript complet figé). Autorise l'écriture de emotional_insight —
+  // les appels intermédiaires ne l'écrivent jamais pour éviter le scintillement
+  // de la météo émotionnelle côté praticien pendant l'exercice.
+  isFinalIntake?: boolean;
 };
 
 // ═══ GARDE-FOU BRUT — urgences vitales absolues uniquement ═══
@@ -760,6 +765,7 @@ export async function POST(request: Request) {
       isPostExercise,
       toolId,
       isSosIntakeCheck,
+      isFinalIntake,
     } = await request.json() as ChatRequest;
 
     // Auth
@@ -1177,7 +1183,9 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
         const safetyText = CRISIS_CRITICAL_RESPONSES.suicide;
         await supabase.from("patients").update({
           emotional_status: "red_critical",
-          emotional_insight: sosIntakeCrisisAnalysis.murmure || "Urgence détectée pendant l'exercice SOS",
+          // emotional_insight uniquement sur la synthèse finale pour ne pas faire
+          // scintiller la météo praticien à chaque fragment d'intake
+          ...(isFinalIntake ? { emotional_insight: sosIntakeCrisisAnalysis.murmure || "Urgence détectée pendant l'exercice SOS" } : {}),
         }).eq("user_id", patientId);
         const { data: cur } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
         const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
@@ -1203,7 +1211,9 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       if (level === "red_behavioral") {
         await supabase.from("patients").update({
           emotional_status: "red_behavioral",
-          emotional_insight: sosIntakeCrisisAnalysis.murmure || "Alerte comportementale détectée pendant l'exercice SOS",
+          // emotional_insight uniquement sur la synthèse finale — pas sur les
+          // fragments intermédiaires (scintillement météo côté praticien)
+          ...(isFinalIntake ? { emotional_insight: sosIntakeCrisisAnalysis.murmure || "Alerte comportementale détectée pendant l'exercice SOS" } : {}),
         }).eq("user_id", patientId);
         const { data: cur } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
         const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];

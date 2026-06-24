@@ -948,7 +948,24 @@ export default function SOSExercise({
         dbg(`enterReadyPhase: mot LLM "${data.word}" (fallback était "${fallbackWord}")`);
       })
       .catch(() => {}); // fallback silencieux : mot aléatoire déjà en place
-  }, [patientId, dbg]);
+
+    // Synthèse 1 — écrit emotional_insight UNE SEULE FOIS, après l'intake complet.
+    // Les appels intermédiaires (runVoiceCrisisCheck) ne touchent jamais
+    // emotional_insight — seulement emotional_status pour la sécurité immédiate.
+    // Ici, isFinalIntake: true autorise la route à écrire la météo définitive
+    // de l'intake (motif de crise ou état calme documenté). Fire-and-forget.
+    void fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: intakeSnap,
+        patientId,
+        practitionerId,
+        isSosIntakeCheck: true,
+        isFinalIntake: true,
+      }),
+    }).catch(() => {});
+  }, [patientId, practitionerId, dbg]);
 
   const beginTracing = useCallback(() => {
     // Le mot est déjà sélectionné dans enterReadyPhase
