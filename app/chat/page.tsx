@@ -1719,34 +1719,28 @@ export default function ChatPage() {
   );
 
   // ── En-tête des sous-écrans ───────────────────────────────────────────────
+  const btnStyle: React.CSSProperties = { width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: 16, flexShrink: 0, transition: "all 0.15s" };
+  const btnEnter = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#e2e8f0"; };
+  const btnLeave = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#64748b"; };
+
   const SubHeader = ({ title }: { title: string }) => (
     <div style={{ display: "flex", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, gap: 8 }}>
-      <button
-        onClick={() => setProfileScreen("main")}
-        style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}
-        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
-      >
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      <button onClick={() => setProfileScreen("main")} style={btnStyle} onMouseEnter={btnEnter} onMouseLeave={btnLeave}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
       <span style={{ flex: 1, textAlign: "center", fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY }}>{title}</span>
-      <button
-        onClick={closeModal}
-        style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: 16, flexShrink: 0, transition: "all 0.15s" }}
-        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#e2e8f0"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#64748b"; }}
-      >×</button>
+      <button onClick={closeModal} style={btnStyle} onMouseEnter={btnEnter} onMouseLeave={btnLeave}>×</button>
     </div>
   );
 
   return (
     <div
       onClick={closeModal}
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", zIndex: 100, display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? 0 : 20 }}
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", zIndex: 100, display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? "0 14px" : 20 }}
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ background: "#060908", borderRadius: isMobile ? "20px 20px 0 0" : 20, width: "100%", maxWidth: isMobile ? "100%" : 390, maxHeight: isMobile ? "88dvh" : "88vh", border: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", overflow: "hidden" }}
+        style={{ background: "#060908", borderRadius: 20, width: "100%", maxWidth: isMobile ? "100%" : 390, minHeight: isMobile ? "72dvh" : "auto", maxHeight: isMobile ? "94dvh" : "88vh", border: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", overflow: "hidden", marginBottom: isMobile ? "env(safe-area-inset-bottom, 10px)" : 0 }}
       >
 
         {/* ══════════════════ ÉCRAN PRINCIPAL ══════════════════ */}
@@ -1763,7 +1757,7 @@ export default function ChatPage() {
             </div>
 
             {/* Avatar + identité */}
-            <div style={{ textAlign: "center", padding: "10px 20px 18px", flexShrink: 0 }}>
+            <div style={{ textAlign: "center", padding: "10px 20px 22px", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 10px" }}>
                 {patientPhoto ? (
                   <img src={patientPhoto} alt="avatar" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(16,185,129,0.5)" }} onError={() => setPatientPhoto(null)} />
@@ -1833,10 +1827,10 @@ export default function ChatPage() {
             </div>
 
             {/* Rangées scrollables */}
-            <div style={{ flex: 1, overflowY: "auto", paddingBottom: isMobile ? "env(safe-area-inset-bottom, 12px)" : 12 }}>
+            <div style={{ flex: 1, overflowY: "auto", paddingBottom: 12 }}>
 
-              {/* Groupe 1 — personnalisation */}
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              {/* Groupe 1 — personnalisation (8px de respiration depuis l'identité) */}
+              <div style={{ paddingTop: 8 }}>
                 <Row
                   icon={<IconAward size={18} strokeWidth={1.6} />}
                   label="Mes victoires"
@@ -1857,26 +1851,8 @@ export default function ChatPage() {
                 />
               </div>
 
-              {/* Groupe 2 — données & support */}
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 6 }}>
-                <Row
-                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>}
-                  label="Télécharger mes données personnelles"
-                  loading={exportingRGPD}
-                  onClick={async () => {
-                    if (!patientId) return;
-                    setExportingRGPD(true);
-                    try {
-                      const res = await fetch(`/api/export-rgpd?patientId=${patientId}`);
-                      const blob = await res.blob();
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement("a");
-                      a.href = url; a.download = `nutritwin-export-${new Date().toISOString().split("T")[0]}.json`; a.click();
-                      URL.revokeObjectURL(url);
-                    } catch { /* silencieux */ }
-                    setExportingRGPD(false);
-                  }}
-                />
+              {/* Groupe 2 — support & légal */}
+              <div style={{ marginTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                 <Row
                   icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
                   label="Signaler une erreur dans mon dossier"
@@ -1893,15 +1869,6 @@ export default function ChatPage() {
                     } catch { alert("Une erreur est survenue. Veuillez réessayer."); }
                   }}
                 />
-              </div>
-
-              {/* Groupe 3 — session & légal */}
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginTop: 6 }}>
-                <Row
-                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>}
-                  label="Se déconnecter"
-                  onClick={() => { closeModal(); setShowLogoutPatientModal(true); }}
-                />
                 <Row
                   icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>}
                   label="Mentions légales"
@@ -1910,8 +1877,17 @@ export default function ChatPage() {
                 />
               </div>
 
-              {/* Action destructive — très discrète */}
-              <div style={{ padding: "14px 20px 18px", display: "flex", justifyContent: "center" }}>
+              {/* Se déconnecter — séparé clairement */}
+              <div style={{ marginTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <Row
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>}
+                  label="Se déconnecter"
+                  onClick={() => { closeModal(); setShowLogoutPatientModal(true); }}
+                />
+              </div>
+
+              {/* Action destructive — très discrète, tout en bas */}
+              <div style={{ padding: "16px 20px 20px", display: "flex", justifyContent: "center" }}>
                 <button
                   onClick={() => { closeModal(); setShowDeleteAccountModal(true); }}
                   style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "rgba(244,63,94,0.4)", padding: 0, transition: "color 0.15s" }}
@@ -2048,7 +2024,29 @@ export default function ChatPage() {
           <>
             <SubHeader title="Mentions légales" />
             <div style={{ flex: 1, overflowY: "auto", paddingBottom: 16 }}>
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              {/* Téléchargement données */}
+              <div style={{ paddingTop: 8 }}>
+                <Row
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>}
+                  label="Télécharger mes données personnelles"
+                  loading={exportingRGPD}
+                  onClick={async () => {
+                    if (!patientId) return;
+                    setExportingRGPD(true);
+                    try {
+                      const res = await fetch(`/api/export-rgpd?patientId=${patientId}`);
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url; a.download = `nutritwin-export-${new Date().toISOString().split("T")[0]}.json`; a.click();
+                      URL.revokeObjectURL(url);
+                    } catch { /* silencieux */ }
+                    setExportingRGPD(false);
+                  }}
+                />
+              </div>
+              {/* Liens légaux */}
+              <div style={{ marginTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                 {([
                   { label: "Politique de confidentialité", href: "/confidentialite" },
                   { label: "Conditions générales d'utilisation", href: "/cgu" },
@@ -2386,9 +2384,10 @@ export default function ChatPage() {
           </div>
 
           {/* ═══ SIDEBAR BOTTOM — Profil ═══ */}
+          <div style={{ paddingBottom: isMobile ? "env(safe-area-inset-bottom, 12px)" : 0, flexShrink: 0 }}>
           <button
             onClick={() => setShowProfileModal(true)}
-            style={{ padding: "10px 8px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0, background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left", borderRadius: 12, transition: "background 0.15s" }}
+            style={{ padding: "10px 8px", display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left", borderRadius: 12, transition: "background 0.15s" }}
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.transform = "scale(1)"; }}
             onMouseDown={e => { e.currentTarget.style.transform = "scale(0.98)"; }}
@@ -2396,7 +2395,7 @@ export default function ChatPage() {
             onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.transform = "scale(0.98)"; }}
             onTouchEnd={e => { e.currentTarget.style.transform = "scale(1)"; }}>
             {/* Avatar */}
-            <div style={{ width: 40, height: 40, borderRadius: "50%", border: "1px solid rgba(16,185,129,0.5)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <div style={{ width: 40, height: 40, borderRadius: "50%", border: "1px solid rgba(16,185,129,0.5)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, pointerEvents: "none" }}>
               {patientPhoto ? (
                 <img src={patientPhoto} alt="avatar" style={{ width: 40, height: 40, objectFit: "cover" }} />
               ) : (
@@ -2413,6 +2412,7 @@ export default function ChatPage() {
               <SettingsIcon size={15} color="#64748b" />
             </div>
           </button>
+          </div>{/* /safe-area wrapper */}
         </div>
       </aside>
 
