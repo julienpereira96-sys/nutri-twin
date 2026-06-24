@@ -1719,9 +1719,9 @@ export default function ChatPage() {
   );
 
   // ── En-tête des sous-écrans ───────────────────────────────────────────────
-  const btnStyle: React.CSSProperties = { width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: 16, flexShrink: 0, transition: "all 0.15s" };
-  const btnEnter = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#e2e8f0"; };
-  const btnLeave = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#64748b"; };
+  const btnStyle: React.CSSProperties = { width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", flexShrink: 0, transition: "all 0.15s" };
+  const btnEnter = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; };
+  const btnLeave = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#64748b"; };
 
   const SubHeader = ({ title }: { title: string }) => (
     <div style={{ display: "flex", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, gap: 8 }}>
@@ -1742,7 +1742,7 @@ export default function ChatPage() {
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ background: "#060908", borderRadius: 20, width: "100%", maxWidth: 390, maxHeight: "90dvh", border: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", overflow: "hidden" }}
+        style={{ background: "#060908", borderRadius: 20, width: "100%", maxWidth: 390, maxHeight: "90dvh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 0 0 1px rgba(255,255,255,0.10), 0 24px 64px rgba(0,0,0,0.60), 0 0 52px rgba(16,185,129,0.07)" }}
       >
 
         {/* ══════════════════ ÉCRAN PRINCIPAL ══════════════════ */}
@@ -1833,8 +1833,8 @@ export default function ChatPage() {
             {/* Rangées scrollables */}
             <div style={{ flex: 1, overflowY: "auto", paddingBottom: 12 }}>
 
-              {/* Groupe 1 — personnalisation (espace respiratoire depuis l'identité) */}
-              <div style={{ paddingTop: 20 }}>
+              {/* Groupe 1 */}
+              <div>
                 <Row
                   icon={<IconAward size={18} strokeWidth={1.6} />}
                   label="Mes victoires"
@@ -1855,8 +1855,8 @@ export default function ChatPage() {
                 />
               </div>
 
-              {/* Groupe 2 — support & légal */}
-              <div style={{ marginTop: 16 }}>
+              {/* Groupe 2 */}
+              <div>
                 <Row
                   icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
                   label="Signaler une erreur dans mon dossier"
@@ -1881,8 +1881,8 @@ export default function ChatPage() {
                 />
               </div>
 
-              {/* Se déconnecter — séparé clairement */}
-              <div style={{ marginTop: 16 }}>
+              {/* Se déconnecter */}
+              <div>
                 <Row
                   icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>}
                   label="Se déconnecter"
@@ -2412,7 +2412,7 @@ export default function ChatPage() {
               <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED }}>Mon profil</p>
             </div>
             {/* Icône settings — identique au bouton de fermeture de la modale profil */}
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <SettingsIcon size={15} color="#64748b" />
             </div>
           </button>

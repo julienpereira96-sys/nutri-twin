@@ -5,9 +5,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   return (
     <>
       <style>{`
-        @keyframes ss-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes ss-pulse { 0%, 100% { box-shadow: 0 0 14px rgba(16,185,129,0.3), 0 0 28px rgba(16,185,129,0.1); } 50% { box-shadow: 0 0 22px rgba(16,185,129,0.55), 0 0 40px rgba(16,185,129,0.2); } }
-        #static-splash-arc { animation: ss-spin 3s linear infinite; }
+        @keyframes ss-pulse { 0%, 100% { box-shadow: 0 0 18px rgba(16,185,129,0.35), 0 0 36px rgba(16,185,129,0.12); } 50% { box-shadow: 0 0 28px rgba(16,185,129,0.6), 0 0 52px rgba(16,185,129,0.22); } }
         #static-splash-inner { animation: ss-pulse 2s ease-in-out infinite; }
       `}</style>
 
@@ -24,21 +22,14 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 28, transform: "translateY(-24px)" }}>
-          <div style={{ position: "relative", width: 128, height: 128 }}>
+          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
             {/* Halo radial externe */}
-            <div style={{ position: "absolute", top: -16, left: -16, right: -16, bottom: -16, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.14), transparent 62%)", pointerEvents: "none" }} />
-            {/* Arc tournant */}
-            <svg id="static-splash-arc" style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }} viewBox="0 0 100 100">
-              <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(16,185,129,0.08)" strokeWidth="1.5"/>
-              <circle cx="50" cy="50" r="46" fill="none" stroke="#10b981" strokeWidth="1.5" strokeDasharray="80 210" strokeLinecap="round"/>
-            </svg>
-            {/* Cercle intérieur pulsant + logo */}
-            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div id="static-splash-inner" style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <svg width="36" height="36" viewBox="0 0 585 586" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
-                  <path d={path} fill="#10B981" />
-                </svg>
-              </div>
+            <div style={{ position: "absolute", top: -28, left: -28, right: -28, bottom: -28, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.16), transparent 60%)", pointerEvents: "none" }} />
+            {/* Cercle pulsant + logo */}
+            <div id="static-splash-inner" style={{ width: 88, height: 88, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="42" height="42" viewBox="0 0 585 586" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
+                <path d={path} fill="#10B981" />
+              </svg>
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
