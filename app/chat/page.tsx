@@ -282,8 +282,10 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
           onMouseEnter={() => setPhotoHovered(true)}
           onMouseLeave={() => setPhotoHovered(false)}>
           <span style={{ fontSize: 11, color: ACCENT, fontWeight: 500, whiteSpace: "nowrap", maxWidth: photoHovered ? 120 : 0, opacity: photoHovered ? 1 : 0, transition: "max-width 0.25s ease, opacity 0.2s", overflow: "hidden" }}>Analyser votre repas</span>
-          <button onClick={handleImageClick} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(15,22,18,0.92)", backdropFilter: "blur(14px)", border: `1px solid ${photoHovered ? "rgba(16,185,129,0.55)" : "rgba(16,185,129,0.28)"}`, boxShadow: "0 4px 18px rgba(0,0,0,0.4)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", flexShrink: 0 }}>
-            <CameraIcon size={16} color={photoHovered ? ACCENT : TEXT_MUTED} />
+          <button onClick={handleImageClick} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: ACCENT, transition: "all 0.15s", flexShrink: 0 }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.14)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.45)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.07)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.25)"; }}>
+            <CameraIcon size={16} color="currentColor" />
           </button>
         </div>
         {/* Send — même DA que les autres boutons */}
@@ -291,15 +293,15 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
           style={{
             width: 36, height: 36,
             borderRadius: "50%",
-            background: "rgba(15,22,18,0.92)",
-            backdropFilter: "blur(14px)",
-            border: `1px solid ${canSend ? "rgba(16,185,129,0.55)" : "rgba(16,185,129,0.18)"}`,
-            boxShadow: "0 4px 18px rgba(0,0,0,0.4)",
+            background: canSend ? "rgba(16,185,129,0.10)" : "rgba(16,185,129,0.04)",
+            border: `1px solid ${canSend ? "rgba(16,185,129,0.35)" : "rgba(16,185,129,0.12)"}`,
             cursor: canSend ? "pointer" : "default",
             display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "all 0.2s",
+            transition: "all 0.15s",
             flexShrink: 0,
-          }}>
+          }}
+          onMouseEnter={canSend ? (e => { e.currentTarget.style.background = "rgba(16,185,129,0.18)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.55)"; }) : undefined}
+          onMouseLeave={canSend ? (e => { e.currentTarget.style.background = "rgba(16,185,129,0.10)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; }) : undefined}>
           <ArrowUpIcon size={14} color={canSend ? ACCENT : TEXT_MUTED} />
         </button>
       </div>
@@ -1763,7 +1765,7 @@ export default function ChatPage() {
             </div>
 
             {/* Avatar + identité */}
-            <div style={{ textAlign: "center", padding: "10px 20px 22px", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ textAlign: "center", padding: "10px 20px 56px", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 10px" }}>
                 {patientPhoto ? (
                   <img src={patientPhoto} alt="avatar" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(16,185,129,0.5)" }} onError={() => setPatientPhoto(null)} />
@@ -1833,7 +1835,7 @@ export default function ChatPage() {
             </div>
 
             {/* Rangées scrollables */}
-            <div style={{ flex: 1, overflowY: "auto", paddingTop: 56, paddingBottom: 12 }}>
+            <div style={{ flex: 1, overflowY: "auto", paddingTop: 8, paddingBottom: 12 }}>
 
               {/* Groupe 1 */}
               <div>
@@ -2226,15 +2228,15 @@ export default function ChatPage() {
                 Votre compagnon de suivi
               </span>
             </div>
-            <button onClick={() => setSidebarOpen(false)} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", flexShrink: 0 }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.opacity = "1"; }}
+            <button onClick={() => setSidebarOpen(false)} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", transition: "all 0.15s", flexShrink: 0 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#64748b"; }}
               onMouseDown={e => { e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
               onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
               onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.28)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; }}
               onTouchEnd={() => { /* pas de revert : la sidebar se ferme via onClick, le bouton disparaît */ }}>
-              <svg width={isMobile ? 15 : 13} height={isMobile ? 15 : 13} viewBox="0 0 24 24" fill="none" stroke={TEXT_SECONDARY} strokeWidth="2" strokeLinecap="round">
-                <path d="M18 6L6 18M6 6l12 12"/>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
             </button>
           </div>
@@ -2414,8 +2416,10 @@ export default function ChatPage() {
               <p style={{ margin: 0, fontSize: 11, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.08em" }}>Mon profil</p>
             </div>
             {/* Icône settings — identique au bouton de fermeture de la modale profil */}
-            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <SettingsIcon size={15} color="#64748b" />
+            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s", color: "#64748b" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.13)"; (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.18)"; (e.currentTarget as HTMLDivElement).style.color = "#e2e8f0"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.08)"; (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.10)"; (e.currentTarget as HTMLDivElement).style.color = "#64748b"; }}>
+              <SettingsIcon size={15} color="currentColor" />
             </div>
           </button>
           </div>{/* /padding-bottom wrapper */}
@@ -2714,7 +2718,7 @@ export default function ChatPage() {
             {showScrollBottom && (
               <button
                 onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
-                style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 44, height: 44, borderRadius: "50%", background: "rgba(15,22,18,0.92)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.45)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(0,0,0,0.4)", transition: "border-color 0.2s, box-shadow 0.2s", color: ACCENT }}
+                style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 36, height: 36, borderRadius: "50%", background: "rgba(15,22,18,0.92)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.45)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(0,0,0,0.4)", transition: "border-color 0.2s, box-shadow 0.2s", color: ACCENT }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.3), 0 6px 24px rgba(16,185,129,0.2)"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)"; }}
               >
