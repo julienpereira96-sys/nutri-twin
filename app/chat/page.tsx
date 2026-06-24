@@ -1707,7 +1707,7 @@ export default function ChatPage() {
       <span style={{ width: 22, display: "flex", alignItems: "center", justifyContent: "center", color: TEXT_MUTED, flexShrink: 0 }}>
         {icon}
       </span>
-      <span style={{ flex: 1, fontSize: 15, color: TEXT_PRIMARY, textAlign: "left" }}>
+      <span style={{ flex: 1, fontSize: 16, color: TEXT_PRIMARY, textAlign: "left" }}>
         {label}
       </span>
       {loading ? (
@@ -1729,18 +1729,20 @@ export default function ChatPage() {
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
       <span style={{ flex: 1, textAlign: "center", fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY }}>{title}</span>
-      <button onClick={closeModal} style={btnStyle} onMouseEnter={btnEnter} onMouseLeave={btnLeave}>×</button>
+      <button onClick={closeModal} style={btnStyle} onMouseEnter={btnEnter} onMouseLeave={btnLeave}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
   );
 
   return (
     <div
       onClick={closeModal}
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", zIndex: 100, display: "flex", alignItems: isMobile ? "flex-end" : "center", justifyContent: "center", padding: isMobile ? "0 14px" : 20 }}
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? "20px 14px" : 20 }}
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ background: "#060908", borderRadius: 20, width: "100%", maxWidth: isMobile ? "100%" : 390, minHeight: isMobile ? "72dvh" : "auto", maxHeight: isMobile ? "94dvh" : "88vh", border: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", overflow: "hidden", marginBottom: isMobile ? "env(safe-area-inset-bottom, 10px)" : 0 }}
+        style={{ background: "#060908", borderRadius: 20, width: "100%", maxWidth: 390, maxHeight: "90dvh", border: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", overflow: "hidden" }}
       >
 
         {/* ══════════════════ ÉCRAN PRINCIPAL ══════════════════ */}
@@ -1750,10 +1752,12 @@ export default function ChatPage() {
             <div style={{ display: "flex", justifyContent: "flex-end", padding: "14px 14px 0", flexShrink: 0 }}>
               <button
                 onClick={closeModal}
-                style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", fontSize: 16, transition: "all 0.15s" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#e2e8f0"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#64748b"; }}
-              >×</button>
+                style={btnStyle}
+                onMouseEnter={btnEnter}
+                onMouseLeave={btnLeave}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
             </div>
 
             {/* Avatar + identité */}
@@ -1829,8 +1833,8 @@ export default function ChatPage() {
             {/* Rangées scrollables */}
             <div style={{ flex: 1, overflowY: "auto", paddingBottom: 12 }}>
 
-              {/* Groupe 1 — personnalisation (8px de respiration depuis l'identité) */}
-              <div style={{ paddingTop: 8 }}>
+              {/* Groupe 1 — personnalisation (espace respiratoire depuis l'identité) */}
+              <div style={{ paddingTop: 20 }}>
                 <Row
                   icon={<IconAward size={18} strokeWidth={1.6} />}
                   label="Mes victoires"
@@ -1852,7 +1856,7 @@ export default function ChatPage() {
               </div>
 
               {/* Groupe 2 — support & légal */}
-              <div style={{ marginTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ marginTop: 16 }}>
                 <Row
                   icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
                   label="Signaler une erreur dans mon dossier"
@@ -1878,7 +1882,7 @@ export default function ChatPage() {
               </div>
 
               {/* Se déconnecter — séparé clairement */}
-              <div style={{ marginTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ marginTop: 16 }}>
                 <Row
                   icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>}
                   label="Se déconnecter"
@@ -2384,7 +2388,7 @@ export default function ChatPage() {
           </div>
 
           {/* ═══ SIDEBAR BOTTOM — Profil ═══ */}
-          <div style={{ paddingBottom: isMobile ? "env(safe-area-inset-bottom, 12px)" : 0, flexShrink: 0 }}>
+          <div style={{ paddingBottom: isMobile ? "max(44px, env(safe-area-inset-bottom, 44px))" : 0, flexShrink: 0 }}>
           <button
             onClick={() => setShowProfileModal(true)}
             style={{ padding: "10px 8px", display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left", borderRadius: 12, transition: "background 0.15s" }}
@@ -2412,7 +2416,7 @@ export default function ChatPage() {
               <SettingsIcon size={15} color="#64748b" />
             </div>
           </button>
-          </div>{/* /safe-area wrapper */}
+          </div>{/* /padding-bottom wrapper */}
         </div>
       </aside>
 
