@@ -2019,7 +2019,7 @@ export default function ChatPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Confirmer le mot de passe</label>
+                  <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Confirmer le nouveau mot de passe</label>
                   <input
                     type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••"
                     style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "0 14px", fontSize: 15, outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
@@ -2046,9 +2046,11 @@ export default function ChatPage() {
                     } catch { setPasswordMsg({ type: "err", text: "Une erreur est survenue." }); }
                     setPasswordLoading(false);
                   }}
-                  style={{ height: 44, borderRadius: 10, background: ACCENT, border: "none", color: "#000", fontSize: 15, fontWeight: 600, cursor: passwordLoading ? "not-allowed" : "pointer", opacity: passwordLoading ? 0.7 : 1, transition: "opacity 0.15s" }}
+                  style={{ height: 44, borderRadius: 10, background: ACCENT_DIM, border: `1px solid rgba(16,185,129,0.28)`, color: ACCENT, fontSize: 15, fontWeight: 600, cursor: passwordLoading ? "not-allowed" : "pointer", opacity: passwordLoading ? 0.65 : 1, transition: "all 0.15s", marginTop: 8 }}
+                  onMouseEnter={e => { if (!passwordLoading) e.currentTarget.style.background = "rgba(16,185,129,0.14)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = ACCENT_DIM; }}
                 >
-                  {passwordLoading ? "Mise à jour..." : "Mettre à jour"}
+                  {passwordLoading ? "Mise à jour…" : "Mettre à jour"}
                 </button>
               </div>
             </div>
