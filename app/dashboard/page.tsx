@@ -2129,7 +2129,7 @@ export default function DashboardPage() {
                   const alertDismissed = alertBannerDismissed[patient.id];
                   const activeAlert = hasAlert && !alertDismissed;
                   // Alerte administrative : correction d'identité non traitée
-                  const hasIdentityAlert = !activeAlert && (patient.admin_alerts ?? []).some((a: { type?: string; alert_type?: string; seen?: boolean }) => !a.seen && a.type === "admin_alert" && a.alert_type === "identity_correction");
+                  const hasIdentityAlert = !activeAlert && (patient.admin_alerts ?? []).some((a: { type?: string; alert_type?: string; seen?: boolean }) => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request"));
                   // Victoire récente : seulement si < 48h — déclarée avant les styles de carte
                   const victoryFresh = !!(patient.latest_victory && patient.victory_detected_at
                     && (Date.now() - new Date(patient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
@@ -2577,14 +2577,15 @@ export default function DashboardPage() {
                         - type "admin_alert" + alert_type "behavioral"   → behavioral nouveau format LLM, même règle
                         - type "admin_alert" + alert_type "behavioral_sos_intake" → détection comportementale intake vocal SOS,
                           signalée par la couleur ambre de la colonne gauche (pas besoin d'action manuelle supplémentaire)
-                      Inclure : type "crisis" et type "admin_alert" + alert_type "identity_correction" / "critical_llm" */}
-                  {(selectedPatient.admin_alerts?.filter(a => !a.seen && a.type !== "alert" && !(a.type === "admin_alert" && a.alert_type === "behavioral") && !(a.type === "admin_alert" && a.alert_type === "behavioral_sos_intake")).length ?? 0) > 0 && !onboardingDemoMode && (
+                      Inclure : type "crisis" et type "admin_alert" + alert_type "identity_correction" / "critical_llm" / "rectification_request" */}
+                  {/* ── Bloc amber : alertes cliniques critiques ── */}
+                  {(selectedPatient.admin_alerts?.filter(a => !a.seen && (a.type === "crisis" || (a.type === "admin_alert" && a.alert_type === "critical_llm"))).length ?? 0) > 0 && !onboardingDemoMode && (
                     <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                         <AlertIcon size={13} color={amber} />
                         <span style={{ fontSize: 11, fontWeight: 700, color: amber }}>Action requise</span>
                       </div>
-                      {selectedPatient.admin_alerts?.filter(a => !a.seen && a.type !== "alert" && !(a.type === "admin_alert" && a.alert_type === "behavioral") && !(a.type === "admin_alert" && a.alert_type === "behavioral_sos_intake")).map((alert, i) => (
+                      {selectedPatient.admin_alerts?.filter(a => !a.seen && (a.type === "crisis" || (a.type === "admin_alert" && a.alert_type === "critical_llm"))).map((alert, i) => (
                         <div key={i} style={{ marginBottom: 8 }}>
                           <p style={{ margin: "0 0 6px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
                             {alert.type === "crisis" && alert.alert_type === "suicide" && "Le patient a exprimé des idées suicidaires."}
@@ -2592,26 +2593,39 @@ export default function DashboardPage() {
                             {alert.type === "crisis" && alert.alert_type === "threat" && "Le patient a exprimé une menace envers autrui."}
                             {alert.type === "crisis" && alert.alert_type === "critical" && "Urgence vitale détectée (mots-clés)."}
                             {alert.type === "admin_alert" && alert.alert_type === "critical_llm" && "Détresse critique détectée par analyse IA — vérification recommandée."}
-                            {alert.type === "admin_alert" && alert.alert_type === "identity_correction" && "Le patient signale une erreur dans son nom."}
                           </p>
-                          {(alert.type === "crisis" || (alert.type === "admin_alert" && alert.alert_type === "critical_llm")) ? (
-                            <LeverAlerteCritique alert={alert} patientId={selectedPatient.id} practitionerId={practitionerId ?? undefined} onResolved={() => {
-                              setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a) } : p));
-                            }} />
-                          ) : alert.type === "admin_alert" && alert.alert_type === "identity_correction" ? (
+                          <LeverAlerteCritique alert={alert} patientId={selectedPatient.id} practitionerId={practitionerId ?? undefined} onResolved={() => {
+                            setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a) } : p));
+                          }} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* ── Bloc bleu : alertes administratives (dossier patient) ── */}
+                  {(selectedPatient.admin_alerts?.filter(a => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request")).length ?? 0) > 0 && !onboardingDemoMode && (
+                    <div style={{ background: "rgba(96,165,250,0.07)", border: "1px solid rgba(96,165,250,0.22)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={SLATE_BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: SLATE_BLUE }}>Demande de rectification</span>
+                      </div>
+                      {selectedPatient.admin_alerts?.filter(a => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request")).map((alert, i) => {
+                        const a = alert as { alert_type?: string; field?: string; correction?: string };
+                        return (
+                          <div key={i} style={{ marginBottom: 8 }}>
+                            <p style={{ margin: "0 0 6px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
+                              {a.alert_type === "rectification_request" && a.field
+                                ? <><strong style={{ color: "#cbd5e1" }}>{a.field}</strong> — {a.correction}</>
+                                : "Le patient signale une erreur dans son dossier."}
+                            </p>
                             <button onClick={() => openProfileModal(true)}
                               style={{ height: 28, borderRadius: 8, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1px solid rgba(96,165,250,0.3)`, background: "rgba(96,165,250,0.08)", color: SLATE_BLUE, transition: "all 0.2s" }}
                               onMouseEnter={e => { e.currentTarget.style.background = "rgba(96,165,250,0.16)"; }}
                               onMouseLeave={e => { e.currentTarget.style.background = "rgba(96,165,250,0.08)"; }}>
                               Modifier le profil →
                             </button>
-                          ) : (
-                            <p style={{ margin: "6px 0 0", fontSize: 11, color: "#64748b", fontStyle: "italic" }}>
-                              Traitez cette alerte via l&apos;interface correspondante.
-                            </p>
-                          )}
-                        </div>
-                      ))}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -2971,7 +2985,7 @@ export default function DashboardPage() {
                     const isOrange = patient.emotional_status === "orange";
                     const hasAlert = isRed || isBehavioral || isOrange;
                     const hasVictory = isVictoryFresh(patient) && !hasAlert;
-                    const hasIdentityAlertGrid = !hasAlert && (patient.admin_alerts ?? []).some((a: { type?: string; alert_type?: string; seen?: boolean }) => !a.seen && a.type === "admin_alert" && a.alert_type === "identity_correction");
+                    const hasIdentityAlertGrid = !hasAlert && (patient.admin_alerts ?? []).some((a: { type?: string; alert_type?: string; seen?: boolean }) => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request"));
                     const bState = bravoState[patient.id];
 
                     // Couleurs de la carte

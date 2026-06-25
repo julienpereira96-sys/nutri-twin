@@ -523,12 +523,30 @@ export default function ChatPage() {
   );
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [profileScreen, setProfileScreen] = useState<"main" | "victoires" | "voix" | "password" | "legal">("main");
+  const [profileScreen, setProfileScreen] = useState<"main" | "victoires" | "voix" | "password" | "legal" | "erreur" | "preferences">("main");
   const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  // Signaler une erreur
+  const [errorField, setErrorField] = useState("");
+  const [errorCorrection, setErrorCorrection] = useState("");
+  const [errorSubmitting, setErrorSubmitting] = useState(false);
+  const [errorSubmitted, setErrorSubmitted] = useState(false);
+  // Préférences alimentaires
+  const [profileData, setProfileData] = useState<{
+    age?: number | null; sexe?: string | null; taille?: number | null; poids?: number | null;
+    pathologies?: string | null; allergies?: string | null; traitements?: string | null;
+    objectif_clinique?: string | null; niveau_activite?: string | null; regime_specifique?: string | null;
+    objective?: string | null; aliments_aimes?: string | null; aliments_detestes?: string | null;
+  } | null>(null);
+  const [prefObjectif, setPrefObjectif] = useState("");
+  const [prefAliments, setPrefAliments] = useState("");
+  const [prefEvite, setPrefEvite] = useState("");
+  const [prefSaving, setPrefSaving] = useState(false);
+  const [prefSaved, setPrefSaved] = useState(false);
+  const [prefLoaded, setPrefLoaded] = useState(false);
   const [imageCompressing, setImageCompressing] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
   const [pendingImage, setPendingImage] = useState<{ base64: string; mimeType: string; previewUrl: string } | null>(null);
@@ -624,9 +642,28 @@ export default function ChatPage() {
   const { voices: therapeuticVoices, selectedVoice: selectedTherapeuticVoice, setSelectedVoice: setTherapeuticVoice, previewVoice: previewTherapeuticVoice, warmUp: warmUpVoice, isPlaying: isVoicePlaying } = useTherapeuticVoice();
 
   // Préchauffage du WebSocket quand l'écran voix s'ouvre
+  // + chargement profil pour "erreur" et "preferences"
   useEffect(() => {
     if (profileScreen === "voix" && selectedTherapeuticVoice) {
       warmUpVoice(selectedTherapeuticVoice.id);
+    }
+    if (profileScreen === "erreur") {
+      setErrorField("");
+      setErrorCorrection("");
+      setErrorSubmitted(false);
+    }
+    if ((profileScreen === "erreur" || profileScreen === "preferences") && !prefLoaded) {
+      void fetch("/api/get-patient-profile")
+        .then(r => r.json())
+        .then((data: { patient?: { age?: number | null; sexe?: string | null; taille?: number | null; poids?: number | null; pathologies?: string | null; allergies?: string | null; traitements?: string | null; objectif_clinique?: string | null; niveau_activite?: string | null; regime_specifique?: string | null; objective?: string | null; aliments_aimes?: string | null; aliments_detestes?: string | null } }) => {
+          if (data.patient) {
+            setProfileData(data.patient);
+            setPrefObjectif(data.patient.objective ?? "");
+            setPrefAliments(data.patient.aliments_aimes ?? "");
+            setPrefEvite(data.patient.aliments_detestes ?? "");
+            setPrefLoaded(true);
+          }
+        });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profileScreen]);
@@ -1694,7 +1731,7 @@ export default function ChatPage() {
 
      {/* Modale profil — design moderne (sous-écrans) */}
 {showProfileModal && (() => {
-  const closeModal = () => { setShowProfileModal(false); setProfileScreen("main"); };
+  const closeModal = () => { setShowProfileModal(false); setProfileScreen("main"); setPrefLoaded(false); setPrefSaved(false); setErrorSubmitted(false); };
 
   // ── Rangée générique ─────────────────────────────────────────────────────
   const Row = ({
@@ -1737,11 +1774,11 @@ export default function ChatPage() {
   const btnLeave = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#64748b"; };
 
   const SubHeader = ({ title }: { title: string }) => (
-    <div style={{ display: "flex", alignItems: "center", padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, gap: 8 }}>
+    <div style={{ display: "flex", alignItems: "center", padding: "20px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, gap: 8 }}>
       <button onClick={() => setProfileScreen("main")} style={btnStyle} onMouseEnter={btnEnter} onMouseLeave={btnLeave}>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
-      <span style={{ flex: 1, textAlign: "center", fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY }}>{title}</span>
+      <span style={{ flex: 1, textAlign: "center", fontSize: 17, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.01em" }}>{title}</span>
       <button onClick={closeModal} style={btnStyle} onMouseEnter={btnEnter} onMouseLeave={btnLeave}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
@@ -1861,6 +1898,12 @@ export default function ChatPage() {
                   onClick={() => setProfileScreen("voix")}
                 />
                 <Row
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 14h7v7H3z"/></svg>}
+                  label="Mes préférences alimentaires"
+                  chevron
+                  onClick={() => setProfileScreen("preferences")}
+                />
+                <Row
                   icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>}
                   label="Mot de passe"
                   chevron
@@ -1879,18 +1922,8 @@ export default function ChatPage() {
                 <Row
                   icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
                   label="Signaler une erreur dans mon dossier"
-                  onClick={async () => {
-                    try {
-                      const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-                      const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
-                      const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
-                      await supabase.from("patients").update({
-                        admin_alerts: [...alerts, { type: "admin_alert", alert_type: "identity_correction", date: new Date().toISOString(), seen: false }]
-                      }).eq("user_id", patientId);
-                      closeModal();
-                      alert("Votre praticien a été notifié. Il corrigera votre dossier prochainement.");
-                    } catch { alert("Une erreur est survenue. Veuillez réessayer."); }
-                  }}
+                  chevron
+                  onClick={() => setProfileScreen("erreur")}
                 />
               </div>
 
@@ -1903,13 +1936,13 @@ export default function ChatPage() {
                 />
               </div>
 
-              {/* Action destructive — très discrète, tout en bas */}
-              <div style={{ padding: "56px 20px 20px", display: "flex", justifyContent: "center" }}>
+              {/* Action destructive */}
+              <div style={{ padding: "28px 20px 20px", display: "flex", justifyContent: "center" }}>
                 <button
                   onClick={() => { closeModal(); setShowDeleteAccountModal(true); }}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "rgba(244,63,94,0.4)", padding: 0, transition: "color 0.15s" }}
-                  onMouseEnter={e => { e.currentTarget.style.color = "rgba(244,63,94,0.7)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = "rgba(244,63,94,0.4)"; }}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#f87171", padding: 0, transition: "color 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.color = "#fca5a5"; }}
+                  onMouseLeave={e => { e.currentTarget.style.color = "#f87171"; }}
                 >
                   Clôturer mon accompagnement
                 </button>
@@ -1923,7 +1956,7 @@ export default function ChatPage() {
         {profileScreen === "victoires" && (
           <>
             <SubHeader title="Mes victoires" />
-            <div style={{ flex: 1, overflowY: "auto", paddingBottom: 16 }}>
+            <div style={{ flex: 1, overflowY: "auto", paddingBottom: 24, paddingTop: 8 }}>
               {patientVictories.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "48px 24px" }}>
                   <div style={{ marginBottom: 10 }}><IconAward size={32} strokeWidth={1.2} color={TEXT_MUTED} /></div>
@@ -1949,7 +1982,7 @@ export default function ChatPage() {
               @keyframes vp-bar { 0%,100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
             `}</style>
             <SubHeader title="Ma voix de suivi" />
-            <div style={{ flex: 1, overflowY: "auto", paddingBottom: 16 }}>
+            <div style={{ flex: 1, overflowY: "auto", paddingBottom: 24, paddingTop: 8 }}>
               {therapeuticVoices.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "48px 24px", color: TEXT_MUTED, fontSize: 14 }}>
                   Aucune voix disponible pour le moment.
@@ -2061,9 +2094,9 @@ export default function ChatPage() {
         {profileScreen === "legal" && (
           <>
             <SubHeader title="Mentions légales" />
-            <div style={{ flex: 1, overflowY: "auto", paddingBottom: 16 }}>
+            <div style={{ flex: 1, overflowY: "auto", paddingBottom: 24, paddingTop: 8 }}>
               {/* Téléchargement données */}
-              <div style={{ paddingTop: 8 }}>
+              <div>
                 <Row
                   icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>}
                   label="Télécharger mes données personnelles"
@@ -2084,7 +2117,7 @@ export default function ChatPage() {
                 />
               </div>
               {/* Liens légaux */}
-              <div style={{ marginTop: 16, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ marginTop: 8 }}>
                 {([
                   { label: "Politique de confidentialité", href: "/confidentialite" },
                   { label: "Conditions générales d'utilisation", href: "/cgu" },
@@ -2101,6 +2134,200 @@ export default function ChatPage() {
                   </a>
                 ))}
               </div>
+            </div>
+          </>
+        )}
+
+        {/* ══════════════════ SOUS-ÉCRAN : ERREUR DOSSIER ══════════════════ */}
+        {profileScreen === "erreur" && (
+          <>
+            <SubHeader title="Signaler une erreur" />
+            <div style={{ flex: 1, overflowY: "auto", paddingBottom: 24, paddingTop: 8 }}>
+              {errorSubmitted ? (
+                /* État de confirmation */
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 24px", textAlign: "center" }}>
+                  <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(96,165,250,0.12)", border: "1.5px solid rgba(96,165,250,0.3)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                  <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY }}>Demande envoyée</p>
+                  <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, lineHeight: 1.6, maxWidth: 260 }}>Votre praticien a été notifié et corrigera votre dossier prochainement.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Données en lecture seule */}
+                  {profileData && (
+                    <div style={{ padding: "16px 20px 0" }}>
+                      {/* Infos personnelles */}
+                      <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.08em" }}>Informations personnelles</p>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 16 }}>
+                        {[
+                          { label: "Âge", value: profileData.age ? `${profileData.age} ans` : "—" },
+                          { label: "Taille", value: profileData.taille ? `${profileData.taille} cm` : "—" },
+                          { label: "Poids", value: profileData.poids ? `${profileData.poids} kg` : "—" },
+                          { label: "Sexe", value: profileData.sexe ?? "—" },
+                        ].map(f => (
+                          <div key={f.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "8px 12px" }}>
+                            <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.06em" }}>{f.label}</p>
+                            <p style={{ margin: 0, fontSize: 13, color: TEXT_PRIMARY, fontWeight: 500 }}>{f.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Contexte médical */}
+                      <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.08em" }}>Contexte médical</p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
+                        {[
+                          { label: "Pathologies", value: profileData.pathologies ?? "—" },
+                          { label: "Allergies", value: profileData.allergies ?? "—" },
+                          { label: "Traitements", value: profileData.traitements ?? "—" },
+                          { label: "Objectif clinique", value: profileData.objectif_clinique ?? "—" },
+                          { label: "Activité physique", value: profileData.niveau_activite ?? "—" },
+                          { label: "Régime alimentaire", value: profileData.regime_specifique ?? "—" },
+                        ].map(f => (
+                          <div key={f.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "8px 12px", display: "flex", justifyContent: "space-between", gap: 12 }}>
+                            <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED, flexShrink: 0 }}>{f.label}</p>
+                            <p style={{ margin: 0, fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, textAlign: "right" }}>{f.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Formulaire */}
+                  <div style={{ padding: "0 20px" }}>
+                    <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 20 }}>
+                      <p style={{ margin: "0 0 14px", fontSize: 13, color: TEXT_MUTED, lineHeight: 1.55 }}>Sélectionnez le champ incorrect et précisez la correction souhaitée.</p>
+                      <div style={{ marginBottom: 12 }}>
+                        <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500 }}>Champ concerné</label>
+                        <select
+                          value={errorField} onChange={e => setErrorField(e.target.value)}
+                          style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: `1px solid ${errorField ? "rgba(96,165,250,0.35)" : "rgba(255,255,255,0.1)"}`, color: errorField ? TEXT_PRIMARY : TEXT_MUTED, padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", appearance: "none", cursor: "pointer" }}>
+                          <option value="" disabled>Choisir une information…</option>
+                          <optgroup label="Informations personnelles">
+                            <option value="Âge">Âge</option>
+                            <option value="Taille">Taille</option>
+                            <option value="Poids">Poids</option>
+                            <option value="Sexe">Sexe</option>
+                          </optgroup>
+                          <optgroup label="Contexte médical">
+                            <option value="Pathologies">Pathologies</option>
+                            <option value="Allergies">Allergies</option>
+                            <option value="Traitements">Traitements</option>
+                            <option value="Objectif clinique">Objectif clinique</option>
+                            <option value="Activité physique">Activité physique</option>
+                            <option value="Régime alimentaire">Régime alimentaire</option>
+                          </optgroup>
+                        </select>
+                      </div>
+                      <div style={{ marginBottom: 20 }}>
+                        <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500 }}>Correction souhaitée</label>
+                        <textarea
+                          value={errorCorrection} onChange={e => setErrorCorrection(e.target.value)}
+                          placeholder="Décrivez la correction…" rows={3}
+                          style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: `1px solid ${errorCorrection.trim() ? "rgba(96,165,250,0.35)" : "rgba(255,255,255,0.1)"}`, color: TEXT_PRIMARY, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5 }}
+                          onFocus={e => { e.currentTarget.style.borderColor = "rgba(96,165,250,0.5)"; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = errorCorrection.trim() ? "rgba(96,165,250,0.35)" : "rgba(255,255,255,0.1)"; }}
+                        />
+                      </div>
+                      <button
+                        disabled={!errorField || !errorCorrection.trim() || errorSubmitting}
+                        onClick={async () => {
+                          setErrorSubmitting(true);
+                          try {
+                            const res = await fetch("/api/patient/report-error", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ field: errorField, correction: errorCorrection }),
+                            });
+                            if (res.ok) setErrorSubmitted(true);
+                          } finally {
+                            setErrorSubmitting(false);
+                          }
+                        }}
+                        style={{ width: "100%", height: 44, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: !errorField || !errorCorrection.trim() || errorSubmitting ? "not-allowed" : "pointer", opacity: !errorField || !errorCorrection.trim() || errorSubmitting ? 0.4 : 1, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.28)", color: "#60a5fa", transition: "all 0.15s" }}
+                        onMouseEnter={e => { if (errorField && errorCorrection.trim()) e.currentTarget.style.background = "rgba(96,165,250,0.18)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(96,165,250,0.1)"; }}
+                      >
+                        {errorSubmitting ? "Envoi…" : "Envoyer la demande"}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ══════════════════ SOUS-ÉCRAN : PRÉFÉRENCES ALIMENTAIRES ══════════════════ */}
+        {profileScreen === "preferences" && (
+          <>
+            <SubHeader title="Mes préférences alimentaires" />
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 32px" }}>
+              {!prefLoaded ? (
+                <div style={{ display: "flex", justifyContent: "center", padding: "48px 0" }}>
+                  <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.08)", borderTop: `2px solid ${ACCENT}`, animation: "spin 1s linear infinite" }} />
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Mon objectif principal</label>
+                    <input
+                      type="text" value={prefObjectif} onChange={e => { setPrefObjectif(e.target.value); setPrefSaved(false); }}
+                      placeholder="Perdre du poids, avoir plus d'énergie…"
+                      style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
+                      onFocus={e => { e.currentTarget.style.borderColor = `rgba(16,185,129,0.4)`; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Aliments que j&apos;aime</label>
+                    <textarea
+                      value={prefAliments} onChange={e => { setPrefAliments(e.target.value); setPrefSaved(false); }}
+                      placeholder="Poulet, légumes, riz, fruits…" rows={3}
+                      style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5, transition: "border-color 0.15s" }}
+                      onFocus={e => { e.currentTarget.style.borderColor = `rgba(16,185,129,0.4)`; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Aliments que j&apos;évite</label>
+                    <textarea
+                      value={prefEvite} onChange={e => { setPrefEvite(e.target.value); setPrefSaved(false); }}
+                      placeholder="Gluten, lactose, viande rouge…" rows={3}
+                      style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5, transition: "border-color 0.15s" }}
+                      onFocus={e => { e.currentTarget.style.borderColor = `rgba(16,185,129,0.4)`; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                    />
+                  </div>
+                  {prefSaved && (
+                    <p style={{ margin: 0, fontSize: 13, color: ACCENT }}>✓ Préférences enregistrées</p>
+                  )}
+                  <button
+                    disabled={prefSaving}
+                    onClick={async () => {
+                      setPrefSaving(true);
+                      setPrefSaved(false);
+                      try {
+                        await fetch("/api/patient/update-preferences", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            objective: prefObjectif || null,
+                            aliments_aimes: prefAliments || null,
+                            aliments_detestes: prefEvite || null,
+                          }),
+                        });
+                        setPrefSaved(true);
+                      } finally {
+                        setPrefSaving(false);
+                      }
+                    }}
+                    style={{ width: "100%", height: 44, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: prefSaving ? "not-allowed" : "pointer", opacity: prefSaving ? 0.6 : 1, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.28)", color: ACCENT, transition: "all 0.15s", marginTop: 4 }}
+                    onMouseEnter={e => { if (!prefSaving) e.currentTarget.style.background = "rgba(16,185,129,0.18)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}
+                  >
+                    {prefSaving ? "Enregistrement…" : "Enregistrer mes préférences"}
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}
