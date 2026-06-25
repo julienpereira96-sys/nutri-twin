@@ -539,9 +539,11 @@ export default function ChatPage() {
     age?: number | null; sexe?: string | null; taille?: number | null; poids?: number | null;
     pathologies?: string | null; allergies?: string | null; traitements?: string | null;
     objectif_clinique?: string | null; niveau_activite?: string | null; regime_specifique?: string | null;
-    objective?: string | null; aliments_aimes?: string | null; aliments_detestes?: string | null;
+    objective?: string | null; motivation?: string | null; defi?: string | null; aliments_aimes?: string | null; aliments_detestes?: string | null;
   } | null>(null);
   const [prefObjectif, setPrefObjectif] = useState("");
+  const [prefMotivation, setPrefMotivation] = useState("");
+  const [prefDefi, setPrefDefi] = useState("");
   const [prefAliments, setPrefAliments] = useState("");
   const [prefEvite, setPrefEvite] = useState("");
   const [prefSaving, setPrefSaving] = useState(false);
@@ -655,10 +657,12 @@ export default function ChatPage() {
     if ((profileScreen === "erreur" || profileScreen === "preferences") && !prefLoaded) {
       void fetch("/api/get-patient-profile")
         .then(r => r.json())
-        .then((data: { patient?: { age?: number | null; sexe?: string | null; taille?: number | null; poids?: number | null; pathologies?: string | null; allergies?: string | null; traitements?: string | null; objectif_clinique?: string | null; niveau_activite?: string | null; regime_specifique?: string | null; objective?: string | null; aliments_aimes?: string | null; aliments_detestes?: string | null } }) => {
+        .then((data: { patient?: { age?: number | null; sexe?: string | null; taille?: number | null; poids?: number | null; pathologies?: string | null; allergies?: string | null; traitements?: string | null; objectif_clinique?: string | null; niveau_activite?: string | null; regime_specifique?: string | null; objective?: string | null; motivation?: string | null; defi?: string | null; aliments_aimes?: string | null; aliments_detestes?: string | null } }) => {
           if (data.patient) {
             setProfileData(data.patient);
             setPrefObjectif(data.patient.objective ?? "");
+            setPrefMotivation(data.patient.motivation ?? "");
+            setPrefDefi(data.patient.defi ?? "");
             setPrefAliments(data.patient.aliments_aimes ?? "");
             setPrefEvite(data.patient.aliments_detestes ?? "");
             setPrefLoaded(true);
@@ -1799,7 +1803,7 @@ export default function ChatPage() {
         {profileScreen === "main" && (
           <>
             {/* Bouton fermeture */}
-            <div style={{ display: "flex", justifyContent: "flex-end", padding: "14px 14px 0", flexShrink: 0 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 14px 0", flexShrink: 0 }}>
               <button
                 onClick={closeModal}
                 style={btnStyle}
@@ -1811,7 +1815,7 @@ export default function ChatPage() {
             </div>
 
             {/* Avatar + identité */}
-            <div style={{ textAlign: "center", padding: "10px 20px 56px", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ textAlign: "center", padding: "10px 20px 22px", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
               <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 10px" }}>
                 {patientPhoto ? (
                   <img src={patientPhoto} alt="avatar" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "1px solid rgba(16,185,129,0.5)" }} onError={() => setPatientPhoto(null)} />
@@ -1961,7 +1965,7 @@ export default function ChatPage() {
                 <div style={{ textAlign: "center", padding: "48px 24px" }}>
                   <div style={{ marginBottom: 10 }}><IconAward size={32} strokeWidth={1.2} color={TEXT_MUTED} /></div>
                   <p style={{ margin: 0, fontSize: 14, color: TEXT_MUTED }}>Aucune victoire pour l'instant.</p>
-                  <p style={{ margin: "6px 0 0", fontSize: 12, color: TEXT_MUTED, opacity: 0.7 }}>Elles apparaîtront après vos exercices.</p>
+                  <p style={{ margin: "6px 0 0", fontSize: 12, color: TEXT_MUTED, opacity: 0.7 }}>Elles apparaissent au fil de vos échanges et exercices.</p>
                 </div>
               ) : (
                 patientVictories.slice(-10).reverse().map((v, i) => (
@@ -2095,12 +2099,11 @@ export default function ChatPage() {
           <>
             <SubHeader title="Mentions légales" />
             <div style={{ flex: 1, overflowY: "auto", paddingBottom: 24, paddingTop: 8 }}>
-              {/* Téléchargement données */}
+              {/* Téléchargement données + liens légaux — même template */}
               <div>
-                <Row
-                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>}
-                  label="Télécharger mes données personnelles"
-                  loading={exportingRGPD}
+                {/* Télécharger mes données */}
+                <button
+                  disabled={exportingRGPD}
                   onClick={async () => {
                     if (!patientId) return;
                     setExportingRGPD(true);
@@ -2114,23 +2117,30 @@ export default function ChatPage() {
                     } catch { /* silencieux */ }
                     setExportingRGPD(false);
                   }}
-                />
-              </div>
-              {/* Liens légaux */}
-              <div style={{ marginTop: 8 }}>
+                  style={{ width: "100%", display: "flex", alignItems: "center", padding: "0 20px", minHeight: 52, background: "none", border: "none", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer", gap: 14, transition: "background 0.12s", textAlign: "left", fontFamily: "inherit" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+                >
+                  {exportingRGPD
+                    ? <span style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.08)", borderTop: `2px solid ${ACCENT}`, display: "inline-block", animation: "spin 1s linear infinite", flexShrink: 0 }} />
+                    : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  }
+                  <span style={{ flex: 1, fontSize: 15, color: TEXT_PRIMARY, fontWeight: 400 }}>Télécharger mes données personnelles</span>
+                </button>
+                {/* Liens légaux */}
                 {([
                   { label: "Politique de confidentialité", href: "/confidentialite" },
                   { label: "Conditions générales d'utilisation", href: "/cgu" },
                 ] as { label: string; href: string }[]).map(({ label, href }) => (
                   <a
                     key={href} href={href} target="_blank" rel="noopener noreferrer"
-                    style={{ display: "flex", alignItems: "center", padding: "0 20px", minHeight: 52, textDecoration: "none", borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.12s", gap: 14 }}
+                    style={{ display: "flex", alignItems: "center", padding: "0 20px", minHeight: 52, textDecoration: "none", borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.12s", gap: 14, fontFamily: "inherit" }}
                     onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    <span style={{ flex: 1, fontSize: 15, color: TEXT_PRIMARY }}>{label}</span>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={TEXT_MUTED} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    <span style={{ flex: 1, fontSize: 15, color: TEXT_PRIMARY, fontWeight: 400 }}>{label}</span>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                   </a>
                 ))}
               </div>
@@ -2139,122 +2149,112 @@ export default function ChatPage() {
         )}
 
         {/* ══════════════════ SOUS-ÉCRAN : ERREUR DOSSIER ══════════════════ */}
-        {profileScreen === "erreur" && (
-          <>
-            <SubHeader title="Signaler une erreur" />
-            <div style={{ flex: 1, overflowY: "auto", paddingBottom: 24, paddingTop: 8 }}>
-              {errorSubmitted ? (
-                /* État de confirmation */
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 24px", textAlign: "center" }}>
-                  <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(96,165,250,0.12)", border: "1.5px solid rgba(96,165,250,0.3)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  </div>
-                  <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY }}>Demande envoyée</p>
-                  <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, lineHeight: 1.6, maxWidth: 260 }}>Votre praticien a été notifié et corrigera votre dossier prochainement.</p>
-                </div>
-              ) : (
-                <>
-                  {/* Données en lecture seule */}
-                  {profileData && (
-                    <div style={{ padding: "16px 20px 0" }}>
-                      {/* Infos personnelles */}
-                      <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.08em" }}>Informations personnelles</p>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 16 }}>
-                        {[
-                          { label: "Âge", value: profileData.age ? `${profileData.age} ans` : "—" },
-                          { label: "Taille", value: profileData.taille ? `${profileData.taille} cm` : "—" },
-                          { label: "Poids", value: profileData.poids ? `${profileData.poids} kg` : "—" },
-                          { label: "Sexe", value: profileData.sexe ?? "—" },
-                        ].map(f => (
-                          <div key={f.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "8px 12px" }}>
-                            <p style={{ margin: "0 0 2px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.06em" }}>{f.label}</p>
-                            <p style={{ margin: 0, fontSize: 13, color: TEXT_PRIMARY, fontWeight: 500 }}>{f.value}</p>
-                          </div>
-                        ))}
-                      </div>
-                      {/* Contexte médical */}
-                      <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.08em" }}>Contexte médical</p>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 20 }}>
-                        {[
-                          { label: "Pathologies", value: profileData.pathologies ?? "—" },
-                          { label: "Allergies", value: profileData.allergies ?? "—" },
-                          { label: "Traitements", value: profileData.traitements ?? "—" },
-                          { label: "Objectif clinique", value: profileData.objectif_clinique ?? "—" },
-                          { label: "Activité physique", value: profileData.niveau_activite ?? "—" },
-                          { label: "Régime alimentaire", value: profileData.regime_specifique ?? "—" },
-                        ].map(f => (
-                          <div key={f.label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, padding: "8px 12px", display: "flex", justifyContent: "space-between", gap: 12 }}>
-                            <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED, flexShrink: 0 }}>{f.label}</p>
-                            <p style={{ margin: 0, fontSize: 12, color: TEXT_PRIMARY, fontWeight: 500, textAlign: "right" }}>{f.value}</p>
-                          </div>
-                        ))}
-                      </div>
+        {profileScreen === "erreur" && (() => {
+          const allFields = [
+            { group: "Informations personnelles", label: "Âge", value: profileData?.age ? `${profileData.age} ans` : null },
+            { group: "Informations personnelles", label: "Taille", value: profileData?.taille ? `${profileData.taille} cm` : null },
+            { group: "Informations personnelles", label: "Poids", value: profileData?.poids ? `${profileData.poids} kg` : null },
+            { group: "Informations personnelles", label: "Sexe", value: profileData?.sexe ?? null },
+            { group: "Contexte médical", label: "Pathologies", value: profileData?.pathologies ?? null },
+            { group: "Contexte médical", label: "Allergies", value: profileData?.allergies ?? null },
+            { group: "Contexte médical", label: "Traitements", value: profileData?.traitements ?? null },
+            { group: "Contexte médical", label: "Objectif clinique", value: profileData?.objectif_clinique ?? null },
+            { group: "Contexte médical", label: "Activité physique", value: profileData?.niveau_activite ?? null },
+            { group: "Contexte médical", label: "Régime alimentaire", value: profileData?.regime_specifique ?? null },
+          ];
+          const groups = ["Informations personnelles", "Contexte médical"];
+          return (
+            <>
+              <SubHeader title="Signaler une erreur" />
+              <div style={{ flex: 1, overflowY: "auto", paddingBottom: 28, paddingTop: 0 }}>
+                {errorSubmitted ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 24px", textAlign: "center" }}>
+                    <div style={{ width: 52, height: 52, borderRadius: "50%", background: `rgba(16,185,129,0.12)`, border: `1.5px solid rgba(16,185,129,0.35)`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     </div>
-                  )}
-                  {/* Formulaire */}
-                  <div style={{ padding: "0 20px" }}>
-                    <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 20 }}>
-                      <p style={{ margin: "0 0 14px", fontSize: 13, color: TEXT_MUTED, lineHeight: 1.55 }}>Sélectionnez le champ incorrect et précisez la correction souhaitée.</p>
-                      <div style={{ marginBottom: 12 }}>
-                        <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500 }}>Champ concerné</label>
-                        <select
-                          value={errorField} onChange={e => setErrorField(e.target.value)}
-                          style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: `1px solid ${errorField ? "rgba(96,165,250,0.35)" : "rgba(255,255,255,0.1)"}`, color: errorField ? TEXT_PRIMARY : TEXT_MUTED, padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", appearance: "none", cursor: "pointer" }}>
-                          <option value="" disabled>Choisir une information…</option>
-                          <optgroup label="Informations personnelles">
-                            <option value="Âge">Âge</option>
-                            <option value="Taille">Taille</option>
-                            <option value="Poids">Poids</option>
-                            <option value="Sexe">Sexe</option>
-                          </optgroup>
-                          <optgroup label="Contexte médical">
-                            <option value="Pathologies">Pathologies</option>
-                            <option value="Allergies">Allergies</option>
-                            <option value="Traitements">Traitements</option>
-                            <option value="Objectif clinique">Objectif clinique</option>
-                            <option value="Activité physique">Activité physique</option>
-                            <option value="Régime alimentaire">Régime alimentaire</option>
-                          </optgroup>
-                        </select>
-                      </div>
-                      <div style={{ marginBottom: 20 }}>
-                        <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500 }}>Correction souhaitée</label>
-                        <textarea
-                          value={errorCorrection} onChange={e => setErrorCorrection(e.target.value)}
-                          placeholder="Décrivez la correction…" rows={3}
-                          style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: `1px solid ${errorCorrection.trim() ? "rgba(96,165,250,0.35)" : "rgba(255,255,255,0.1)"}`, color: TEXT_PRIMARY, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5 }}
-                          onFocus={e => { e.currentTarget.style.borderColor = "rgba(96,165,250,0.5)"; }}
-                          onBlur={e => { e.currentTarget.style.borderColor = errorCorrection.trim() ? "rgba(96,165,250,0.35)" : "rgba(255,255,255,0.1)"; }}
-                        />
-                      </div>
-                      <button
-                        disabled={!errorField || !errorCorrection.trim() || errorSubmitting}
-                        onClick={async () => {
-                          setErrorSubmitting(true);
-                          try {
-                            const res = await fetch("/api/patient/report-error", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ field: errorField, correction: errorCorrection }),
-                            });
-                            if (res.ok) setErrorSubmitted(true);
-                          } finally {
-                            setErrorSubmitting(false);
-                          }
-                        }}
-                        style={{ width: "100%", height: 44, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: !errorField || !errorCorrection.trim() || errorSubmitting ? "not-allowed" : "pointer", opacity: !errorField || !errorCorrection.trim() || errorSubmitting ? 0.4 : 1, background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.28)", color: "#60a5fa", transition: "all 0.15s" }}
-                        onMouseEnter={e => { if (errorField && errorCorrection.trim()) e.currentTarget.style.background = "rgba(96,165,250,0.18)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(96,165,250,0.1)"; }}
-                      >
-                        {errorSubmitting ? "Envoi…" : "Envoyer la demande"}
-                      </button>
-                    </div>
+                    <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY }}>Demande envoyée</p>
+                    <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, lineHeight: 1.6, maxWidth: 260 }}>Votre praticien a été notifié et corrigera votre dossier prochainement.</p>
                   </div>
-                </>
-              )}
-            </div>
-          </>
-        )}
+                ) : (
+                  <>
+                    {/* Instruction en haut */}
+                    <div style={{ padding: "16px 20px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                      <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, lineHeight: 1.6 }}>
+                        Cliquez sur l&apos;information incorrecte pour signaler une erreur à votre praticien.
+                      </p>
+                    </div>
+                    {/* Loading */}
+                    {!prefLoaded && (
+                      <div style={{ display: "flex", justifyContent: "center", padding: "40px 0" }}>
+                        <div style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.08)", borderTop: `2px solid ${ACCENT}`, animation: "spin 1s linear infinite" }} />
+                      </div>
+                    )}
+                    {/* Champs cliquables */}
+                    {prefLoaded && groups.map(group => (
+                      <div key={group}>
+                        <p style={{ margin: 0, padding: "14px 20px 6px", fontSize: 10, fontWeight: 700, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: "0.1em" }}>{group}</p>
+                        {allFields.filter(f => f.group === group).map(f => {
+                          const isOpen = errorField === f.label;
+                          return (
+                            <div key={f.label}>
+                              <button
+                                onClick={() => { setErrorField(isOpen ? "" : f.label); setErrorCorrection(""); }}
+                                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 20px", background: isOpen ? "rgba(16,185,129,0.06)" : "none", border: "none", borderBottom: isOpen ? "none" : "1px solid rgba(255,255,255,0.04)", cursor: "pointer", gap: 12, transition: "background 0.12s", textAlign: "left" }}
+                                onMouseEnter={e => { if (!isOpen) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                                onMouseLeave={e => { if (!isOpen) e.currentTarget.style.background = "none"; }}
+                              >
+                                <span style={{ fontSize: 14, color: isOpen ? ACCENT : TEXT_PRIMARY, fontWeight: isOpen ? 500 : 400, flex: 1 }}>{f.label}</span>
+                                <span style={{ fontSize: 13, color: f.value ? TEXT_SECONDARY : TEXT_MUTED, fontStyle: f.value ? "normal" : "italic", flexShrink: 0, maxWidth: 140, textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {f.value ?? "Non renseigné"}
+                                </span>
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={isOpen ? ACCENT : "rgba(255,255,255,0.2)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: "transform 0.2s", transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}><path d="M6 9l6 6 6-6"/></svg>
+                              </button>
+                              {/* Zone de correction inline */}
+                              {isOpen && (
+                                <div style={{ padding: "0 20px 14px", background: "rgba(16,185,129,0.04)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                                  <p style={{ margin: "0 0 8px", fontSize: 12, color: TEXT_MUTED }}>Quelle correction souhaitez-vous apporter ?</p>
+                                  <textarea
+                                    autoFocus
+                                    value={errorCorrection}
+                                    onChange={e => setErrorCorrection(e.target.value)}
+                                    placeholder={`Valeur correcte pour ${f.label.toLowerCase()}…`}
+                                    rows={2}
+                                    style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: `1px solid rgba(16,185,129,0.25)`, color: TEXT_PRIMARY, padding: "9px 12px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5, transition: "border-color 0.15s" }}
+                                    onFocus={e => { e.currentTarget.style.borderColor = `rgba(16,185,129,0.5)`; }}
+                                    onBlur={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.25)"; }}
+                                  />
+                                  <button
+                                    disabled={!errorCorrection.trim() || errorSubmitting}
+                                    onClick={async () => {
+                                      setErrorSubmitting(true);
+                                      try {
+                                        const res = await fetch("/api/patient/report-error", {
+                                          method: "POST",
+                                          headers: { "Content-Type": "application/json" },
+                                          body: JSON.stringify({ field: errorField, correction: errorCorrection }),
+                                        });
+                                        if (res.ok) setErrorSubmitted(true);
+                                      } finally { setErrorSubmitting(false); }
+                                    }}
+                                    style={{ marginTop: 8, height: 38, width: "100%", borderRadius: 9, fontSize: 13, fontWeight: 600, cursor: !errorCorrection.trim() || errorSubmitting ? "not-allowed" : "pointer", opacity: !errorCorrection.trim() || errorSubmitting ? 0.4 : 1, background: `rgba(16,185,129,0.1)`, border: `1px solid rgba(16,185,129,0.28)`, color: ACCENT, transition: "all 0.15s" }}
+                                    onMouseEnter={e => { if (errorCorrection.trim()) e.currentTarget.style.background = `rgba(16,185,129,0.18)`; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = `rgba(16,185,129,0.1)`; }}
+                                  >
+                                    {errorSubmitting ? "Envoi…" : "Envoyer la correction"}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            </>
+          );
+        })()}
 
         {/* ══════════════════ SOUS-ÉCRAN : PRÉFÉRENCES ALIMENTAIRES ══════════════════ */}
         {profileScreen === "preferences" && (
@@ -2278,10 +2278,30 @@ export default function ChatPage() {
                     />
                   </div>
                   <div>
+                    <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Ma motivation</label>
+                    <textarea
+                      value={prefMotivation} onChange={e => { setPrefMotivation(e.target.value); setPrefSaved(false); }}
+                      placeholder="Ce qui me pousse à prendre soin de moi…" rows={2}
+                      style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5, transition: "border-color 0.15s" }}
+                      onFocus={e => { e.currentTarget.style.borderColor = `rgba(16,185,129,0.4)`; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Mon principal défi</label>
+                    <textarea
+                      value={prefDefi} onChange={e => { setPrefDefi(e.target.value); setPrefSaved(false); }}
+                      placeholder="Grignotages, manque de temps, stress…" rows={2}
+                      style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5, transition: "border-color 0.15s" }}
+                      onFocus={e => { e.currentTarget.style.borderColor = `rgba(16,185,129,0.4)`; }}
+                      onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                    />
+                  </div>
+                  <div>
                     <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Aliments que j&apos;aime</label>
                     <textarea
                       value={prefAliments} onChange={e => { setPrefAliments(e.target.value); setPrefSaved(false); }}
-                      placeholder="Poulet, légumes, riz, fruits…" rows={3}
+                      placeholder="Poulet, légumes, riz, fruits…" rows={2}
                       style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5, transition: "border-color 0.15s" }}
                       onFocus={e => { e.currentTarget.style.borderColor = `rgba(16,185,129,0.4)`; }}
                       onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
@@ -2291,7 +2311,7 @@ export default function ChatPage() {
                     <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Aliments que j&apos;évite</label>
                     <textarea
                       value={prefEvite} onChange={e => { setPrefEvite(e.target.value); setPrefSaved(false); }}
-                      placeholder="Gluten, lactose, viande rouge…" rows={3}
+                      placeholder="Gluten, lactose, viande rouge…" rows={2}
                       style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5, transition: "border-color 0.15s" }}
                       onFocus={e => { e.currentTarget.style.borderColor = `rgba(16,185,129,0.4)`; }}
                       onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
@@ -2311,6 +2331,8 @@ export default function ChatPage() {
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
                             objective: prefObjectif || null,
+                            motivation: prefMotivation || null,
+                            defi: prefDefi || null,
                             aliments_aimes: prefAliments || null,
                             aliments_detestes: prefEvite || null,
                           }),
