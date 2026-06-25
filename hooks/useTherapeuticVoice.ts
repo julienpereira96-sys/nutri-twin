@@ -190,13 +190,6 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
           model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName: voiceName,
-                },
-              },
-            },
           },
           systemInstruction: {
             parts: [{
