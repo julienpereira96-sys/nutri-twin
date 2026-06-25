@@ -6,13 +6,10 @@
  *
  * Architecture:
  * - Opens a single Gemini Live WebSocket per session (lazy, on first speak)
- * - Sends text as realtimeInput → receives PCM16 audio chunks → plays via AudioContext
- * - When voice changes, closes WS → reopens on next speak with new voice
- * - Maintains same public API as the legacy Google Cloud TTS version
- *   so existing exercises (BodyScan, Manger, Marche, AdaptiveCoaching) work unchanged
- *
- * Note: rate/pitch/volume options are ignored (Gemini Live uses its own prosody).
- *       onBoundary and onDurationReady are no-ops (no boundary events from Gemini Live).
+ * - Sends text as clientContent → receives PCM16 audio chunks → plays via AudioContext
+ * - warmUp(voiceId) pre-opens the connection so preview is near-instant
+ * - previewVoice reuses existing connection if same voice is already connected
+ * - iOS fix: plays a 1-sample silent buffer at click time to unlock AudioContext
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -83,14 +80,16 @@ export interface UseTherapeuticVoiceReturn {
   setSelectedVoice: (voice: TherapeuticVoice) => void;
   /** Speak text with therapeutic voice via Gemini Live. */
   speakTherapeutic: (text: string, opts?: TherapeuticVoiceOptions) => void;
-  /** Preview a voice immediately (bypasses selected state). */
+  /** Preview a voice. Reuses existing WS if same voice already connected. */
   previewVoice: (voice: TherapeuticVoice, text: string) => void;
+  /** Pre-warm the WebSocket for voiceId so preview is instant. */
+  warmUp: (voiceId: string) => void;
   /** Stop all audio playback and clear the queue. */
   cancelSpeech: () => void;
   /** Unlock AudioContext on iOS (call on first user gesture). */
   unlockAudio: () => void;
-  /** True while waiting for Gemini Live setup to complete. */
-  isFetching: boolean;
+  /** True while audio is actively playing (drives visual bars). */
+  isPlaying: boolean;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -100,7 +99,7 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
   const [selectedVoice, setSelectedVoiceState] = useState<TherapeuticVoice>(
     () => resolveVoice(DEFAULT_VOICE_ID)
   );
-  const [isFetching, setIsFetching] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // Hydrate from localStorage on mount (client-only)
   useEffect(() => {
@@ -108,15 +107,16 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
   }, []);
 
   // WebSocket and audio state
-  const wsRef            = useRef<WebSocket | null>(null);
-  const audioCtxRef      = useRef<AudioContext | null>(null);
-  const audioQueueRef    = useRef<{ data: Float32Array; rate: number }[]>([]);
-  const isPlayingRef     = useRef(false);
-  const setupCompleteRef = useRef(false);
-  const turnCompleteRef  = useRef(false);
-  const onEndRef         = useRef<(() => void) | null>(null);
-  const pendingTextRef   = useRef<string | null>(null);
-  const setupTimeoutRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wsRef              = useRef<WebSocket | null>(null);
+  const audioCtxRef        = useRef<AudioContext | null>(null);
+  const audioQueueRef      = useRef<{ data: Float32Array; rate: number }[]>([]);
+  const isPlayingRef       = useRef(false);
+  const setupCompleteRef   = useRef(false);
+  const turnCompleteRef    = useRef(false);
+  const onEndRef           = useRef<(() => void) | null>(null);
+  const pendingTextRef     = useRef<string | null>(null);
+  const setupTimeoutRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentWsVoiceRef  = useRef<string | null>(null);
 
   // ── Audio playback queue ───────────────────────────────────────────────────
 
@@ -124,6 +124,7 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     const ctx = audioCtxRef.current;
     if (!ctx || audioQueueRef.current.length === 0) {
       isPlayingRef.current = false;
+      setIsPlaying(false);
       // Fire onEnd once queue drains after turnComplete
       if (turnCompleteRef.current) {
         turnCompleteRef.current = false;
@@ -134,6 +135,7 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
       return;
     }
     isPlayingRef.current = true;
+    setIsPlaying(true);
     const { data, rate } = audioQueueRef.current.shift()!;
     const buf = ctx.createBuffer(1, data.length, rate);
     buf.getChannelData(0).set(data);
@@ -160,6 +162,7 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     isPlayingRef.current    = false;
     turnCompleteRef.current = false;
     onEndRef.current        = null;
+    setIsPlaying(false);
   }, []);
 
   // ── WebSocket management ───────────────────────────────────────────────────
@@ -176,20 +179,19 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
       try { wsRef.current.close(); } catch { /* no-op */ }
       wsRef.current = null;
     }
-    setupCompleteRef.current = false;
-    setIsFetching(false);
+    setupCompleteRef.current  = false;
+    currentWsVoiceRef.current = null;
   }, []);
 
   const openWs = useCallback((voiceName: string) => {
     closeWs();
     flushAudio();
 
-    setIsFetching(true);
+    currentWsVoiceRef.current = voiceName;
 
-    // Safety: clear spinner after 10s if setupComplete never arrives
+    // Safety: log if setupComplete never arrives
     setupTimeoutRef.current = setTimeout(() => {
       console.warn("[useTherapeuticVoice] setup timeout — no setupComplete after 10s");
-      setIsFetching(false);
     }, 10000);
 
     const ws = new GeminiLiveClient();
@@ -222,11 +224,8 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
       let msg: Record<string, unknown>;
       try { msg = JSON.parse(evt.data as string); } catch { return; }
 
-      // Gemini error response → unblock spinner
-      if (msg.error) {
-        setIsFetching(false);
-        return;
-      }
+      // Gemini error response
+      if (msg.error) return;
 
       // Setup complete → send pending text if any
       if (msg.setupComplete) {
@@ -235,7 +234,6 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
           setupTimeoutRef.current = null;
         }
         setupCompleteRef.current = true;
-        setIsFetching(false);
         if (pendingTextRef.current) {
           ws.send(JSON.stringify({
             clientContent: {
@@ -282,10 +280,10 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
       }
     };
 
-    ws.onerror = () => { setIsFetching(false); };
+    ws.onerror = () => { /* silent — no UI spinner to clear */ };
     ws.onclose = () => {
-      setupCompleteRef.current = false;
-      setIsFetching(false);
+      setupCompleteRef.current  = false;
+      currentWsVoiceRef.current = null;
     };
   }, [closeWs, flushAudio, enqueueAudio]);
 
@@ -310,6 +308,14 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
       void audioCtxRef.current.resume();
     }
   }, []);
+
+  /** Pre-warm WebSocket for voiceId — call when voice picker opens. */
+  const warmUp = useCallback((voiceId: string) => {
+    // Already connected (or connecting) for this voice → no-op
+    if (currentWsVoiceRef.current === voiceId && wsRef.current) return;
+    pendingTextRef.current = null;
+    openWs(voiceId);
+  }, [openWs]);
 
   const setSelectedVoice = useCallback((voice: TherapeuticVoice) => {
     setSelectedVoiceState(voice);
@@ -348,16 +354,47 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
   }, [selectedVoice, openWs, flushAudio]);
 
   const previewVoice = useCallback((voice: TherapeuticVoice, text: string) => {
-    // Unlock AudioContext NOW, while we're still inside the user gesture (iOS requirement).
-    // If created later (async, after WebSocket responds), iOS keeps it suspended → silence.
+    // ── iOS AudioContext unlock ────────────────────────────────────────────────
+    // Must happen synchronously in the user gesture (button click).
     if (!audioCtxRef.current) {
       audioCtxRef.current = new AudioContext();
     }
+    // Play a 1-sample silent buffer to fully activate AudioContext on iOS Safari.
+    // Without this, async audio (arriving ~500ms later) may be silenced.
+    try {
+      const ctx = audioCtxRef.current;
+      const silentBuf = ctx.createBuffer(1, 1, 22050);
+      const silentSrc = ctx.createBufferSource();
+      silentSrc.buffer = silentBuf;
+      silentSrc.connect(ctx.destination);
+      silentSrc.start(0);
+    } catch { /* no-op */ }
     if (audioCtxRef.current.state === "suspended") {
       void audioCtxRef.current.resume();
     }
+
     flushAudio();
     onEndRef.current = null;
+
+    const ws = wsRef.current;
+
+    // Reuse existing connection if same voice is warmed up and ready
+    if (
+      ws &&
+      ws.readyState === WebSocket.OPEN &&
+      setupCompleteRef.current &&
+      currentWsVoiceRef.current === voice.id
+    ) {
+      ws.send(JSON.stringify({
+        clientContent: {
+          turns: [{ role: "user", parts: [{ text }] }],
+          turnComplete: true,
+        },
+      }));
+      return;
+    }
+
+    // Different voice or not yet connected → open fresh connection
     pendingTextRef.current = text;
     openWs(voice.id);
   }, [openWs, flushAudio]);
@@ -368,8 +405,9 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     setSelectedVoice,
     speakTherapeutic,
     previewVoice,
+    warmUp,
     cancelSpeech,
     unlockAudio,
-    isFetching,
+    isPlaying,
   };
 }

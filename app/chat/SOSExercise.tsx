@@ -413,7 +413,9 @@ function WaveOrb({
 // clôture — une seule scène continue, sans changement de décor ni second blob.
 // "safety" : garde-fou critique déclenché pendant l'intake vocal (red_critical) —
 // interrompt tout le reste, écran dédié, message de sécurité scripté récité.
-type SOSPhase   = "loading" | "intake" | "ready" | "tracing" | "reveal" | "safety";
+// "connecting" : préchauffage WS (token fetch + handshake) — écran immersif de transition.
+// "loading"    : WS prêt, Gemini parle son accueil — orb animé, micro actif.
+type SOSPhase   = "connecting" | "loading" | "intake" | "ready" | "tracing" | "reveal" | "safety";
 type BreathPhase = "inspire" | "expire";
 
 export interface SOSExerciseProps {
@@ -450,7 +452,7 @@ export default function SOSExercise({
   const { speakTherapeutic, cancelSpeech } = useTherapeuticVoice();
 
   // ── UI state ────────────────────────────────────────────────────────────────
-  const [phase,           setPhase]           = useState<SOSPhase>("loading");
+  const [phase,           setPhase]           = useState<SOSPhase>("connecting");
   const [loadError,       setLoadError]       = useState<string | null>(null);
   const [wsError,         setWsError]         = useState<string | null>(null);
   const [isAiSpeaking,    setIsAiSpeaking]    = useState(false);
@@ -472,7 +474,7 @@ export default function SOSExercise({
   const [safetyText,       setSafetyText]       = useState<string | null>(null);
 
   // ── Refs ────────────────────────────────────────────────────────────────────
-  const phaseRef            = useRef<SOSPhase>("loading");
+  const phaseRef            = useRef<SOSPhase>("connecting");
   const wsRef               = useRef<GeminiLiveClient | null>(null);
   const audioCtxRef         = useRef<AudioContext | null>(null);
   // Branché sur la sortie audio de Gemini (voir playNextChunk) — lit l'énergie
@@ -1084,8 +1086,13 @@ export default function SOSExercise({
       }
     }
 
-    // ── setupComplete: send greeting ──────────────────────────────────────────
+    // ── setupComplete: connecting → loading, send greeting ───────────────────
     if (msg.setupComplete !== undefined) {
+      // WS est prêt — quitte l'écran de transition, active l'orb
+      if (phaseRef.current === "connecting") {
+        setPhase("loading");
+        phaseRef.current = "loading";
+      }
       dbg("SEND accueil (clientContent)");
       wsRef.current?.send(JSON.stringify({
         clientContent: {
@@ -1149,10 +1156,10 @@ export default function SOSExercise({
       // un raclement de gorge, ou le bruit d'une interruption sans contenu verbal).
       // C'est ce flag qui décide, dans triggerIntakeTransition, entre "valider
       // l'émotion exprimée" et "ne suppose aucune émotion, juste accompagner".
-      // Inclut "loading" : le patient peut parler dès le tout début de l'accueil,
+      // Inclut "loading" et "connecting" : le patient peut parler dès le début,
       // avant même le premier turnComplete qui bascule la phase sur "intake".
       if (
-        (phaseRef.current === "intake" || phaseRef.current === "loading") &&
+        (phaseRef.current === "intake" || phaseRef.current === "loading" || phaseRef.current === "connecting") &&
         inTrans.text.trim().length > 0
       ) {
         patientHasSpokenRef.current = true;
@@ -1168,6 +1175,7 @@ export default function SOSExercise({
         inTrans.text.trim().length > 0 &&
         (phaseRef.current === "intake" ||
           phaseRef.current === "loading" ||
+          phaseRef.current === "connecting" ||
           (phaseRef.current === "reveal" && closingQuestionSentRef.current))
       ) {
         runVoiceCrisisCheck();
@@ -1559,7 +1567,7 @@ export default function SOSExercise({
             // n'a pas encore tapé, c'est justement ce que activityOpenRef
             // sert à couvrir). On abandonne proprement sinon, sans toucher au WS.
             const p = phaseRef.current;
-            if (p !== "loading" && p !== "intake" && p !== "ready") {
+            if (p !== "connecting" && p !== "loading" && p !== "intake" && p !== "ready") {
               dbg("BARGE-IN abandonné (phase a changé pendant les 400ms)");
               pendingChunksRef.current = [];
               return;
@@ -1650,7 +1658,7 @@ export default function SOSExercise({
     ws.onmessage = (evt) => handleWSMessageRef.current?.(evt);
 
     ws.onerror = () => {
-      if (phaseRef.current === "loading") {
+      if (phaseRef.current === "connecting" || phaseRef.current === "loading") {
         setLoadError("Connexion Gemini Live échouée.");
       } else {
         setWsError("Connexion interrompue.");
@@ -1659,7 +1667,7 @@ export default function SOSExercise({
 
     ws.onclose = (evt) => {
       const p = phaseRef.current;
-      if (p === "loading") {
+      if (p === "connecting" || p === "loading") {
         setLoadError(`Connexion fermée (${evt.code}). Vérifie ta connexion.`);
       } else if (p !== "reveal" && p !== "safety") {
         // Pas d'erreur pendant reveal : l'exercice est visuellement terminé,
@@ -1683,6 +1691,7 @@ export default function SOSExercise({
   }, []);
 
   // ── Render ────────────────────────────────────────────────────────────────────
+  const showConnecting = phase === "connecting";
   const showOrb    = phase === "loading" || phase === "intake";
   const showReady  = phase === "ready";
   const showTrace  = phase === "tracing";
@@ -1808,6 +1817,65 @@ export default function SOSExercise({
           }}>
             {safetyText}
           </p>
+        </div>
+      )}
+
+      {/* ══ CONNECTING — écran de transition immersif ═══════════════════════════ */}
+      {showConnecting && !loadError && (
+        <div style={{
+          display: "flex", flexDirection: "column",
+          alignItems: "center", gap: 40,
+          position: "relative", zIndex: 5,
+          animation: "sos-fade 0.5s ease",
+        }}>
+          {/* Anneaux concentriques respirants */}
+          <div style={{ position: "relative", width: 140, height: 140 }}>
+            {/* Anneau externe */}
+            <div style={{
+              position: "absolute", inset: 0,
+              borderRadius: "50%",
+              border: "1.5px solid rgba(0,229,180,0.18)",
+              animation: "sos-breathe-ring 3s ease-in-out infinite",
+            }} />
+            {/* Anneau intermédiaire */}
+            <div style={{
+              position: "absolute", inset: 20,
+              borderRadius: "50%",
+              border: "1.5px solid rgba(0,229,180,0.32)",
+              animation: "sos-breathe-ring 3s ease-in-out 0.4s infinite",
+            }} />
+            {/* Anneau interne */}
+            <div style={{
+              position: "absolute", inset: 40,
+              borderRadius: "50%",
+              border: "1.5px solid rgba(0,229,180,0.50)",
+              animation: "sos-breathe-ring 3s ease-in-out 0.8s infinite",
+            }} />
+            {/* Point central */}
+            <div style={{
+              position: "absolute",
+              top: "50%", left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: 10, height: 10,
+              borderRadius: "50%",
+              background: "#00e5b4",
+              boxShadow: "0 0 14px 4px rgba(0,229,180,0.35)",
+              animation: "sos-breathe-ring 3s ease-in-out 1.2s infinite",
+            }} />
+          </div>
+
+          {/* Texte */}
+          <div style={{ textAlign: "center" }}>
+            <p style={{
+              margin: 0,
+              color: "rgba(255,255,255,0.75)",
+              fontSize: 16, fontWeight: 300,
+              letterSpacing: "0.04em",
+              animation: "sos-pulse 3s ease-in-out infinite",
+            }}>
+              Je suis là pour toi…
+            </p>
+          </div>
         </div>
       )}
 
@@ -1993,6 +2061,11 @@ export default function SOSExercise({
           0%   { box-shadow: 0 0 0 0 rgba(0,229,180,0.55); }
           70%  { box-shadow: 0 0 0 14px rgba(0,229,180,0); }
           100% { box-shadow: 0 0 0 0 rgba(0,229,180,0); }
+        }
+        /* Anneaux respirants de la phase connecting */
+        @keyframes sos-breathe-ring {
+          0%, 100% { transform: scale(0.94); opacity: 0.6; }
+          50%       { transform: scale(1.06); opacity: 1;   }
         }
         /* Barre de progression lettre — forward (expire) et backward (inspire) */
         @keyframes bar-fill-fwd {

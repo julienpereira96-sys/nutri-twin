@@ -621,7 +621,15 @@ export default function ChatPage() {
   const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // ─── Voix thérapeutique ────────────────────────────────────────────────────
-  const { voices: therapeuticVoices, selectedVoice: selectedTherapeuticVoice, setSelectedVoice: setTherapeuticVoice, previewVoice: previewTherapeuticVoice, isFetching: isVoiceFetching } = useTherapeuticVoice();
+  const { voices: therapeuticVoices, selectedVoice: selectedTherapeuticVoice, setSelectedVoice: setTherapeuticVoice, previewVoice: previewTherapeuticVoice, warmUp: warmUpVoice, isPlaying: isVoicePlaying } = useTherapeuticVoice();
+
+  // Préchauffage du WebSocket quand l'écran voix s'ouvre
+  useEffect(() => {
+    if (profileScreen === "voix" && selectedTherapeuticVoice) {
+      warmUpVoice(selectedTherapeuticVoice.id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileScreen]);
 
   const ancrageSteps = [
     { count: 5, sense: "voyez", icon: <IconEye size={34} color={CYAN} /> },
@@ -1938,7 +1946,6 @@ export default function ChatPage() {
         {profileScreen === "voix" && (
           <>
             <style>{`
-              @keyframes vp-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
               @keyframes vp-bar { 0%,100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
             `}</style>
             <SubHeader title="Ma voix de suivi" />
@@ -1958,8 +1965,6 @@ export default function ChatPage() {
                         setTherapeuticVoice(v);
                         setPreviewingVoiceId(v.id);
                         previewTherapeuticVoice(v, `Bonjour ${patientFirstName || "toi"}, je suis là pour t'accompagner.`);
-                        const id = v.id;
-                        setTimeout(() => setPreviewingVoiceId(prev => prev === id ? null : prev), 6000);
                       }}
                       style={{ width: "100%", display: "flex", alignItems: "center", padding: "14px 20px", background: "none", border: "none", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer", gap: 14, transition: "background 0.12s", textAlign: "left" }}
                       onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
@@ -1976,20 +1981,13 @@ export default function ChatPage() {
                       </div>
                       {/* Indicateur de lecture / sélection */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                        {isPreviewing && (
-                          isVoiceFetching ? (
-                            /* Spinner — chargement WebSocket */
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.2" strokeLinecap="round" style={{ animation: "vp-spin 0.9s linear infinite", flexShrink: 0 }}>
-                              <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                            </svg>
-                          ) : (
-                            /* Barres animées — lecture en cours */
-                            <div style={{ display: "flex", alignItems: "flex-end", gap: 2.5, height: 16, flexShrink: 0 }}>
-                              {[0, 1, 2, 3].map(i => (
-                                <div key={i} style={{ width: 3, borderRadius: 2, background: ACCENT, transformOrigin: "bottom", animation: `vp-bar 0.7s ease-in-out ${i * 0.12}s infinite`, height: 14 }} />
-                              ))}
-                            </div>
-                          )
+                        {isPreviewing && isVoicePlaying && (
+                          /* Barres animées — lecture en cours uniquement */
+                          <div style={{ display: "flex", alignItems: "flex-end", gap: 2.5, height: 16, flexShrink: 0 }}>
+                            {[0, 1, 2, 3].map(i => (
+                              <div key={i} style={{ width: 3, borderRadius: 2, background: ACCENT, transformOrigin: "bottom", animation: `vp-bar 0.7s ease-in-out ${i * 0.12}s infinite`, height: 14 }} />
+                            ))}
+                          </div>
                         )}
                         {isSelected && (
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>

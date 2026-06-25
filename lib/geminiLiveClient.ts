@@ -27,6 +27,11 @@ const VERTEX_WS_URL =
 let _resolvedProjectId: string =
   process.env.NEXT_PUBLIC_GOOGLE_CLOUD_PROJECT_ID ?? "";
 
+// Token cache — OAuth2 tokens are valid for 1h; we reuse for 55min.
+// Eliminates the round-trip to /api/gemini-token on every new GeminiLiveClient
+// (saves ~150-250ms on all subsequent connections in the same browser tab).
+let _tokenCache: { token: string; expiresAt: number } | null = null;
+
 export class GeminiLiveClient {
   // ── Public state (mirrors WebSocket) ────────────────────────────────────────
   readyState: number = WebSocket.CONNECTING;
@@ -46,19 +51,26 @@ export class GeminiLiveClient {
 
   private async _connect(): Promise<void> {
     // 1. Get a short-lived OAuth2 token + projectId from the server
+    // Use the cached token if still valid (55-min window, tokens live 1h).
     let token: string;
     try {
-      const res = await fetch(TOKEN_ENDPOINT);
-      if (!res.ok) throw new Error(`Token endpoint returned ${res.status}`);
-      const data = await res.json() as {
-        token?: string;
-        projectId?: string;
-        error?: string;
-      };
-      if (!data.token) throw new Error(data.error ?? "No token in response");
-      token = data.token;
-      // Override module-level projectId with the authoritative server value
-      if (data.projectId) _resolvedProjectId = data.projectId;
+      const now = Date.now();
+      if (_tokenCache && now < _tokenCache.expiresAt) {
+        token = _tokenCache.token;
+      } else {
+        const res = await fetch(TOKEN_ENDPOINT);
+        if (!res.ok) throw new Error(`Token endpoint returned ${res.status}`);
+        const data = await res.json() as {
+          token?: string;
+          projectId?: string;
+          error?: string;
+        };
+        if (!data.token) throw new Error(data.error ?? "No token in response");
+        token = data.token;
+        _tokenCache = { token, expiresAt: now + 55 * 60 * 1000 };
+        // Override module-level projectId with the authoritative server value
+        if (data.projectId) _resolvedProjectId = data.projectId;
+      }
     } catch (err) {
       console.error("[GeminiLiveClient] token fetch failed:", err);
       this.readyState = WebSocket.CLOSED;
