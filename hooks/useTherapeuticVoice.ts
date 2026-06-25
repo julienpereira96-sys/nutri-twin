@@ -116,6 +116,7 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
   const turnCompleteRef  = useRef(false);
   const onEndRef         = useRef<(() => void) | null>(null);
   const pendingTextRef   = useRef<string | null>(null);
+  const setupTimeoutRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Audio playback queue ───────────────────────────────────────────────────
 
@@ -164,6 +165,10 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
   // ── WebSocket management ───────────────────────────────────────────────────
 
   const closeWs = useCallback(() => {
+    if (setupTimeoutRef.current) {
+      clearTimeout(setupTimeoutRef.current);
+      setupTimeoutRef.current = null;
+    }
     if (wsRef.current) {
       wsRef.current.onmessage = null;
       wsRef.current.onclose   = null;
@@ -181,6 +186,12 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
 
     setIsFetching(true);
 
+    // Safety: clear spinner after 10s if setupComplete never arrives
+    setupTimeoutRef.current = setTimeout(() => {
+      console.warn("[useTherapeuticVoice] setup timeout — no setupComplete after 10s");
+      setIsFetching(false);
+    }, 10000);
+
     const ws = new GeminiLiveClient();
     wsRef.current = ws as unknown as WebSocket;
 
@@ -190,6 +201,13 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
           model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: voiceName,
+                },
+              },
+            },
           },
           systemInstruction: {
             parts: [{
@@ -212,6 +230,10 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
 
       // Setup complete → send pending text if any
       if (msg.setupComplete) {
+        if (setupTimeoutRef.current) {
+          clearTimeout(setupTimeoutRef.current);
+          setupTimeoutRef.current = null;
+        }
         setupCompleteRef.current = true;
         setIsFetching(false);
         if (pendingTextRef.current) {
