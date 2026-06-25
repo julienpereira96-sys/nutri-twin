@@ -24,8 +24,8 @@ import {
 } from "@/lib/therapeuticVoice";
 import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
 
-// Model name — the relay rewrites it to the full Vertex AI resource path
-const GEMINI_MODEL = "models/gemini-3.1-flash-live-preview";
+// Model name — same as SOSExercise (validated in prod)
+const GEMINI_MODEL = "models/gemini-live-2.5-flash-native-audio";
 
 // ─── PCM helpers ──────────────────────────────────────────────────────────────
 
@@ -190,6 +190,13 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
           model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: {
+                  voiceName: voiceName,
+                },
+              },
+            },
           },
           systemInstruction: {
             parts: [{
@@ -209,7 +216,12 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
         setupCompleteRef.current = true;
         setIsFetching(false);
         if (pendingTextRef.current) {
-          ws.send(JSON.stringify({ realtimeInput: { text: pendingTextRef.current } }));
+          ws.send(JSON.stringify({
+            clientContent: {
+              turns: [{ role: "user", parts: [{ text: pendingTextRef.current }] }],
+              turnComplete: true,
+            },
+          }));
           pendingTextRef.current = null;
         }
         return;
@@ -306,7 +318,12 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
       return;
     }
 
-    ws.send(JSON.stringify({ realtimeInput: { text } }));
+    ws.send(JSON.stringify({
+      clientContent: {
+        turns: [{ role: "user", parts: [{ text }] }],
+        turnComplete: true,
+      },
+    }));
   }, [selectedVoice, openWs, flushAudio]);
 
   const previewVoice = useCallback((voice: TherapeuticVoice, text: string) => {

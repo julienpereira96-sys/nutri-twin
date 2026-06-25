@@ -2748,7 +2748,7 @@ export default function ChatPage() {
             {showScrollBottom && (
               <button
                 onClick={() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })}
-                style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 36, height: 36, borderRadius: "50%", background: "rgba(15,22,18,0.92)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.45)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(0,0,0,0.4)", transition: "border-color 0.2s, box-shadow 0.2s", color: ACCENT }}
+                style={{ position: "absolute", bottom: "calc(100% + 6px)", left: "50%", transform: "translateX(-50%)", zIndex: 26, width: 40, height: 40, borderRadius: "50%", background: "rgba(15,22,18,0.92)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(16,185,129,0.45)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 18px rgba(0,0,0,0.4)", transition: "border-color 0.2s, box-shadow 0.2s", color: ACCENT }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = ACCENT; e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.3), 0 6px 24px rgba(16,185,129,0.2)"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.boxShadow = "inset 0 1px 3px rgba(0,0,0,0.3), 0 4px 18px rgba(0,0,0,0.25)"; }}
               >
