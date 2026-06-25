@@ -211,6 +211,12 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
       let msg: Record<string, unknown>;
       try { msg = JSON.parse(evt.data as string); } catch { return; }
 
+      // Gemini error response → unblock spinner
+      if (msg.error) {
+        setIsFetching(false);
+        return;
+      }
+
       // Setup complete → send pending text if any
       if (msg.setupComplete) {
         setupCompleteRef.current = true;
@@ -327,6 +333,14 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
   }, [selectedVoice, openWs, flushAudio]);
 
   const previewVoice = useCallback((voice: TherapeuticVoice, text: string) => {
+    // Unlock AudioContext NOW, while we're still inside the user gesture (iOS requirement).
+    // If created later (async, after WebSocket responds), iOS keeps it suspended → silence.
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new AudioContext();
+    }
+    if (audioCtxRef.current.state === "suspended") {
+      void audioCtxRef.current.resume();
+    }
     flushAudio();
     onEndRef.current = null;
     pendingTextRef.current = text;
