@@ -322,6 +322,7 @@ export default function SOSExercise({
   // ── Refs ────────────────────────────────────────────────────────────────────
   const phaseRef            = useRef<SOSPhase>("connecting");
   const wsRef               = useRef<GeminiLiveClient | null>(null);
+  const initializingRef     = useRef(false); // garde-fou double-init
   const audioCtxRef         = useRef<AudioContext | null>(null);
   // Branché sur la sortie audio de Gemini (voir playNextChunk) — lit l'énergie
   // réelle de sa voix pour moduler l'amplitude du WaveOrb, pas de valeur fictive.
@@ -556,6 +557,7 @@ export default function SOSExercise({
     geminiRespondedAfterPatientRef.current = false;
     if (closingGeminiRespTimerRef.current) { clearTimeout(closingGeminiRespTimerRef.current); closingGeminiRespTimerRef.current = null; }
     flushAudio();
+    initializingRef.current = false;
   }, [cancelSpeech, flushAudio]);
 
   useEffect(() => () => cleanup(), [cleanup]);
@@ -1308,6 +1310,10 @@ export default function SOSExercise({
 
   // ── Init session ─────────────────────────────────────────────────────────────
   const initSession = useCallback(async () => {
+    if (initializingRef.current || wsRef.current) return; // double-init guard
+    initializingRef.current = true;
+    try {
+
     // 1. Build system prompt
     let systemPrompt =
       `Tu es le Jumeau Numérique de ${firstName}. Mode SOS actif. ` +
@@ -1324,7 +1330,9 @@ export default function SOSExercise({
         if (d.systemPrompt)  systemPrompt = d.systemPrompt;
         if (d.patientGender) patientGenderRef.current = d.patientGender;
       }
-    } catch { /* use default */ }
+    } catch {
+      console.warn("[SOSExercise] context fetch failed — using minimal fallback prompt");
+    }
 
     if (sosContext?.trim()) {
       systemPrompt += `\n\nCONTEXTE DÉCLENCHEUR :\n${sosContext}`;
@@ -1545,6 +1553,10 @@ export default function SOSExercise({
 
     // Hard timer — 6 min max
     hardTimerRef.current = setTimeout(() => cleanup(), HARD_TIMER_MS);
+
+    } finally {
+      initializingRef.current = false;
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId, practitionerId, firstName, sosContext]);
 
