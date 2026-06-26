@@ -90,29 +90,37 @@ function hapticExpire() {
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 function buildBreathingSystemPrompt(name: string, contextInfo: string): string {
-  return `Tu es le Jumeau Numérique thérapeutique de ${name}. Tu guides un exercice de cohérence cardiaque (Niveau 1).
+  return `Tu es le Jumeau Numérique thérapeutique de ${name}. Tu accompagnes un exercice de cohérence cardiaque.
 
 CONTEXTE PATIENT :
 ${contextInfo}
 
-EXERCICE — COHÉRENCE CARDIAQUE : ${INSPIRE_DUR}s inspire / ${EXPIRE_DUR}s expire
-Tu es le métronome humain et thérapeute. Ta voix remplace tout texte à l'écran.
+RYTHME : ${INSPIRE_DUR}s inspire / ${EXPIRE_DUR}s expire (cycle de ${CYCLE_DUR}s)
 
 RÈGLES ABSOLUES :
-1. Français uniquement. Voix douce, grave, lente — co-régulation parasympathique.
+1. Français uniquement. Voix douce, grave, lente — présence parasympathique.
 2. Réponse AUDIO uniquement. Zéro texte.
-3. Adapte chaque phrase au contexte de ${name}. Ne sois jamais générique.
+3. Adapte chaque intervention au contexte de ${name}. Jamais générique.
 
-FLOW PRÉCIS :
-• À l'ouverture : accueille ${name} par son prénom (1 phrase chaude). Donne la consigne posturale brève : décroiser les jambes, relâcher les épaules, fermer les yeux si possible. Annonce qu'on commence.
-• [INSPIRE] → prononce UNE formule courte pour guider l'inspiration. MAX 4 mots. Varie à chaque fois. Exemples : "Inspire...", "Accueille l'air...", "Ouvre ta poitrine...", "Laisse entrer le calme...", "Inspire profondément..."
-• [EXPIRE]  → prononce UNE formule courte pour guider l'expiration. MAX 4 mots. Varie à chaque fois. Exemples : "Expire...", "Laisse partir...", "Relâche tout...", "Vide complètement...", "Souffle vers le sol..."
-• NE RÉPÈTE JAMAIS deux fois la même formule de suite. La variété est essentielle.
-• [CHECKPOINT] → Pose ta question de checkpoint avec chaleur et empathie (2-3 phrases max). Adapte la formulation selon le cycle (1er ou 2e checkpoint). Écoute la réponse vocale du patient.
-  - Si le patient veut CONTINUER : réponds avec bienveillance et termine ta réponse par "On repart ensemble." (ces mots EXACTEMENT en fin de réponse)
-  - Si le patient veut STOPPER : réponds avec fierté et termine par "On s'arrête là." (ces mots EXACTEMENT en fin de réponse)
-  - Si silence > 5s ou réponse ambiguë : relance doucement. Après 7s total sans réponse claire : conclus par "On s'arrête là."
-• [CLOTURE] → Conclus avec sincérité et personnalisation. Félicite ${name} pour ce moment de soin. 2-3 phrases. Invite à reprendre doucement le cours de sa journée.`;
+FLOW :
+
+• ACCUEIL (une seule fois au début) : accueille ${name} chaleureusement, 1-2 phrases adaptées à ce qu'il traverse. Donne la consigne posturale brève (décroiser jambes, relâcher épaules, fermer les yeux si possible). Puis annonce qu'on commence et tais-toi.
+
+• PENDANT LES CYCLES [INSPIRE] / [EXPIRE] :
+  Tu reçois ces signaux en continu mais ne parle PAS à chaque signal.
+  Choisis seulement 2 à 3 moments dans tout un bloc de 60 secondes pour intervenir.
+  Quand tu interviens : UNE phrase courte, MAX 5 mots, naturelle et variée.
+  Exemples inspire : "Laisse entrer le calme...", "Ouvre ta poitrine...", "Accueille cet air..."
+  Exemples expire : "Laisse partir...", "Relâche tout...", "Souffle doucement..."
+  Le reste du temps : silence complet. Le silence est la thérapie.
+
+• [CHECKPOINT] : Pose une vraie question avec chaleur (2-3 phrases max). Écoute la réponse vocale.
+  - Patient veut CONTINUER et ça va : réponds avec bienveillance, termine EXACTEMENT par "On repart ensemble."
+  - Patient veut STOPPER et ça va : réponds avec fierté, termine EXACTEMENT par "On s'arrête là."
+  - Patient exprime une DÉTRESSE, souffrance, ça ne va pas : accueille avec empathie, reste présent, termine EXACTEMENT par "Je t'entends."
+  - Silence > 5s ou réponse ambiguë : relance doucement. Après 7s total sans réponse : conclus par "On s'arrête là."
+
+• [CLOTURE] : Conclus avec sincérité. Félicite ${name} pour ce moment de soin. 2-3 phrases. Invite à reprendre doucement sa journée.`;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -146,6 +154,18 @@ export default function BreathingExercise({
   const audioQueueRef  = useRef<{ data: Float32Array; rate: number }[]>([]);
   const isPlayingRef   = useRef(false);
   const outputTransRef = useRef("");              // transcription de Gemini (checkpoint)
+  const outcomeRef     = useRef<"positive" | "negative" | "interrupted">("positive");
+
+  // ── Log silencieux vers /api/breathing/log ────────────────────────────────
+  const logBreathingSession = useCallback(async (outcome: "positive" | "negative" | "interrupted", blocks: number) => {
+    try {
+      await fetch("/api/breathing/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outcome, blocks }),
+      });
+    } catch { /* silencieux */ }
+  }, []);
 
   // Stable refs pour callbacks dans closures
   const onTransitionToChatRef = useRef(onTransitionToChat);
@@ -229,18 +249,18 @@ export default function BreathingExercise({
     setAnimPaused(true);
     setStatus("cloture");
     setBreathPhaseLabel(null);
-    outputTransRef.current = ""; // Reset pour capturer uniquement les mots de clôture
+    outputTransRef.current = "";
     // Demande à Gemini de conclure
     setTimeout(() => sendTurn("[CLOTURE]"), 400);
-    // Fallback : transition après 12s sans transcription
+    // Fallback : log + fermeture après 12s si Gemini ne répond pas
     setTimeout(() => {
       if (statusRef.current === "cloture") {
-        const blocs = blockCountRef.current;
-        const msg = `🌿 Cohérence cardiaque · ${blocs} bloc${blocs > 1 ? "s" : ""}`;
-        onTransitionToChatRef.current(msg);
+        void logBreathingSession(outcomeRef.current, blockCountRef.current);
+        cleanup();
+        onCloseRef.current();
       }
     }, 12000);
-  }, [sendTurn]);
+  }, [sendTurn, logBreathingSession, cleanup]);
 
   // ── Start a 60s breathing block ────────────────────────────────────────────
   const startBreathingBlock = useCallback(() => {
@@ -307,19 +327,31 @@ export default function BreathingExercise({
   const checkCheckpointDecision = useCallback((text: string) => {
     const lower = text.toLowerCase();
     if (lower.includes("on repart")) {
-      // Continuer
+      // Continuer → prochain bloc
       micEnabledRef.current = false;
+      outcomeRef.current = "positive";
       if (blockCountRef.current >= MAX_BLOCKS) {
         handleClotureRef.current();
       } else {
         setTimeout(() => startBreathingRef.current(), 1200);
       }
-    } else if (lower.includes("on s'arrête")) {
-      // Victoire
+    } else if (lower.includes("je t'entends")) {
+      // Détresse → log négatif + transition vers le chat
       micEnabledRef.current = false;
+      outcomeRef.current = "negative";
+      const blocs = blockCountRef.current;
+      void logBreathingSession("negative", blocs);
+      cleanup();
+      onTransitionToChatRef.current(
+        `Je viens de faire un exercice de cohérence cardiaque (${blocs} bloc${blocs > 1 ? "s" : ""}), mais je ne me sens pas bien.`
+      );
+    } else if (lower.includes("on s'arrête")) {
+      // Arrêt propre
+      micEnabledRef.current = false;
+      outcomeRef.current = "positive";
       setTimeout(() => handleClotureRef.current(), 1200);
     }
-  }, []);
+  }, [logBreathingSession, cleanup]);
 
   // ── WS message handler ────────────────────────────────────────────────────
   const handleWSMessage = useCallback((event: { data: string }) => {
@@ -373,12 +405,11 @@ export default function BreathingExercise({
         return;
       }
 
-      // Cloture terminée → injecter le résumé dans le chat
+      // Cloture terminée → log silencieux + fermeture
       if (currentStatus === "cloture") {
-        const closingWords = outputTransRef.current.trim();
         const blocs = blockCountRef.current;
-        const message = `🌿 Cohérence cardiaque · ${blocs} bloc${blocs > 1 ? "s" : ""}${closingWords ? `\n\n${closingWords}` : ""}`;
-        setTimeout(() => onTransitionToChatRef.current(message), 1000);
+        void logBreathingSession(outcomeRef.current, blocs);
+        setTimeout(() => { cleanup(); onCloseRef.current(); }, 800);
       }
     }
 
@@ -468,12 +499,12 @@ export default function BreathingExercise({
     if (wsRef.current) wsRef.current.onmessage = handleWSMessage;
   }, [handleWSMessage]);
 
-  // ── Close (avant premier checkpoint = interrompu) ──────────────────────────
+  // ── Close (avant ou pendant l'exercice = interrompu) ─────────────────────
   const handleClose = useCallback(() => {
-    // TODO: si blockCount === 0 → log silencieux "interrompu"
+    void logBreathingSession("interrupted", blockCountRef.current);
     cleanup();
     onCloseRef.current();
-  }, [cleanup]);
+  }, [cleanup, logBreathingSession]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
   const showClose = status === "loading" || status === "intro" || status === "checkpoint";

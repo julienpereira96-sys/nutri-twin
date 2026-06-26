@@ -1691,8 +1691,8 @@ export default function SOSExercise({
   }, []);
 
   // ── Render ────────────────────────────────────────────────────────────────────
-  const showConnecting = phase === "connecting";
-  const showOrb    = phase === "loading" || phase === "intake";
+  const showConnecting = false; // Plus utilisé — remplacé par WaveOrb dim
+  const showOrb    = phase === "connecting" || phase === "loading" || phase === "intake";
   const showReady  = phase === "ready";
   const showTrace  = phase === "tracing";
   const showReveal = phase === "reveal";
@@ -1820,75 +1820,34 @@ export default function SOSExercise({
         </div>
       )}
 
-      {/* ══ CONNECTING — écran de transition immersif ═══════════════════════════ */}
-      {showConnecting && !loadError && (
-        <div style={{
-          display: "flex", flexDirection: "column",
-          alignItems: "center", gap: 40,
-          position: "relative", zIndex: 5,
-          animation: "sos-fade 0.5s ease",
-        }}>
-          {/* Anneaux concentriques respirants */}
-          <div style={{ position: "relative", width: 140, height: 140 }}>
-            {/* Anneau externe */}
-            <div style={{
-              position: "absolute", inset: 0,
-              borderRadius: "50%",
-              border: "1.5px solid rgba(0,229,180,0.18)",
-              animation: "sos-breathe-ring 3s ease-in-out infinite",
-            }} />
-            {/* Anneau intermédiaire */}
-            <div style={{
-              position: "absolute", inset: 20,
-              borderRadius: "50%",
-              border: "1.5px solid rgba(0,229,180,0.32)",
-              animation: "sos-breathe-ring 3s ease-in-out 0.4s infinite",
-            }} />
-            {/* Anneau interne */}
-            <div style={{
-              position: "absolute", inset: 40,
-              borderRadius: "50%",
-              border: "1.5px solid rgba(0,229,180,0.50)",
-              animation: "sos-breathe-ring 3s ease-in-out 0.8s infinite",
-            }} />
-            {/* Point central */}
-            <div style={{
-              position: "absolute",
-              top: "50%", left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: 10, height: 10,
-              borderRadius: "50%",
-              background: "#00e5b4",
-              boxShadow: "0 0 14px 4px rgba(0,229,180,0.35)",
-              animation: "sos-breathe-ring 3s ease-in-out 1.2s infinite",
-            }} />
-          </div>
+      {/* ══ CONNECTING — rendu délégué au bloc showOrb ci-dessous (orb dim + blink) */}
 
-          {/* Texte */}
-          <div style={{ textAlign: "center" }}>
-            <p style={{
-              margin: 0,
-              color: "rgba(255,255,255,0.75)",
-              fontSize: 16, fontWeight: 300,
-              letterSpacing: "0.04em",
-              animation: "sos-pulse 3s ease-in-out infinite",
-            }}>
-              Je suis là pour toi…
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* ══ INTAKE — Wave Orb ═══════════════════════════════════════════════════ */}
+      {/* ══ CONNECTING + INTAKE — Wave Orb ══════════════════════════════════════
+          L'orb est monté dès la phase "connecting" à faible opacité, puis
+          s'illumine pleinement quand Gemini prend la parole (phase "loading").
+          Même logique que BreathingExercise : dim → full sans recréation.
+      ══════════════════════════════════════════════════════════════════════════ */}
       {showOrb && !loadError && (
         <div style={{
           display: "flex", flexDirection: "column",
           alignItems: "center", gap: 36,
           position: "relative", zIndex: 5,
+          opacity: phase === "connecting" ? 0.32 : 1,
+          transition: "opacity 1.4s ease",
         }}>
           <WaveOrb speaking={isAiSpeaking || isPatientSpeaking} firstName={firstName} analyser={outputAnalyserRef.current} />
 
           <div style={{ textAlign: "center", minHeight: 24 }}>
+            {phase === "connecting" && (
+              <p style={{
+                margin: 0,
+                color: "#00e5b4",
+                fontSize: 13, letterSpacing: "0.08em",
+                animation: "sos-blink 2s ease-in-out infinite",
+              }}>
+                Connexion en cours…
+              </p>
+            )}
             {phase === "intake" && !isAiSpeaking && (
               <p style={{
                 color: "#00e5b4",
@@ -2062,10 +2021,10 @@ export default function SOSExercise({
           70%  { box-shadow: 0 0 0 14px rgba(0,229,180,0); }
           100% { box-shadow: 0 0 0 0 rgba(0,229,180,0); }
         }
-        /* Anneaux respirants de la phase connecting */
-        @keyframes sos-breathe-ring {
-          0%, 100% { transform: scale(0.94); opacity: 0.6; }
-          50%       { transform: scale(1.06); opacity: 1;   }
+        /* Texte clignotant "Connexion en cours…" */
+        @keyframes sos-blink {
+          0%, 100% { opacity: 0.35; }
+          50%       { opacity: 0.85; }
         }
         /* Barre de progression lettre — forward (expire) et backward (inspire) */
         @keyframes bar-fill-fwd {
