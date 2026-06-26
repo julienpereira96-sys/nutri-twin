@@ -1711,7 +1711,7 @@ export default function SOSExercise({
           opacity: phase === "connecting" ? 0.5 : 1,
           transition: "opacity 1.4s ease",
         }}>
-          <PulseOrb speaking={isAiSpeaking || isPatientSpeaking} firstName={firstName} analyser={outputAnalyserRef.current} />
+          <PulseOrb speaking={isAiSpeaking || isPatientSpeaking} analyser={outputAnalyserRef.current} />
 
           <div style={{ textAlign: "center", minHeight: 24 }}>
             {phase === "connecting" && (
@@ -1764,7 +1764,7 @@ export default function SOSExercise({
             animation: "sos-fade 0.6s ease",
           }}
         >
-          <PulseOrb speaking={false} firstName={firstName} analyser={outputAnalyserRef.current} />
+          <PulseOrb speaking={false} analyser={outputAnalyserRef.current} />
 
           <div style={{
             display: "flex", flexDirection: "column",

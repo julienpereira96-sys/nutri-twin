@@ -392,9 +392,16 @@ export default function BreathingExercise({
     if (sc.turnComplete === true) {
       const currentStatus = statusRef.current;
 
-      // Intro terminée → démarrer le premier bloc
+      // Intro terminée → démarrer le premier bloc (attendre la fin de l'audio)
       if (currentStatus === "intro") {
-        setTimeout(() => startBreathingRef.current(), 600);
+        const waitForAudioEnd = () => {
+          if (!isPlayingRef.current) {
+            setTimeout(() => startBreathingRef.current(), 400);
+          } else {
+            setTimeout(waitForAudioEnd, 100);
+          }
+        };
+        waitForAudioEnd();
         return;
       }
 
@@ -591,18 +598,31 @@ export default function BreathingExercise({
         </div>
       )}
 
-      {/* ── Breath phase label ────────────────────────────────────────────── */}
+      {/* ── Phase bar + label (inspire / expire) ─────────────────────────── */}
       {status === "breathing_cycle" && breathPhaseLabel && (
-        <p key={breathPhaseLabel} style={{
-          position: "absolute", bottom: 80,
-          margin: 0, fontSize: 17, fontWeight: 300,
-          letterSpacing: "0.20em", textTransform: "uppercase",
-          color: "rgba(16,185,129,0.68)",
-          animation: "br-fade-in 0.3s ease",
-          pointerEvents: "none",
+        <div key={breathPhaseLabel} style={{
+          position: "absolute", bottom: 72,
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
+          pointerEvents: "none", animation: "br-fade-in 0.3s ease",
         }}>
-          {breathPhaseLabel === "inspire" ? "Inspire" : "Expire"}
-        </p>
+          {/* Barre de progression */}
+          <div style={{ width: 120, height: 3, borderRadius: 3, background: "rgba(16,185,129,0.14)", overflow: "hidden" }}>
+            <div style={{
+              height: "100%", borderRadius: 3,
+              background: "linear-gradient(90deg, rgba(16,185,129,0.5), #10B981)",
+              animation: breathPhaseLabel === "inspire"
+                ? "br-inspire-fill 4s linear forwards"
+                : "br-expire-drain 6s linear forwards",
+            }} />
+          </div>
+          <p style={{
+            margin: 0, fontSize: 13, fontWeight: 300,
+            letterSpacing: "0.22em", textTransform: "uppercase",
+            color: "rgba(16,185,129,0.65)",
+          }}>
+            {breathPhaseLabel === "inspire" ? "Inspire" : "Expire"}
+          </p>
+        </div>
       )}
 
       {/* ── Hint "yeux fermés" (disparaît après 5s) ─────────────────────── */}
@@ -620,14 +640,21 @@ export default function BreathingExercise({
 
       {/* ── Status loading ────────────────────────────────────────────────── */}
       {(status === "loading") && !loadError && (
-        <p style={{
-          position: "absolute", bottom: 60,
-          fontSize: 13, color: TEXT_MUTED,
-          letterSpacing: "0.08em",
-          animation: "br-blink 2s ease-in-out infinite",
+        <div style={{
+          position: "absolute", bottom: 52,
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 14,
         }}>
-          Connexion en cours…
-        </p>
+          <p style={{
+            margin: 0, color: "#10B981", fontSize: 14,
+            letterSpacing: "0.10em", fontWeight: 400,
+            animation: "br-blink 2s ease-in-out infinite",
+          }}>
+            Connexion en cours…
+          </p>
+          <div style={{ width: 160, height: 2, borderRadius: 2, background: "rgba(16,185,129,0.12)", overflow: "hidden", position: "relative" }}>
+            <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: "45%", borderRadius: 2, background: "linear-gradient(90deg, transparent 0%, #10B981 50%, transparent 100%)", animation: "br-loading-bar 1.6s ease-in-out infinite" }} />
+          </div>
+        </div>
       )}
 
       {/* ── Checkpoint — micro ouvert, Gemini écoute ─────────────────────── */}
@@ -667,6 +694,18 @@ export default function BreathingExercise({
         @keyframes br-blink {
           0%, 100% { opacity: 0.35; }
           50%       { opacity: 0.85; }
+        }
+        @keyframes br-loading-bar {
+          0%   { transform: translateX(-120%); }
+          100% { transform: translateX(280%); }
+        }
+        @keyframes br-inspire-fill {
+          from { width: 0%; }
+          to   { width: 100%; }
+        }
+        @keyframes br-expire-drain {
+          from { width: 100%; }
+          to   { width: 0%; }
         }
       `}</style>
     </div>

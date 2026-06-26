@@ -2547,12 +2547,8 @@ export default function ChatPage() {
               style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", borderRadius: 14, background: "rgba(6,182,212,0.07)", border: "1px solid rgba(6,182,212,0.25)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}
               onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(6,182,212,0.13)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.42)"; } }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(6,182,212,0.07)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.25)"; }}>
-              {sosLoading ? (
+              {sosLoading && (
                 <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${CYAN_DIM}`, borderTop: `2px solid ${CYAN}`, animation: "spin 1s linear infinite", flexShrink: 0 }} />
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill={CYAN} stroke={CYAN} strokeWidth="0.5" style={{ flexShrink: 0, filter: "drop-shadow(0 0 5px rgba(6,182,212,0.4))" }}>
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                </svg>
               )}
               <div style={{ textAlign: "left", flex: 1, position: "relative" }}>
                 <p style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#cffafe", letterSpacing: "-0.2px" }}>{sosLoading ? "En route..." : "Mon Soutien"}</p>
@@ -2569,10 +2565,6 @@ export default function ChatPage() {
               style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", borderRadius: 14, background: "rgba(16,185,129,0.06)", border: `1px solid ${ACCENT_BORDER}`, cursor: "pointer", transition: "all 0.2s" }}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.06)"; e.currentTarget.style.borderColor = ACCENT_BORDER; }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-              </svg>
               <div style={{ textAlign: "left", flex: 1, position: "relative" }}>
                 <p style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.2px" }}>Bibliothèque</p>
                 <p style={{ margin: 0, fontSize: 11, color: "rgba(16,185,129,0.65)", lineHeight: 1.5 }}>Exercices à pratiquer librement</p>
@@ -2739,15 +2731,20 @@ export default function ChatPage() {
         <header style={{ background: "rgba(8,14,11,0.75)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", height: 60, display: "flex", alignItems: "center", flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}>
           <div style={{ flex: 1, padding: isMobile ? "0 16px" : "0 24px", display: "flex", alignItems: "center" }}>
             {(!sidebarOpen || isMobile) && (
-              <button onClick={() => setSidebarOpen(v => !v)} style={{ width: isMobile ? 40 : 34, height: isMobile ? 40 : 34, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "scale(1)"; }}
-                onMouseDown={e => { e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
-                onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
-                onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.28)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; }}
-                onTouchEnd={() => {}}>
-                <MenuIcon size={isMobile ? 16 : 15} />
-              </button>
+              <>
+                <button onClick={() => setSidebarOpen(v => !v)} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "scale(1)"; }}
+                  onMouseDown={e => { e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
+                  onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+                  onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.28)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; }}
+                  onTouchEnd={() => {}}>
+                  <MenuIcon size={isMobile ? 16 : 15} />
+                </button>
+                <span style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "rgba(255,255,255,0.92)", letterSpacing: "-0.3px", marginLeft: 10, userSelect: "none" }}>
+                  Nutri<span style={{ color: ACCENT, textShadow: "0 0 14px rgba(16,185,129,0.30)" }}>Twin</span>
+                </span>
+              </>
             )}
           </div>
         </header>
