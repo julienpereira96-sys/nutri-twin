@@ -22,6 +22,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
 import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
+import PulseOrb from "./PulseOrb";
 
 // ─── Design ───────────────────────────────────────────────────────────────────
 const ACCENT        = "#10b981";
@@ -135,7 +136,6 @@ export default function BreathingExercise({
   // ── State ──────────────────────────────────────────────────────────────────
   const [status, setStatus]           = useState<Status>("loading");
   const [blockCount, setBlockCount]   = useState(0);      // blocs complétés
-  const [animPaused, setAnimPaused]   = useState(true);   // CSS animation-play-state
   const [loadError, setLoadError]     = useState<string | null>(null);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [breathPhaseLabel, setBreathPhaseLabel] = useState<"inspire" | "expire" | null>(null);
@@ -144,7 +144,8 @@ export default function BreathingExercise({
   const statusRef      = useRef<Status>("loading");
   const blockCountRef  = useRef(0);
   const wsRef          = useRef<GeminiLiveClient | null>(null);
-  const audioCtxRef    = useRef<AudioContext | null>(null);
+  const audioCtxRef         = useRef<AudioContext | null>(null);
+  const outputAnalyserRef   = useRef<AnalyserNode | null>(null);
   const processorRef   = useRef<ScriptProcessorNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const micEnabledRef  = useRef(false);           // mic ON/OFF selon la phase
@@ -190,7 +191,7 @@ export default function BreathingExercise({
     buf.getChannelData(0).set(data);
     const src = ctx.createBufferSource();
     src.buffer = buf;
-    src.connect(ctx.destination);
+    src.connect(outputAnalyserRef.current ?? ctx.destination);
     src.onended = playNextChunk;
     src.start(0);
   }, []);
@@ -224,6 +225,7 @@ export default function BreathingExercise({
     mediaStreamRef.current = null;
     audioCtxRef.current?.close().catch(() => {});
     audioCtxRef.current = null;
+    outputAnalyserRef.current = null;
     wsRef.current?.close();
     wsRef.current = null;
     flushAudio();
@@ -246,7 +248,6 @@ export default function BreathingExercise({
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = null;
     micEnabledRef.current = false;
-    setAnimPaused(true);
     setStatus("cloture");
     setBreathPhaseLabel(null);
     outputTransRef.current = "";
@@ -266,7 +267,6 @@ export default function BreathingExercise({
   const startBreathingBlock = useCallback(() => {
     elapsedRef.current = 0;
     micEnabledRef.current = false;   // mic OFF pendant le souffle
-    setAnimPaused(false);
     setStatus("breathing_cycle");
 
     // Premier inspire immédiat
@@ -304,7 +304,6 @@ export default function BreathingExercise({
     blockCountRef.current = newCount;
     setBlockCount(newCount);
 
-    setAnimPaused(true);
     setStatus("checkpoint");
     setBreathPhaseLabel(null);
     outputTransRef.current = "";
@@ -452,6 +451,12 @@ export default function BreathingExercise({
     const audioCtx = new AudioContext({ sampleRate: 16000 });
     audioCtxRef.current = audioCtx;
 
+    // Analyser sur la sortie audio Gemini — lu par PulseOrb pour moduler le glow
+    const outAnalyser = audioCtx.createAnalyser();
+    outAnalyser.fftSize = 256;
+    outAnalyser.connect(audioCtx.destination);
+    outputAnalyserRef.current = outAnalyser;
+
     const micSrc  = audioCtx.createMediaStreamSource(stream);
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     const proc    = audioCtx.createScriptProcessor(4096, 1, 1);
@@ -555,52 +560,21 @@ export default function BreathingExercise({
       )}
 
       {/* ══ ORB PRINCIPALE ═════════════════════════════════════════════════
-          Présente depuis le loading (dim), s'anime en breathing_cycle.
-          animation-play-state: paused = gel propre sans saccade.
+          PulseOrb : CSS body + boucle RAF sur l'analyser de sortie Gemini.
+          Dim en loading/cloture, plein en exercice.
       ══════════════════════════════════════════════════════════════════════ */}
       {!loadError && (
-        <div style={{ position: "relative", zIndex: 1, width: 240, height: 240, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {/* Anneau externe — pulse lent */}
-          <div style={{
-            position: "absolute", width: "100%", height: "100%",
-            borderRadius: "50%",
-            border: "1px solid rgba(16,185,129,0.10)",
-            animation: "br-ring 5s ease-in-out infinite",
-            animationPlayState: animPaused ? "paused" : "running",
-          }} />
-
-          {/* Orb */}
-          <div style={{
-            width: 200, height: 200,
-            borderRadius: "50%",
-            background: "radial-gradient(circle at 42% 42%, rgba(16,185,129,0.22) 0%, rgba(16,185,129,0.06) 55%, transparent 100%)",
-            border: `1.5px solid ${ACCENT_BORDER}`,
-            boxShadow: `0 0 40px rgba(16,185,129,0.28), 0 0 90px rgba(16,185,129,0.12), 0 0 180px rgba(16,185,129,0.05)`,
-            animationName: "br-breathe",
-            animationDuration: `${CYCLE_DUR}s`,
-            animationTimingFunction: "ease-in-out",
-            animationIterationCount: "infinite",
-            animationPlayState: animPaused ? "paused" : "running",
-            opacity: (status === "loading" || status === "cloture") ? 0.35 : 1,
-            transition: "opacity 1.4s ease",
-          }} />
-
-          {/* Indicateur AI parle — mini-wave sous l'orb */}
-          {isAiSpeaking && (
-            <div style={{
-              position: "absolute", bottom: -28,
-              display: "flex", gap: 4, alignItems: "flex-end",
-              animation: "br-fade-in 0.3s ease",
-            }}>
-              {[0.6, 1, 0.7, 1.1, 0.5].map((h, i) => (
-                <div key={i} style={{
-                  width: 3, borderRadius: 2, background: ACCENT,
-                  height: `${6 * h}px`, opacity: 0.6,
-                  animation: `br-wave-bar 0.8s ease-in-out ${i * 0.12}s infinite alternate`,
-                }} />
-              ))}
-            </div>
-          )}
+        <div style={{
+          position: "relative", zIndex: 1,
+          opacity: (status === "loading" || status === "cloture") ? 0.4 : 1,
+          transition: "opacity 1.4s ease",
+        }}>
+          <PulseOrb
+            color="#10B981"
+            speaking={isAiSpeaking}
+            analyser={outputAnalyserRef.current}
+            size={200}
+          />
         </div>
       )}
 
@@ -677,11 +651,6 @@ export default function BreathingExercise({
 
       {/* ── Keyframes ─────────────────────────────────────────────────────── */}
       <style>{`
-        @keyframes br-breathe {
-          0%          { transform: scale(1.0); box-shadow: 0 0 40px rgba(16,185,129,0.28), 0 0 90px rgba(16,185,129,0.10); }
-          ${INSPIRE_PCT}% { transform: scale(1.5); box-shadow: 0 0 90px rgba(16,185,129,0.65), 0 0 180px rgba(16,185,129,0.28), 0 0 360px rgba(16,185,129,0.08); }
-          100%        { transform: scale(1.0); box-shadow: 0 0 40px rgba(16,185,129,0.28), 0 0 90px rgba(16,185,129,0.10); }
-        }
         @keyframes br-ring {
           0%, 100% { transform: scale(1);    opacity: 0.35; }
           50%       { transform: scale(1.06); opacity: 0.60; }
@@ -698,10 +667,6 @@ export default function BreathingExercise({
         @keyframes br-blink {
           0%, 100% { opacity: 0.35; }
           50%       { opacity: 0.85; }
-        }
-        @keyframes br-wave-bar {
-          from { transform: scaleY(0.5); }
-          to   { transform: scaleY(1.5); }
         }
       `}</style>
     </div>

@@ -17,6 +17,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
 import ParticleCanvas from "./ParticleCanvas";
+import PulseOrb from "./PulseOrb";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const TEXT_MUTED   = "rgba(255,255,255,0.38)";
@@ -251,162 +252,7 @@ function pcm16Base64ToFloat32(b64: string): Float32Array {
   return f32;
 }
 
-// ─── Wave Orb (remplace AiBlob) ──────────────────────────────────────────────
-// Couches idle/speaking interpolées en douceur — jamais de saut brutal d'amplitude.
-const WAVE_IDLE_LAYERS: [number, number, number, number][] = [
-  [3,   1.7, 0,              0.18],
-  [2,   1.3, Math.PI * 0.65, 0.11],
-  [1.2, 1.0, Math.PI * 1.35, 0.06],
-];
-const WAVE_SPEAK_LAYERS: [number, number, number, number][] = [
-  [13, 2.8, 0,              0.28],
-  [8,  2.0, Math.PI * 0.65, 0.16],
-  [5,  1.4, Math.PI * 1.35, 0.09],
-];
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
-function WaveOrb({
-  speaking, firstName, analyser, size = 220,
-}: { speaking: boolean; firstName?: string; analyser?: AnalyserNode | null; size?: number }) {
-  const canvasRef   = useRef<HTMLCanvasElement>(null);
-  const speakRef    = useRef(speaking);
-  const analyserRef = useRef<AnalyserNode | null | undefined>(analyser);
-  speakRef.current    = speaking;
-  analyserRef.current = analyser;
-
-  useEffect(() => {
-    const c = canvasRef.current;
-    if (!c) return;
-    const S   = size;
-    c.width   = S * 2; c.height = S * 2;
-    const ctx = c.getContext("2d")!;
-    let raf: number, t = 0;
-
-    // Lissage : transition idle ↔ speaking (intensité) + énergie audio réelle de
-    // Gemini (si un analyser est fourni) — tout est ease, jamais de saut net.
-    const intensity = { current: 0 };
-    const energy    = { current: 0 };
-    const freqBuf   = new Uint8Array(128); // fftSize 256 côté analyser → 128 bins
-
-    const draw = () => {
-      raf = requestAnimationFrame(draw);
-      t  += 0.016;
-      ctx.clearRect(0, 0, S * 2, S * 2);
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(S, S, S - 1, 0, Math.PI * 2);
-      ctx.clip();
-
-      // Fond uniforme sombre — pas de dégradé décentré qui crée un "cercle intérieur"
-      ctx.fillStyle = "rgb(8,14,40)";
-      ctx.fillRect(0, 0, S * 2, S * 2);
-      // Lueur centrale subtile et CENTRÉE
-      const bg = ctx.createRadialGradient(S, S, 0, S, S, S * 0.8);
-      bg.addColorStop(0,   "rgba(6,182,212,0.07)");
-      bg.addColorStop(1,   "rgba(6,182,212,0)");
-      ctx.fillStyle = bg;
-      ctx.fillRect(0, 0, S * 2, S * 2);
-
-      // ── Lissage de l'intensité idle ↔ speaking (ease, pas de saut) ────────────
-      const spk = speakRef.current;
-      intensity.current += ((spk ? 1 : 0) - intensity.current) * 0.08;
-
-      // ── Énergie réelle de la voix de Gemini (analyser branché sur sa sortie) ──
-      // Plancher idle à 0.32 : jamais totalement figé au repos (pulsation douce,
-      // effet "assistant en veille"), et suit le volume réel dès que l'IA parle.
-      let rawEnergy = 0.32;
-      const an = analyserRef.current;
-      if (spk) {
-        if (an) {
-          an.getByteFrequencyData(freqBuf);
-          let sum = 0;
-          for (let i = 0; i < freqBuf.length; i++) sum += freqBuf[i];
-          rawEnergy = (sum / freqBuf.length) / 255; // 0..1, suit le volume réel
-        } else {
-          rawEnergy = 0.55; // pas d'analyser dispo → amplitude "parlante" générique
-        }
-      }
-      energy.current += (rawEnergy - energy.current) * 0.16;
-
-      // Couches de vagues remplies — interpolées entre idle et speaking
-      // (l'énergie réelle est appliquée directement dans la formule de l'onde,
-      // pas ici, pour ne jamais la compter deux fois)
-      const k = intensity.current;
-      const layers = WAVE_IDLE_LAYERS.map((idle, i) => {
-        const spkL = WAVE_SPEAK_LAYERS[i];
-        return [
-          lerp(idle[0], spkL[0], k),
-          lerp(idle[1], spkL[1], k),
-          idle[2], // phaseOff identique idle/speak
-          lerp(idle[3], spkL[3], k),
-        ] as [number, number, number, number];
-      });
-
-      const yBase = S * 1.12;
-
-      for (const [amp, freq, phaseOff, alpha] of layers) {
-        ctx.beginPath();
-        for (let x = 0; x <= S * 2; x += 3) {
-          // Onde STATIONNAIRE (effet "studio d'enregistrement Jarvis") :
-          // - enveloppe de position : fixe les bords gauche/droite à zéro, jamais
-          //   de mélange x/t dans le même sinus (sinon ça redevient une onde
-          //   progressive qui défile).
-          // - oscillation temporelle pure : la ligne oscille SUR PLACE.
-          // - l'énergie lissée module l'amplitude du produit des deux → l'onde
-          //   "monte" avec la voix sans jamais se mettre à voyager latéralement.
-          const envelope    = Math.sin((Math.PI * x) / (S * 2));
-          const oscillation = Math.sin(t * freq * 4 + phaseOff);
-          const y = yBase - amp * energy.current * envelope * oscillation;
-          x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-        }
-        ctx.lineTo(S * 2, S * 2);
-        ctx.lineTo(0, S * 2);
-        ctx.closePath();
-        const grad = ctx.createLinearGradient(0, yBase - amp, 0, S * 2);
-        grad.addColorStop(0, `rgba(6,182,212,${alpha})`);
-        grad.addColorStop(1, `rgba(6,182,212,0.01)`);
-        ctx.fillStyle = grad;
-        ctx.fill();
-      }
-      ctx.restore();
-    };
-
-    raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
-  }, []); // lancé une seule fois
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
-      <div style={{ position: "relative" }}>
-        <div style={{
-          position: "absolute", inset: -32,
-          background: "radial-gradient(circle, rgba(6,182,212,0.11) 0%, transparent 68%)",
-          borderRadius: "50%", pointerEvents: "none",
-        }} />
-        <canvas
-          ref={canvasRef}
-          style={{
-            width: size, height: size,
-            borderRadius: "50%",
-            border: "1px solid rgba(6,182,212,0.18)",
-            boxShadow: speaking
-              ? "0 0 32px rgba(6,182,212,0.22), 0 0 64px rgba(6,182,212,0.08)"
-              : "0 0 14px rgba(6,182,212,0.08)",
-            display: "block",
-            transition: "box-shadow 0.6s ease",
-          }}
-        />
-      </div>
-      <p style={{
-        color: TEXT_MUTED, fontSize: 12,
-        letterSpacing: "0.16em", fontWeight: 300,
-        textTransform: "uppercase",
-      }}>
-        {firstName}
-      </p>
-    </div>
-  );
-}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 // "reveal" couvre tout : illumination du mot, félicitation, ET question de
@@ -1037,10 +883,7 @@ export default function SOSExercise({
     if (toolCallMsg?.functionCalls) {
       for (const fc of toolCallMsg.functionCalls) {
         if (fc.name === "demarrer_exercice_respiration" && phaseRef.current === "intake") {
-          dbg(`RECV toolCall demarrer_exercice_respiration | isPlaying=${isPlayingRef.current}`);
-          if (intakeHintTimerRef.current) { clearTimeout(intakeHintTimerRef.current); intakeHintTimerRef.current = null; }
-          if (intakeCapTimerRef.current)  { clearTimeout(intakeCapTimerRef.current);  intakeCapTimerRef.current  = null; }
-          intakeSignalSentRef.current = true;
+          dbg(`RECV toolCall demarrer_exercice_respiration | isPlaying=${isPlayingRef.current} | patientHasSpoken=${patientHasSpokenRef.current}`);
 
           // Toujours répondre à l'appel d'outil EN PREMIER — Gemini attend ce
           // message pour clore son tour "function call" avant d'accepter un
@@ -1052,6 +895,27 @@ export default function SOSExercise({
               functionResponses: [{ id: fc.id, response: { output: "ok" } }],
             },
           }));
+
+          // ── Garde : patient n'a pas encore parlé ────────────────────────────
+          // Gemini a appelé l'outil trop tôt, avant que le patient ait pu
+          // s'exprimer. On ne modifie pas intakeSignalSentRef (les timers
+          // 2-min / 3-min restent actifs) et on relance Gemini pour qu'il
+          // continue d'écouter avant de rappeler l'outil.
+          if (!patientHasSpokenRef.current) {
+            dbg("toolCall: garde patient silencieux → relance Gemini, outil ignoré");
+            wsRef.current?.send(JSON.stringify({
+              clientContent: {
+                turns: [{ role: "user", parts: [{ text: `[Le patient n'a pas encore eu l'occasion de s'exprimer. Continue à l'écouter avec bienveillance. Pose-lui une question ouverte pour l'inviter à partager ce qu'il ressent. Tu rappelleras l'outil demarrer_exercice_respiration uniquement après qu'il se soit exprimé.]` }] }],
+                turnComplete: true,
+              },
+            }));
+            continue; // intakeSignalSentRef reste false, les timers restent en place
+          }
+
+          // ── Patient a parlé : flow normal ────────────────────────────────────
+          if (intakeHintTimerRef.current) { clearTimeout(intakeHintTimerRef.current); intakeHintTimerRef.current = null; }
+          if (intakeCapTimerRef.current)  { clearTimeout(intakeCapTimerRef.current);  intakeCapTimerRef.current  = null; }
+          intakeSignalSentRef.current = true;
 
           // Quatre cas possibles :
           // 1. Audio en cours → Gemini parle EN CE MOMENT → attendre fin → ready
@@ -1832,17 +1696,17 @@ export default function SOSExercise({
           display: "flex", flexDirection: "column",
           alignItems: "center", gap: 36,
           position: "relative", zIndex: 5,
-          opacity: phase === "connecting" ? 0.32 : 1,
+          opacity: phase === "connecting" ? 0.5 : 1,
           transition: "opacity 1.4s ease",
         }}>
-          <WaveOrb speaking={isAiSpeaking || isPatientSpeaking} firstName={firstName} analyser={outputAnalyserRef.current} />
+          <PulseOrb speaking={isAiSpeaking || isPatientSpeaking} firstName={firstName} analyser={outputAnalyserRef.current} />
 
           <div style={{ textAlign: "center", minHeight: 24 }}>
             {phase === "connecting" && (
               <p style={{
                 margin: 0,
-                color: "#00e5b4",
-                fontSize: 13, letterSpacing: "0.08em",
+                color: "#06B6D4",
+                fontSize: 14, letterSpacing: "0.10em", fontWeight: 400,
                 animation: "sos-blink 2s ease-in-out infinite",
               }}>
                 Connexion en cours…
@@ -1850,7 +1714,7 @@ export default function SOSExercise({
             )}
             {phase === "intake" && !isAiSpeaking && (
               <p style={{
-                color: "#00e5b4",
+                color: "#06B6D4",
                 fontSize: 14, letterSpacing: "0.05em",
                 animation: "sos-fade 0.8s ease",
               }}>
@@ -1873,7 +1737,7 @@ export default function SOSExercise({
             animation: "sos-fade 0.6s ease",
           }}
         >
-          <WaveOrb speaking={false} firstName={firstName} analyser={outputAnalyserRef.current} />
+          <PulseOrb speaking={false} firstName={firstName} analyser={outputAnalyserRef.current} />
 
           <div style={{
             display: "flex", flexDirection: "column",
@@ -1883,8 +1747,8 @@ export default function SOSExercise({
             <div style={{
               width: 18, height: 18,
               borderRadius: "50%",
-              background: "#00e5b4",
-              boxShadow: "0 0 0 0 rgba(0,229,180,0.5)",
+              background: "#06B6D4",
+              boxShadow: "0 0 0 0 rgba(6,182,212,0.5)",
               animation: "sos-dot-pulse 2s ease-in-out infinite",
             }} />
             <p style={{
@@ -1987,14 +1851,14 @@ export default function SOSExercise({
               zIndex: 6, pointerEvents: "none",
               animation: "sos-fade 0.6s ease",
             }}>
-              <WaveOrb
+              <PulseOrb
                 size={130}
                 speaking={isAiSpeaking || isPatientSpeaking}
                 analyser={outputAnalyserRef.current}
               />
               {!isAiSpeaking && revealGeminiHasSpoken && (
                 <p style={{
-                  color: "#00e5b4", fontSize: 14,
+                  color: "#06B6D4", fontSize: 14,
                   letterSpacing: "0.05em",
                   animation: "sos-fade 0.8s ease",
                 }}>
