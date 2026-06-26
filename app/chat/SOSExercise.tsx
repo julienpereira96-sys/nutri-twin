@@ -1703,14 +1703,29 @@ export default function SOSExercise({
 
           <div style={{ textAlign: "center", minHeight: 24 }}>
             {phase === "connecting" && (
-              <p style={{
-                margin: 0,
-                color: "#06B6D4",
-                fontSize: 14, letterSpacing: "0.10em", fontWeight: 400,
-                animation: "sos-blink 2s ease-in-out infinite",
-              }}>
-                Connexion en cours…
-              </p>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+                <p style={{
+                  margin: 0,
+                  color: "#06B6D4",
+                  fontSize: 14, letterSpacing: "0.10em", fontWeight: 400,
+                  animation: "sos-blink 2s ease-in-out infinite",
+                }}>
+                  Connexion en cours…
+                </p>
+                {/* Barre de chargement indéterminée */}
+                <div style={{
+                  width: 160, height: 2, borderRadius: 2,
+                  background: "rgba(6,182,212,0.12)",
+                  overflow: "hidden", position: "relative",
+                }}>
+                  <div style={{
+                    position: "absolute", top: 0, left: 0,
+                    height: "100%", width: "45%", borderRadius: 2,
+                    background: "linear-gradient(90deg, transparent 0%, #06B6D4 50%, transparent 100%)",
+                    animation: "sos-loading-bar 1.6s ease-in-out infinite",
+                  }} />
+                </div>
+              </div>
             )}
             {phase === "intake" && !isAiSpeaking && (
               <p style={{
@@ -1889,6 +1904,11 @@ export default function SOSExercise({
         @keyframes sos-blink {
           0%, 100% { opacity: 0.35; }
           50%       { opacity: 0.85; }
+        }
+        /* Barre de chargement indéterminée — sweep gauche → droite */
+        @keyframes sos-loading-bar {
+          0%   { transform: translateX(-120%); }
+          100% { transform: translateX(280%); }
         }
         /* Barre de progression lettre — forward (expire) et backward (inspire) */
         @keyframes bar-fill-fwd {

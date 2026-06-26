@@ -3,9 +3,10 @@
 /**
  * PulseOrb — orb audio-réactif sans canvas
  *
- * Corps CSS (radial-gradient) + boucle RAF lisant l'AnalyserNode de sortie Gemini.
- * Au repos : sine doux entre ~0.27–0.37.
- * En parole : scale + glow pilotés par l'énergie réelle.
+ * Corps CSS statique (radial-gradient) + boucle RAF lisant l'AnalyserNode.
+ * Au repos : sine doux sur le halo (respiration légère).
+ * En parole : le halo externe scale + s'illumine selon l'énergie réelle.
+ *             L'orb lui-même reste immobile — seul le fond lumineux autour pulse.
  */
 import { useRef, useEffect } from "react";
 
@@ -52,20 +53,24 @@ export default function PulseOrb({
           target = 0.55;
         }
       } else {
-        target = 0.32 + 0.05 * Math.sin(t * 0.7); // sine doux au repos
+        target = 0.30 + 0.06 * Math.sin(t * 0.7); // respiration douce au repos
       }
 
       e += (target - e) * 0.10;
-      const scale = 1 + (e - 0.27) * 0.30;
-      const near  = (e * 52).toFixed(0);
-      const far   = (e * 110).toFixed(0);
 
-      if (orbRef.current) {
-        orbRef.current.style.transform  = `scale(${scale.toFixed(4)})`;
-        orbRef.current.style.boxShadow  = `0 0 ${near}px ${color}48, 0 0 ${far}px ${color}18`;
-      }
+      // Halo externe : scale 1.0 → ~1.6 + opacity 0.10 → 0.55
+      const haloScale   = 1.0 + (e - 0.27) * 1.4;
+      const haloOpacity = Math.min(0.85, 0.10 + e * 0.45);
+
+      // Orb : pas de scale — juste un bord légèrement éclairé, fixe
+      const edgeGlow = (e * 24).toFixed(0);
+
       if (haloRef.current) {
-        haloRef.current.style.opacity = (0.05 + e * 0.18).toFixed(3);
+        haloRef.current.style.transform = `scale(${haloScale.toFixed(4)})`;
+        haloRef.current.style.opacity   = haloOpacity.toFixed(3);
+      }
+      if (orbRef.current) {
+        orbRef.current.style.boxShadow = `0 0 ${edgeGlow}px ${color}30`;
       }
     };
 
@@ -76,20 +81,21 @@ export default function PulseOrb({
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
       <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
-        {/* Halo externe — opacité pilotée par RAF */}
+        {/* Halo externe — scale + opacité pilotés par RAF (seule partie qui pulse) */}
         <div ref={haloRef} style={{
-          position: "absolute", inset: -36,
-          background: `radial-gradient(circle, ${color}20 0%, transparent 68%)`,
+          position: "absolute", inset: -52,
+          background: `radial-gradient(circle, ${color}28 0%, ${color}0A 50%, transparent 72%)`,
           borderRadius: "50%", pointerEvents: "none",
+          willChange: "transform, opacity",
         }} />
 
-        {/* Corps de l'orb — scale + glow pilotés par RAF */}
+        {/* Corps de l'orb — statique, juste un léger bord éclairé */}
         <div ref={orbRef} style={{
           width: size, height: size,
           borderRadius: "50%",
           background: `radial-gradient(circle at 42% 42%, ${color}38 0%, ${color}0D 55%, transparent 100%)`,
           border: `1.5px solid ${color}2E`,
-          willChange: "transform, box-shadow",
+          willChange: "box-shadow",
         }} />
       </div>
 
