@@ -6,7 +6,6 @@ import JournalModal from "./JournalModal";
 import BreathingExercise from "./BreathingExercise";
 import AncrageExercise from "./AncrageExercise";
 import MindfulEating from "./MindfulEating";
-import EcritureExercise from "./EcritureExercise";
 import DefusionExercise from "./DefusionExercise";
 import SOSExercise from "./SOSExercise";
 import PwaInstallPrompt from "./PwaInstallPrompt";
@@ -173,11 +172,17 @@ const IconLeaf2 = ({ size = 22, color = "currentColor" }: { size?: number; color
 );
 
 const TOOL_SVG_ICONS: Record<string, React.ReactElement> = {
-  manger: <IconLeaf2 size={28} color={CYAN} />,
-  breathing: <IconWind size={28} color={CYAN} />,
-  ancrage: <IconEye size={28} color={CYAN} />,
-  ecriture: <IconPen size={28} color={CYAN} />,
-  defusion: <IconLayers size={28} color={CYAN} />,
+  manger:    <IconLeaf2  size={28} color={CYAN} />,
+  breathing: <IconWind   size={28} color={CYAN} />,
+  ancrage:   <IconEye    size={28} color={CYAN} />,
+  defusion:  <IconLayers size={28} color={CYAN} />,
+};
+
+const LIBRARY_EXERCISE_ICONS: Record<string, (color: string) => React.ReactElement> = {
+  breathing: (c) => <IconWind   size={22} color={c} />,
+  ancrage:   (c) => <IconEye    size={22} color={c} />,
+  defusion:  (c) => <IconLayers size={22} color={c} />,
+  manger:    (c) => <IconLeaf2  size={22} color={c} />,
 };
 
 const SearchIcon = ({ size = 14, color = TEXT_MUTED }: { size?: number; color?: string }) => (
@@ -449,12 +454,11 @@ const SOS_EXERCISE_META: Record<string, { label: string; icon: string }> = {
 // ═══ BIBLIOTHÈQUE D'EXERCICES — accès direct, hors situation de crise ═══
 // Les 5 exercices retravaillés (Gemini Live). Lancés en dehors de toute triage SOS,
 // toujours en origin "pratique" (Exercices pratiqués côté Dashboard, jamais "[Non résolu]").
-const LIBRARY_EXERCISES: { id: string; label: string; desc: string; icon: string }[] = [
-  { id: "breathing", label: "Cohérence cardiaque", desc: "Respiration guidée · 3 min · Calme le système nerveux", icon: SOS_EXERCISE_META.breathing.icon },
-  { id: "ancrage", label: "Ancrage sensoriel", desc: "Technique 5-4-3-2-1 · Retour au moment présent", icon: SOS_EXERCISE_META.ancrage.icon },
-  { id: "manger", label: "Pleine conscience alimentaire", desc: "Manger en conscience, sans jugement", icon: SOS_EXERCISE_META.manger.icon },
-  { id: "ecriture", label: "Écriture cathartique", desc: "Déposer ce qui pèse, à son rythme", icon: SOS_EXERCISE_META.ecriture.icon },
-  { id: "defusion", label: "Défusion cognitive", desc: "Prendre de la distance avec ses pensées", icon: SOS_EXERCISE_META.defusion.icon },
+const LIBRARY_EXERCISES: { id: string; label: string; desc: string; iconBg: string; iconColor: string }[] = [
+  { id: "breathing", label: "Retrouver mon calme",       desc: "Ralentir avec la respiration",              iconBg: "rgba(59,130,246,0.15)",  iconColor: "#60a5fa" },
+  { id: "ancrage",   label: "Me reconnecter",            desc: "Revenir à ce qui m'entoure",                iconBg: "rgba(16,185,129,0.12)",  iconColor: ACCENT },
+  { id: "defusion",  label: "Défier une pensée négative", desc: "Prendre du recul sur ce que je me dis",   iconBg: "rgba(245,158,11,0.12)",  iconColor: "#fbbf24" },
+  { id: "manger",    label: "Accompagner mon repas",     desc: "Manger avec plus de conscience",            iconBg: "rgba(139,92,246,0.12)",  iconColor: "#a78bfa" },
 ];
 
 // ═══ CARTE DE NOTIFICATION "EXERCICE SOS TERMINÉ" ═══
@@ -572,9 +576,6 @@ export default function ChatPage() {
   // ─── Full-screen manger pleine conscience overlay ───
   const [showMangerExercise, setShowMangerExercise] = useState(false);
   const [mangerSosContext, setMangerSosContext] = useState("");
-  // ─── Full-screen écriture cathartique overlay ───
-  const [showEcritureExercise, setShowEcritureExercise] = useState(false);
-  const [ecrirtureSosContext, setEcritureSosContext] = useState("");
   // ─── Full-screen défusion cognitive overlay ───
   const [showDefusionExercise, setShowDefusionExercise] = useState(false);
   const [defusionSosContext, setDefusionSosContext] = useState("");
@@ -1090,32 +1091,6 @@ export default function ChatPage() {
     setPostExerciseStep({ toolId: "manger", answer: exitMode === "victory" ? "victoire" : exitMode });
   }, []);
 
-  // ─── Écriture cathartique : injection chat + clôture ──────────────────────────
-  const handleEcritureTransitionToChat = useCallback((
-    patientText: string,
-    tccBlocks: { label: string; emoji: string; text: string }[]
-  ) => {
-    setShowEcritureExercise(false);
-
-    // 1 bulle patient (résumé de la décharge)
-    const userBubble = patientText.trim()
-      ? `📝 *Exercice d'écriture — décharge émotionnelle :*\n\n${patientText.trim().slice(0, 400)}${patientText.trim().length > 400 ? "…" : ""}`
-      : "📝 *J'ai complété l'exercice d'écriture cathartique.*";
-
-    // 3 bulles Twin (une par bloc TCC)
-    const twinBubbles = tccBlocks.map(
-      (b) => `**${b.emoji} ${b.label}**\n\n${b.text}`
-    );
-
-    setMessages((prev) => [
-      ...prev,
-      { role: "user" as const, content: userBubble },
-      ...twinBubbles.map((content) => ({ role: "assistant" as const, content })),
-    ]);
-
-    setActiveTool({ id: "ecriture", data: null });
-    setPostExerciseStep({ toolId: "ecriture", answer: "" });
-  }, []);
 
   // ─── Défusion cognitive overlay complete ─────────────────────────────────────
   const handleDefusionTransitionToChat = useCallback((
@@ -1186,7 +1161,7 @@ export default function ChatPage() {
     // Si la permission n'a pas encore été accordée, on affiche d'abord
     // MicConsentOverlay pour contextualiser la demande native du navigateur.
     // Les exercices sans micro (journal) passent directement.
-    const needsMic = ["breathing", "ancrage", "manger", "ecriture", "defusion", "sos"].includes(toolId);
+    const needsMic = ["breathing", "ancrage", "manger", "defusion", "sos"].includes(toolId);
     // Stratégie localStorage — sans race condition avec navigator.permissions :
     //   • !hasMicConsent()            → l'utilisateur n'a jamais vu l'explication → overlay
     //   • micStatusRef === "denied"   → a refusé le dialog natif → overlay instructions réglages
@@ -1232,12 +1207,7 @@ export default function ChatPage() {
       return;
     }
 
-    // Écriture cathartique → overlay immersif dédié (bypass activeTool)
-    if (toolId === "ecriture") {
-      setEcritureSosContext(sosContext);
-      setShowEcritureExercise(true);
-      return;
-    }
+
 
     // Défusion cognitive → overlay immersif dédié (bypass activeTool)
     if (toolId === "defusion") {
@@ -1561,35 +1531,53 @@ export default function ChatPage() {
       {/* ═══ BIBLIOTHÈQUE D'EXERCICES — Modale ═══ */}
       {showLibraryModal && (
         <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.9)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#060d14", borderRadius: 24, padding: "28px 24px", width: "100%", maxWidth: 420, border: `1px solid ${ACCENT_BORDER}`, boxShadow: "0 24px 80px rgba(0,0,0,0.7)", animation: "fadeUp 0.3s ease", maxHeight: "85vh", overflowY: "auto" }}>
-            <div style={{ textAlign: "center", marginBottom: 24 }}>
-              <div style={{ width: 44, height: 44, borderRadius: 14, background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                </svg>
+          <div style={{ background: "#060d14", borderRadius: 24, padding: "24px 20px", width: "100%", maxWidth: 420, border: `1px solid rgba(255,255,255,0.07)`, boxShadow: "0 24px 80px rgba(0,0,0,0.7)", animation: "fadeUp 0.3s ease", maxHeight: "90vh", overflowY: "auto" }}>
+
+            {/* ── Urgence ── */}
+            <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Urgence</p>
+            <button
+              onClick={() => {
+                setShowLibraryModal(false);
+                if (emotionalStatus === "red_critical" || !patientId || !practitionerIdFromDb) return;
+                const recentLines = messages.slice(-8).map(m => `${m.role === "user" ? "Patient" : "Jumeau"}: ${m.content.slice(0, 300)}`);
+                const builtContext = recentLines.length > 0 ? `[contexte chat récent]\n${recentLines.join("\n")}` : "Mon Soutien";
+                setSosSosContext(builtContext);
+                void fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: "", patientId, practitionerId: practitionerIdFromDb, isSOS: true, sosContext: "Mon Soutien", origin: "crise" }) }).catch(() => {});
+                setShowSOSExercise(true);
+              }}
+              disabled={emotionalStatus === "red_critical" || !patientId || !practitionerIdFromDb}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.28)", cursor: "pointer", textAlign: "left", marginBottom: 20 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 10, background: "rgba(6,182,212,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <IconActivity size={20} color={CYAN} />
               </div>
-              <h3 style={{ margin: "0 0 6px", fontSize: 17, fontWeight: 700, color: TEXT_PRIMARY }}>Bibliothèque d'exercices</h3>
-              <p style={{ margin: 0, fontSize: 13, color: TEXT_SECONDARY }}>À pratiquer quand tu veux, même quand tout va bien</p>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: "0 0 2px", fontSize: 15, fontWeight: 600, color: "#cffafe" }}>Mon Soutien</p>
+                <p style={{ margin: 0, fontSize: 12, color: "rgba(6,182,212,0.6)" }}>Je traverse un moment difficile</p>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.4 }}><path d="M9 18l6-6-6-6" stroke={CYAN} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+
+            {/* ── Exercices ── */}
+            <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Exercices</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
               {LIBRARY_EXERCISES.map(ex => (
                 <button key={ex.id}
                   onClick={() => { setShowLibraryModal(false); void handleToolSelect(ex.id, "Bibliothèque", emotionalStatus === "red_behavioral" ? undefined : "pratique"); }}
-                  style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 18px", borderRadius: 16, background: "rgba(16,185,129,0.04)", border: `1px solid ${ACCENT_BORDER}`, cursor: "pointer", textAlign: "left", transition: "all 0.2s" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = ACCENT_DIM; e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.04)"; e.currentTarget.style.borderColor = ACCENT_BORDER; e.currentTarget.style.transform = "translateY(0)"; }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    {TOOL_SVG_ICONS[ex.id] ?? <IconStar size={28} color={ACCENT} />}
+                  style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", cursor: "pointer", textAlign: "left", transition: "background 0.15s" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}>
+                  <div style={{ width: 42, height: 42, borderRadius: 10, background: ex.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {(LIBRARY_EXERCISE_ICONS[ex.id] ?? ((c: string) => <IconStar size={22} color={c} />))(ex.iconColor)}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <p style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: TEXT_PRIMARY }}>{ex.label}</p>
+                    <p style={{ margin: "0 0 2px", fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY }}>{ex.label}</p>
                     <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED }}>{ex.desc}</p>
                   </div>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6" stroke={TEXT_MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.3 }}><path d="M9 18l6-6-6-6" stroke={TEXT_MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </button>
               ))}
             </div>
+
             <button onClick={() => setShowLibraryModal(false)}
               style={{ width: "100%", height: 38, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 13, cursor: "pointer" }}>
               Fermer
@@ -1639,7 +1627,6 @@ export default function ChatPage() {
             pendingTool.toolId === "breathing" ? "La cohérence cardiaque" :
             pendingTool.toolId === "ancrage"   ? "L'ancrage sensoriel"   :
             pendingTool.toolId === "manger"    ? "La pleine conscience alimentaire" :
-            pendingTool.toolId === "ecriture"  ? "L'écriture cathartique" :
             pendingTool.toolId === "defusion"  ? "La défusion cognitive"  :
             "L'exercice SOS"
           }
@@ -1696,17 +1683,6 @@ export default function ChatPage() {
         />
       )}
 
-      {/* ─── Écriture cathartique full-screen overlay ─── */}
-      {showEcritureExercise && patientId && practitionerIdFromDb && (
-        <EcritureExercise
-          patientId={patientId}
-          practitionerId={practitionerIdFromDb}
-          firstName={patientFirstName}
-          sosContext={ecrirtureSosContext}
-          onTransitionToChat={handleEcritureTransitionToChat}
-          onClose={() => setShowEcritureExercise(false)}
-        />
-      )}
 
       {/* ─── Défusion cognitive full-screen overlay ─── */}
       {showDefusionExercise && patientId && practitionerIdFromDb && (
