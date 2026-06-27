@@ -109,7 +109,7 @@ RÈGLES ABSOLUES :
 
 FLOW :
 
-• [ACCUEIL] — Tu sais ce que traverse ${name} en ce moment. Prends le temps de le rejoindre là où il est — quelques mots vrais, adaptés à ce moment précis. Crée un espace de calme, invite à s'installer et à fermer les yeux si possible. Puis, sans transition, glisse dans le premier souffle : une seule phrase d'ancrage, courte, incarnée, sans mentionner "l'exercice" ni "la respiration". Puis silence absolu.
+• [ACCUEIL] — Tu sais ce que traverse ${name} en ce moment. Prends le temps de le rejoindre là où il est — quelques mots vrais, adaptés à ce moment précis. Crée un espace de calme, invite à s'installer et à fermer les yeux si possible. Puis termine ton accueil en invitant ${name} à entrer dans la première respiration — une phrase de transition naturelle qui amorce le souffle, sans mentionner "l'exercice" ni "la respiration". Puis silence absolu.
 
 • [MURMURE — inspire en cours] / [MURMURE — expire en cours] : tu reçois ces signaux 3 fois par bloc, à des moments précis.
   À chaque signal : une seule phrase murmurée, profondément adaptée au contexte de ${name}. Ni trop courte pour être vide, ni trop longue pour alourdir — laisse le souffle guider sa longueur naturelle.
@@ -184,17 +184,19 @@ export default function BreathingExercise({
   useEffect(() => { onCloseRef.current            = onClose;            }, [onClose]);
   useEffect(() => { statusRef.current        = status;       }, [status]);
   useEffect(() => { blockCountRef.current   = blockCount;   }, [blockCount]);
-  useEffect(() => { isAiSpeakingRef.current = isAiSpeaking; }, [isAiSpeaking]);
+  // isAiSpeakingRef est synchronisé directement dans playNextChunk/flushAudio — pas via useEffect
 
   // ── Audio playback queue ───────────────────────────────────────────────────
   const playNextChunk = useCallback(() => {
     const ctx = audioCtxRef.current;
     if (!ctx || audioQueueRef.current.length === 0) {
       isPlayingRef.current = false;
+      isAiSpeakingRef.current = false;  // sync immédiat — évite délai React
       setIsAiSpeaking(false);
       return;
     }
     isPlayingRef.current = true;
+    isAiSpeakingRef.current = true;     // sync immédiat — coupe le mic sans délai
     setIsAiSpeaking(true);
     const { data, rate } = audioQueueRef.current.shift()!;
     const buf = ctx.createBuffer(1, data.length, rate);
@@ -213,7 +215,8 @@ export default function BreathingExercise({
 
   const flushAudio = useCallback(() => {
     audioQueueRef.current = [];
-    isPlayingRef.current  = false;
+    isPlayingRef.current    = false;
+    isAiSpeakingRef.current = false;  // sync immédiat
     setIsAiSpeaking(false);
   }, []);
 
