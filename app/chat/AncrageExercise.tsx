@@ -466,14 +466,34 @@ export default function AncrageExercise({
     if (toolCallMsg?.functionCalls) {
       for (const fc of toolCallMsg.functionCalls) {
         if (fc.name === "valider_sens") {
-          // 1. Répondre immédiatement au tool call (obligatoire avant que Gemini continue)
+          const st = statusRef.current;
+          // Garde-fou : le patient doit avoir réellement parlé pour ce sens,
+          // et on ne doit pas être en loading (accueil) ou cloture.
+          const isValidContext =
+            patientSpokeRef.current &&
+            st !== "loading" &&
+            st !== "cloture";
+
+          // Toujours répondre au tool call (Gemini bloque s'il n'obtient pas de toolResponse).
+          // En cas d'appel prématuré, on renvoie un message d'erreur pour que Gemini
+          // comprenne qu'il doit attendre la réponse du patient.
           wsRef.current?.send(JSON.stringify({
             toolResponse: {
-              functionResponses: [{ id: fc.id, response: { output: "ok" } }],
+              functionResponses: [{
+                id: fc.id,
+                response: {
+                  output: isValidContext
+                    ? "ok"
+                    : "Erreur : le patient n'a pas encore répondu pour ce sens. Continue à attendre sa réponse avant d'appeler valider_sens.",
+                },
+              }],
             },
           }));
 
-          // 2. Préparer le changement visuel — il sera appliqué quand l'audio de validation se termine
+          if (!isValidContext) break; // Gemini réessaiera après la réponse du patient
+
+          // Préparer l'avancement visuel — appliqué quand l'audio de validation se termine
+          patientSpokeRef.current = false;
           const newCount = completedCountRef.current + 1;
           pendingAdvanceRef.current = () => {
             setCompletedCount(newCount);
