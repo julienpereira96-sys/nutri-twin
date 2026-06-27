@@ -191,12 +191,22 @@ export default function BreathingExercise({
     const ctx = audioCtxRef.current;
     if (!ctx || audioQueueRef.current.length === 0) {
       isPlayingRef.current = false;
-      isAiSpeakingRef.current = false;  // sync immédiat — évite délai React
+      isAiSpeakingRef.current = false;
       setIsAiSpeaking(false);
+      // Checkpoint : Gemini vient de finir de parler
+      // Si aucune décision n'a encore été prise → réactiver le mic (patient doit répondre)
+      // 300ms de délai pour absorber les micro-pauses entre chunks Gemini
+      if (statusRef.current === "checkpoint" && !decisionFiredRef.current) {
+        setTimeout(() => {
+          if (statusRef.current === "checkpoint" && !decisionFiredRef.current) {
+            micEnabledRef.current = true;
+          }
+        }, 300);
+      }
       return;
     }
     isPlayingRef.current = true;
-    isAiSpeakingRef.current = true;     // sync immédiat — coupe le mic sans délai
+    isAiSpeakingRef.current = true;
     setIsAiSpeaking(true);
     const { data, rate } = audioQueueRef.current.shift()!;
     const buf = ctx.createBuffer(1, data.length, rate);
@@ -428,11 +438,14 @@ export default function BreathingExercise({
         if (inlineData?.mimeType && typeof inlineData.mimeType === "string"
             && inlineData.mimeType.startsWith("audio/pcm")) {
           const rate = parseInt((inlineData.mimeType.match(/rate=(\d+)/)?.[1]) ?? "24000", 10);
-          enqueueAudio(inlineData.data as string, rate);
-          // Au checkpoint, marquer que Gemini a parlé → "Je t'écoute" peut s'afficher après
+          // Couper le mic immédiatement dès le premier chunk audio de Gemini —
+          // avant même de l'enqueuer, pour éviter que du résidu patient parte vers le serveur
+          isAiSpeakingRef.current = true;
           if (statusRef.current === "checkpoint") {
+            micEnabledRef.current = false;
             setCheckpointGeminiHasSpoken(true);
           }
+          enqueueAudio(inlineData.data as string, rate);
         }
       }
     }
