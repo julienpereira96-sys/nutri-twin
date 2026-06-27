@@ -62,15 +62,10 @@ export default function PulseOrb({
       const haloScale   = 1.0 + (e - 0.27) * 1.6;
       const haloOpacity = Math.min(0.90, 0.20 + e * 0.65);
 
-      // Orb : pas de scale — bord éclairé plus marqué
-      const edgeGlow = (e * 38).toFixed(0);
-
+      // Orb : corps entièrement statique — seul le halo réagit à la voix
       if (haloRef.current) {
         haloRef.current.style.transform = `scale(${haloScale.toFixed(4)})`;
         haloRef.current.style.opacity   = haloOpacity.toFixed(3);
-      }
-      if (orbRef.current) {
-        orbRef.current.style.boxShadow = `0 0 ${edgeGlow}px ${color}30`;
       }
     };
 
@@ -89,13 +84,12 @@ export default function PulseOrb({
           willChange: "transform, opacity",
         }} />
 
-        {/* Corps de l'orb — statique, bord éclairé plus présent */}
+        {/* Corps de l'orb — entièrement statique */}
         <div ref={orbRef} style={{
           width: size, height: size,
           borderRadius: "50%",
           background: `radial-gradient(circle at 42% 42%, ${color}55 0%, ${color}1A 55%, transparent 100%)`,
           border: `1.5px solid ${color}50`,
-          willChange: "box-shadow",
         }} />
       </div>
 

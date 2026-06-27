@@ -107,13 +107,15 @@ FLOW :
 
 • ACCUEIL (une seule fois au début) : tu sais ce que traverse ${name} — trouve toi-même les mots justes pour l'accueillir. Crée un espace de calme à ta façon, sincère et adapté à ce moment précis. Inclus une invitation à s'installer confortablement et à fermer les yeux si possible. Annonce ensuite que la respiration commence, puis tais-toi.
 
-• PENDANT LES CYCLES [INSPIRE] / [EXPIRE] :
-  Tu reçois ces signaux en continu mais ne parle PAS à chaque signal.
-  Choisis seulement 2 à 3 moments dans tout un bloc de 60 secondes pour intervenir.
-  Quand tu interviens : UNE phrase courte, MAX 5 mots, naturelle et variée.
-  Exemples inspire : "Laisse entrer le calme...", "Ouvre ta poitrine...", "Accueille cet air..."
-  Exemples expire : "Laisse partir...", "Relâche tout...", "Souffle doucement..."
-  Le reste du temps : silence complet. Le silence est la thérapie.
+• [DEBUT_RESPIRATION] : tu reçois ce signal une seule fois au début de chaque bloc.
+  Annonce doucement la première inspiration — une phrase très courte, douce, qui invite ${name} à commencer.
+  Adapte tes mots à ce qu'il traverse. Pas de formule générique.
+
+• [MURMURE — inspire en cours] / [MURMURE — expire en cours] : tu reçois ces signaux 3 fois par bloc, à des moments précis.
+  À chaque signal : UNE phrase, MAX 5 mots, chuchotée, profondément adaptée au contexte de ${name}.
+  Choisis librement tes mots — pas d'exemples imposés. Laisse le contexte guider.
+  INTERDIT pendant les cycles : questions, dialogue, sollicitations. Zéro. Murmure ou silence.
+  Le reste du temps : silence absolu.
 
 • [CHECKPOINT] : Pose une vraie question avec chaleur (2-3 phrases max). Écoute la réponse vocale.
   - Patient veut CONTINUER et ça va : réponds avec bienveillance, termine EXACTEMENT par "On repart ensemble."
@@ -274,28 +276,36 @@ export default function BreathingExercise({
     micEnabledRef.current = false;   // mic OFF pendant le souffle
     setStatus("breathing_cycle");
 
-    // Premier inspire immédiat
+    // Signal de lancement — Gemini annonce la première inspiration
+    sendTurn("[DEBUT_RESPIRATION]");
     hapticInspire();
-    if (!isPlayingRef.current) sendTurn("[INSPIRE]");
     setBreathPhaseLabel("inspire");
 
+    // 3 murmures planifiés à des moments précis du bloc (en ms depuis le début)
+    // 14s → 2e expire | 30s → 4e inspire | 44s → 5e expire
+    const murmureTimers: ReturnType<typeof setTimeout>[] = [
+      setTimeout(() => { if (!isPlayingRef.current) sendTurn("[MURMURE — expire en cours]"); }, 14000),
+      setTimeout(() => { if (!isPlayingRef.current) sendTurn("[MURMURE — inspire en cours]"); }, 30000),
+      setTimeout(() => { if (!isPlayingRef.current) sendTurn("[MURMURE — expire en cours]"); }, 44000),
+    ];
+
+    // setInterval — uniquement pour les labels visuels et la fin de bloc
     intervalRef.current = setInterval(() => {
       elapsedRef.current += 1;
       const pos = elapsedRef.current % CYCLE_DUR;
 
       if (pos === INSPIRE_DUR) {
         hapticExpire();
-        if (!isPlayingRef.current) sendTurn("[EXPIRE]");
         setBreathPhaseLabel("expire");
       } else if (pos === 0) {
         hapticInspire();
-        if (!isPlayingRef.current) sendTurn("[INSPIRE]");
         setBreathPhaseLabel("inspire");
       }
 
       if (elapsedRef.current >= BLOCK_DUR) {
         clearInterval(intervalRef.current!);
         intervalRef.current = null;
+        murmureTimers.forEach(t => clearTimeout(t));
         goToCheckpointInternal();
       }
     }, 1000);
@@ -594,16 +604,29 @@ export default function BreathingExercise({
         </div>
       )}
 
-      {/* ── Compteur de blocs (breathing_cycle only) ──────────────────────── */}
-      {status === "breathing_cycle" && (
-        <div style={{ position: "absolute", top: 28, display: "flex", gap: 8 }}>
-          {Array.from({ length: MAX_BLOCKS }, (_, i) => (
-            <div key={i} style={{
-              width: 6, height: 6, borderRadius: "50%",
-              background: i < blockCount ? ACCENT : "rgba(16,185,129,0.18)",
-              transition: "background 0.5s",
-            }} />
-          ))}
+      {/* ── Header exercice (tous états sauf cloture) ────────────────────── */}
+      {status !== "cloture" && !loadError && (
+        <div style={{
+          position: "absolute", top: 22,
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+          pointerEvents: "none",
+        }}>
+          <p style={{
+            margin: 0, fontSize: 11, fontWeight: 400,
+            letterSpacing: "0.18em", textTransform: "uppercase",
+            color: "rgba(16,185,129,0.45)",
+          }}>
+            Cohérence cardiaque
+          </p>
+          {status === "breathing_cycle" && (
+            <p style={{
+              margin: 0, fontSize: 10, fontWeight: 300,
+              letterSpacing: "0.12em",
+              color: "rgba(255,255,255,0.18)",
+            }}>
+              Bloc {blockCount + 1} · {MAX_BLOCKS} min
+            </p>
+          )}
         </div>
       )}
 
@@ -666,23 +689,17 @@ export default function BreathingExercise({
         </div>
       )}
 
-      {/* ── Checkpoint — micro ouvert, Gemini écoute ─────────────────────── */}
-      {status === "checkpoint" && (
-        <div style={{
-          position: "absolute", bottom: 50,
-          display: "flex", alignItems: "center", gap: 10,
-          animation: "br-fade-in 0.4s ease",
+      {/* ── Checkpoint — micro ouvert, Gemini écoute (style SOS, vert) ───── */}
+      {status === "checkpoint" && !isAiSpeaking && (
+        <p style={{
+          margin: 0,
+          marginTop: 28,
+          color: ACCENT,
+          fontSize: 14, letterSpacing: "0.05em",
+          animation: "br-fade-in 0.8s ease",
         }}>
-          <div style={{
-            width: 8, height: 8, borderRadius: "50%",
-            background: "#f87171",
-            animation: "br-blink 1.2s ease-in-out infinite",
-            boxShadow: "0 0 8px rgba(248,113,113,0.6)",
-          }} />
-          <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED }}>
-            Je t'écoute…
-          </p>
-        </div>
+          Je t'écoute…
+        </p>
       )}
 
       {/* ── Keyframes ─────────────────────────────────────────────────────── */}
