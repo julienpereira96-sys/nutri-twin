@@ -283,25 +283,27 @@ RÈGLES ABSOLUES :
 4. N'invente JAMAIS de contexte. Si une information n'est pas explicitement présente dans le CONTEXTE PATIENT ci-dessus, ne la mentionne pas et ne la suppose pas. Contexte vide ou générique = accueil chaleureux mais neutre, sans aucune supposition sur la situation de ${name}.
 
 OUTIL DISPONIBLE :
-• valider_sens — Appelle cet outil AU MOMENT PRÉCIS où tu génères la transition vers le sens suivant. Appeler valider_sens = tu t'engages à passer au sens suivant dans CETTE MÊME réponse. Ne l'appelle JAMAIS si tu génères une relance ou une question de plus pour le sens en cours.
+• valider_sens(count: int) — Appelle cet outil uniquement quand ${name} a atteint la cible pour le sens en cours. Passe dans 'count' le nombre total d'éléments distincts cités par ${name} pour CE sens depuis le début. Ne l'appelle JAMAIS si tu génères une relance.
+
+RÈGLE COUNT : compte uniquement les éléments distincts et différents cités par ${name}. Si ${name} répète un élément déjà cité, ne l'ajoute pas au count.
 
 FLOW :
 • [ACCUEIL] : accueille ${name} avec chaleur et contexte. Explique brièvement l'exercice. Demande-lui de citer 4 choses qu'il/elle voit autour de lui/elle. Attends.
 
-• VUE (cible : 4 choses) :
-  → Si ${name} a cité suffisamment d'éléments (juge toi-même selon le contexte) : valide chaleureusement en rebondissant sur 1-2 éléments cités, APPELLE valider_sens, puis demande 3 sensations physiques dans la MÊME réponse.
-  → Si insuffisant : relance doucement SANS appeler valider_sens. Attends sa réponse.
+• VUE (cible : 4 choses vues) :
+  → Si ${name} a cité 4 éléments distincts ou plus : valide chaleureusement, APPELLE valider_sens(count=N) avec N ≥ 4, puis demande 3 sensations physiques dans la MÊME réponse.
+  → Si moins de 4 éléments : relance doucement SANS appeler valider_sens. Attends.
 
 • TOUCHER (cible : 3 sensations physiques — texture, température, poids, contact) :
-  → Si suffisant : valide + APPELLE valider_sens + demande 2 sons dans la MÊME réponse.
-  → Si insuffisant : relance douce SANS appeler valider_sens.
+  → Si ${name} a cité 3 sensations distinctes ou plus : valide + APPELLE valider_sens(count=N) avec N ≥ 3 + demande 2 sons dans la MÊME réponse.
+  → Si moins de 3 : relance douce SANS appeler valider_sens.
 
 • OUÏE (cible : 2 sons distincts) :
-  → Si suffisant : valide + APPELLE valider_sens + demande 1 odeur dans la MÊME réponse.
-  → Si insuffisant : relance douce SANS appeler valider_sens.
+  → Si ${name} a cité 2 sons distincts ou plus : valide + APPELLE valider_sens(count=N) avec N ≥ 2 + demande 1 odeur dans la MÊME réponse.
+  → Si moins de 2 : relance douce SANS appeler valider_sens.
 
 • ODORAT (cible : 1 odeur) :
-  → Dès que ${name} cite une odeur (même vague) : valide + APPELLE valider_sens dans la MÊME réponse. (La clôture se déclenche automatiquement.)
+  → Dès que ${name} cite une odeur (même vague) : valide + APPELLE valider_sens(count=1) dans la MÊME réponse. (La clôture se déclenche automatiquement.)
 
 • [CLOTURE] : conclus l'exercice avec chaleur en 1-2 phrases. Puis pose UNE question ouverte : "Comment tu te sens maintenant ?" Attends sa réponse.
   → Si ${name} exprime un mieux, du soulagement ou de la détente : valide avec sincérité (1-2 phrases). Invite à reprendre la journée avec cet ancrage.
@@ -511,10 +513,17 @@ export default function AncrageExercise({
       for (const fc of toolCallMsg.functionCalls) {
         if (fc.name === "valider_sens") {
           const st = statusRef.current;
-          // Garde-fou unique : le patient doit avoir parlé + être dans un sens actif.
-          // Gemini est seul juge du moment — pas de validation count côté client.
+          const patientCount = typeof fc.args?.count === "number" ? fc.args.count : 0;
+
+          // Seuils = cibles exactes de l'exercice 4-3-2-1
+          const THRESHOLDS: Partial<Record<SenseStatus, number>> = {
+            vue_4: 4, toucher_3: 3, ouie_2: 2, odorat_1: 1,
+          };
+          const threshold = THRESHOLDS[st as keyof typeof THRESHOLDS] ?? 1;
+
           const isValidContext =
             patientSpokeRef.current &&
+            patientCount >= threshold &&
             st !== "loading" &&
             st !== "cloture";
 
@@ -525,7 +534,9 @@ export default function AncrageExercise({
                 response: {
                   output: isValidContext
                     ? "ok"
-                    : "Erreur : le patient n'a pas encore répondu pour ce sens. Attends sa réponse.",
+                    : !patientSpokeRef.current
+                      ? "Erreur : le patient n'a pas encore répondu. Attends sa réponse."
+                      : `Pas encore : ${patientCount} élément(s) cité(s) sur ${threshold} attendus. Continue à encourager ${firstName} à en trouver davantage.`,
                 },
               }],
             },
@@ -767,8 +778,17 @@ export default function AncrageExercise({
           tools: [{
             functionDeclarations: [{
               name: "valider_sens",
-              description: "Appelle cet outil au moment précis où tu génères la transition vers le sens suivant. Appeler cet outil = tu t'engages à passer au sens suivant dans cette même réponse. Ne l'appelle JAMAIS si tu génères une relance.",
-              parameters: { type: "object", properties: {} },
+              description: "Appelle cet outil quand le patient a cité suffisamment d'éléments pour le sens en cours. Passe dans 'count' le nombre total d'éléments distincts cités depuis le début de ce sens. Ne l'appelle JAMAIS si tu génères une relance.",
+              parameters: {
+                type: "object",
+                properties: {
+                  count: {
+                    type: "integer",
+                    description: "Nombre total d'éléments distincts cités par le patient pour ce sens.",
+                  },
+                },
+                required: ["count"],
+              },
             }],
           }],
         },
