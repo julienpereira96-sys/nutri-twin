@@ -497,8 +497,8 @@ export default function BreathingExercise({
           model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
-            outputAudioTranscription: {},
           },
+          outputAudioTranscription: {},
           systemInstruction: { parts: [{ text: systemPrompt }] },
         },
       }));
@@ -589,7 +589,7 @@ export default function BreathingExercise({
             color="#10B981"
             speaking={isAiSpeaking}
             analyser={outputAnalyserRef.current}
-            size={200}
+            size={220}
           />
         </div>
       )}
