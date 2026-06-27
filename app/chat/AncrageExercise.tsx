@@ -118,13 +118,20 @@ const ACTIVE_SENSES: Exclude<SenseStatus, "loading" | "cloture">[] = [
 ];
 
 // ─── Indicateur géométrique 4-3-2-1 ──────────────────────────────────────────
-function GeoIndicator({ completedCount }: { completedCount: number }) {
+function GeoIndicator({
+  completedCount,
+  currentSenseKey,
+}: {
+  completedCount: number;
+  currentSenseKey?: Exclude<SenseStatus, "loading" | "cloture"> | null;
+}) {
   const nodes = [4, 3, 2, 1];
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
       {nodes.map((n, i) => {
         const done    = i < completedCount;
         const current = i === completedCount;
+        const senseAtIndex = ACTIVE_SENSES[i];
         return (
           <div key={n} style={{ display: "flex", alignItems: "center" }}>
             {i > 0 && (
@@ -154,6 +161,11 @@ function GeoIndicator({ completedCount }: { completedCount: number }) {
                   stroke={OCHRE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m3 8 3.5 3.5 6.5-7" />
                 </svg>
+              ) : current && currentSenseKey ? (
+                // Icône du sens actif à la place du chiffre
+                <div style={{ transform: "scale(0.52)", transformOrigin: "center" }}>
+                  {SENSE_CONFIG[senseAtIndex].icon}
+                </div>
               ) : (
                 <span style={{ fontSize: current ? 18 : 15, fontWeight: 700, color: current ? OCHRE : TEXT_FADED, transition: "all 0.3s ease" }}>
                   {n}
@@ -233,6 +245,7 @@ RÈGLES ABSOLUES :
 1. Français uniquement. Voix calme, ancrée, bienveillante.
 2. Réponse AUDIO uniquement. Zéro texte.
 3. Rebondis toujours sur ce que ${name} a dit — valide avec précision, jamais de façon générique.
+4. N'invente JAMAIS de contexte. Si une information n'est pas explicitement présente dans le CONTEXTE PATIENT ci-dessus, ne la mentionne pas et ne la suppose pas. Contexte vide ou générique = accueil chaleureux mais neutre, sans aucune supposition sur la situation de ${name}.
 
 FLOW :
 • [ACCUEIL] : accueille ${name} avec chaleur et contexte. Explique brièvement l'exercice. Demande-lui de citer 4 choses qu'il/elle voit autour de lui/elle. Attends.
@@ -614,6 +627,10 @@ export default function AncrageExercise({
           from { opacity: 0; transform: translateY(6px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes an-loading-bar {
+          0%   { left: -45%; }
+          100% { left: 110%; }
+        }
       `}</style>
 
       {/* ── Halo de fond terre ────────────────────────────────────────────── */}
@@ -652,15 +669,6 @@ export default function AncrageExercise({
           }}>
             Ancrage sensoriel
           </p>
-          {senseKey && (
-            <p style={{
-              margin: 0, fontSize: 10, fontWeight: 300,
-              letterSpacing: "0.12em",
-              color: "rgba(255,255,255,0.18)",
-            }}>
-              {senseConf?.count} · {senseConf?.label}
-            </p>
-          )}
         </div>
       )}
 
@@ -678,7 +686,7 @@ export default function AncrageExercise({
       {/* ── Indicateur géométrique (haut) ─────────────────────────────────── */}
       {!loadError && (
         <div style={{ paddingTop: 72, display: "flex", flexDirection: "column", alignItems: "center", gap: 12, zIndex: 1 }}>
-          <GeoIndicator completedCount={completedCount} />
+          <GeoIndicator completedCount={completedCount} currentSenseKey={senseKey} />
           {senseKey && (
             <p style={{ margin: 0, fontSize: 10, color: TEXT_FADED, letterSpacing: 1.3, textTransform: "uppercase" }}>
               {completedCount} / 4 sens explorés
@@ -716,9 +724,12 @@ export default function AncrageExercise({
                   <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
                 </svg>
               </motion.div>
-              <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, letterSpacing: 0.4 }}>
+              <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, letterSpacing: 0.4, animation: "an-fade-in 0.3s ease" }}>
                 Connexion en cours…
               </p>
+              <div style={{ width: 160, height: 2, borderRadius: 2, background: OCHRE_DIM, overflow: "hidden", position: "relative" }}>
+                <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: "45%", borderRadius: 2, background: `linear-gradient(90deg, transparent 0%, ${OCHRE} 50%, transparent 100%)`, animation: "an-loading-bar 1.6s ease-in-out infinite" }} />
+              </div>
             </motion.div>
           )}
 
@@ -765,36 +776,24 @@ export default function AncrageExercise({
                 </p>
               </div>
 
-              {/* Indicateur état (Gemini parle / patient répond) */}
+              {/* Orb toujours visible + "Je t'écoute" quand c'est au patient */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-                {isAiSpeaking ? (
-                  <PulseOrb
-                    speaking={isAiSpeaking}
-                    analyser={outputAnalyserRef.current}
-                    color={OCHRE}
-                    size={160}
-                  />
-                ) : isListening ? (
-                  <motion.div
-                    animate={{ opacity: [0.5, 1, 0.5] }}
-                    transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
-                    style={{
-                      width: 40, height: 40, borderRadius: "50%",
-                      background: OCHRE_DIM, border: `1.5px solid ${OCHRE_BORD}`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                      stroke={OCHRE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                      <line x1="12" y1="19" x2="12" y2="23"/>
-                    </svg>
-                  </motion.div>
-                ) : null}
-                <p style={{ margin: 0, fontSize: 11, color: TEXT_FADED }}>
-                  {isAiSpeaking ? "Ton Jumeau parle…" : isListening ? "Réponds à voix haute…" : ""}
-                </p>
+                <PulseOrb
+                  speaking={isAiSpeaking}
+                  analyser={outputAnalyserRef.current}
+                  color={OCHRE}
+                  size={160}
+                />
+                {isListening && !isAiSpeaking && (
+                  <p style={{
+                    margin: 0, fontSize: 13, fontWeight: 300,
+                    letterSpacing: "0.14em",
+                    color: `rgba(212,162,85,0.55)`,
+                    animation: "an-fade-in 0.3s ease",
+                  }}>
+                    Je t&apos;écoute…
+                  </p>
+                )}
               </div>
             </motion.div>
           )}
@@ -881,13 +880,8 @@ export default function AncrageExercise({
 
       {/* ── Onde ocre (bas d'écran) ───────────────────────────────────────── */}
       {!loadError && (
-        <div style={{ paddingBottom: 34, display: "flex", flexDirection: "column", alignItems: "center", gap: 10, zIndex: 1 }}>
+        <div style={{ paddingBottom: 34, display: "flex", flexDirection: "column", alignItems: "center", zIndex: 1 }}>
           <OchreWave active={waveActive} />
-          {status !== "cloture" && (
-            <p style={{ margin: 0, fontSize: 10, color: TEXT_FADED, letterSpacing: 1.1, textTransform: "uppercase" }}>
-              {isListening ? "Ton Jumeau écoute" : "Jumeau · Présent"}
-            </p>
-          )}
         </div>
       )}
     </div>

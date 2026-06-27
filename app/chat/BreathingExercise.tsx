@@ -106,6 +106,7 @@ RÈGLES ABSOLUES :
 1. Français uniquement. Voix douce, grave, lente — présence parasympathique.
 2. Réponse AUDIO uniquement. Zéro texte.
 3. Adapte chaque intervention au contexte de ${name}. Jamais générique.
+4. N'invente JAMAIS de contexte. Si une information n'est pas explicitement présente dans le CONTEXTE PATIENT ci-dessus, ne la mentionne pas et ne la suppose pas. Contexte vide ou générique = accueil chaleureux mais neutre, sans aucune supposition sur la situation de ${name}.
 
 FLOW :
 
@@ -647,16 +648,9 @@ export default function BreathingExercise({
         }} />
       )}
 
-      {/* ══ ORB PRINCIPALE ═════════════════════════════════════════════════
-          PulseOrb : CSS body + boucle RAF sur l'analyser de sortie Gemini.
-          Dim en loading/cloture, plein en exercice.
-      ══════════════════════════════════════════════════════════════════════ */}
-      {!loadError && (
-        <div style={{
-          position: "relative", zIndex: 1,
-          opacity: (status === "loading" || status === "cloture") ? 0.4 : 1,
-          transition: "opacity 1.4s ease",
-        }}>
+      {/* ══ ORB PRINCIPALE — visible uniquement quand Gemini parle ══════════ */}
+      {!loadError && isAiSpeaking && (
+        <div style={{ position: "relative", zIndex: 1 }}>
           <PulseOrb
             color="#10B981"
             speaking={isAiSpeaking}
@@ -736,10 +730,24 @@ export default function BreathingExercise({
       {(status === "loading") && !loadError && (
         <div style={{
           marginTop: 36,
-          display: "flex", flexDirection: "column", alignItems: "center", gap: 14,
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 20,
         }}>
+          <div style={{
+              width: 68, height: 68, borderRadius: "50%",
+              background: "rgba(16,185,129,0.08)",
+              border: "1.5px solid rgba(16,185,129,0.22)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 0 28px rgba(16,185,129,0.18)",
+              animation: "br-blink 3s ease-in-out infinite",
+            }}
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+              stroke="#10B981" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </div>
           <p style={{
-            margin: 0, color: "#10B981", fontSize: 14,
+            margin: 0, color: "#10B981", fontSize: 13,
             letterSpacing: "0.10em", fontWeight: 400,
             animation: "br-blink 2s ease-in-out infinite",
           }}>
