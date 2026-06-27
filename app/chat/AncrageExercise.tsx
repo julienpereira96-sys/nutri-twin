@@ -240,24 +240,31 @@ RÈGLES ABSOLUES :
 3. Rebondis toujours sur ce que ${name} a dit — valide avec précision, jamais de façon générique.
 4. N'invente JAMAIS de contexte. Si une information n'est pas explicitement présente dans le CONTEXTE PATIENT ci-dessus, ne la mentionne pas et ne la suppose pas. Contexte vide ou générique = accueil chaleureux mais neutre, sans aucune supposition sur la situation de ${name}.
 
+OUTIL DISPONIBLE :
+• valider_sens — Appelle cet outil UNIQUEMENT quand ${name} a cité suffisamment d'éléments pour le sens en cours et que tu es prêt à passer au suivant. Ne l'appelle JAMAIS si tu fais une relance pour demander plus d'éléments.
+
 FLOW :
 • [ACCUEIL] : accueille ${name} avec chaleur et contexte. Explique brièvement l'exercice. Demande-lui de citer 4 choses qu'il/elle voit autour de lui/elle. Attends.
 
-• Après la VUE : valide en rebondissant sur 1-2 éléments concrets cités. Demande 3 sensations physiques (texture, température, poids, contact). Attends.
-  → Si ${name} n'a cité qu'un ou deux éléments, invite-le/la doucement à en chercher d'autres ("tu en vois d'autres autour de toi ?"). UNE seule relance. Puis passe.
+• Après la VUE (4 choses) :
+  → Si ${name} a cité 2 éléments ou plus : valide en rebondissant sur 1-2 éléments concrets. Appelle valider_sens. Puis demande 3 sensations physiques (texture, température, poids, contact).
+  → Si ${name} n'a cité qu'un seul élément : relance doucement ("tu en vois d'autres autour de toi ?"). UNE seule relance — après sa réponse, appelle valider_sens quoi qu'il arrive.
 
-• Après le TOUCHER : valide + demande 2 sons distincts qu'il/elle entend. Attends.
-  → Relance douce si moins de 2 éléments cités. UNE seule relance.
+• Après le TOUCHER (3 sensations) :
+  → Si ${name} a cité 2 sensations ou plus : valide + appelle valider_sens + demande 2 sons distincts.
+  → Si ${name} n'a cité qu'une sensation : relance douce. Puis appelle valider_sens.
 
-• Après l'OUÏE : valide + demande 1 odeur qu'il/elle perçoit (même légère, même imaginée). Attends.
+• Après l'OUÏE (2 sons) :
+  → Valide + appelle valider_sens + demande 1 odeur qu'il/elle perçoit (même légère, même imaginée).
+
+• Après l'ODORAT (1 odeur) :
+  → Valide + appelle valider_sens. (La clôture sera déclenchée automatiquement.)
 
 • [CLOTURE] : conclus l'exercice avec chaleur en 1-2 phrases. Puis pose UNE question ouverte : "Comment tu te sens maintenant ?" Attends sa réponse.
   → Si ${name} exprime un mieux, du soulagement ou de la détente : valide avec sincérité (1-2 phrases). Invite à reprendre la journée avec cet ancrage.
   → Si ${name} exprime encore de la tension, de la difficulté ou de la confusion : reconnais-le sans minimiser — dis-lui que c'est tout à fait normal, que l'exercice est un outil parmi d'autres, et qu'il/elle peut continuer à déposer ce qu'il/elle ressent dans le chat.
 
-• [SILENCE_RELANCE] : ${name} n'a pas encore répondu au check-in. Relance doucement et avec chaleur : "Prends ton temps… comment tu te sens ?" Attends.
-
-IMPORTANT : Ne passe JAMAIS au sens suivant sans que ${name} ait répondu. Silence prolongé (>7s) : relance doucement ("prends ton temps, qu'est-ce que tu remarques ?").`;
+• [SILENCE_RELANCE] : ${name} n'a pas encore répondu au check-in. Relance doucement et avec chaleur : "Prends ton temps… comment tu te sens ?" Attends.`;
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -304,6 +311,7 @@ export default function AncrageExercise({
   const isPlayingRef        = useRef(false);
   const outputTransRef      = useRef("");
   const pendingAdvanceRef   = useRef<(() => void) | null>(null);
+  const turnCompleteRef     = useRef(false); // true = Gemini a fini de générer le tour courant
   const cloturePhaseRef     = useRef<0 | 1>(0);   // 0 = Gemini pose la question, 1 = check-in ouvert
   const silenceTimer5sRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const silenceTimer7sRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -325,8 +333,12 @@ export default function AncrageExercise({
       isAiSpeakingRef.current = false;
       setIsAiSpeaking(false);
 
-      // Appliquer le changement d'état en attente (after audio ends, not on turnComplete)
-      if (pendingAdvanceRef.current) {
+      // Appliquer le changement d'état en attente — seulement si turnComplete a été reçu.
+      // Guard essentiel : Gemini streame l'audio en chunks avec des micro-pauses entre eux.
+      // La queue peut être temporairement vide entre deux chunks du même tour.
+      // Sans ce guard, pendingAdvanceRef s'appliquerait pendant que Gemini parle encore.
+      if (pendingAdvanceRef.current && turnCompleteRef.current) {
+        turnCompleteRef.current = false;
         const advance = pendingAdvanceRef.current;
         pendingAdvanceRef.current = null;
         advance(); // peut mettre à jour statusRef.current
@@ -449,6 +461,41 @@ export default function AncrageExercise({
       return;
     }
 
+    // ── Tool call : valider_sens ──────────────────────────────────────────
+    const toolCallMsg = msg.toolCall as { functionCalls?: Array<{ name: string; id: string }> } | undefined;
+    if (toolCallMsg?.functionCalls) {
+      for (const fc of toolCallMsg.functionCalls) {
+        if (fc.name === "valider_sens") {
+          // 1. Répondre immédiatement au tool call (obligatoire avant que Gemini continue)
+          wsRef.current?.send(JSON.stringify({
+            toolResponse: {
+              functionResponses: [{ id: fc.id, response: { output: "ok" } }],
+            },
+          }));
+
+          // 2. Préparer le changement visuel — il sera appliqué quand l'audio de validation se termine
+          const newCount = completedCountRef.current + 1;
+          pendingAdvanceRef.current = () => {
+            setCompletedCount(newCount);
+            completedCountRef.current = newCount;
+            navigator.vibrate?.([25, 30, 50]);
+            if (newCount >= ACTIVE_SENSES.length) {
+              outputTransRef.current   = "";
+              cloturePhaseRef.current  = 0;
+              setStatus("cloture");
+              statusRef.current        = "cloture";
+              setTimeout(() => sendTurn("[CLOTURE]"), 400);
+            } else {
+              const nextSense   = ACTIVE_SENSES[newCount];
+              setStatus(nextSense);
+              statusRef.current = nextSense;
+            }
+          };
+        }
+      }
+      return;
+    }
+
     const sc = msg.serverContent as Record<string, unknown> | undefined;
     if (!sc) return;
 
@@ -466,6 +513,8 @@ export default function AncrageExercise({
           micEnabledRef.current   = false;
           setIsListening(false);
           setWaveActive(false);
+          // Nouveau chunk = turnComplete pas encore reçu pour CE tour
+          turnCompleteRef.current = false;
           enqueueAudio(inlineData.data as string, rate);
         }
       }
@@ -490,6 +539,16 @@ export default function AncrageExercise({
 
     // Tour Gemini terminé
     if (sc.turnComplete === true) {
+      // Signaler que la génération est complète — playNextChunk peut maintenant appliquer pendingAdvanceRef
+      turnCompleteRef.current = true;
+
+      // Cas edge : l'audio a fini de jouer AVANT que turnComplete arrive.
+      // playNextChunk ne sera plus rappelé → on le déclenche manuellement.
+      if (!isPlayingRef.current && audioQueueRef.current.length === 0) {
+        playNextChunk();
+        return;
+      }
+
       const currentStatus = statusRef.current;
 
       // ── CLOTURE : deux phases ─────────────────────────────────────────────
@@ -565,42 +624,14 @@ export default function AncrageExercise({
         return;
       }
 
-      // ── Tours suivants : avancer seulement si le patient a réellement parlé ─
-      if (patientSpokeRef.current) {
-        patientSpokeRef.current = false;
-        micEnabledRef.current   = false;
-        setIsListening(false);
-        setWaveActive(false);
-
-        const newCount = completedCountRef.current + 1;
-        // Différer le changement visuel jusqu'à la fin de l'audio de validation
-        pendingAdvanceRef.current = () => {
-          setCompletedCount(newCount);
-          completedCountRef.current = newCount;
-          navigator.vibrate?.([25, 30, 50]);
-
-          if (newCount >= ACTIVE_SENSES.length) {
-            // Tous les sens validés → clôture
-            outputTransRef.current = "";
-            cloturePhaseRef.current = 0;
-            setStatus("cloture");
-            statusRef.current = "cloture";
-            setTimeout(() => sendTurn("[CLOTURE]"), 400);
-          } else {
-            const nextSense = ACTIVE_SENSES[newCount];
-            setStatus(nextSense);
-            statusRef.current = nextSense;
-            // mic re-enable géré par playNextChunk (300ms après pendingAdvanceRef)
-          }
-        };
-      }
-      // Si patientSpokeRef = false : Gemini a fait une relance, on ne change rien
-      // playNextChunk réactivera le mic quand l'audio de relance sera terminé
+      // ── Tours suivants (sens actifs) : l'avancement est piloté par le tool call valider_sens ──
+      // pendingAdvanceRef est positionné dans le handler toolCall ci-dessus.
+      // playNextChunk réactivera le mic après l'audio de relance ou de validation.
     }
 
     // Patient coupe → flush audio
     if (sc.interrupted === true) flushAudio();
-  }, [sendTurn, enqueueAudio, flushAudio]);
+  }, [sendTurn, enqueueAudio, flushAudio, playNextChunk]);
 
   // ─── Init session ─────────────────────────────────────────────────────────
   const initSession = useCallback(async () => {
@@ -667,6 +698,13 @@ export default function AncrageExercise({
           outputAudioTranscription: {},
           inputAudioTranscription:  {},
           systemInstruction: { parts: [{ text: systemPrompt }] },
+          tools: [{
+            functionDeclarations: [{
+              name: "valider_sens",
+              description: "Appelle cet outil quand le patient a cité suffisamment d'éléments pour le sens en cours et que tu es prêt à passer au suivant. Ne l'appelle JAMAIS si tu poses une relance pour demander plus d'éléments.",
+              parameters: { type: "object", properties: {} },
+            }],
+          }],
         },
       }));
     };
