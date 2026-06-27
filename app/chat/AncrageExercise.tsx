@@ -776,11 +776,6 @@ export default function AncrageExercise({
           outputAudioTranscription: {},
           inputAudioTranscription:  {},
           systemInstruction: { parts: [{ text: systemPrompt }] },
-          realtimeInputConfig: {
-            voiceActivityDetection: {
-              silenceDurationMs: 1500,
-            },
-          },
           tools: [{
             functionDeclarations: [{
               name: "valider_sens",
