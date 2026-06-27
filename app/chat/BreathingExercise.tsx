@@ -105,7 +105,7 @@ RÈGLES ABSOLUES :
 
 FLOW :
 
-• ACCUEIL (une seule fois au début) : accueille ${name} chaleureusement, 1-2 phrases adaptées à ce qu'il traverse. Donne la consigne posturale brève (décroiser jambes, relâcher épaules, fermer les yeux si possible). Puis annonce qu'on commence et tais-toi.
+• ACCUEIL (une seule fois au début) : tu sais ce que traverse ${name} — trouve toi-même les mots justes pour l'accueillir. Crée un espace de calme à ta façon, sincère et adapté à ce moment précis. Inclus une invitation à s'installer confortablement et à fermer les yeux si possible. Annonce ensuite que la respiration commence, puis tais-toi.
 
 • PENDANT LES CYCLES [INSPIRE] / [EXPIRE] :
   Tu reçois ces signaux en continu mais ne parle PAS à chaque signal.
@@ -153,9 +153,11 @@ export default function BreathingExercise({
   const elapsedRef     = useRef(0);               // secondes dans le bloc courant
   const hardStopRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioQueueRef  = useRef<{ data: Float32Array; rate: number }[]>([]);
-  const isPlayingRef   = useRef(false);
-  const outputTransRef = useRef("");              // transcription de Gemini (checkpoint)
-  const outcomeRef     = useRef<"positive" | "negative" | "interrupted">("positive");
+  const isPlayingRef        = useRef(false);
+  const outputTransRef      = useRef("");              // transcription de Gemini (checkpoint)
+  const outcomeRef          = useRef<"positive" | "negative" | "interrupted">("positive");
+  const clotureHandledRef   = useRef(false);           // garde-fou double-close
+  const clotureFallbackRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Log silencieux vers /api/breathing/log ────────────────────────────────
   const logBreathingSession = useCallback(async (outcome: "positive" | "negative" | "interrupted", blocks: number) => {
@@ -217,6 +219,7 @@ export default function BreathingExercise({
   const cleanup = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (hardStopRef.current) clearTimeout(hardStopRef.current);
+    if (clotureFallbackRef.current) clearTimeout(clotureFallbackRef.current);
     intervalRef.current = null;
     micEnabledRef.current = false;
     processorRef.current?.disconnect();
@@ -245,6 +248,7 @@ export default function BreathingExercise({
   // ── Cloture interne (appelée depuis hard stop ou handleCheckpointDecision) ─
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const handleClotureInternal = useCallback(() => {
+    if (clotureHandledRef.current) return;          // garde-fou double-call
     if (intervalRef.current) clearInterval(intervalRef.current);
     intervalRef.current = null;
     micEnabledRef.current = false;
@@ -253,9 +257,10 @@ export default function BreathingExercise({
     outputTransRef.current = "";
     // Demande à Gemini de conclure
     setTimeout(() => sendTurn("[CLOTURE]"), 400);
-    // Fallback : log + fermeture après 12s si Gemini ne répond pas
-    setTimeout(() => {
-      if (statusRef.current === "cloture") {
+    // Fallback : log + fermeture après 12s si turnComplete ne se déclenche pas
+    clotureFallbackRef.current = setTimeout(() => {
+      if (!clotureHandledRef.current) {
+        clotureHandledRef.current = true;
         void logBreathingSession(outcomeRef.current, blockCountRef.current);
         cleanup();
         onCloseRef.current();
@@ -271,7 +276,7 @@ export default function BreathingExercise({
 
     // Premier inspire immédiat
     hapticInspire();
-    sendTurn("[INSPIRE]");
+    if (!isPlayingRef.current) sendTurn("[INSPIRE]");
     setBreathPhaseLabel("inspire");
 
     intervalRef.current = setInterval(() => {
@@ -280,11 +285,11 @@ export default function BreathingExercise({
 
       if (pos === INSPIRE_DUR) {
         hapticExpire();
-        sendTurn("[EXPIRE]");
+        if (!isPlayingRef.current) sendTurn("[EXPIRE]");
         setBreathPhaseLabel("expire");
       } else if (pos === 0) {
         hapticInspire();
-        sendTurn("[INSPIRE]");
+        if (!isPlayingRef.current) sendTurn("[INSPIRE]");
         setBreathPhaseLabel("inspire");
       }
 
@@ -411,11 +416,15 @@ export default function BreathingExercise({
         return;
       }
 
-      // Cloture terminée → log silencieux + fermeture
+      // Cloture terminée → log silencieux + fermeture (guard double-close)
       if (currentStatus === "cloture") {
-        const blocs = blockCountRef.current;
-        void logBreathingSession(outcomeRef.current, blocs);
-        setTimeout(() => { cleanup(); onCloseRef.current(); }, 800);
+        if (!clotureHandledRef.current) {
+          clotureHandledRef.current = true;
+          if (clotureFallbackRef.current) clearTimeout(clotureFallbackRef.current);
+          const blocs = blockCountRef.current;
+          void logBreathingSession(outcomeRef.current, blocs);
+          setTimeout(() => { cleanup(); onCloseRef.current(); }, 800);
+        }
       }
     }
 
@@ -488,6 +497,7 @@ export default function BreathingExercise({
           model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
+            outputAudioTranscription: {},
           },
           systemInstruction: { parts: [{ text: systemPrompt }] },
         },
@@ -519,7 +529,6 @@ export default function BreathingExercise({
   }, [cleanup, logBreathingSession]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
-  const showClose = status === "loading" || status === "intro" || status === "checkpoint";
 
   return (
     <div
@@ -532,21 +541,21 @@ export default function BreathingExercise({
         animation: "br-fade-in 0.5s ease",
       }}
     >
-      {/* ── Close ─────────────────────────────────────────────────────────── */}
-      {showClose && (
-        <button
-          onClick={handleClose}
-          aria-label="Fermer"
-          style={{
-            position: "absolute", top: 20, right: 20, zIndex: 10,
-            width: 36, height: 36, borderRadius: "50%",
-            background: "rgba(255,255,255,0.05)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            color: TEXT_MUTED, fontSize: 20, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}
-        >×</button>
-      )}
+      {/* ── Close (toujours visible — dim pendant breathing_cycle) ───────── */}
+      <button
+        onClick={handleClose}
+        aria-label="Fermer"
+        style={{
+          position: "absolute", top: 20, right: 20, zIndex: 10,
+          width: 36, height: 36, borderRadius: "50%",
+          background: "rgba(255,255,255,0.05)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          color: TEXT_MUTED, fontSize: 20, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          opacity: status === "breathing_cycle" ? 0.3 : 1,
+          transition: "opacity 0.4s ease",
+        }}
+      >×</button>
 
       {/* ── Load error ────────────────────────────────────────────────────── */}
       {loadError && (
@@ -641,7 +650,7 @@ export default function BreathingExercise({
       {/* ── Status loading ────────────────────────────────────────────────── */}
       {(status === "loading") && !loadError && (
         <div style={{
-          position: "absolute", bottom: 52,
+          marginTop: 36,
           display: "flex", flexDirection: "column", alignItems: "center", gap: 14,
         }}>
           <p style={{
@@ -671,7 +680,7 @@ export default function BreathingExercise({
             boxShadow: "0 0 8px rgba(248,113,113,0.6)",
           }} />
           <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED }}>
-            Réponds à voix haute…
+            Je t'écoute…
           </p>
         </div>
       )}
