@@ -169,28 +169,70 @@ function GeoIndicator({
   );
 }
 
-// ─── Onde ocre (bas d'écran) ─────────────────────────────────────────────────
-function OchreWave({ active }: { active: boolean }) {
+// ─── Onde ocre audio-réactive (bas d'écran) ──────────────────────────────────
+function OchreWave({ active, analyser }: { active: boolean; analyser?: AnalyserNode | null }) {
+  const barsRef    = useRef<(HTMLDivElement | null)[]>([]);
+  const activeRef  = useRef(active);
+  const anRef      = useRef<AnalyserNode | null | undefined>(analyser);
+  activeRef.current = active;
+  anRef.current     = analyser;
+
+  useEffect(() => {
+    const buf      = new Uint8Array(32);
+    const energies = new Array(8).fill(0.1) as number[];
+    let t   = 0;
+    let raf: number;
+
+    const tick = () => {
+      raf = requestAnimationFrame(tick);
+      t  += 0.016;
+      const isActive = activeRef.current;
+      const an       = anRef.current;
+
+      if (isActive && an) {
+        // Audio réel du micro
+        an.getByteFrequencyData(buf);
+        for (let i = 0; i < 8; i++) {
+          const start = i * 4;
+          let sum = 0;
+          for (let j = start; j < start + 4 && j < buf.length; j++) sum += buf[j];
+          const raw = (sum / 4) / 255;
+          energies[i] += (raw - energies[i]) * 0.3;
+        }
+      } else if (isActive) {
+        // Fallback sinusoïde si pas d'analyser
+        for (let i = 0; i < 8; i++) {
+          const target = 0.28 + 0.22 * Math.sin(t * 2.5 + i * 0.75);
+          energies[i] += (target - energies[i]) * 0.15;
+        }
+      } else {
+        // Repos : décroissance vers 0
+        for (let i = 0; i < 8; i++) energies[i] += (0 - energies[i]) * 0.1;
+      }
+
+      for (let i = 0; i < 8; i++) {
+        const bar = barsRef.current[i];
+        if (!bar) continue;
+        const h = 3 + energies[i] * 30;
+        const o = isActive ? (0.15 + energies[i] * 0.75) : Math.max(0, energies[i] * 0.5);
+        bar.style.height  = `${h.toFixed(1)}px`;
+        bar.style.opacity = o.toFixed(3);
+      }
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 5, height: 40 }}>
-      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
-        const baseH = 4 + Math.sin(i * 0.7) * 2;
-        const peakH = 10 + Math.sin(i * 1.1) * 14;
-        return (
-          <motion.div
-            key={i}
-            style={{ width: 3.5, borderRadius: 2, background: OCHRE }}
-            animate={active
-              ? { height: [`${baseH}px`, `${peakH}px`, `${baseH}px`], opacity: [0.35, 0.8, 0.35] }
-              : { height: "4px", opacity: 0.15 }
-            }
-            transition={active
-              ? { repeat: Infinity, duration: 1.0 + i * 0.09, ease: "easeInOut", delay: i * 0.11 }
-              : { duration: 0.4 }
-            }
-          />
-        );
-      })}
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+        <div
+          key={i}
+          ref={(el) => { barsRef.current[i] = el; }}
+          style={{ width: 3.5, borderRadius: 2, background: OCHRE, height: "3px", opacity: 0, willChange: "height, opacity" }}
+        />
+      ))}
     </div>
   );
 }
@@ -241,7 +283,7 @@ RÈGLES ABSOLUES :
 4. N'invente JAMAIS de contexte. Si une information n'est pas explicitement présente dans le CONTEXTE PATIENT ci-dessus, ne la mentionne pas et ne la suppose pas. Contexte vide ou générique = accueil chaleureux mais neutre, sans aucune supposition sur la situation de ${name}.
 
 OUTIL DISPONIBLE :
-• valider_sens — Appelle cet outil UNIQUEMENT quand ${name} a cité suffisamment d'éléments pour le sens en cours et que tu es prêt à passer au suivant. Ne l'appelle JAMAIS si tu fais une relance pour demander plus d'éléments.
+• valider_sens(count: int) — Appelle cet outil UNIQUEMENT quand ${name} a cité suffisamment d'éléments distincts pour le sens en cours, sur l'ensemble de la conversation. Passe dans 'count' le nombre total d'éléments distincts cités. Ne l'appelle JAMAIS si tu fais une relance.
 
 FLOW :
 • [ACCUEIL] : accueille ${name} avec chaleur et contexte. Explique brièvement l'exercice. Demande-lui de citer 4 choses qu'il/elle voit autour de lui/elle. Attends.
@@ -300,7 +342,8 @@ export default function AncrageExercise({
   const completedCountRef   = useRef(0);
   const patientSpokeRef     = useRef(false); // patient a répondu (inputAudioTranscription reçue)
   const isAiSpeakingRef     = useRef(false);  // sync direct (pas via useEffect)
-  const outputAnalyserRef   = useRef<AnalyserNode | null>(null); // pour PulseOrb
+  const outputAnalyserRef   = useRef<AnalyserNode | null>(null); // pour PulseOrb (voix Gemini)
+  const inputAnalyserRef    = useRef<AnalyserNode | null>(null); // pour OchreWave (voix patient)
   const wsRef               = useRef<GeminiLiveClient | null>(null);
   const audioCtxRef         = useRef<AudioContext | null>(null);
   const processorRef        = useRef<ScriptProcessorNode | null>(null);
@@ -462,15 +505,23 @@ export default function AncrageExercise({
     }
 
     // ── Tool call : valider_sens ──────────────────────────────────────────
-    const toolCallMsg = msg.toolCall as { functionCalls?: Array<{ name: string; id: string }> } | undefined;
+    const toolCallMsg = msg.toolCall as { functionCalls?: Array<{ name: string; id: string; args?: Record<string, unknown> }> } | undefined;
     if (toolCallMsg?.functionCalls) {
       for (const fc of toolCallMsg.functionCalls) {
         if (fc.name === "valider_sens") {
           const st = statusRef.current;
-          // Garde-fou : le patient doit avoir réellement parlé pour ce sens,
-          // et on ne doit pas être en loading (accueil) ou cloture.
+          // Nombre d'éléments comptés par Gemini
+          const patientCount = typeof fc.args?.count === "number" ? fc.args.count : 0;
+          // Seuil minimum par sens (vue: 2, toucher: 2, ouïe: 1, odorat: 1)
+          const THRESHOLDS: Partial<Record<SenseStatus, number>> = {
+            vue_4: 2, toucher_3: 2, ouie_2: 1, odorat_1: 1,
+          };
+          const threshold = THRESHOLDS[st as keyof typeof THRESHOLDS] ?? 1;
+
+          // Garde-fou : patient doit avoir parlé + count suffisant + sens actif
           const isValidContext =
             patientSpokeRef.current &&
+            patientCount >= threshold &&
             st !== "loading" &&
             st !== "cloture";
 
@@ -484,7 +535,9 @@ export default function AncrageExercise({
                 response: {
                   output: isValidContext
                     ? "ok"
-                    : "Erreur : le patient n'a pas encore répondu pour ce sens. Continue à attendre sa réponse avant d'appeler valider_sens.",
+                    : !patientSpokeRef.current
+                      ? "Erreur : le patient n'a pas encore répondu. Attends sa réponse."
+                      : `Erreur : seulement ${patientCount} élément(s) cité(s), minimum requis : ${threshold}. Continue à écouter et encourage le patient à en citer davantage.`,
                 },
               }],
             },
@@ -691,6 +744,11 @@ export default function AncrageExercise({
     analyser.connect(audioCtx.destination);
     outputAnalyserRef.current = analyser;
     const micSrc = audioCtx.createMediaStreamSource(stream);
+    // Analyser branché en parallèle sur le mic (pour OchreWave — aucun son en sortie)
+    const inputAnalyser = audioCtx.createAnalyser();
+    inputAnalyser.fftSize = 256;
+    inputAnalyserRef.current = inputAnalyser;
+    micSrc.connect(inputAnalyser);
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     const proc = audioCtx.createScriptProcessor(4096, 1, 1);
     processorRef.current = proc;
@@ -718,11 +776,25 @@ export default function AncrageExercise({
           outputAudioTranscription: {},
           inputAudioTranscription:  {},
           systemInstruction: { parts: [{ text: systemPrompt }] },
+          realtimeInputConfig: {
+            voiceActivityDetection: {
+              silenceDurationMs: 1500,
+            },
+          },
           tools: [{
             functionDeclarations: [{
               name: "valider_sens",
-              description: "Appelle cet outil quand le patient a cité suffisamment d'éléments pour le sens en cours et que tu es prêt à passer au suivant. Ne l'appelle JAMAIS si tu poses une relance pour demander plus d'éléments.",
-              parameters: { type: "object", properties: {} },
+              description: "Appelle cet outil quand le patient a cité suffisamment d'éléments pour le sens en cours et que tu es prêt à passer au suivant. Ne l'appelle JAMAIS si tu fais une relance. Passe le nombre d'éléments distincts cités dans 'count'.",
+              parameters: {
+                type: "object",
+                properties: {
+                  count: {
+                    type: "integer",
+                    description: "Nombre d'éléments distincts cités par le patient pour ce sens dans l'ensemble de la conversation.",
+                  },
+                },
+                required: ["count"],
+              },
             }],
           }],
         },
@@ -851,29 +923,42 @@ export default function AncrageExercise({
               exit={{ opacity: 0 }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, zIndex: 1 }}
             >
-              <motion.div
-                animate={{ scale: [1, 1.06, 1], opacity: [0.7, 1, 0.7] }}
-                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                style={{
-                  width: 68, height: 68, borderRadius: "50%",
-                  background: OCHRE_DIM, border: `1.5px solid ${OCHRE_BORD}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  boxShadow: `0 0 28px ${OCHRE_GLOW}`,
-                }}
-              >
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
-                  stroke={OCHRE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="5" r="3"/>
-                  <line x1="12" y1="8" x2="12" y2="22"/>
-                  <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
-                </svg>
-              </motion.div>
-              <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, letterSpacing: 0.4, animation: "an-fade-in 0.3s ease" }}>
-                Connexion en cours…
-              </p>
-              <div style={{ width: 160, height: 2, borderRadius: 2, background: OCHRE_DIM, overflow: "hidden", position: "relative" }}>
-                <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: "45%", borderRadius: 2, background: `linear-gradient(90deg, transparent 0%, ${OCHRE} 50%, transparent 100%)`, animation: "an-loading-bar 1.6s ease-in-out infinite" }} />
-              </div>
+              {isAiSpeaking ? (
+                /* Gemini parle → orb audio-réactif */
+                <PulseOrb
+                  speaking={true}
+                  analyser={outputAnalyserRef.current}
+                  color={OCHRE}
+                  size={160}
+                />
+              ) : (
+                /* Avant la connexion → indicateur de chargement */
+                <>
+                  <motion.div
+                    animate={{ scale: [1, 1.06, 1], opacity: [0.7, 1, 0.7] }}
+                    transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                    style={{
+                      width: 68, height: 68, borderRadius: "50%",
+                      background: OCHRE_DIM, border: `1.5px solid ${OCHRE_BORD}`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      boxShadow: `0 0 28px ${OCHRE_GLOW}`,
+                    }}
+                  >
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+                      stroke={OCHRE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="5" r="3"/>
+                      <line x1="12" y1="8" x2="12" y2="22"/>
+                      <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
+                    </svg>
+                  </motion.div>
+                  <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, letterSpacing: 0.4, animation: "an-fade-in 0.3s ease" }}>
+                    Connexion en cours…
+                  </p>
+                  <div style={{ width: 160, height: 2, borderRadius: 2, background: OCHRE_DIM, overflow: "hidden", position: "relative" }}>
+                    <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: "45%", borderRadius: 2, background: `linear-gradient(90deg, transparent 0%, ${OCHRE} 50%, transparent 100%)`, animation: "an-loading-bar 1.6s ease-in-out infinite" }} />
+                  </div>
+                </>
+              )}
             </motion.div>
           )}
 
@@ -1014,7 +1099,10 @@ export default function AncrageExercise({
       {/* ── Onde ocre (bas d'écran) ───────────────────────────────────────── */}
       {!loadError && (
         <div style={{ paddingBottom: 34, display: "flex", flexDirection: "column", alignItems: "center", zIndex: 1 }}>
-          <OchreWave active={waveActive} />
+          <OchreWave
+            active={waveActive}
+            analyser={isListening && !isAiSpeaking ? inputAnalyserRef.current : undefined}
+          />
         </div>
       )}
     </div>
