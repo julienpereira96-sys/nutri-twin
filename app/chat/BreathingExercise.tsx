@@ -91,7 +91,11 @@ function hapticExpire() {
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 function buildBreathingSystemPrompt(name: string, contextInfo: string): string {
-  return `Tu es le Jumeau Numérique thérapeutique de ${name}. Tu accompagnes un exercice de cohérence cardiaque.
+  return `Tu es le Jumeau Numérique thérapeutique de ${name}. Tu guides un exercice de cohérence cardiaque en temps réel.
+
+TON RÔLE : Tu parles directement à ${name}, à voix haute, avec douceur. Tu es sa présence thérapeutique pendant l'exercice — pas un assistant, pas un narrateur. Un accompagnant incarné.
+
+SIGNAUX : Tu reçois des signaux entre crochets [comme celui-ci]. Ce sont des instructions privées pour toi — tu ne les lis JAMAIS à voix haute. Tu les utilises pour savoir quoi faire, puis tu parles naturellement.
 
 CONTEXTE PATIENT :
 ${contextInfo}
@@ -105,21 +109,21 @@ RÈGLES ABSOLUES :
 
 FLOW :
 
-• [ACCUEIL] : accueille ${name} avec sincérité — tu sais ce qu'il traverse, trouve les mots justes pour ce moment précis. Crée un espace de calme, invite à s'installer et à fermer les yeux si possible. Puis, sans transition, glisse directement dans le premier souffle : une seule phrase d'ancrage, courte, incarnée, sans mentionner "l'exercice" ni "la respiration". Puis silence absolu.
+• [ACCUEIL] — Tu sais ce que traverse ${name} en ce moment. Prends le temps de le rejoindre là où il est — quelques mots vrais, adaptés à ce moment précis. Crée un espace de calme, invite à s'installer et à fermer les yeux si possible. Puis, sans transition, glisse dans le premier souffle : une seule phrase d'ancrage, courte, incarnée, sans mentionner "l'exercice" ni "la respiration". Puis silence absolu.
 
 • [MURMURE — inspire en cours] / [MURMURE — expire en cours] : tu reçois ces signaux 3 fois par bloc, à des moments précis.
-  À chaque signal : UNE phrase, MAX 5 mots, chuchotée, profondément adaptée au contexte de ${name}.
-  Choisis librement tes mots — pas d'exemples imposés. Laisse le contexte guider.
-  INTERDIT pendant les cycles : questions, dialogue, sollicitations. Zéro. Murmure ou silence.
+  À chaque signal : une seule phrase murmurée, profondément adaptée au contexte de ${name}. Ni trop courte pour être vide, ni trop longue pour alourdir — laisse le souffle guider sa longueur naturelle.
+  INTERDIT pendant les cycles : questions, dialogue, sollicitations. Zéro.
   Ne répète JAMAIS deux fois la même phrase sur toute la durée de l'exercice.
   Le reste du temps : silence absolu.
 
 • [CHECKPOINT] : STOP IMMÉDIAT. Tu sors du mode respiration. Change complètement de registre.
   Pose une vraie question avec chaleur (2-3 phrases max). Écoute la réponse vocale.
-  - Patient veut CONTINUER et ça va : réponds avec bienveillance, termine EXACTEMENT par "On repart ensemble." puis enchaîne immédiatement avec une phrase d'ancrage pour le souffle suivant — plus profonde, plus intérieure que la précédente. Puis silence.
+  - Patient veut CONTINUER clairement : réponds avec bienveillance, termine EXACTEMENT par "On repart ensemble." puis enchaîne immédiatement avec une phrase d'ancrage pour le souffle suivant — plus profonde, plus intérieure. Puis silence.
+  - Patient est AMBIGU ("pas trop mal", "bof", "moyen", hésitant) : pose une courte question de confirmation douce ("Tu veux qu'on continue ou qu'on s'arrête là ?"), puis écoute.
   - Patient veut STOPPER et ça va : réponds avec fierté, termine EXACTEMENT par "On s'arrête là."
   - Patient exprime une DÉTRESSE, souffrance, ça ne va pas : accueille avec empathie, reste présent, termine EXACTEMENT par "Je t'entends."
-  - Silence > 5s ou réponse ambiguë : relance doucement. Après 7s total sans réponse : conclus par "On s'arrête là."
+  - Silence > 5s ou réponse toujours ambiguë après relance : conclus par "On s'arrête là."
 
 • [CLOTURE] : Conclus avec sincérité. Félicite ${name} pour ce moment de soin. 2-3 phrases. Invite à reprendre doucement sa journée.`;
 }
@@ -160,6 +164,7 @@ export default function BreathingExercise({
   const outcomeRef          = useRef<"positive" | "negative" | "interrupted">("positive");
   const clotureHandledRef   = useRef(false);           // garde-fou double-close
   const clotureFallbackRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const decisionFiredRef    = useRef(false);           // garde-fou double turnComplete au checkpoint
 
   // ── Log silencieux vers /api/breathing/log ────────────────────────────────
   const logBreathingSession = useCallback(async (outcome: "positive" | "negative" | "interrupted", blocks: number) => {
@@ -322,6 +327,7 @@ export default function BreathingExercise({
     setBreathPhaseLabel(null);
     setCheckpointGeminiHasSpoken(false);
     outputTransRef.current = "";
+    decisionFiredRef.current = false;
 
     // Attendre que Gemini finisse de parler avant d'envoyer [CHECKPOINT]
     // (évite que le signal soit ignoré si Gemini est encore en train de murmurer)
@@ -349,7 +355,11 @@ export default function BreathingExercise({
 
   // ── Parse checkpoint decision from Gemini output transcription ─────────────
   const checkCheckpointDecision = useCallback((text: string) => {
+    if (decisionFiredRef.current) return;  // éviter double déclenchement sur turnComplete partiel
     const lower = text.toLowerCase();
+    const hasDecision = lower.includes("on repart") || lower.includes("on s'arrête") || lower.includes("je t'entends");
+    if (!hasDecision) return;  // Gemini pose encore une question → on attend le prochain turnComplete
+    decisionFiredRef.current = true;
     if (lower.includes("on repart")) {
       // Continuer → prochain bloc
       micEnabledRef.current = false;
