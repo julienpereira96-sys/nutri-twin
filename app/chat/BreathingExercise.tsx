@@ -107,17 +107,24 @@ FLOW :
 
 • ACCUEIL (une seule fois au début) : tu sais ce que traverse ${name} — trouve toi-même les mots justes pour l'accueillir. Crée un espace de calme à ta façon, sincère et adapté à ce moment précis. Inclus une invitation à s'installer confortablement et à fermer les yeux si possible. Annonce ensuite que la respiration commence, puis tais-toi.
 
-• [DEBUT_RESPIRATION] : tu reçois ce signal une seule fois au début de chaque bloc.
-  Annonce doucement la première inspiration — une phrase très courte, douce, qui invite ${name} à commencer.
-  Adapte tes mots à ce qu'il traverse. Pas de formule générique.
+• [DEBUT_RESPIRATION — bloc 1] : premier souffle. Invite ${name} à commencer avec douceur.
+  Ancre-le dans son corps, établis le rythme. Voix posée, présence chaleureuse.
+
+• [DEBUT_RESPIRATION — bloc 2] : ${name} a choisi de continuer. Approfondis.
+  Invite-le à relâcher davantage — les épaules, la mâchoire, les pensées. Plus profond qu'au premier bloc.
+
+• [DEBUT_RESPIRATION — bloc 3] : dernier bloc. Lâcher-prise total.
+  Invite ${name} à s'abandonner complètement au silence intérieur. Moins de mots, plus de présence.
 
 • [MURMURE — inspire en cours] / [MURMURE — expire en cours] : tu reçois ces signaux 3 fois par bloc, à des moments précis.
   À chaque signal : UNE phrase, MAX 5 mots, chuchotée, profondément adaptée au contexte de ${name}.
   Choisis librement tes mots — pas d'exemples imposés. Laisse le contexte guider.
   INTERDIT pendant les cycles : questions, dialogue, sollicitations. Zéro. Murmure ou silence.
+  Ne répète JAMAIS deux fois la même phrase sur toute la durée de l'exercice.
   Le reste du temps : silence absolu.
 
-• [CHECKPOINT] : Pose une vraie question avec chaleur (2-3 phrases max). Écoute la réponse vocale.
+• [CHECKPOINT] : STOP IMMÉDIAT. Tu sors du mode respiration. Change complètement de registre.
+  Pose une vraie question avec chaleur (2-3 phrases max). Écoute la réponse vocale.
   - Patient veut CONTINUER et ça va : réponds avec bienveillance, termine EXACTEMENT par "On repart ensemble."
   - Patient veut STOPPER et ça va : réponds avec fierté, termine EXACTEMENT par "On s'arrête là."
   - Patient exprime une DÉTRESSE, souffrance, ça ne va pas : accueille avec empathie, reste présent, termine EXACTEMENT par "Je t'entends."
@@ -276,8 +283,9 @@ export default function BreathingExercise({
     micEnabledRef.current = false;   // mic OFF pendant le souffle
     setStatus("breathing_cycle");
 
-    // Signal de lancement — Gemini annonce la première inspiration
-    sendTurn("[DEBUT_RESPIRATION]");
+    // Signal de lancement — Gemini annonce la première inspiration (avec numéro de bloc)
+    const blocNum = blockCountRef.current + 1;
+    sendTurn(`[DEBUT_RESPIRATION — bloc ${blocNum}]`);
     hapticInspire();
     setBreathPhaseLabel("inspire");
 
@@ -323,10 +331,20 @@ export default function BreathingExercise({
     setBreathPhaseLabel(null);
     outputTransRef.current = "";
 
-    // Activer le mic pour que le patient puisse répondre
-    micEnabledRef.current = true;
-
-    sendTurn("[CHECKPOINT]");
+    // Attendre que Gemini finisse de parler avant d'envoyer [CHECKPOINT]
+    // (évite que le signal soit ignoré si Gemini est encore en train de murmurer)
+    const waitAndSend = () => {
+      if (isPlayingRef.current) {
+        setTimeout(waitAndSend, 100);
+      } else {
+        // 400ms de silence avant le checkpoint — rupture claire de registre
+        setTimeout(() => {
+          micEnabledRef.current = true;
+          sendTurn("[CHECKPOINT]");
+        }, 400);
+      }
+    };
+    waitAndSend();
   }, [sendTurn]);
 
   // Refs stables pour éviter stale closures dans setInterval
@@ -607,7 +625,7 @@ export default function BreathingExercise({
       {/* ── Header exercice (tous états sauf cloture) ────────────────────── */}
       {status !== "cloture" && !loadError && (
         <div style={{
-          position: "absolute", top: 22,
+          position: "absolute", top: 30,
           display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
           pointerEvents: "none",
         }}>

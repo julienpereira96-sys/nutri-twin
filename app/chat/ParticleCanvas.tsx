@@ -368,17 +368,20 @@ export default function ParticleCanvas({
         ctx.globalAlpha = 0.10;
         ctx.stroke();
 
-        // Arc rempli
+        // Arc rempli — avec glow lumineux (cohérent avec la barre Breathing)
         if (ringFraction > 0.01) {
           const startAngle = -Math.PI / 2;
           const endAngle   = startAngle + 2 * Math.PI * ringFraction;
           ctx.beginPath();
           ctx.arc(cx, cy, RING_R, startAngle, endAngle);
-          ctx.strokeStyle = col;
-          ctx.lineWidth   = 2.5;
-          ctx.lineCap     = "round";
-          ctx.globalAlpha = 0.50 + ringFraction * 0.35;
+          ctx.strokeStyle  = col;
+          ctx.lineWidth    = 2.5;
+          ctx.lineCap      = "round";
+          ctx.globalAlpha  = 0.50 + ringFraction * 0.35;
+          ctx.shadowColor  = col;
+          ctx.shadowBlur   = 8;
           ctx.stroke();
+          ctx.shadowBlur   = 0; // reset pour ne pas contaminer les autres draw
         }
         ctx.restore();
 

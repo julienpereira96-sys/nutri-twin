@@ -139,20 +139,6 @@ class MicCapture extends AudioWorkletProcessor {
 registerProcessor('mic-capture', MicCapture);
 `;
 
-// ─── Phrases d'ancrage — murmurées en fin d'expire, alternées par lettre ──────
-// IMPORTANT : reste sur le même canal vocal dédié (useTherapeuticVoice), accolé
-// au cue "Expire...". On n'ouvre PAS de tour sur la connexion Gemini principale
-// pendant le tracé — risque de chevauchement audio (flushAudio() coupe la file
-// Gemini à chaque nouvelle lettre) et de coupure en plein murmure. Voir échange
-// du 2026-06-20 : un seul canal, prévisible, zéro aller-retour réseau.
-const ANCHOR_PHRASES = [
-  "Laisse aller.",
-  "Installe le calme.",
-  "Tu es en sécurité.",
-  "Reste avec ton souffle.",
-  "Tout doucement.",
-];
-
 // ─── Word banks genrés (4–8 lettres, 3 niveaux d'intensité) ──────────────────
 //
 // Masculin : adjectifs accordés au masculin
@@ -671,25 +657,16 @@ export default function SOSExercise({
     setCurrentLetterIdx(idx);
     letterStartTimeRef.current = Date.now();
 
-    // Breathing cues via TTS — vider la file Gemini d'abord pour éviter tout chevauchement
+    // Tracing silencieux — visuels uniquement (ring arc + label)
     flushAudio();
     setBreathPhase("inspire");
     breathPhaseRef.current = "inspire";
     setInspireStart(Date.now());
-    speakTherapeutic("Inspire... deux... trois... quatre...", { skipPrep: true, rate: 0.62, volume: 0.55 });
 
     const t1 = setTimeout(() => {
       setBreathPhase("expire");
       breathPhaseRef.current = "expire";
       setExpireStart(Date.now());
-      // Murmure d'ancrage discret accolé au cue — jamais sur la 1ère lettre (encore
-      // en train de se poser) ni sur la dernière (transition directe vers le reveal)
-      const isFirst = idx === 0;
-      const isLast  = idx + 1 >= word.length;
-      const anchor  = (!isFirst && !isLast)
-        ? ` ${ANCHOR_PHRASES[(idx - 1) % ANCHOR_PHRASES.length]}`
-        : "";
-      speakTherapeutic(`Expire... deux... trois... quatre... cinq...${anchor}`, { skipPrep: true, rate: 0.60, volume: 0.55 });
     }, INSPIRE_MS);
     breathTimerRef.current.push(t1);
 
@@ -1812,31 +1789,6 @@ export default function SOSExercise({
             </p>
           </div>
 
-          {/* Barre de progression — keyframe avec key unique pour reset garanti */}
-          <div style={{
-            position: "absolute", bottom: 32, left: "50%",
-            transform: "translateX(-50%)",
-            width: 180, height: 2,
-            background: "rgba(255,255,255,0.06)",
-            borderRadius: 2,
-            overflow: "hidden",
-          }}>
-            <div
-              key={`bar-${currentLetterIdx}-${breathPhase}`}
-              style={{
-                height: "100%",
-                background: LETTER_COLORS[currentLetterIdx % LETTER_COLORS.length],
-                borderRadius: 2,
-                // Inspire : 0 → 100% (poumons qui se remplissent)
-                // Expire  : 100 → 0% (poumons qui se vident, particules qui forment la lettre)
-                opacity: breathPhase === "inspire" ? 0.62 : 0.80,
-                animation: breathPhase === "inspire"
-                  ? `bar-fill-fwd ${INSPIRE_MS}ms linear forwards`
-                  : `bar-fill-bwd ${EXPIRE_MS}ms linear forwards`,
-              }}
-            />
-          </div>
-
           {/* Letter counter */}
           <div style={{
             position: "absolute", top: 24, left: 0, right: 0,
@@ -1872,7 +1824,9 @@ export default function SOSExercise({
           {/* WaveOrb + "Je t'écoute" — même UI que l'intake pendant la clôture */}
           {closingQuestionAsked && (
             <div style={{
-              position: "absolute", bottom: 40, left: 0, right: 0,
+              position: "absolute",
+              top: "calc(50% + 90px)", left: "50%",
+              transform: "translateX(-50%)",
               display: "flex", flexDirection: "column",
               alignItems: "center", gap: 16,
               zIndex: 6, pointerEvents: "none",
@@ -1921,15 +1875,6 @@ export default function SOSExercise({
         @keyframes sos-loading-bar {
           0%   { transform: translateX(-120%); }
           100% { transform: translateX(280%); }
-        }
-        /* Barre de progression lettre — forward (expire) et backward (inspire) */
-        @keyframes bar-fill-fwd {
-          from { width: 0%; }
-          to   { width: 100%; }
-        }
-        @keyframes bar-fill-bwd {
-          from { width: 100%; }
-          to   { width: 0%; }
         }
       `}</style>
     </div>
