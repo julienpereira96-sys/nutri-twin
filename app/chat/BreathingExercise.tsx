@@ -105,13 +105,7 @@ RÈGLES ABSOLUES :
 
 FLOW :
 
-• [ACCUEIL] : accueille ${name} avec sincérité. Tu sais ce qu'il traverse — trouve les mots justes, adaptés à ce moment précis. Crée un espace de calme. Invite à s'installer confortablement, à fermer les yeux si possible. Puis tais-toi complètement.
-
-• [DEBUT_RESPIRATION — bloc 1] : guide le premier souffle en silence — sans mentionner l'exercice ni la respiration. Une phrase d'ancrage courte, douce, incarnée. Puis silence.
-
-• [DEBUT_RESPIRATION — bloc 2] : ${name} continue. Une phrase plus profonde — relâcher les épaules, la mâchoire, les pensées. Moins de mots qu'au bloc 1. Puis silence.
-
-• [DEBUT_RESPIRATION — bloc 3] : dernier souffle ensemble. Presque rien — une présence murmurée, pas un discours. Puis silence total.
+• [ACCUEIL] : accueille ${name} avec sincérité — tu sais ce qu'il traverse, trouve les mots justes pour ce moment précis. Crée un espace de calme, invite à s'installer et à fermer les yeux si possible. Puis, sans transition, glisse directement dans le premier souffle : une seule phrase d'ancrage, courte, incarnée, sans mentionner "l'exercice" ni "la respiration". Puis silence absolu.
 
 • [MURMURE — inspire en cours] / [MURMURE — expire en cours] : tu reçois ces signaux 3 fois par bloc, à des moments précis.
   À chaque signal : UNE phrase, MAX 5 mots, chuchotée, profondément adaptée au contexte de ${name}.
@@ -122,7 +116,7 @@ FLOW :
 
 • [CHECKPOINT] : STOP IMMÉDIAT. Tu sors du mode respiration. Change complètement de registre.
   Pose une vraie question avec chaleur (2-3 phrases max). Écoute la réponse vocale.
-  - Patient veut CONTINUER et ça va : réponds avec bienveillance, termine EXACTEMENT par "On repart ensemble."
+  - Patient veut CONTINUER et ça va : réponds avec bienveillance, termine EXACTEMENT par "On repart ensemble." puis enchaîne immédiatement avec une phrase d'ancrage pour le souffle suivant — plus profonde, plus intérieure que la précédente. Puis silence.
   - Patient veut STOPPER et ça va : réponds avec fierté, termine EXACTEMENT par "On s'arrête là."
   - Patient exprime une DÉTRESSE, souffrance, ça ne va pas : accueille avec empathie, reste présent, termine EXACTEMENT par "Je t'entends."
   - Silence > 5s ou réponse ambiguë : relance doucement. Après 7s total sans réponse : conclus par "On s'arrête là."
@@ -283,9 +277,6 @@ export default function BreathingExercise({
     micEnabledRef.current = false;   // mic OFF pendant le souffle
     setStatus("breathing_cycle");
 
-    // Signal de lancement — Gemini annonce la première inspiration (avec numéro de bloc)
-    const blocNum = blockCountRef.current + 1;
-    sendTurn(`[DEBUT_RESPIRATION — bloc ${blocNum}]`);
     hapticInspire();
     setBreathPhaseLabel("inspire");
 
@@ -366,7 +357,15 @@ export default function BreathingExercise({
       if (blockCountRef.current >= MAX_BLOCKS) {
         handleClotureRef.current();
       } else {
-        setTimeout(() => startBreathingRef.current(), 1200);
+        // Attendre que Gemini finisse "On repart ensemble. + ancrage" avant de démarrer le bloc
+        const waitForAudioEnd = () => {
+          if (!isPlayingRef.current) {
+            setTimeout(() => startBreathingRef.current(), 400);
+          } else {
+            setTimeout(waitForAudioEnd, 100);
+          }
+        };
+        waitForAudioEnd();
       }
     } else if (lower.includes("je t'entends")) {
       // Détresse → log négatif + transition vers le chat
