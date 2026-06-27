@@ -105,16 +105,13 @@ RÈGLES ABSOLUES :
 
 FLOW :
 
-• ACCUEIL (une seule fois au début) : tu sais ce que traverse ${name} — trouve toi-même les mots justes pour l'accueillir. Crée un espace de calme à ta façon, sincère et adapté à ce moment précis. Inclus une invitation à s'installer confortablement et à fermer les yeux si possible. Annonce ensuite que la respiration commence, puis tais-toi.
+• [ACCUEIL] : accueille ${name} avec sincérité. Tu sais ce qu'il traverse — trouve les mots justes, adaptés à ce moment précis. Crée un espace de calme. Invite à s'installer confortablement, à fermer les yeux si possible. Puis tais-toi complètement.
 
-• [DEBUT_RESPIRATION — bloc 1] : premier souffle. Invite ${name} à commencer avec douceur.
-  Ancre-le dans son corps, établis le rythme. Voix posée, présence chaleureuse.
+• [DEBUT_RESPIRATION — bloc 1] : guide le premier souffle en silence — sans mentionner l'exercice ni la respiration. Une phrase d'ancrage courte, douce, incarnée. Puis silence.
 
-• [DEBUT_RESPIRATION — bloc 2] : ${name} a choisi de continuer. Approfondis.
-  Invite-le à relâcher davantage — les épaules, la mâchoire, les pensées. Plus profond qu'au premier bloc.
+• [DEBUT_RESPIRATION — bloc 2] : ${name} continue. Une phrase plus profonde — relâcher les épaules, la mâchoire, les pensées. Moins de mots qu'au bloc 1. Puis silence.
 
-• [DEBUT_RESPIRATION — bloc 3] : dernier bloc. Lâcher-prise total.
-  Invite ${name} à s'abandonner complètement au silence intérieur. Moins de mots, plus de présence.
+• [DEBUT_RESPIRATION — bloc 3] : dernier souffle ensemble. Presque rien — une présence murmurée, pas un discours. Puis silence total.
 
 • [MURMURE — inspire en cours] / [MURMURE — expire en cours] : tu reçois ces signaux 3 fois par bloc, à des moments précis.
   À chaque signal : UNE phrase, MAX 5 mots, chuchotée, profondément adaptée au contexte de ${name}.
@@ -148,6 +145,7 @@ export default function BreathingExercise({
   const [loadError, setLoadError]     = useState<string | null>(null);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [breathPhaseLabel, setBreathPhaseLabel] = useState<"inspire" | "expire" | null>(null);
+  const [checkpointGeminiHasSpoken, setCheckpointGeminiHasSpoken] = useState(false);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const statusRef      = useRef<Status>("loading");
@@ -163,6 +161,7 @@ export default function BreathingExercise({
   const hardStopRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const audioQueueRef  = useRef<{ data: Float32Array; rate: number }[]>([]);
   const isPlayingRef        = useRef(false);
+  const isAiSpeakingRef     = useRef(false);   // pour bloquer l'écho mic en temps réel
   const outputTransRef      = useRef("");              // transcription de Gemini (checkpoint)
   const outcomeRef          = useRef<"positive" | "negative" | "interrupted">("positive");
   const clotureHandledRef   = useRef(false);           // garde-fou double-close
@@ -184,8 +183,9 @@ export default function BreathingExercise({
   const onCloseRef            = useRef(onClose);
   useEffect(() => { onTransitionToChatRef.current = onTransitionToChat; }, [onTransitionToChat]);
   useEffect(() => { onCloseRef.current            = onClose;            }, [onClose]);
-  useEffect(() => { statusRef.current      = status;      }, [status]);
-  useEffect(() => { blockCountRef.current  = blockCount;  }, [blockCount]);
+  useEffect(() => { statusRef.current        = status;       }, [status]);
+  useEffect(() => { blockCountRef.current   = blockCount;   }, [blockCount]);
+  useEffect(() => { isAiSpeakingRef.current = isAiSpeaking; }, [isAiSpeaking]);
 
   // ── Audio playback queue ───────────────────────────────────────────────────
   const playNextChunk = useCallback(() => {
@@ -329,6 +329,7 @@ export default function BreathingExercise({
 
     setStatus("checkpoint");
     setBreathPhaseLabel(null);
+    setCheckpointGeminiHasSpoken(false);
     outputTransRef.current = "";
 
     // Attendre que Gemini finisse de parler avant d'envoyer [CHECKPOINT]
@@ -391,10 +392,15 @@ export default function BreathingExercise({
     try { msg = JSON.parse(event.data as string) as Record<string, unknown>; }
     catch { return; }
 
-    // Setup complete → déclencher l'accueil Gemini
+    // Setup complete → déclencher l'accueil via clientContent (tour complet, pas realtimeInput)
     if (msg.setupComplete !== undefined) {
       setStatus("intro");
-      sendTurn(`[Bonjour ${firstName}, commence l'accueil et la consigne posturale maintenant.]`);
+      wsRef.current?.send(JSON.stringify({
+        clientContent: {
+          turns: [{ role: "user", parts: [{ text: "[ACCUEIL]" }] }],
+          turnComplete: true,
+        },
+      }));
       return;
     }
 
@@ -411,6 +417,10 @@ export default function BreathingExercise({
             && inlineData.mimeType.startsWith("audio/pcm")) {
           const rate = parseInt((inlineData.mimeType.match(/rate=(\d+)/)?.[1]) ?? "24000", 10);
           enqueueAudio(inlineData.data as string, rate);
+          // Au checkpoint, marquer que Gemini a parlé → "Je t'écoute" peut s'afficher après
+          if (statusRef.current === "checkpoint") {
+            setCheckpointGeminiHasSpoken(true);
+          }
         }
       }
     }
@@ -484,7 +494,15 @@ export default function BreathingExercise({
     // 2. Mic
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 }, video: false });
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          sampleRate: 16000, channelCount: 1,
+          echoCancellation: true,   // empêche Gemini d'entendre sa propre voix
+          noiseSuppression: true,
+          autoGainControl: false,
+        },
+        video: false,
+      });
       mediaStreamRef.current = stream;
     } catch {
       setLoadError("Accès micro refusé. Active le micro pour cet exercice.");
@@ -509,7 +527,8 @@ export default function BreathingExercise({
     proc.connect(audioCtx.destination);
 
     proc.onaudioprocess = (e: AudioProcessingEvent) => {
-      if (!micEnabledRef.current) return;   // silence pendant le souffle
+      if (!micEnabledRef.current) return;       // silence pendant le souffle
+      if (isAiSpeakingRef.current) return;      // bloquer l'écho pendant que Gemini parle
       if (wsRef.current?.readyState !== WebSocket.OPEN) return;
       const b64 = float32ToPCM16Base64(e.inputBuffer.getChannelData(0));
       wsRef.current.send(JSON.stringify({ realtimeInput: { audio: { data: b64, mimeType: "audio/pcm;rate=16000" } } }));
@@ -679,7 +698,7 @@ export default function BreathingExercise({
       {status === "breathing_cycle" && (
         <p style={{
           position: "absolute", bottom: 40,
-          fontSize: 12, color: "rgba(16,185,129,0.22)",
+          fontSize: 12, color: "rgba(16,185,129,0.55)",
           letterSpacing: "0.06em", textAlign: "center",
           animation: "br-fade-out 5s ease forwards",
           pointerEvents: "none",
@@ -707,8 +726,8 @@ export default function BreathingExercise({
         </div>
       )}
 
-      {/* ── Checkpoint — micro ouvert, Gemini écoute (style SOS, vert) ───── */}
-      {status === "checkpoint" && !isAiSpeaking && (
+      {/* ── Checkpoint — "Je t'écoute" uniquement après que Gemini ait posé sa question ── */}
+      {status === "checkpoint" && checkpointGeminiHasSpoken && !isAiSpeaking && (
         <p style={{
           margin: 0,
           marginTop: 28,
