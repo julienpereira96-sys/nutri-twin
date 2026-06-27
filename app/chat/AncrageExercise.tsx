@@ -20,7 +20,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
 import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
 import PulseOrb from "./PulseOrb";
 
@@ -93,15 +92,6 @@ function IconWind({ size = 36, color = OCHRE }: { size?: number; color?: string 
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
       stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/>
-    </svg>
-  );
-}
-
-function IconDroplet({ size = 36, color = OCHRE }: { size?: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>
     </svg>
   );
 }
@@ -342,12 +332,23 @@ export default function AncrageExercise({
         advance(); // peut mettre à jour statusRef.current
       }
 
-      // Re-activer le mic après 300ms si on est dans une phase active
+      // Re-activer le mic après 300ms selon le contexte
       // (lecture de statusRef.current APRÈS application du pending)
       const st = statusRef.current;
       if (st !== "loading" && st !== "cloture") {
+        // Phases de sens actifs : toujours ré-activer
         setTimeout(() => {
           if (statusRef.current !== "loading" && statusRef.current !== "cloture") {
+            micEnabledRef.current = true;
+            setIsListening(true);
+            setWaveActive(true);
+          }
+        }, 300);
+      } else if (st === "cloture" && cloturePhaseRef.current === 1) {
+        // Cloture check-in : ré-activer le mic après que Gemini ait parlé
+        // (question initiale OU relance silence — dans les deux cas le patient doit pouvoir répondre)
+        setTimeout(() => {
+          if (statusRef.current === "cloture" && cloturePhaseRef.current === 1) {
             micEnabledRef.current = true;
             setIsListening(true);
             setWaveActive(true);
