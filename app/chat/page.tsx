@@ -6,7 +6,7 @@ import JournalModal from "./JournalModal";
 import BreathingExercise from "./BreathingExercise";
 import AncrageExercise from "./AncrageExercise";
 import MindfulEating from "./MindfulEating";
-import DefusionExercise from "./DefusionExercise";
+import RestructurationExercise from "./RestructurationExercise";
 import SOSExercise from "./SOSExercise";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import MicConsentOverlay from "./MicConsentOverlay";
@@ -1092,22 +1092,22 @@ export default function ChatPage() {
   }, []);
 
 
-  // ─── Défusion cognitive overlay complete ─────────────────────────────────────
+  // ─── Restructuration cognitive overlay complete ──────────────────────────────
   const handleDefusionTransitionToChat = useCallback((
-    evacuatedThoughts: string[],
+    original: string,
+    reformulated: string,
     closing: string
   ) => {
     setShowDefusionExercise(false);
 
-    // Bulle patient : liste des pensées observées
-    const userContent = evacuatedThoughts.length > 0
-      ? `*Défusion ACT — pensées observées et libérées :*\n${evacuatedThoughts.map((t) => `• « ${t} »`).join("\n")}`
-      : "*J'ai complété l'exercice de défusion cognitive.*";
+    const userContent = original
+      ? `*Restructuration cognitive :*\n\n— Pensée de départ : « ${original} »\n— Pensée reformulée : « ${reformulated} »`
+      : "*J'ai complété l'exercice de restructuration cognitive.*";
 
     setMessages((prev) => [
       ...prev,
       { role: "user" as const, content: userContent },
-      { role: "assistant" as const, content: closing },
+      ...(closing ? [{ role: "assistant" as const, content: closing }] : []),
     ]);
 
     setActiveTool({ id: "defusion", data: null });
@@ -1684,9 +1684,9 @@ export default function ChatPage() {
       )}
 
 
-      {/* ─── Défusion cognitive full-screen overlay ─── */}
+      {/* ─── Restructuration cognitive full-screen overlay ─── */}
       {showDefusionExercise && patientId && practitionerIdFromDb && (
-        <DefusionExercise
+        <RestructurationExercise
           patientId={patientId}
           practitionerId={practitionerIdFromDb}
           sosContext={defusionSosContext}
