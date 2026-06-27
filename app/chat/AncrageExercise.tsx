@@ -22,6 +22,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
 import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
+import PulseOrb from "./PulseOrb";
 
 // ─── Design tokens — Terre / Ocre ─────────────────────────────────────────────
 const BG_DEEP      = "#080501";
@@ -41,11 +42,10 @@ const HARD_STOP_MS  = 180_000; // 3 minutes
 // ─── State machine ─────────────────────────────────────────────────────────────
 type SenseStatus =
   | "loading"
-  | "sight_5"
-  | "touch_4"
-  | "hearing_3"
-  | "smell_2"
-  | "taste_1"
+  | "vue_4"
+  | "toucher_3"
+  | "ouie_2"
+  | "odorat_1"
   | "cloture";
 
 // ─── Config par sens ──────────────────────────────────────────────────────────
@@ -107,20 +107,19 @@ function IconDroplet({ size = 36, color = OCHRE }: { size?: number; color?: stri
 }
 
 const SENSE_CONFIG: Record<Exclude<SenseStatus, "loading" | "cloture">, SenseConfig> = {
-  sight_5:   { count: 5, label: "choses que tu vois",       icon: <IconEye /> },
-  touch_4:   { count: 4, label: "sensations que tu ressens", icon: <IconHand /> },
-  hearing_3: { count: 3, label: "sons que tu entends",       icon: <IconEar /> },
-  smell_2:   { count: 2, label: "odeurs que tu perçois",     icon: <IconWind /> },
-  taste_1:   { count: 1, label: "saveur sur ta langue",      icon: <IconDroplet /> },
+  vue_4:     { count: 4, label: "choses que tu vois",        icon: <IconEye /> },
+  toucher_3: { count: 3, label: "sensations que tu ressens", icon: <IconHand /> },
+  ouie_2:    { count: 2, label: "sons que tu entends",       icon: <IconEar /> },
+  odorat_1:  { count: 1, label: "odeur que tu perçois",      icon: <IconWind /> },
 };
 
 const ACTIVE_SENSES: Exclude<SenseStatus, "loading" | "cloture">[] = [
-  "sight_5", "touch_4", "hearing_3", "smell_2", "taste_1",
+  "vue_4", "toucher_3", "ouie_2", "odorat_1",
 ];
 
-// ─── Indicateur géométrique 5-4-3-2-1 ────────────────────────────────────────
+// ─── Indicateur géométrique 4-3-2-1 ──────────────────────────────────────────
 function GeoIndicator({ completedCount }: { completedCount: number }) {
-  const nodes = [5, 4, 3, 2, 1];
+  const nodes = [4, 3, 2, 1];
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
       {nodes.map((n, i) => {
@@ -218,28 +217,37 @@ function pcm16Base64ToFloat32(base64: string): Float32Array {
 
 // ─── Prompt système ────────────────────────────────────────────────────────────
 function buildAncrageSystemPrompt(name: string, contextInfo: string): string {
-  return `Tu es le Jumeau Numérique thérapeutique de ${name}. Tu guides un exercice d'ancrage sensoriel 5-4-3-2-1 pour interrompre une rumination ou une envie compulsive.
+  return `Tu es le Jumeau Numérique thérapeutique de ${name}. Tu guides un exercice d'ancrage sensoriel 4-3-2-1 pour interrompre une rumination ou une envie compulsive.
+
+TON RÔLE : Tu parles directement à ${name}, à voix haute, avec calme et bienveillance. Tu es sa présence thérapeutique pendant l'exercice.
+
+SIGNAUX : Tu reçois des signaux entre crochets [comme celui-ci]. Ce sont des instructions privées — tu ne les lis JAMAIS à voix haute.
 
 CONTEXTE PATIENT :
 ${contextInfo}
 
-EXERCICE — ANCRAGE SENSORIEL 5-4-3-2-1
+EXERCICE — ANCRAGE SENSORIEL 4-3-2-1
 Objectif : saturer la mémoire de travail avec des perceptions concrètes pour éteindre la rumination.
 
 RÈGLES ABSOLUES :
 1. Français uniquement. Voix calme, ancrée, bienveillante.
 2. Réponse AUDIO uniquement. Zéro texte.
-3. Adapte chaque validation au prénom de ${name}. Sois spécifique et chaleureux.
+3. Rebondis toujours sur ce que ${name} a dit — valide avec précision, jamais de façon générique.
 
-FLOW EXACT :
-• À l'ouverture (turn 1) : accueil 1 phrase chaude + demande à ${name} de citer 5 choses qu'il/elle voit autour de lui/elle. Attends sa réponse.
-• Après la vue (turn 2) : valide avec 1 phrase empathique ce qu'il/elle a dit + demande 4 sensations tactiles (température, texture, poids). Attends.
-• Après le toucher (turn 3) : valide + demande 3 sons distincts qu'il/elle entend. Attends.
-• Après l'ouïe (turn 4) : valide + demande 2 odeurs perçues ou imaginées. Attends.
-• Après l'odorat (turn 5) : valide + demande 1 saveur sur la langue. Attends.
-• [CLOTURE] → Conclure avec sincérité et chaleur. Félicite ${name} pour ce moment de présence. 2-3 phrases. Invite à reprendre la journée avec cet ancrage.
+FLOW :
+• [ACCUEIL] : accueille ${name} avec chaleur et contexte. Explique brièvement l'exercice. Demande-lui de citer 4 choses qu'il/elle voit autour de lui/elle. Attends.
 
-IMPORTANT : Ne passe JAMAIS au sens suivant sans que le patient ait répondu. Écoute sa réponse et valide ce qu'il/elle a dit spécifiquement.`;
+• Après la VUE : valide en rebondissant sur 1-2 éléments concrets cités. Demande 3 sensations physiques (texture, température, poids, contact). Attends.
+  → Si ${name} n'a cité qu'un ou deux éléments, invite-le/la doucement à en chercher d'autres ("tu en vois d'autres autour de toi ?"). UNE seule relance. Puis passe.
+
+• Après le TOUCHER : valide + demande 2 sons distincts qu'il/elle entend. Attends.
+  → Relance douce si moins de 2 éléments cités. UNE seule relance.
+
+• Après l'OUÏE : valide + demande 1 odeur qu'il/elle perçoit (même légère, même imaginée). Attends.
+
+• [CLOTURE] : conclus avec sincérité. Félicite ${name} pour ce moment de présence. 2-3 phrases. Invite à reprendre la journée avec cet ancrage.
+
+IMPORTANT : Ne passe JAMAIS au sens suivant sans que ${name} ait répondu. Silence prolongé (>7s) : relance doucement ("prends ton temps, qu'est-ce que tu remarques ?").`;
 }
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -273,7 +281,9 @@ export default function AncrageExercise({
   // ─── Refs ──────────────────────────────────────────────────────────────────
   const statusRef           = useRef<SenseStatus>("loading");
   const completedCountRef   = useRef(0);
-  const geminiTurnCountRef  = useRef(0); // nb de turn_complete reçus
+  const patientSpokeRef     = useRef(false); // patient a répondu (inputAudioTranscription reçue)
+  const isAiSpeakingRef     = useRef(false);  // sync direct (pas via useEffect)
+  const outputAnalyserRef   = useRef<AnalyserNode | null>(null); // pour PulseOrb
   const wsRef               = useRef<GeminiLiveClient | null>(null);
   const audioCtxRef         = useRef<AudioContext | null>(null);
   const processorRef        = useRef<ScriptProcessorNode | null>(null);
@@ -297,18 +307,37 @@ export default function AncrageExercise({
   const playNextChunk = useCallback(() => {
     const ctx = audioCtxRef.current;
     if (!ctx || audioQueueRef.current.length === 0) {
-      isPlayingRef.current = false;
+      isPlayingRef.current    = false;
+      isAiSpeakingRef.current = false;
       setIsAiSpeaking(false);
+      // Re-activer le mic après 300ms si on est dans une phase active
+      const st = statusRef.current;
+      if (st !== "loading" && st !== "cloture") {
+        setTimeout(() => {
+          if (statusRef.current !== "loading" && statusRef.current !== "cloture") {
+            micEnabledRef.current = true;
+            setIsListening(true);
+            setWaveActive(true);
+          }
+        }, 300);
+      }
       return;
     }
-    isPlayingRef.current = true;
+    isPlayingRef.current    = true;
+    isAiSpeakingRef.current = true;
     setIsAiSpeaking(true);
     const { data, rate } = audioQueueRef.current.shift()!;
     const buf = ctx.createBuffer(1, data.length, rate);
     buf.getChannelData(0).set(data);
     const src = ctx.createBufferSource();
     src.buffer = buf;
-    src.connect(ctx.destination);
+    // Connecter via l'analyser pour que PulseOrb réagisse
+    const analyser = outputAnalyserRef.current;
+    if (analyser) {
+      src.connect(analyser);
+    } else {
+      src.connect(ctx.destination);
+    }
     src.onended = playNextChunk;
     src.start(0);
   }, []);
@@ -319,15 +348,21 @@ export default function AncrageExercise({
   }, [playNextChunk]);
 
   const flushAudio = useCallback(() => {
-    audioQueueRef.current = [];
-    isPlayingRef.current  = false;
+    audioQueueRef.current   = [];
+    isPlayingRef.current    = false;
+    isAiSpeakingRef.current = false; // sync immédiat
     setIsAiSpeaking(false);
   }, []);
 
-  // ─── Send text turn to Gemini ─────────────────────────────────────────────
+  // ─── Send text turn to Gemini (clientContent = vrai tour conversationnel) ──
   const sendTurn = useCallback((text: string) => {
     if (wsRef.current?.readyState !== WebSocket.OPEN) return;
-    wsRef.current.send(JSON.stringify({ realtimeInput: { text } }));
+    wsRef.current.send(JSON.stringify({
+      clientContent: {
+        turns: [{ role: "user", parts: [{ text }] }],
+        turnComplete: true,
+      },
+    }));
   }, []);
 
   // ─── Cleanup ──────────────────────────────────────────────────────────────
@@ -367,16 +402,16 @@ export default function AncrageExercise({
     try { msg = JSON.parse(event.data as string) as Record<string, unknown>; }
     catch { return; }
 
-    // Setup complete → déclencher le premier tour
+    // Setup complete → démarrer l'accueil via clientContent
     if (msg.setupComplete !== undefined) {
-      sendTurn(`[Bonjour ${firstName}, commence l'accueil et demande les 5 choses vues.]`);
+      sendTurn("[ACCUEIL]");
       return;
     }
 
     const sc = msg.serverContent as Record<string, unknown> | undefined;
     if (!sc) return;
 
-    // Chunks audio → lecture
+    // Chunks audio → mic gate + lecture
     const parts = (sc.modelTurn as Record<string, unknown> | undefined)
       ?.parts as Array<Record<string, unknown>> | undefined;
     if (parts) {
@@ -385,12 +420,23 @@ export default function AncrageExercise({
         if (inlineData?.mimeType && typeof inlineData.mimeType === "string"
             && inlineData.mimeType.startsWith("audio/pcm")) {
           const rate = parseInt((inlineData.mimeType.match(/rate=(\d+)/)?.[1]) ?? "24000", 10);
+          // Couper le mic dès le premier chunk de Gemini
+          isAiSpeakingRef.current = true;
+          micEnabledRef.current   = false;
+          setIsListening(false);
+          setWaveActive(false);
           enqueueAudio(inlineData.data as string, rate);
         }
       }
     }
 
-    // Transcription sortie (cloture)
+    // Transcription entrée → patient a répondu
+    const inTrans = sc.inputTranscription as Record<string, unknown> | undefined;
+    if (inTrans?.text && typeof inTrans.text === "string" && inTrans.text.trim()) {
+      patientSpokeRef.current = true;
+    }
+
+    // Transcription sortie → pour la clôture
     const outTrans = sc.outputTranscription as Record<string, unknown> | undefined;
     if (outTrans?.text && typeof outTrans.text === "string") {
       outputTransRef.current += outTrans.text;
@@ -398,15 +444,13 @@ export default function AncrageExercise({
 
     // Tour Gemini terminé
     if (sc.turnComplete === true) {
-      geminiTurnCountRef.current += 1;
-      const count = geminiTurnCountRef.current;
       const currentStatus = statusRef.current;
 
       // Cloture terminée → injection chat
       if (currentStatus === "cloture") {
         const closingWords = outputTransRef.current.trim();
         const done = completedCountRef.current;
-        const summary = `🪨 Ancrage 5-4-3-2-1 · ${done}/5 sens explorés`;
+        const summary = `🪨 Ancrage 4-3-2-1 · ${done}/${ACTIVE_SENSES.length} sens explorés`;
         setTimeout(() => {
           if (onTransRef.current) {
             onTransRef.current(summary, closingWords);
@@ -417,47 +461,47 @@ export default function AncrageExercise({
         return;
       }
 
-      if (count === 1) {
-        // Premier tour : Gemini a posé la question vue → afficher sight_5, activer mic
-        setStatus("sight_5");
-        setWaveActive(true);
-        micEnabledRef.current = true;
-        setIsListening(true);
+      // Premier tour : ACCUEIL terminé → passer au premier sens (vue)
+      if (currentStatus === "loading") {
+        setStatus("vue_4");
+        statusRef.current = "vue_4";
+        patientSpokeRef.current = false;
+        // Le mic sera activé par playNextChunk quand l'audio de l'accueil se termine
         return;
       }
 
-      // Tours suivants : patient a répondu, Gemini a validé + posé la prochaine question
-      // On désactive le mic pendant que Gemini parle, puis on le réactive après
-      micEnabledRef.current = false;
-      setIsListening(false);
-      setWaveActive(false);
+      // Tours suivants : avancer seulement si le patient a réellement parlé
+      if (patientSpokeRef.current) {
+        patientSpokeRef.current = false;
+        micEnabledRef.current   = false;
+        setIsListening(false);
+        setWaveActive(false);
 
-      const sensesDone = count - 1; // nb de sens complétés
-      setCompletedCount(sensesDone);
-      completedCountRef.current = sensesDone;
-      navigator.vibrate?.([25, 30, 50]);
+        const newCount = completedCountRef.current + 1;
+        setCompletedCount(newCount);
+        completedCountRef.current = newCount;
+        navigator.vibrate?.([25, 30, 50]);
 
-      if (sensesDone >= ACTIVE_SENSES.length) {
-        // Tous les 5 sens validés → cloture
-        outputTransRef.current = "";
-        setStatus("cloture");
-        setTimeout(() => sendTurn("[CLOTURE]"), 400);
-      } else {
-        // Sens suivant — activer le mic après que Gemini a fini de parler la validation
-        const nextSense = ACTIVE_SENSES[sensesDone];
-        setStatus(nextSense);
-        // Petit délai pour laisser l'audio de validation se terminer
-        setTimeout(() => {
-          micEnabledRef.current = true;
-          setIsListening(true);
-          setWaveActive(true);
-        }, 800);
+        if (newCount >= ACTIVE_SENSES.length) {
+          // Tous les sens validés → clôture
+          outputTransRef.current = "";
+          setStatus("cloture");
+          statusRef.current = "cloture";
+          setTimeout(() => sendTurn("[CLOTURE]"), 400);
+        } else {
+          const nextSense = ACTIVE_SENSES[newCount];
+          setStatus(nextSense);
+          statusRef.current = nextSense;
+          // mic re-enable géré par playNextChunk (300ms après fin audio)
+        }
       }
+      // Si patientSpokeRef = false : Gemini a fait une relance, on ne change rien
+      // playNextChunk réactivera le mic quand l'audio de relance sera terminé
     }
 
     // Patient coupe → flush audio
     if (sc.interrupted === true) flushAudio();
-  }, [sendTurn, enqueueAudio, flushAudio, firstName]);
+  }, [sendTurn, enqueueAudio, flushAudio]);
 
   // ─── Init session ─────────────────────────────────────────────────────────
   const initSession = useCallback(async () => {
@@ -482,16 +526,20 @@ export default function AncrageExercise({
     // 2. Mic
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1 }, video: false });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true }, video: false });
       mediaStreamRef.current = stream;
     } catch {
       setLoadError("Accès micro refusé. Active le micro pour cet exercice.");
       return;
     }
 
-    // 3. AudioContext
+    // 3. AudioContext + analyser pour PulseOrb
     const audioCtx = new AudioContext({ sampleRate: 16000 });
     audioCtxRef.current = audioCtx;
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.connect(audioCtx.destination);
+    outputAnalyserRef.current = analyser;
     const micSrc = audioCtx.createMediaStreamSource(stream);
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     const proc = audioCtx.createScriptProcessor(4096, 1, 1);
@@ -516,6 +564,8 @@ export default function AncrageExercise({
           model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
+            outputAudioTranscription: {},
+            inputAudioTranscription: {},
           },
           systemInstruction: { parts: [{ text: systemPrompt }] },
         },
@@ -605,7 +655,7 @@ export default function AncrageExercise({
           <GeoIndicator completedCount={completedCount} />
           {senseKey && (
             <p style={{ margin: 0, fontSize: 10, color: TEXT_FADED, letterSpacing: 1.3, textTransform: "uppercase" }}>
-              {completedCount} / 5 sens explorés
+              {completedCount} / 4 sens explorés
             </p>
           )}
         </div>
@@ -692,14 +742,12 @@ export default function AncrageExercise({
               {/* Indicateur état (Gemini parle / patient répond) */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                 {isAiSpeaking ? (
-                  <div style={{ display: "flex", gap: 4, alignItems: "flex-end", animation: "an-fade-in 0.3s ease" }}>
-                    {[0.6, 1, 0.7, 1.1, 0.5].map((h, i) => (
-                      <div key={i} style={{
-                        width: 3, borderRadius: 2, background: OCHRE,
-                        height: `${6 * h}px`, opacity: 0.65,
-                      }} />
-                    ))}
-                  </div>
+                  <PulseOrb
+                    speaking={isAiSpeaking}
+                    analyser={outputAnalyserRef.current}
+                    color={OCHRE}
+                    size={160}
+                  />
                 ) : isListening ? (
                   <motion.div
                     animate={{ opacity: [0.5, 1, 0.5] }}
