@@ -354,15 +354,10 @@ export default function AncrageExercise({
     setIsAiSpeaking(false);
   }, []);
 
-  // ─── Send text turn to Gemini (clientContent = vrai tour conversationnel) ──
+  // ─── Send text turn to Gemini ─────────────────────────────────────────────
   const sendTurn = useCallback((text: string) => {
     if (wsRef.current?.readyState !== WebSocket.OPEN) return;
-    wsRef.current.send(JSON.stringify({
-      clientContent: {
-        turns: [{ role: "user", parts: [{ text }] }],
-        turnComplete: true,
-      },
-    }));
+    wsRef.current.send(JSON.stringify({ realtimeInput: { text } }));
   }, []);
 
   // ─── Cleanup ──────────────────────────────────────────────────────────────
@@ -402,9 +397,14 @@ export default function AncrageExercise({
     try { msg = JSON.parse(event.data as string) as Record<string, unknown>; }
     catch { return; }
 
-    // Setup complete → démarrer l'accueil via clientContent
+    // Setup complete → déclencher l'accueil via clientContent (tour complet, pas realtimeInput)
     if (msg.setupComplete !== undefined) {
-      sendTurn("[ACCUEIL]");
+      wsRef.current?.send(JSON.stringify({
+        clientContent: {
+          turns: [{ role: "user", parts: [{ text: "[ACCUEIL]" }] }],
+          turnComplete: true,
+        },
+      }));
       return;
     }
 
@@ -564,9 +564,9 @@ export default function AncrageExercise({
           model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
-            outputAudioTranscription: {},
-            inputAudioTranscription: {},
           },
+          outputAudioTranscription: {},
+          inputAudioTranscription:  {},
           systemInstruction: { parts: [{ text: systemPrompt }] },
         },
       }));
@@ -638,6 +638,32 @@ export default function AncrageExercise({
         }}>×</button>
       )}
 
+      {/* ── Header exercice ────────────────────────────────────────────────── */}
+      {status !== "cloture" && !loadError && (
+        <div style={{
+          position: "absolute", top: 30,
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+          pointerEvents: "none",
+        }}>
+          <p style={{
+            margin: 0, fontSize: 11, fontWeight: 400,
+            letterSpacing: "0.18em", textTransform: "uppercase",
+            color: `rgba(212,162,85,0.45)`,
+          }}>
+            Ancrage sensoriel
+          </p>
+          {senseKey && (
+            <p style={{
+              margin: 0, fontSize: 10, fontWeight: 300,
+              letterSpacing: "0.12em",
+              color: "rgba(255,255,255,0.18)",
+            }}>
+              {senseConf?.count} · {senseConf?.label}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ── Load error ────────────────────────────────────────────────────── */}
       {loadError && (
         <div style={{ maxWidth: 320, textAlign: "center", padding: 24, zIndex: 1 }}>
@@ -651,7 +677,7 @@ export default function AncrageExercise({
 
       {/* ── Indicateur géométrique (haut) ─────────────────────────────────── */}
       {!loadError && (
-        <div style={{ paddingTop: 52, display: "flex", flexDirection: "column", alignItems: "center", gap: 12, zIndex: 1 }}>
+        <div style={{ paddingTop: 72, display: "flex", flexDirection: "column", alignItems: "center", gap: 12, zIndex: 1 }}>
           <GeoIndicator completedCount={completedCount} />
           {senseKey && (
             <p style={{ margin: 0, fontSize: 10, color: TEXT_FADED, letterSpacing: 1.3, textTransform: "uppercase" }}>
