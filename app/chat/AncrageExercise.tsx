@@ -283,24 +283,25 @@ RÈGLES ABSOLUES :
 4. N'invente JAMAIS de contexte. Si une information n'est pas explicitement présente dans le CONTEXTE PATIENT ci-dessus, ne la mentionne pas et ne la suppose pas. Contexte vide ou générique = accueil chaleureux mais neutre, sans aucune supposition sur la situation de ${name}.
 
 OUTIL DISPONIBLE :
-• valider_sens(count: int) — Appelle cet outil UNIQUEMENT quand ${name} a cité suffisamment d'éléments distincts pour le sens en cours, sur l'ensemble de la conversation. Passe dans 'count' le nombre total d'éléments distincts cités. Ne l'appelle JAMAIS si tu fais une relance.
+• valider_sens — Appelle cet outil AU MOMENT PRÉCIS où tu génères la transition vers le sens suivant. Appeler valider_sens = tu t'engages à passer au sens suivant dans CETTE MÊME réponse. Ne l'appelle JAMAIS si tu génères une relance ou une question de plus pour le sens en cours.
 
 FLOW :
 • [ACCUEIL] : accueille ${name} avec chaleur et contexte. Explique brièvement l'exercice. Demande-lui de citer 4 choses qu'il/elle voit autour de lui/elle. Attends.
 
-• Après la VUE (4 choses) :
-  → Si ${name} a cité 2 éléments ou plus : valide en rebondissant sur 1-2 éléments concrets. Appelle valider_sens. Puis demande 3 sensations physiques (texture, température, poids, contact).
-  → Si ${name} n'a cité qu'un seul élément : relance doucement ("tu en vois d'autres autour de toi ?"). UNE seule relance — après sa réponse, appelle valider_sens quoi qu'il arrive.
+• VUE (cible : 4 choses) :
+  → Si ${name} a cité suffisamment d'éléments (juge toi-même selon le contexte) : valide chaleureusement en rebondissant sur 1-2 éléments cités, APPELLE valider_sens, puis demande 3 sensations physiques dans la MÊME réponse.
+  → Si insuffisant : relance doucement SANS appeler valider_sens. Attends sa réponse.
 
-• Après le TOUCHER (3 sensations) :
-  → Si ${name} a cité 2 sensations ou plus : valide + appelle valider_sens + demande 2 sons distincts.
-  → Si ${name} n'a cité qu'une sensation : relance douce. Puis appelle valider_sens.
+• TOUCHER (cible : 3 sensations physiques — texture, température, poids, contact) :
+  → Si suffisant : valide + APPELLE valider_sens + demande 2 sons dans la MÊME réponse.
+  → Si insuffisant : relance douce SANS appeler valider_sens.
 
-• Après l'OUÏE (2 sons) :
-  → Valide + appelle valider_sens + demande 1 odeur qu'il/elle perçoit (même légère, même imaginée).
+• OUÏE (cible : 2 sons distincts) :
+  → Si suffisant : valide + APPELLE valider_sens + demande 1 odeur dans la MÊME réponse.
+  → Si insuffisant : relance douce SANS appeler valider_sens.
 
-• Après l'ODORAT (1 odeur) :
-  → Valide + appelle valider_sens. (La clôture sera déclenchée automatiquement.)
+• ODORAT (cible : 1 odeur) :
+  → Dès que ${name} cite une odeur (même vague) : valide + APPELLE valider_sens dans la MÊME réponse. (La clôture se déclenche automatiquement.)
 
 • [CLOTURE] : conclus l'exercice avec chaleur en 1-2 phrases. Puis pose UNE question ouverte : "Comment tu te sens maintenant ?" Attends sa réponse.
   → Si ${name} exprime un mieux, du soulagement ou de la détente : valide avec sincérité (1-2 phrases). Invite à reprendre la journée avec cet ancrage.
@@ -510,24 +511,13 @@ export default function AncrageExercise({
       for (const fc of toolCallMsg.functionCalls) {
         if (fc.name === "valider_sens") {
           const st = statusRef.current;
-          // Nombre d'éléments comptés par Gemini
-          const patientCount = typeof fc.args?.count === "number" ? fc.args.count : 0;
-          // Seuil minimum par sens (vue: 2, toucher: 2, ouïe: 1, odorat: 1)
-          const THRESHOLDS: Partial<Record<SenseStatus, number>> = {
-            vue_4: 2, toucher_3: 2, ouie_2: 1, odorat_1: 1,
-          };
-          const threshold = THRESHOLDS[st as keyof typeof THRESHOLDS] ?? 1;
-
-          // Garde-fou : patient doit avoir parlé + count suffisant + sens actif
+          // Garde-fou unique : le patient doit avoir parlé + être dans un sens actif.
+          // Gemini est seul juge du moment — pas de validation count côté client.
           const isValidContext =
             patientSpokeRef.current &&
-            patientCount >= threshold &&
             st !== "loading" &&
             st !== "cloture";
 
-          // Toujours répondre au tool call (Gemini bloque s'il n'obtient pas de toolResponse).
-          // En cas d'appel prématuré, on renvoie un message d'erreur pour que Gemini
-          // comprenne qu'il doit attendre la réponse du patient.
           wsRef.current?.send(JSON.stringify({
             toolResponse: {
               functionResponses: [{
@@ -535,15 +525,13 @@ export default function AncrageExercise({
                 response: {
                   output: isValidContext
                     ? "ok"
-                    : !patientSpokeRef.current
-                      ? "Erreur : le patient n'a pas encore répondu. Attends sa réponse."
-                      : `Erreur : seulement ${patientCount} élément(s) cité(s), minimum requis : ${threshold}. Continue à écouter et encourage le patient à en citer davantage.`,
+                    : "Erreur : le patient n'a pas encore répondu pour ce sens. Attends sa réponse.",
                 },
               }],
             },
           }));
 
-          if (!isValidContext) break; // Gemini réessaiera après la réponse du patient
+          if (!isValidContext) break;
 
           // Préparer l'avancement visuel — appliqué quand l'audio de validation se termine
           patientSpokeRef.current = false;
@@ -779,17 +767,8 @@ export default function AncrageExercise({
           tools: [{
             functionDeclarations: [{
               name: "valider_sens",
-              description: "Appelle cet outil quand le patient a cité suffisamment d'éléments pour le sens en cours et que tu es prêt à passer au suivant. Ne l'appelle JAMAIS si tu fais une relance. Passe le nombre d'éléments distincts cités dans 'count'.",
-              parameters: {
-                type: "object",
-                properties: {
-                  count: {
-                    type: "integer",
-                    description: "Nombre d'éléments distincts cités par le patient pour ce sens dans l'ensemble de la conversation.",
-                  },
-                },
-                required: ["count"],
-              },
+              description: "Appelle cet outil au moment précis où tu génères la transition vers le sens suivant. Appeler cet outil = tu t'engages à passer au sens suivant dans cette même réponse. Ne l'appelle JAMAIS si tu génères une relance.",
+              parameters: { type: "object", properties: {} },
             }],
           }],
         },
