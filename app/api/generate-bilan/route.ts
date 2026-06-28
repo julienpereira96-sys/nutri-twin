@@ -81,8 +81,8 @@ export async function POST(request: Request) {
       .select("role, content, created_at")
       .eq("patient_id", patientId)
       .eq("practitioner_id", practitionerId)
-      .order("created_at", { ascending: false })
-      .limit(100);
+      .neq("practitioner_only", true)
+      .order("created_at", { ascending: true });
 
     // Filtrer après le curseur si présent
     if (lastCursor) {
@@ -113,14 +113,14 @@ export async function POST(request: Request) {
       lastCursor
         ? supabase
             .from("sos_events")
-            .select("triggered_at, sos_context, raw_response")
+            .select("triggered_at, sos_context, raw_response, origin, closing_message, intake_message, status")
             .eq("patient_id", patientId)
             .gt("triggered_at", lastCursor)
             .order("triggered_at", { ascending: false })
             .limit(20)
         : supabase
             .from("sos_events")
-            .select("triggered_at, sos_context, raw_response")
+            .select("triggered_at, sos_context, raw_response, origin, closing_message, intake_message, status")
             .eq("patient_id", patientId)
             .order("triggered_at", { ascending: false })
             .limit(20),
@@ -128,8 +128,9 @@ export async function POST(request: Request) {
 
     const firstName = (patient as { first_name?: string } | null)?.first_name ?? "le patient";
 
-    // Compter les messages patient depuis le curseur
-    const patientMessages = (chatMessages ?? []).filter(m => m.role === "user");
+    // Compter les messages patient depuis le curseur (pour le seuil et l'affichage)
+    const allMessages = chatMessages ?? [];
+    const patientMessages = allMessages.filter(m => m.role === "user");
     const messageCount = patientMessages.length;
 
     // Si moins de 5 messages depuis le dernier bilan, retourner un message honnête
@@ -143,10 +144,16 @@ export async function POST(request: Request) {
       });
     }
 
-    const chatData = patientMessages
-      .slice(0, 20)
-      .map(m => (m.content as string).slice(0, 200))
-      .join(" | ");
+    // Dialogue complet avec dates — patient + jumeau, sans troncature
+    const chatData = allMessages
+      .map(m => {
+        const dt = new Date(m.created_at as string);
+        const date = dt.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+        const time = dt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        const role = m.role === "user" ? "Patient" : "Jumeau";
+        return `[${date} ${time}] ${role} : ${m.content as string}`;
+      })
+      .join("\n");
 
     // ── Build rich onboarding profile (mêmes champs que le Rapport IA) ──
     const p = patient as Record<string, unknown> | null;
@@ -222,22 +229,43 @@ export async function POST(request: Request) {
       manger: "Pleine conscience alimentaire", body_scan: "Body scan", defusion: "Défusion cognitive",
       ecriture: "Écriture cathartique", adaptive_coaching: "Coaching personnalisé",
     };
-    type SosEventRow = { triggered_at: string; sos_context: string; raw_response?: { tool_id?: string } | null };
+    type SosEventRow = {
+      triggered_at: string;
+      sos_context: string;
+      raw_response?: { tool_id?: string } | null;
+      origin?: string | null;
+      closing_message?: string | null;
+      intake_message?: string | null;
+      status?: string | null;
+    };
     const sosEpisodes = (sosEventsRaw ?? []) as SosEventRow[];
+    const sosCrises = sosEpisodes.filter(ev => ev.origin === "crise");
+    const sosPratiques = sosEpisodes.filter(ev => ev.origin !== "crise");
     const sosSection = sosEpisodes.length > 0
       ? `ÉPISODES MON SOUTIEN DEPUIS LE DERNIER BILAN (${sosEpisodes.length} déclenchement${sosEpisodes.length > 1 ? "s" : ""}) :\n` +
-        sosEpisodes.map(ev => {
-          const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
-          const context = ev.sos_context?.split(" | ")[0] ?? "non précisé";
-          const toolId = ev.raw_response?.tool_id;
-          const exercise = toolId ? (toolNames[toolId] ?? toolId) : "exercice non précisé";
-          return `  - ${date} : ${context} → ${exercise}`;
-        }).join("\n")
+        (sosCrises.length > 0
+          ? `  Crises désamorcées (${sosCrises.length}) :\n` + sosCrises.map(ev => {
+              const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+              const context = ev.sos_context?.split(" | ")[0] ?? "non précisé";
+              const toolId = ev.raw_response?.tool_id;
+              const exercise = toolId ? (toolNames[toolId] ?? toolId) : "exercice non précisé";
+              const outcome = ev.status === "success" ? "apaisé(e)" : "non résolu";
+              return `    - ${date} : ${context} → ${exercise} (${outcome})`;
+            }).join("\n")
+          : "") +
+        (sosPratiques.length > 0
+          ? `${sosCrises.length > 0 ? "\n" : ""}  Pratique volontaire (${sosPratiques.length}) :\n` + sosPratiques.map(ev => {
+              const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+              const toolId = ev.raw_response?.tool_id;
+              const exercise = toolId ? (toolNames[toolId] ?? toolId) : "exercice non précisé";
+              return `    - ${date} : ${exercise}`;
+            }).join("\n")
+          : "")
       : "";
 
     const prompt = `Tu es l'assistant d'un nutritionniste qui prépare sa prochaine consultation avec ${firstName}.
 
-${patientProfile ? `PROFIL PATIENT (onboarding complet) :\n${patientProfile}\n\n` : ""}MESSAGES DU PATIENT DEPUIS LE DERNIER BILAN (${messageCount} messages) :
+${patientProfile ? `PROFIL PATIENT (onboarding complet) :\n${patientProfile}\n\n` : ""}DIALOGUE COMPLET DEPUIS LE DERNIER BILAN (${messageCount} messages patient, ${allMessages.length} échanges au total) :
 ${chatData}
 ${sosSection ? `\n${sosSection}\n` : ""}${alertsSection ? `\n${alertsSection}\n` : ""}${murmuresActifs ? `\n${murmuresActifs}\n` : ""}
 Génère exactement 3 questions clés que le praticien devrait poser lors de la prochaine consultation. Les questions doivent être précises, personnalisées et montrer que le praticien a suivi de près l'évolution du patient.${sosSection ? " Intègre les épisodes Mon Soutien si pertinents pour comprendre l'état émotionnel du patient." : ""}${alertsSection ? " Tiens compte des alertes praticien traitées récemment." : ""}
@@ -258,7 +286,7 @@ Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks :
 
     let questions: { question: string; justification: string; objectif: string }[];
     try {
-      const rawText = (await vertexGenerate("gemini-3.5-flash", prompt, { maxOutputTokens: 800, temperature: 0.6 })).trim().replace(/```json|```/g, "").trim();
+      const rawText = (await vertexGenerate("gemini-3.5-flash", prompt, { maxOutputTokens: 4000, temperature: 0.6 })).trim().replace(/```json|```/g, "").trim();
       questions = JSON.parse(rawText) as typeof questions;
       if (!Array.isArray(questions) || questions.length === 0 || !questions[0].question) throw new Error("Structure JSON invalide");
     } catch (err: unknown) {

@@ -48,6 +48,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Paramètres manquants." }, { status: 400 });
     }
 
+    // Limiter la période personnalisée à 31 jours maximum
+    const fromDate = new Date(dateFrom);
+    const toDate = new Date(dateTo);
+    const diffDays = Math.round((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays > 31) {
+      return NextResponse.json({ error: "La période sélectionnée dépasse 31 jours. Veuillez choisir une période plus courte." }, { status: 400 });
+    }
+
     if (user.id !== practitionerId) return forbidden();
 
     const supabase = createClient(
@@ -66,6 +74,7 @@ export async function POST(request: Request) {
         .select("role, content, created_at")
         .eq("patient_id", patientId)
         .eq("practitioner_id", practitionerId)
+        .neq("practitioner_only", true)
         .gte("created_at", `${dateFrom}T00:00:00`)
         .lte("created_at", `${dateTo}T23:59:59`)
         .order("created_at", { ascending: true }),
@@ -170,7 +179,7 @@ export async function POST(request: Request) {
     let sosSection = "";
     if (sosEpisodesReport.length > 0) {
       // Séparer crises (origine réelle) et pratique volontaire
-      const crisisEps  = sosEpisodesReport.filter(e => (e.origin ?? "crise") !== "pratique");
+      const crisisEps  = sosEpisodesReport.filter(e => e.origin === "crise");
       const pratiqEps  = sosEpisodesReport.filter(e => e.origin === "pratique");
 
       const byStatus = {
@@ -257,10 +266,16 @@ ${lines.join("\n")}`;
 ${withFeedback.length > 0 ? `- Crises apaisées : ${apaises} / ${withFeedback.length} | Persistantes : ${persistants} / ${withFeedback.length}` : ""}`;
     }
 
-    // ── Build chat section ──
-    const chatSection = messageCount > 0
-      ? `CONVERSATIONS PATIENT (${messageCount} messages, période du ${dateFrom} au ${dateTo}) :
-${patientMessages.slice(-30).map((m: { content: string }) => `- ${(m.content as string).slice(0, 200)}`).join("\n")}`
+    // ── Build chat section — dialogue complet avec dates, sans troncature ──
+    const allChatMessages = (chatMessages ?? []) as { role: string; content: string; created_at: string }[];
+    const chatSection = allChatMessages.length > 0
+      ? `DIALOGUE COMPLET (${messageCount} messages patient, ${allChatMessages.length} échanges au total, période du ${dateFrom} au ${dateTo}) :\n` +
+        allChatMessages.map(m => {
+          const dt = new Date(m.created_at);
+          const date = dt.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+          const role = m.role === "user" ? "Patient" : "Jumeau";
+          return `[${date}] ${role} : ${m.content}`;
+        }).join("\n")
       : "";
 
     // ── Build alerts section (alertes praticien archivées sur la période) ──
@@ -314,7 +329,7 @@ Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks :
 
     let report: { synthese: string; patterns: string; victoires: string; murmures_bilan: string };
     try {
-      const rawText = (await vertexGenerate("gemini-3.5-flash", prompt, { maxOutputTokens: 1000, temperature: 0.5 })).trim().replace(/```json|```/g, "").trim();
+      const rawText = (await vertexGenerate("gemini-3.5-flash", prompt, { maxOutputTokens: 4000, temperature: 0.5 })).trim().replace(/```json|```/g, "").trim();
       report = JSON.parse(rawText) as typeof report;
       if (!report.synthese || !report.patterns) throw new Error("Structure JSON invalide");
     } catch (err: unknown) {

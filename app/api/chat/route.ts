@@ -530,17 +530,19 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
 
 async function summarizeOldMessages(messages: { role: string; content: string }[]): Promise<string> {
   try {
-    const patientMessages = messages.filter((m) => m.role === "user").map((m) => m.content.slice(0, 400)).join(" | ");
+    // Dialogue complet patient + jumeau — pour que le résumé inclue aussi les conseils donnés
+    const dialogue = messages
+      .map(m => `${m.role === "user" ? "Patient" : "Jumeau"} : ${m.content.slice(0, 400)}`)
+      .join("\n");
     const text = await vertexGenerate(
       "gemini-3.1-flash-lite",
-      `Résume en 5 lignes maximum les points clés de ces échanges patient-nutritionniste.
-      Garde uniquement les faits importants : objectifs, écarts, progrès, préoccupations.
-      Échanges : ${patientMessages}`
+      `Résume en 5 lignes maximum les points clés de ces échanges patient-nutritionniste.\nGarde uniquement les faits importants : objectifs déclarés, écarts, progrès, préoccupations, conseils donnés par le jumeau.\nÉchanges :\n${dialogue}`,
+      { maxOutputTokens: 200, temperature: 0 }
     );
     return `[RÉSUMÉ DES ÉCHANGES PRÉCÉDENTS : ${text}]`;
   } catch {
-    const patientMessages = messages.filter((m) => m.role === "user").slice(0, 10).map((m) => m.content.slice(0, 100)).join(" | ");
-    return `[RÉSUMÉ : ${patientMessages}]`;
+    const fallback = messages.filter(m => m.role === "user").slice(0, 10).map(m => m.content.slice(0, 100)).join(" | ");
+    return `[RÉSUMÉ : ${fallback}]`;
   }
 }
 
@@ -586,19 +588,34 @@ async function getConversationHistory(
     if (isEssentiel) return recentFormatted;
 
     // Plan Pro+ : mémoire long terme — résumer les messages hors fenêtre
+    // Cache Redis 2h — les messages anciens ne changent pas, inutile de résumer à chaque appel
+    const summaryCacheKey = `summary:${patientId}:${practitionerId}`;
+    const cachedSummary = await redis.get<string>(summaryCacheKey).catch(() => null);
+    if (cachedSummary) {
+      return [
+        { role: "user" as const, parts: [{ text: cachedSummary }] },
+        ...recentFormatted,
+      ];
+    }
+
+    // Prendre les 100 messages anciens les plus récents (les plus contextuellement utiles)
     const { data: olderData } = await supabase
       .from("conversations")
       .select("role, content")
       .eq("patient_id", patientId)
       .eq("practitioner_id", practitionerId)
       .lt("created_at", windowStart)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(100);
 
-    const olderMessages = (olderData as { role: string; content: string }[] | null) ?? [];
+    // Remettre en ordre chronologique avant résumé
+    const olderMessages = ((olderData as { role: string; content: string }[] | null) ?? []).reverse();
     if (olderMessages.length === 0) return recentFormatted;
 
     const summary = await summarizeOldMessages(olderMessages);
+    // Mettre en cache 2h — TTL assez court pour capter les changements de contexte
+    await redis.set(summaryCacheKey, summary, { ex: 7200 }).catch(() => {});
+
     return [
       { role: "user" as const, parts: [{ text: summary }] },
       ...recentFormatted,
@@ -1420,7 +1437,8 @@ Max 150 mots. Sans markdown.`;
         { text: visionPrompt },
       ];
     } else {
-      userParts = [{ text: message }];
+      // Tronquer à 5000 chars pour Gemini — le message complet est toujours stocké en DB
+      userParts = [{ text: message.slice(0, 5000) }];
     }
     const chatContents = [
       ...conversationHistory,
