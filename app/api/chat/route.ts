@@ -99,7 +99,7 @@ const redis = new Redis({
 
 // ═══ CONFIGURATION DES PLANS ═══
 // Modèle chat : gemini-3.1-flash-lite pour tous les textes (tous plans confondus)
-//               gemini-3-flash-preview uniquement si image Base64 détectée
+//               gemini-3.5-flash uniquement si image Base64 détectée
 // Mémoire    : Essentiel → 3 jours / 20 msg max, sans résumé
 //              Pro+      → 7 jours / 40 msg max + résumé des messages plus anciens
 const PLAN_CONFIG = {
@@ -1400,8 +1400,8 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     }
 
     // Routage modèle : gemini-3.1-flash-lite pour tout le texte (tous plans),
-    // gemini-3-flash-preview uniquement si image Base64 présente dans la requête.
-    const modelName = imageBase64 ? "gemini-3-flash-preview" : "gemini-3.1-flash-lite";
+    // gemini-3.5-flash uniquement si image Base64 présente dans la requête.
+    const modelName = imageBase64 ? "gemini-3.5-flash" : "gemini-3.1-flash-lite";
 
     // Build Vertex AI content array: history + current user turn
     let userParts: unknown[];

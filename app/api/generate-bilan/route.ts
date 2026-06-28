@@ -258,7 +258,7 @@ Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks :
 
     let questions: { question: string; justification: string; objectif: string }[];
     try {
-      const rawText = (await vertexGenerate("gemini-3-flash-preview", prompt, { maxOutputTokens: 800, temperature: 0.6, location: "europe-west2" })).trim().replace(/```json|```/g, "").trim();
+      const rawText = (await vertexGenerate("gemini-3.5-flash", prompt, { maxOutputTokens: 800, temperature: 0.6 })).trim().replace(/```json|```/g, "").trim();
       questions = JSON.parse(rawText) as typeof questions;
       if (!Array.isArray(questions) || questions.length === 0 || !questions[0].question) throw new Error("Structure JSON invalide");
     } catch (err: unknown) {
