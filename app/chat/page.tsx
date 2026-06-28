@@ -635,7 +635,7 @@ export default function ChatPage() {
   const [showSasButtons, setShowSasButtons] = useState(false);
   const [showSOSExercise, setShowSOSExercise] = useState(false);
   const [sosSosContext, setSosSosContext] = useState("");
-  const [showLibraryModal, setShowLibraryModal] = useState(false);
+  // showLibraryModal supprimé — exercices intégrés directement dans la sidebar
   const [postExerciseStep, setPostExerciseStep] = useState<{ toolId: string; answer: string } | null>(null);
   const [chatSearch, setChatSearch] = useState("");
   const [chatSearchIdx, setChatSearchIdx] = useState(0);
@@ -1528,63 +1528,7 @@ export default function ChatPage() {
         />
       )}
 
-      {/* ═══ BIBLIOTHÈQUE D'EXERCICES — Modale ═══ */}
-      {showLibraryModal && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 110, background: "rgba(0,0,0,0.9)", backdropFilter: "blur(16px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#060d14", borderRadius: 24, padding: "24px 20px", width: "100%", maxWidth: 420, border: `1px solid rgba(255,255,255,0.07)`, boxShadow: "0 24px 80px rgba(0,0,0,0.7)", animation: "fadeUp 0.3s ease", maxHeight: "90vh", overflowY: "auto" }}>
-
-            {/* ── Urgence ── */}
-            <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Urgence</p>
-            <button
-              onClick={() => {
-                setShowLibraryModal(false);
-                if (emotionalStatus === "red_critical" || !patientId || !practitionerIdFromDb) return;
-                const recentLines = messages.slice(-8).map(m => `${m.role === "user" ? "Patient" : "Jumeau"}: ${m.content.slice(0, 300)}`);
-                const builtContext = recentLines.length > 0 ? `[contexte chat récent]\n${recentLines.join("\n")}` : "Mon Soutien";
-                setSosSosContext(builtContext);
-                void fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: "", patientId, practitionerId: practitionerIdFromDb, isSOS: true, sosContext: "Mon Soutien", origin: "crise" }) }).catch(() => {});
-                setShowSOSExercise(true);
-              }}
-              disabled={emotionalStatus === "red_critical" || !patientId || !practitionerIdFromDb}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.28)", cursor: "pointer", textAlign: "left", marginBottom: 20 }}>
-              <div style={{ width: 42, height: 42, borderRadius: 10, background: "rgba(6,182,212,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <IconActivity size={20} color={CYAN} />
-              </div>
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: "0 0 2px", fontSize: 15, fontWeight: 600, color: "#cffafe" }}>Mon Soutien</p>
-                <p style={{ margin: 0, fontSize: 12, color: "rgba(6,182,212,0.6)" }}>Je traverse un moment difficile</p>
-              </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.4 }}><path d="M9 18l6-6-6-6" stroke={CYAN} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-
-            {/* ── Exercices ── */}
-            <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Exercices</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-              {LIBRARY_EXERCISES.map(ex => (
-                <button key={ex.id}
-                  onClick={() => { setShowLibraryModal(false); void handleToolSelect(ex.id, "Bibliothèque", emotionalStatus === "red_behavioral" ? undefined : "pratique"); }}
-                  style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", cursor: "pointer", textAlign: "left", transition: "background 0.15s" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}>
-                  <div style={{ width: 42, height: 42, borderRadius: 10, background: ex.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    {(LIBRARY_EXERCISE_ICONS[ex.id] ?? ((c: string) => <IconStar size={22} color={c} />))(ex.iconColor)}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: "0 0 2px", fontSize: 15, fontWeight: 600, color: TEXT_PRIMARY }}>{ex.label}</p>
-                    <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED }}>{ex.desc}</p>
-                  </div>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.3 }}><path d="M9 18l6-6-6-6" stroke={TEXT_MUTED} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-              ))}
-            </div>
-
-            <button onClick={() => setShowLibraryModal(false)}
-              style={{ width: "100%", height: 38, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 13, cursor: "pointer" }}>
-              Fermer
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Modale bibliothèque supprimée — exercices intégrés dans la sidebar */}
 
       {/* ═══ SAS DE DÉCOMPRESSION ═══ */}
       {showSasButtons && !activeTool && (
@@ -2489,13 +2433,13 @@ export default function ChatPage() {
             </button>
           </div>
 
-          {/* ═══ MON SOUTIEN — Bouton ═══ */}
-          <div style={{ marginBottom: 20 }}>
+          {/* ═══ AIDE IMMÉDIATE ═══ */}
+          <p style={{ margin: "0 4px 8px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Aide immédiate</p>
+          <div style={{ marginBottom: 16 }}>
             <button
               onClick={() => {
                 if (emotionalStatus === "red_critical") return;
                 if (!patientId || !practitionerIdFromDb) return;
-                // Construire contexte depuis les derniers messages du chat
                 const recentLines = messages.slice(-8).map(m => {
                   const roleLabel = m.role === "user" ? "Patient" : "Jumeau";
                   return `${roleLabel}: ${m.content.slice(0, 300)}`;
@@ -2504,7 +2448,6 @@ export default function ChatPage() {
                   ? `[contexte chat récent]\n${recentLines.join("\n")}`
                   : "Mon Soutien";
                 setSosSosContext(builtContext);
-                // Créer sos_event origin "crise" (Mon Soutien = toujours une demande d'aide)
                 void fetch("/api/chat", {
                   method: "POST", headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ message: "", patientId, practitionerId: practitionerIdFromDb, isSOS: true, sosContext: "Mon Soutien", origin: "crise" }),
@@ -2513,33 +2456,38 @@ export default function ChatPage() {
                 if (isMobile) setSidebarOpen(false);
               }}
               disabled={sosLoading || emotionalStatus === "red_critical" || !patientId || !practitionerIdFromDb}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "15px 18px", borderRadius: 16, background: "rgba(6,182,212,0.07)", border: "1px solid rgba(6,182,212,0.25)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}
-              onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(6,182,212,0.13)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.42)"; } }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(6,182,212,0.07)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.25)"; }}>
-              {sosLoading && (
-                <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${CYAN_DIM}`, borderTop: `2px solid ${CYAN}`, animation: "spin 1s linear infinite", flexShrink: 0 }} />
-              )}
-              <div style={{ textAlign: "left", flex: 1, position: "relative" }}>
-                <p style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "#cffafe", letterSpacing: "-0.2px" }}>{sosLoading ? "En route..." : "Mon Soutien"}</p>
-                <p style={{ margin: 0, fontSize: 11, color: "rgba(6,182,212,0.65)", lineHeight: 1.5 }}>Aide immédiate</p>
-              </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.45 }}><path d="M9 18l6-6-6-6" stroke={CYAN} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", borderRadius: 14, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.28)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}
+              onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(6,182,212,0.14)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.45)"; } }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(6,182,212,0.08)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.28)"; }}>
+              {sosLoading
+                ? <div style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${CYAN_DIM}`, borderTop: `2px solid ${CYAN}`, animation: "spin 1s linear infinite", flexShrink: 0 }} />
+                : <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(6,182,212,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <IconActivity size={16} color={CYAN} />
+                  </div>
+              }
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#cffafe", letterSpacing: "-0.2px" }}>{sosLoading ? "En route..." : "Mon Soutien"}</p>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.4, marginLeft: "auto" }}><path d="M9 18l6-6-6-6" stroke={CYAN} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </div>
 
-          {/* ═══ BIBLIOTHÈQUE D'EXERCICES — Bouton ═══ */}
-          <div style={{ marginBottom: 20 }}>
-            <button
-              onClick={() => { setShowLibraryModal(true); if (isMobile) setSidebarOpen(false); }}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "15px 18px", borderRadius: 16, background: "rgba(16,185,129,0.06)", border: `1px solid ${ACCENT_BORDER}`, cursor: "pointer", transition: "all 0.2s" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.35)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.06)"; e.currentTarget.style.borderColor = ACCENT_BORDER; }}>
-              <div style={{ textAlign: "left", flex: 1, position: "relative" }}>
-                <p style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.2px" }}>Bibliothèque</p>
-                <p style={{ margin: 0, fontSize: 11, color: "rgba(16,185,129,0.65)", lineHeight: 1.5 }}>Exercices à pratiquer librement</p>
-              </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.45 }}><path d="M9 18l6-6-6-6" stroke={ACCENT} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
+          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 4px 14px" }} />
+
+          {/* ═══ EXERCICES ═══ */}
+          <p style={{ margin: "0 4px 8px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Exercices</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 16 }}>
+            {LIBRARY_EXERCISES.map(ex => (
+              <button key={ex.id}
+                onClick={() => { void handleToolSelect(ex.id, "Bibliothèque", emotionalStatus === "red_behavioral" ? undefined : "pratique"); if (isMobile) setSidebarOpen(false); }}
+                style={{ width: "100%", display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 12, background: "transparent", border: "1px solid transparent", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: ex.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  {(LIBRARY_EXERCISE_ICONS[ex.id] ?? ((c: string) => <IconStar size={16} color={c} />))(ex.iconColor)}
+                </div>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: TEXT_PRIMARY, flex: 1 }}>{ex.label}</p>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.25 }}><path d="M9 18l6-6-6-6" stroke={TEXT_MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </button>
+            ))}
           </div>
 
           <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 4px 14px" }} />
