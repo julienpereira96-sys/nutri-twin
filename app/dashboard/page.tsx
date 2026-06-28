@@ -934,7 +934,7 @@ export default function DashboardPage() {
           .sort()
           .pop() ?? null,
         streak: streakDaysByPatient.get(p.user_id)?.size ?? 0,
-        sosResolved: (sosEventsByPatient.get(p.user_id) ?? []).filter(e => e.status === "success" && e.origin !== "pratique").length,
+        sosResolved: (sosEventsByPatient.get(p.user_id) ?? []).filter(e => e.status === "success" && e.origin === "crise").length,
         sosEvents: sosEventsByPatient.get(p.user_id) ?? [],
         red_behavioral_until: (p as { red_behavioral_until?: string | null }).red_behavioral_until ?? null,
         last_patient_message_at: (p as { last_patient_message_at?: string | null }).last_patient_message_at ?? null,
@@ -1137,7 +1137,7 @@ export default function DashboardPage() {
       // Crises désamorcées ce mois par patient (recompte depuis la BDD)
       const sosResolvedMap = new Map<string, number>();
       for (const e of (freshSos ?? [])) {
-        if ((e.origin as string | null) === "pratique") continue;
+        if ((e.origin as string | null) !== "crise") continue;
         const pid = e.patient_id as string;
         sosResolvedMap.set(pid, (sosResolvedMap.get(pid) ?? 0) + 1);
       }
@@ -2520,7 +2520,7 @@ export default function DashboardPage() {
                               </span>
                               {(() => {
                                 // Popover : uniquement les crises réellement désamorcées (success + non pratique)
-                                const resolvedCrisisEvts = sosEvts.filter(ev => ev.status === "success" && (ev.origin ?? "crise") !== "pratique");
+                                const resolvedCrisisEvts = sosEvts.filter(ev => ev.status === "success" && ev.origin === "crise");
                                 if (resolvedCrisisEvts.length === 0) return null;
                                 const renderRow = (ev: typeof sosEvts[number], idx: number, list: typeof sosEvts) => {
                                   const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });

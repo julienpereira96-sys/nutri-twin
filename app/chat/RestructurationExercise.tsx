@@ -211,6 +211,28 @@ export default function RestructurationExercise({
   useEffect(() => { onCloseRef.current      = onClose;            }, [onClose]);
   useEffect(() => { statusRef.current       = status;             }, [status]);
 
+  // ── Log silencieux vers /api/exercise/log ─────────────────────────────────
+  const logRestructurationSession = useCallback(async (original: string, reformulated: string) => {
+    if (!patientId || !practitionerId) return;
+    try {
+      await fetch("/api/exercise/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId,
+          practitionerId,
+          exerciseType: "restructuration",
+          intakeMessage:  original  || undefined,
+          closingMessage: reformulated || undefined,
+          extra: {
+            original_thought:    original    || undefined,
+            reformulated_thought: reformulated || undefined,
+          },
+        }),
+      });
+    } catch { /* silencieux */ }
+  }, [patientId, practitionerId]);
+
   // ─── Playback queue ───────────────────────────────────────────────────────
   const playNextChunk = useCallback(() => {
     const ctx = audioCtxRef.current;
@@ -568,12 +590,13 @@ export default function RestructurationExercise({
   // ─── Clôture ──────────────────────────────────────────────────────────────
   const handleClose = useCallback(() => {
     if (statusRef.current === "complete") {
+      void logRestructurationSession(originalThought, reformulatedThought);
       onTransitionRef.current(originalThought, reformulatedThought, outputTransRef.current.trim());
     } else {
       onCloseRef.current();
     }
     cleanup();
-  }, [originalThought, reformulatedThought, cleanup]);
+  }, [originalThought, reformulatedThought, cleanup, logRestructurationSession]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (

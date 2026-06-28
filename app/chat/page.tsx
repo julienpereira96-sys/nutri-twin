@@ -836,7 +836,7 @@ export default function ChatPage() {
         setPractitionerIdFromDb(practId);
         const { data: pract } = await supabase.from("practitioners").select("first_name, last_name, plan").eq("user_id", practId).single();
         if (pract) { const p = pract as { first_name: string; last_name: string; plan: string }; setPractitionerPlan(p.plan || "essentiel"); }
-        const { data: hist } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", data.user.id).eq("practitioner_id", practId).is("session_id", null).order("created_at", { ascending: true });
+        const { data: hist } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", data.user.id).eq("practitioner_id", practId).is("session_id", null).eq("practitioner_only", false).order("created_at", { ascending: true });
         if (hist?.length) {
           setMessages(hist as ChatMessage[]);
           void hydrateSosClosures(data.user.id, practId, hist as { role: "user" | "assistant"; content: string; created_at: string }[]);
@@ -1100,24 +1100,8 @@ export default function ChatPage() {
     closing: string
   ) => {
     setShowDefusionExercise(false);
-
-    // Log backend (visible praticien dans sos_events / dashboard)
-    if (patientId && practitionerIdFromDb) {
-      const closingMessage = closing || (original
-        ? `Restructuration cognitive : « ${original} » → « ${reformulated} »`
-        : "Exercice de restructuration cognitive complété.");
-      void fetch("/api/sos/log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          patientId,
-          practitionerId: practitionerIdFromDb,
-          origin: "pratique",
-          closingMessage,
-        }),
-      }).catch(() => {});
-    }
-  }, [patientId, practitionerIdFromDb]);
+    // Note : le log vers /api/exercise/log est géré directement par RestructurationExercise
+  }, []);
 
   // Soumission de la réponse post-exercice depuis la modale
   const handlePostExerciseSubmit = useCallback(async () => {

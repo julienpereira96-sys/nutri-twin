@@ -96,7 +96,7 @@ const INSPIRE_PCT  = Math.round((INSPIRE_DUR / CYCLE_DUR) * 100); // 40%
 const GEMINI_MODEL  = "models/gemini-live-2.5-flash-native-audio";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Status = "loading" | "intro" | "breathing_cycle" | "checkpoint" | "cloture";
+type Status = "loading" | "intake" | "intro" | "breathing_cycle" | "checkpoint" | "cloture";
 
 export interface BreathingExerciseProps {
   sosContext: string;
@@ -160,7 +160,10 @@ RÈGLES ABSOLUES :
 
 FLOW :
 
-• [ACCUEIL] — Tu sais ce que traverse ${name} en ce moment. Prends le temps de le rejoindre là où il est — quelques mots vrais, adaptés à ce moment précis. Crée un espace de calme, invite à s'installer et à fermer les yeux si possible. Puis termine ton accueil en invitant ${name} à entrer dans la première respiration — une phrase de transition naturelle qui amorce le souffle, sans mentionner "l'exercice" ni "la respiration". Puis silence absolu.
+• [DEBUT] — ACCUEIL ET CHECK-IN :
+  Accueille chaleureusement ${name} avec une phrase naturelle. Intègre une question courte et ouverte sur son état actuel ou ce qui l'amène ici — contextuelle à la cohérence cardiaque, jamais clinique. Attends sa réponse vocale. Accuse réception en une phrase empathique qui fait le lien avec ce qu'on va faire ensemble. Si ${name} ne répond pas dans les 12 secondes, enchaîne doucement sans attendre. Puis silence.
+
+• [ACCUEIL] — DÉMARRAGE DU SOUFFLE : Tu sais ce que traverse ${name} en ce moment. Crée un espace de calme, invite à s'installer et à fermer les yeux si possible. Puis une phrase de transition qui amorce le premier souffle — naturelle, sans mentionner "l'exercice" ni "la respiration". Puis silence absolu.
 
 • [MURMURE — inspire en cours] / [MURMURE — expire en cours] : tu reçois ces signaux 3 fois par bloc, à des moments précis.
   À chaque signal : une seule phrase murmurée, profondément adaptée au contexte de ${name}. Ni trop courte pour être vide, ni trop longue pour alourdir — laisse le souffle guider sa longueur naturelle.
@@ -218,16 +221,29 @@ export default function BreathingExercise({
   const clotureFallbackRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const decisionFiredRef    = useRef(false);           // garde-fou double turnComplete au checkpoint
 
-  // ── Log silencieux vers /api/breathing/log ────────────────────────────────
+  // ── Refs intake ────────────────────────────────────────────────────────────
+  const intakeMessageRef       = useRef("");
+  const intakePatientSpokeRef  = useRef(false);
+  const intakeTimeoutRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Log silencieux vers /api/exercise/log ─────────────────────────────────
   const logBreathingSession = useCallback(async (outcome: "positive" | "negative" | "interrupted", blocks: number) => {
+    if (!patientId || !practitionerId) return;
     try {
-      await fetch("/api/breathing/log", {
+      await fetch("/api/exercise/log", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ outcome, blocks }),
+        body: JSON.stringify({
+          patientId,
+          practitionerId,
+          exerciseType: "breathing",
+          intakeMessage: intakeMessageRef.current || undefined,
+          emergencyExit: outcome === "interrupted",
+          extra: { blocks_completed: blocks, outcome },
+        }),
       });
     } catch { /* silencieux */ }
-  }, []);
+  }, [patientId, practitionerId]);
 
   // Stable refs pour callbacks dans closures
   const onTransitionToChatRef = useRef(onTransitionToChat);
@@ -293,6 +309,7 @@ export default function BreathingExercise({
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (hardStopRef.current) clearTimeout(hardStopRef.current);
     if (clotureFallbackRef.current) clearTimeout(clotureFallbackRef.current);
+    if (intakeTimeoutRef.current) clearTimeout(intakeTimeoutRef.current);
     intervalRef.current = null;
     micEnabledRef.current = false;
     processorRef.current?.disconnect();
@@ -467,12 +484,16 @@ export default function BreathingExercise({
     try { msg = JSON.parse(event.data as string) as Record<string, unknown>; }
     catch { return; }
 
-    // Setup complete → déclencher l'accueil via clientContent (tour complet, pas realtimeInput)
+    // Setup complete → phase intake : check-in Gemini avant l'exercice
     if (msg.setupComplete !== undefined) {
-      setStatus("intro");
+      setStatus("intake");
+      statusRef.current = "intake";
+      intakeMessageRef.current      = "";
+      intakePatientSpokeRef.current = false;
+      micEnabledRef.current         = true;  // mic ON dès l'accueil pour capter la réponse patient
       wsRef.current?.send(JSON.stringify({
         clientContent: {
-          turns: [{ role: "user", parts: [{ text: "[ACCUEIL]" }] }],
+          turns: [{ role: "user", parts: [{ text: "[DEBUT]" }] }],
           turnComplete: true,
         },
       }));
@@ -503,6 +524,15 @@ export default function BreathingExercise({
       }
     }
 
+    // Transcription entrée patient — capturer pendant l'intake
+    const inTrans = sc.inputTranscription as Record<string, unknown> | undefined;
+    if (inTrans?.text && typeof inTrans.text === "string" && inTrans.text.trim()) {
+      if (statusRef.current === "intake") {
+        intakeMessageRef.current += inTrans.text;
+        intakePatientSpokeRef.current = true;
+      }
+    }
+
     // Transcription sortie de Gemini (utilisée au checkpoint)
     const outTrans = sc.outputTranscription as Record<string, unknown> | undefined;
     if (outTrans?.text && typeof outTrans.text === "string") {
@@ -512,6 +542,42 @@ export default function BreathingExercise({
     // Tour Gemini terminé
     if (sc.turnComplete === true) {
       const currentStatus = statusRef.current;
+
+      // ── Intake : check-in avant le souffle ──────────────────────────────
+      if (currentStatus === "intake") {
+        if (!intakePatientSpokeRef.current) {
+          // Tour 1 : Gemini vient de poser sa question. Mic déjà ON.
+          // Timeout 12s : si pas de réponse patient, on avance quand même.
+          intakeTimeoutRef.current = setTimeout(() => {
+            if (statusRef.current !== "intake") return;
+            if (intakeTimeoutRef.current) clearTimeout(intakeTimeoutRef.current);
+            micEnabledRef.current = false;
+            setStatus("intro");
+            statusRef.current = "intro";
+            const waitAndSend = () => {
+              if (isPlayingRef.current) { setTimeout(waitAndSend, 100); return; }
+              setTimeout(() => wsRef.current?.send(JSON.stringify({
+                clientContent: { turns: [{ role: "user", parts: [{ text: "[ACCUEIL]" }] }], turnComplete: true },
+              })), 400);
+            };
+            waitAndSend();
+          }, 12000);
+        } else {
+          // Tour 2 : Gemini accuse réception. Avancer vers le souffle.
+          if (intakeTimeoutRef.current) { clearTimeout(intakeTimeoutRef.current); intakeTimeoutRef.current = null; }
+          micEnabledRef.current = false;
+          const waitAndSend = () => {
+            if (isPlayingRef.current) { setTimeout(waitAndSend, 100); return; }
+            setStatus("intro");
+            statusRef.current = "intro";
+            setTimeout(() => wsRef.current?.send(JSON.stringify({
+              clientContent: { turns: [{ role: "user", parts: [{ text: "[ACCUEIL]" }] }], turnComplete: true },
+            })), 400);
+          };
+          waitAndSend();
+        }
+        return;
+      }
 
       // Intro terminée → démarrer le premier bloc (attendre la fin de l'audio)
       if (currentStatus === "intro") {
@@ -629,6 +695,7 @@ export default function BreathingExercise({
             responseModalities: ["AUDIO"],
           },
           outputAudioTranscription: {},
+          inputAudioTranscription:  {},
           systemInstruction: { parts: [{ text: systemPrompt }] },
         },
       }));

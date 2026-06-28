@@ -344,6 +344,8 @@ export default function AncrageExercise({
   const statusRef           = useRef<SenseStatus>("loading");
   const completedCountRef   = useRef(0);
   const patientSpokeRef     = useRef(false); // patient a répondu (inputAudioTranscription reçue)
+  const intakeMessageRef    = useRef("");     // ce que le patient a dit au check-in d'accueil
+  const closingMessageRef   = useRef("");     // ressenti à la clôture
   const isAiSpeakingRef     = useRef(false);  // sync direct (pas via useEffect)
   const outputAnalyserRef   = useRef<AnalyserNode | null>(null); // pour PulseOrb (voix Gemini)
   const inputAnalyserRef    = useRef<AnalyserNode | null>(null); // pour OchreWave (voix patient)
@@ -365,6 +367,25 @@ export default function AncrageExercise({
   const onTransRef   = useRef(onTransitionToChat);
   const onCompRef    = useRef(onCompleted);
   const onCloseRef   = useRef(onClose);
+
+  // ── Log silencieux vers /api/exercise/log ─────────────────────────────────
+  const logAncrageSession = useCallback(async (sensesCompleted: number, closing: string) => {
+    if (!patientId || !practitionerId) return;
+    try {
+      await fetch("/api/exercise/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId,
+          practitionerId,
+          exerciseType: "ancrage",
+          intakeMessage:  intakeMessageRef.current || undefined,
+          closingMessage: closing || undefined,
+          extra: { senses_completed: sensesCompleted },
+        }),
+      });
+    } catch { /* silencieux */ }
+  }, [patientId, practitionerId]);
   useEffect(() => { onTransRef.current  = onTransitionToChat; }, [onTransitionToChat]);
   useEffect(() => { onCompRef.current   = onCompleted;        }, [onCompleted]);
   useEffect(() => { onCloseRef.current  = onClose;            }, [onClose]);
@@ -596,6 +617,14 @@ export default function AncrageExercise({
     const inTrans = sc.inputTranscription as Record<string, unknown> | undefined;
     if (inTrans?.text && typeof inTrans.text === "string" && inTrans.text.trim()) {
       patientSpokeRef.current = true;
+      // Capture intake (phase loading = check-in [ACCUEIL])
+      if (statusRef.current === "loading") {
+        intakeMessageRef.current += inTrans.text;
+      }
+      // Capture closing (phase cloture)
+      if (statusRef.current === "cloture") {
+        closingMessageRef.current += inTrans.text;
+      }
       // Pendant le check-in de clôture : annuler les timers silence
       if (statusRef.current === "cloture") {
         if (silenceTimer5sRef.current) { clearTimeout(silenceTimer5sRef.current); silenceTimer5sRef.current = null; }
@@ -647,6 +676,7 @@ export default function AncrageExercise({
                     const closingWords = outputTransRef.current.trim();
                     const done = completedCountRef.current;
                     const summary = `🪨 Ancrage 4-3-2-1 · ${done}/${ACTIVE_SENSES.length} sens explorés`;
+                    void logAncrageSession(done, closingMessageRef.current);
                     if (onTransRef.current) {
                       onTransRef.current(summary, closingWords);
                     } else {
@@ -671,6 +701,7 @@ export default function AncrageExercise({
             const closingWords = outputTransRef.current.trim();
             const done = completedCountRef.current;
             const summary = `🪨 Ancrage 4-3-2-1 · ${done}/${ACTIVE_SENSES.length} sens explorés`;
+            void logAncrageSession(done, closingMessageRef.current);
             setTimeout(() => {
               if (onTransRef.current) {
                 onTransRef.current(summary, closingWords);
