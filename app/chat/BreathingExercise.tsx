@@ -227,9 +227,10 @@ export default function BreathingExercise({
   const cpForceCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // 14s → force stop
 
   // ── Refs intake ────────────────────────────────────────────────────────────
-  const intakeMessageRef       = useRef("");
-  const intakePatientSpokeRef  = useRef(false);
-  const intakeTimeoutRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const intakeMessageRef          = useRef("");
+  const intakePatientSpokeRef     = useRef(false);
+  const intakeGeminiHasSpokenRef  = useRef(false);  // ref pour playNextChunk (évite stale closure)
+  const intakeTimeoutRef          = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Log silencieux vers /api/exercise/log ─────────────────────────────────
   const logBreathingSession = useCallback(async (outcome: "positive" | "negative" | "interrupted", blocks: number) => {
@@ -266,6 +267,22 @@ export default function BreathingExercise({
       isPlayingRef.current = false;
       isAiSpeakingRef.current = false;
       setIsAiSpeaking(false);
+      // Intake : Gemini vient de finir de parler → démarrer le timer silence patient
+      // (15s à partir de la fin de l'audio, pas du turnComplete)
+      if (statusRef.current === "intake" && intakeGeminiHasSpokenRef.current
+          && !intakePatientSpokeRef.current && !intakeTimeoutRef.current) {
+        intakeTimeoutRef.current = setTimeout(() => {
+          if (statusRef.current !== "intake") return;
+          intakeTimeoutRef.current = null;
+          micEnabledRef.current = false;
+          setStatus("intro");
+          statusRef.current = "intro";
+          setTimeout(() => wsRef.current?.send(JSON.stringify({
+            clientContent: { turns: [{ role: "user", parts: [{ text: "[ACCUEIL]" }] }], turnComplete: true },
+          })), 400);
+        }, 15000);
+      }
+
       // Checkpoint : Gemini vient de finir de parler
       // Si aucune décision n'a encore été prise → réactiver le mic (patient doit répondre)
       // 300ms de délai pour absorber les micro-pauses entre chunks Gemini
@@ -514,10 +531,11 @@ export default function BreathingExercise({
     if (msg.setupComplete !== undefined) {
       setStatus("intake");
       statusRef.current = "intake";
-      intakeMessageRef.current      = "";
-      intakePatientSpokeRef.current = false;
+      intakeMessageRef.current         = "";
+      intakePatientSpokeRef.current    = false;
+      intakeGeminiHasSpokenRef.current = false;
       setIntakeGeminiHasSpoken(false);
-      micEnabledRef.current         = true;  // mic ON dès l'accueil pour capter la réponse patient
+      micEnabledRef.current            = true;  // mic ON dès l'accueil pour capter la réponse patient
       wsRef.current?.send(JSON.stringify({
         clientContent: {
           turns: [{ role: "user", parts: [{ text: "[DEBUT]" }] }],
@@ -548,6 +566,7 @@ export default function BreathingExercise({
           }
           if (statusRef.current === "intake") {
             setIntakeGeminiHasSpoken(true);
+            intakeGeminiHasSpokenRef.current = true;
           }
           enqueueAudio(inlineData.data as string, rate);
         }
@@ -575,25 +594,9 @@ export default function BreathingExercise({
 
       // ── Intake : check-in avant le souffle ──────────────────────────────
       if (currentStatus === "intake") {
-        if (!intakePatientSpokeRef.current) {
-          // Tour 1 : Gemini vient de poser sa question. Mic déjà ON.
-          // Timeout 12s : si pas de réponse patient, on avance quand même.
-          intakeTimeoutRef.current = setTimeout(() => {
-            if (statusRef.current !== "intake") return;
-            if (intakeTimeoutRef.current) clearTimeout(intakeTimeoutRef.current);
-            micEnabledRef.current = false;
-            setStatus("intro");
-            statusRef.current = "intro";
-            const waitAndSend = () => {
-              if (isPlayingRef.current) { setTimeout(waitAndSend, 100); return; }
-              setTimeout(() => wsRef.current?.send(JSON.stringify({
-                clientContent: { turns: [{ role: "user", parts: [{ text: "[ACCUEIL]" }] }], turnComplete: true },
-              })), 400);
-            };
-            waitAndSend();
-          }, 12000);
-        } else {
-          // Tour 2 : Gemini accuse réception. Avancer vers le souffle.
+        if (intakePatientSpokeRef.current) {
+          // Gemini accuse réception de la réponse patient → avancer vers le souffle
+          // (le timer silence éventuel est annulé ci-dessous)
           if (intakeTimeoutRef.current) { clearTimeout(intakeTimeoutRef.current); intakeTimeoutRef.current = null; }
           micEnabledRef.current = false;
           const waitAndSend = () => {
@@ -606,6 +609,8 @@ export default function BreathingExercise({
           };
           waitAndSend();
         }
+        // Si patient n'a pas encore répondu : le timer silence est géré dans
+        // playNextChunk (déclenché quand l'audio de Gemini finit de jouer, pas à turnComplete)
         return;
       }
 
