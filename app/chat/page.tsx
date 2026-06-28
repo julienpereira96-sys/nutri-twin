@@ -1093,6 +1093,7 @@ export default function ChatPage() {
 
 
   // ─── Restructuration cognitive overlay complete ──────────────────────────────
+  // Pas de message dans le chat patient — uniquement un log backend visible côté praticien.
   const handleDefusionTransitionToChat = useCallback((
     original: string,
     reformulated: string,
@@ -1100,19 +1101,23 @@ export default function ChatPage() {
   ) => {
     setShowDefusionExercise(false);
 
-    const userContent = original
-      ? `*Restructuration cognitive :*\n\n— Pensée de départ : « ${original} »\n— Pensée reformulée : « ${reformulated} »`
-      : "*J'ai complété l'exercice de restructuration cognitive.*";
-
-    setMessages((prev) => [
-      ...prev,
-      { role: "user" as const, content: userContent },
-      ...(closing ? [{ role: "assistant" as const, content: closing }] : []),
-    ]);
-
-    setActiveTool({ id: "defusion", data: null });
-    setPostExerciseStep({ toolId: "defusion", answer: "" });
-  }, []);
+    // Log backend (visible praticien dans sos_events / dashboard)
+    if (patientId && practitionerIdFromDb) {
+      const closingMessage = closing || (original
+        ? `Restructuration cognitive : « ${original} » → « ${reformulated} »`
+        : "Exercice de restructuration cognitive complété.");
+      void fetch("/api/sos/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId,
+          practitionerId: practitionerIdFromDb,
+          origin: "pratique",
+          closingMessage,
+        }),
+      }).catch(() => {});
+    }
+  }, [patientId, practitionerIdFromDb]);
 
   // Soumission de la réponse post-exercice depuis la modale
   const handlePostExerciseSubmit = useCallback(async () => {

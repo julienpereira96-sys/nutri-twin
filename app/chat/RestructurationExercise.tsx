@@ -116,26 +116,29 @@ function VioletWave({ active, analyser }: { active: boolean; analyser?: Analyser
 function buildPrompt(firstName: string, contextInfo: string): string {
   return `Tu es un thérapeute bienveillant qui accompagne ${firstName} dans un exercice de restructuration cognitive. Parle en français, voix calme et chaleureuse, phrases courtes.
 
+SIGNAUX : Tu reçois des signaux entre crochets [comme celui-ci]. Ce sont des instructions privées — tu ne les lis JAMAIS à voix haute.
+• [ACCUEIL] → démarre l'exercice
+
 CONTEXTE PATIENT :
 ${contextInfo}
 
 TON SEUL OBJECTIF : aider ${firstName} à arriver lui-même à une pensée plus équilibrée. Ne la formule jamais à sa place.
 
-Commence par accueillir ${firstName} avec chaleur, puis lui demander quelle pensée tourne en ce moment. Une fois qu'il/elle l'a formulée, reformule-la pour être sûr d'avoir bien compris.
+• [ACCUEIL] : accueille ${firstName} avec chaleur, puis demande-lui quelle pensée tourne en ce moment. Attends.
 
-Ensuite tu as plusieurs angles selon ce qui émerge — tu choisis :
+Une fois qu'il/elle a formulé sa pensée, reformule-la pour être sûr d'avoir bien compris. Ensuite engage un dialogue socratique — tu choisis l'angle selon ce qui émerge :
 — explorer sur quoi il/elle s'appuie pour y croire
 — chercher des moments où c'était différent
 — lui demander ce qu'il/elle dirait à un ami qui aurait cette pensée
 
-Quand ${firstName} arrive à formuler une pensée plus juste par lui-même, tu l'ancres en la lui faisant répéter, puis tu appelles valider_restructuration avec la pensée originale et la pensée reformulée.
+Quand ${firstName} formule lui-même une pensée plus juste (après AU MOINS 2 échanges), tu l'ancres en la lui faisant répéter, puis tu appelles valider_restructuration avec la pensée originale et la pensée reformulée.
 
 INTERDITS ABSOLUS :
 — formuler toi-même la pensée alternative
 — contredire directement ("c'est faux", "tu as tort")
 — minimiser ("c'est pas grave")
 — poser deux questions à la fois
-— dépasser 3-4 échanges d'exploration avant de guider vers la reformulation`;
+— appeler valider_restructuration après moins de 2 échanges avec ${firstName}`;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -183,6 +186,7 @@ export default function RestructurationExercise({
   const pendingAdvanceRef  = useRef<(() => void) | null>(null);
   const outputTransRef     = useRef("");
   const patientSpokeRef    = useRef(false);
+  const patientTurnCountRef = useRef(0); // nombre de tours patient complets — garde-fou anti-fin prématurée
 
   const onTransitionRef = useRef(onTransitionToChat);
   const onCloseRef      = useRef(onClose);
@@ -298,7 +302,8 @@ export default function RestructurationExercise({
           const original     = typeof fc.args?.original     === "string" ? fc.args.original     : "";
           const reformulated = typeof fc.args?.reformulated === "string" ? fc.args.reformulated : "";
 
-          const isValid = patientSpokeRef.current && !!original && !!reformulated;
+          // Garde-fou : au moins 2 tours patient pour éviter une fin prématurée
+          const isValid = patientSpokeRef.current && !!original && !!reformulated && patientTurnCountRef.current >= 2;
 
           wsRef.current?.send(JSON.stringify({
             toolResponse: {
@@ -308,8 +313,10 @@ export default function RestructurationExercise({
                   output: isValid
                     ? "ok"
                     : !patientSpokeRef.current
-                      ? "Erreur : le patient n'a pas encore formulé sa pensée. Attends sa réponse."
-                      : "Erreur : pensée originale ou reformulée manquante.",
+                      ? "Erreur : le patient n'a pas encore répondu. Attends sa réponse."
+                      : patientTurnCountRef.current < 2
+                        ? "Trop tôt : il faut au moins 2 échanges avec le patient avant de valider. Continue le dialogue socratique."
+                        : "Erreur : pensée originale ou reformulée manquante.",
                 },
               }],
             },
@@ -356,6 +363,7 @@ export default function RestructurationExercise({
     const inTrans = sc.inputTranscription as Record<string, unknown> | undefined;
     if (inTrans?.text && typeof inTrans.text === "string" && inTrans.text.trim()) {
       patientSpokeRef.current = true;
+      patientTurnCountRef.current += 1;
     }
 
     // Transcription sortie → clôture
