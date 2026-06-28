@@ -44,7 +44,7 @@ export async function getVertexToken(): Promise<string> {
 export async function vertexGenerate(
   modelId: string,
   prompt: string,
-  opts?: { maxOutputTokens?: number; temperature?: number }
+  opts?: { maxOutputTokens?: number; temperature?: number; location?: string }
 ): Promise<string> {
   const token = await getVertexToken();
   const body = {
@@ -54,7 +54,13 @@ export async function vertexGenerate(
       ...(opts?.temperature !== undefined ? { temperature: opts.temperature } : {}),
     },
   };
-  const res = await fetch(vertexUrl(modelId, "generateContent"), {
+  // Si une région spécifique est demandée, on construit l'URL régionale.
+  // Format régional : https://{region}-aiplatform.googleapis.com/v1/...
+  // Format multi-région (défaut) : https://aiplatform.eu.rep.googleapis.com/v1/...
+  const url = opts?.location
+    ? `https://${opts.location}-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT}/locations/${opts.location}/publishers/google/models/${modelId}:generateContent`
+    : vertexUrl(modelId, "generateContent");
+  const res = await fetch(url, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
