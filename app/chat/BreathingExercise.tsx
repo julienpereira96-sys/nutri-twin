@@ -172,14 +172,16 @@ FLOW :
   Le reste du temps : silence absolu.
 
 • [CHECKPOINT] : STOP IMMÉDIAT. Tu sors du mode respiration. Change complètement de registre.
-  Pose une vraie question avec chaleur (2-3 phrases max). Écoute la réponse vocale.
-  - Patient veut CONTINUER clairement : réponds avec bienveillance, termine EXACTEMENT par "On repart ensemble." puis enchaîne immédiatement avec une phrase d'ancrage pour le souffle suivant — plus profonde, plus intérieure. Puis silence.
-  - Patient est AMBIGU ("pas trop mal", "bof", "moyen", hésitant) : pose une courte question de confirmation douce ("Tu veux qu'on continue ou qu'on s'arrête là ?"), puis écoute.
-  - Patient veut STOPPER et ça va : réponds avec fierté, termine EXACTEMENT par "On s'arrête là."
-  - Patient exprime une DÉTRESSE, souffrance, ça ne va pas : accueille avec empathie, reste présent, termine EXACTEMENT par "Je t'entends."
-  - Silence > 5s ou réponse toujours ambiguë après relance : conclus par "On s'arrête là."
+  Pose une question empathique courte (1-2 phrases) pour savoir comment ${name} se sent maintenant. Écoute la réponse vocale.
+  - ${name} va MIEUX, se sent apaisé·e, soulagé·e, plus calme → accueille avec chaleur et sincérité, termine EXACTEMENT par "On s'arrête là."
+  - ${name} ne se sent PAS MIEUX, toujours tendu·e, anxieux·se, peu de changement → accueille avec bienveillance, termine EXACTEMENT par "On repart ensemble." puis une phrase d'ancrage douce pour le souffle suivant. Puis silence.
+  - ${name} est AMBIGU·E ("bof", "pas trop mal", "moyen", hésitant·e) → pose une question directe et douce ("Tu veux qu'on s'arrête là ou qu'on continue ?"), écoute. Si continue → termine par "On repart ensemble." Si s'arrêter → termine par "On s'arrête là."
+  - ${name} exprime une DÉTRESSE ou souffrance → accueille avec empathie totale, reste présent·e, termine EXACTEMENT par "Je t'entends."
+  - Réponse toujours ambiguë après la question directe → termine par "On s'arrête là."
 
-• [CLOTURE] : Conclus avec sincérité. Félicite ${name} pour ce moment de soin. 2-3 phrases. Invite à reprendre doucement sa journée.`;
+• [SILENCE_CHECKPOINT] : ${name} n'a pas encore répondu. Relance doucement avec son prénom et une question courte et bienveillante. Attends.
+
+• [CLOTURE] : Conclus avec sincérité. Félicite ${name} pour ce moment de soin. Rappelle-lui que tu restes présent·e dans le chat si besoin. 2-3 phrases max. Invite à reprendre doucement sa journée.`;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -198,6 +200,7 @@ export default function BreathingExercise({
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [breathPhaseLabel, setBreathPhaseLabel] = useState<"inspire" | "expire" | null>(null);
   const [checkpointGeminiHasSpoken, setCheckpointGeminiHasSpoken] = useState(false);
+  const [intakeGeminiHasSpoken, setIntakeGeminiHasSpoken] = useState(false);
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const statusRef      = useRef<Status>("loading");
@@ -220,6 +223,8 @@ export default function BreathingExercise({
   const clotureHandledRef   = useRef(false);           // garde-fou double-close
   const clotureFallbackRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
   const decisionFiredRef    = useRef(false);           // garde-fou double turnComplete au checkpoint
+  const cpSilenceTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);  // 8s → relance
+  const cpForceCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // 14s → force stop
 
   // ── Refs intake ────────────────────────────────────────────────────────────
   const intakeMessageRef       = useRef("");
@@ -268,6 +273,22 @@ export default function BreathingExercise({
         setTimeout(() => {
           if (statusRef.current === "checkpoint" && !decisionFiredRef.current) {
             micEnabledRef.current = true;
+            // Timer silence : 8s sans réponse → relance douce, 6s de plus → force stop
+            if (cpSilenceTimerRef.current) clearTimeout(cpSilenceTimerRef.current);
+            if (cpForceCloseTimerRef.current) clearTimeout(cpForceCloseTimerRef.current);
+            cpSilenceTimerRef.current = setTimeout(() => {
+              if (statusRef.current === "checkpoint" && !decisionFiredRef.current) {
+                sendTurn("[SILENCE_CHECKPOINT]");
+                cpForceCloseTimerRef.current = setTimeout(() => {
+                  if (statusRef.current === "checkpoint" && !decisionFiredRef.current) {
+                    decisionFiredRef.current = true;
+                    micEnabledRef.current = false;
+                    outcomeRef.current = "positive";
+                    handleClotureRef.current();
+                  }
+                }, 6000);
+              }
+            }, 8000);
           }
         }, 300);
       }
@@ -310,6 +331,8 @@ export default function BreathingExercise({
     if (hardStopRef.current) clearTimeout(hardStopRef.current);
     if (clotureFallbackRef.current) clearTimeout(clotureFallbackRef.current);
     if (intakeTimeoutRef.current) clearTimeout(intakeTimeoutRef.current);
+    if (cpSilenceTimerRef.current) clearTimeout(cpSilenceTimerRef.current);
+    if (cpForceCloseTimerRef.current) clearTimeout(cpForceCloseTimerRef.current);
     intervalRef.current = null;
     micEnabledRef.current = false;
     processorRef.current?.disconnect();
@@ -443,6 +466,9 @@ export default function BreathingExercise({
     const hasDecision = lower.includes("on repart") || lower.includes("on s'arrête") || lower.includes("je t'entends");
     if (!hasDecision) return;  // Gemini pose encore une question → on attend le prochain turnComplete
     decisionFiredRef.current = true;
+    // Annuler les timers silence dès qu'une décision est détectée
+    if (cpSilenceTimerRef.current) { clearTimeout(cpSilenceTimerRef.current); cpSilenceTimerRef.current = null; }
+    if (cpForceCloseTimerRef.current) { clearTimeout(cpForceCloseTimerRef.current); cpForceCloseTimerRef.current = null; }
     if (lower.includes("on repart")) {
       // Continuer → prochain bloc
       micEnabledRef.current = false;
@@ -490,6 +516,7 @@ export default function BreathingExercise({
       statusRef.current = "intake";
       intakeMessageRef.current      = "";
       intakePatientSpokeRef.current = false;
+      setIntakeGeminiHasSpoken(false);
       micEnabledRef.current         = true;  // mic ON dès l'accueil pour capter la réponse patient
       wsRef.current?.send(JSON.stringify({
         clientContent: {
@@ -518,6 +545,9 @@ export default function BreathingExercise({
           if (statusRef.current === "checkpoint") {
             micEnabledRef.current = false;
             setCheckpointGeminiHasSpoken(true);
+          }
+          if (statusRef.current === "intake") {
+            setIntakeGeminiHasSpoken(true);
           }
           enqueueAudio(inlineData.data as string, rate);
         }
@@ -780,10 +810,10 @@ export default function BreathingExercise({
             speaking={isAiSpeaking}
             analyser={outputAnalyserRef.current}
             size={200}
-            breathPhase={status === "breathing_cycle" && !isAiSpeaking ? breathPhaseLabel : null}
+            breathPhase={status === "breathing_cycle" ? breathPhaseLabel : null}
           />
-          {/* "Je t'écoute" sous l'orbe au checkpoint */}
-          {status === "checkpoint" && checkpointGeminiHasSpoken && !isAiSpeaking && (
+          {/* "Je t'écoute" sous l'orbe — intake ou checkpoint */}
+          {((status === "intake" && intakeGeminiHasSpoken) || (status === "checkpoint" && checkpointGeminiHasSpoken)) && !isAiSpeaking && (
             <p style={{
               margin: 0, color: ACCENT, fontSize: 14,
               letterSpacing: "0.05em",
@@ -894,13 +924,21 @@ export default function BreathingExercise({
         </div>
       )}
 
-      {/* ── GreenWave (bas d'écran) — checkpoint seulement ─────────────────── */}
-      {status === "checkpoint" && !loadError && (
+      {/* ── GreenWave (bas d'écran) — intake ou checkpoint ──────────────────── */}
+      {(status === "intake" || status === "checkpoint") && !loadError && (
         <div style={{ position: "absolute", bottom: 34, display: "flex", flexDirection: "column", alignItems: "center", zIndex: 1 }}>
-          <GreenWave
-            active={checkpointGeminiHasSpoken && !isAiSpeaking}
-            analyser={checkpointGeminiHasSpoken && !isAiSpeaking ? inputAnalyserRef.current : undefined}
-          />
+          {status === "intake" && (
+            <GreenWave
+              active={intakeGeminiHasSpoken && !isAiSpeaking}
+              analyser={intakeGeminiHasSpoken && !isAiSpeaking ? inputAnalyserRef.current : undefined}
+            />
+          )}
+          {status === "checkpoint" && (
+            <GreenWave
+              active={checkpointGeminiHasSpoken && !isAiSpeaking}
+              analyser={checkpointGeminiHasSpoken && !isAiSpeaking ? inputAnalyserRef.current : undefined}
+            />
+          )}
         </div>
       )}
 
