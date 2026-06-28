@@ -1900,7 +1900,7 @@ export default function DashboardPage() {
       } else if (data.report) {
         setReportContent(JSON.stringify(data.report));
       } else {
-        setReportError("Impossible de générer le rapport. Réessayez.");
+        setReportError(data.error ?? "Impossible de générer le rapport.");
       }
     } catch { setReportError("La génération a échoué. Vérifiez votre connexion et réessayez."); }
     finally { setReportLoading(false); }
@@ -1980,9 +1980,9 @@ export default function DashboardPage() {
       } else if (data.questions) {
         setBilanContent(JSON.stringify(data.questions));
       } else {
-        setBilanContent(JSON.stringify({ lowData: true, message: "Impossible de générer les questions. Réessayez après quelques échanges avec votre patient." }));
+        setBilanContent(JSON.stringify({ isError: true, message: data.error ?? "Impossible de générer les questions." }));
       }
-    } catch { setBilanContent(JSON.stringify({ lowData: true, message: "Une erreur est survenue. Veuillez réessayer." })); }
+    } catch (e) { setBilanContent(JSON.stringify({ isError: true, message: e instanceof Error ? e.message : "Erreur réseau." })); }
     setBilanLoading(false);
   };
 
@@ -4026,9 +4026,8 @@ export default function DashboardPage() {
               </div>
             )}
             {reportError && (
-              <div style={{ background: "rgba(244,63,94,0.06)", border: "1px solid rgba(244,63,94,0.18)", borderRadius: 10, padding: "11px 14px", marginBottom: 14, fontSize: 13, color: "#f87171", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                <span>{reportError}</span>
-                <button onClick={() => void generateReport()} style={{ background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.25)", borderRadius: 7, padding: "5px 12px", color: "#f87171", fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>Réessayer</button>
+              <div style={{ background: "rgba(244,63,94,0.06)", border: "1px solid rgba(244,63,94,0.18)", borderRadius: 10, padding: "11px 14px", marginBottom: 14, fontSize: 13, color: "#f87171" }}>
+                {reportError}
               </div>
             )}
             {!reportContent && !reportLoading && (
@@ -4439,19 +4438,20 @@ export default function DashboardPage() {
               </button>
             )}
             {bilanLoading ? (
-              <div style={{ textAlign: "center", padding: "48px 0" }}>
-                <svg style={{ animation: "spin 1s linear infinite", marginBottom: 14 }} width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(99,102,241,0.2)" strokeWidth="3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="#818cf8" strokeWidth="3" strokeLinecap="round"/></svg>
+              <div style={{ textAlign: "center", padding: "20px 0 40px" }}>
+                <svg style={{ animation: "spin 1s linear infinite", marginBottom: 10 }} width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(99,102,241,0.2)" strokeWidth="3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="#818cf8" strokeWidth="3" strokeLinecap="round"/></svg>
                 <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>Analyse de l'historique du chat en cours</p>
               </div>
             ) : bilanContent ? (
               (() => {
                 try {
-                  const parsed = JSON.parse(bilanContent) as { lowData?: boolean; message?: string } | { question: string; justification: string; objectif: string }[];
-                  if (!Array.isArray(parsed) && parsed.lowData) {
+                  const parsed = JSON.parse(bilanContent) as { lowData?: boolean; isError?: boolean; message?: string } | { question: string; justification: string; objectif: string }[];
+                  if (!Array.isArray(parsed) && (parsed.lowData || parsed.isError)) {
+                    const isErr = !!(parsed as { isError?: boolean }).isError;
                     return (
-                      <div style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 14, padding: "20px 20px", textAlign: "center" }}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 10 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                        <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.7 }}>{(parsed as { message?: string }).message}</p>
+                      <div style={{ background: isErr ? "rgba(244,63,94,0.05)" : "rgba(245,158,11,0.05)", border: `1px solid ${isErr ? "rgba(244,63,94,0.2)" : "rgba(245,158,11,0.2)"}`, borderRadius: 14, padding: "20px", textAlign: "center" }}>
+                        {!isErr && <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 10 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
+                        <p style={{ margin: 0, fontSize: 13, color: isErr ? "#f87171" : "#94a3b8", lineHeight: 1.7 }}>{(parsed as { message?: string }).message}</p>
                       </div>
                     );
                   }

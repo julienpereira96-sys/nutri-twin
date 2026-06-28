@@ -317,11 +317,10 @@ Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks :
       const rawText = (await vertexGenerate("gemini-3-flash-preview", prompt, { maxOutputTokens: 1000, temperature: 0.5 })).trim().replace(/```json|```/g, "").trim();
       report = JSON.parse(rawText) as typeof report;
       if (!report.synthese || !report.patterns) throw new Error("Structure JSON invalide");
-    } catch {
-      return NextResponse.json(
-        { error: "Une erreur est survenue lors de la génération du rapport. Veuillez réessayer dans quelques instants." },
-        { status: 502 }
-      );
+    } catch (err: unknown) {
+      const vertexMsg = err instanceof Error ? err.message : String(err);
+      console.error("generate-report vertex error:", vertexMsg);
+      return NextResponse.json({ error: vertexMsg }, { status: 502 });
     }
 
     return NextResponse.json({ report });

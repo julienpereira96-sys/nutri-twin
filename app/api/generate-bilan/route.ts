@@ -261,11 +261,10 @@ Réponds UNIQUEMENT en JSON valide, sans markdown, sans backticks :
       const rawText = (await vertexGenerate("gemini-3-flash-preview", prompt, { maxOutputTokens: 800, temperature: 0.6 })).trim().replace(/```json|```/g, "").trim();
       questions = JSON.parse(rawText) as typeof questions;
       if (!Array.isArray(questions) || questions.length === 0 || !questions[0].question) throw new Error("Structure JSON invalide");
-    } catch {
-      return NextResponse.json(
-        { error: "Une erreur est survenue lors de la génération du bilan. Veuillez réessayer dans quelques instants." },
-        { status: 502 }
-      );
+    } catch (err: unknown) {
+      const vertexMsg = err instanceof Error ? err.message : String(err);
+      console.error("generate-bilan vertex error:", vertexMsg);
+      return NextResponse.json({ error: vertexMsg }, { status: 502 });
     }
 
     // Mettre à jour le curseur avec le timestamp du message le plus récent
