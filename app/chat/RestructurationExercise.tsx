@@ -9,8 +9,15 @@
  * Architecture : identique à AncrageExercise (GeminiLiveClient, PCM base64,
  * micEnabledRef gate, pendingAdvanceRef + turnCompleteRef, ScriptProcessor).
  *
- * State machine : loading → active → complete
- * Tool call : valider_restructuration(original, reformulated)
+ * State machine : loading → active → exploring → complete
+ *
+ * Tool calls (2 étapes sémantiques) :
+ *   1. capturer_pensee(original)       — fin de phase identification
+ *   2. valider_restructuration(reformulated) — fin de phase exploration
+ *
+ * Gardes-fous :
+ *   • capturer_pensee  : rejeté si status !== "active" ou patient silencieux
+ *   • valider_restructuration : rejeté si status !== "exploring" ou patient silencieux
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -122,27 +129,38 @@ SIGNAUX : Tu reçois des signaux entre crochets [comme celui-ci]. Ce sont des in
 CONTEXTE PATIENT :
 ${contextInfo}
 
-TON SEUL OBJECTIF : aider ${firstName} à arriver lui-même à une pensée plus équilibrée. Ne la formule jamais à sa place.
+TON SEUL OBJECTIF : aider ${firstName} à arriver lui-même à une pensée plus équilibrée. Tu ne formules jamais la pensée alternative à sa place.
 
-• [ACCUEIL] : accueille ${firstName} avec chaleur, puis demande-lui quelle pensée tourne en ce moment. Attends.
+━━━ PHASE 1 — IDENTIFICATION ━━━
+• [ACCUEIL] : accueille ${firstName} avec chaleur, puis demande-lui quelle pensée revient souvent ou le/la pèse en ce moment. Attends sa réponse.
+• Écoute attentivement. Reformule la pensée pour confirmer : "Si je comprends bien, la pensée c'est… c'est ça ?" Attends sa confirmation.
+• Dès que le patient confirme, appelle capturer_pensee(original) avec exactement la pensée telle qu'il/elle la formule.
 
-Une fois qu'il/elle a formulé sa pensée, reformule-la pour être sûr d'avoir bien compris. Ensuite engage un dialogue socratique — tu choisis l'angle selon ce qui émerge :
-— explorer sur quoi il/elle s'appuie pour y croire
-— chercher des moments où c'était différent
-— lui demander ce qu'il/elle dirait à un ami qui aurait cette pensée
+━━━ PHASE 2 — EXPLORATION SOCRATIQUE ━━━
+• Engage un dialogue d'exploration — une question à la fois, attends toujours la réponse avant de poser la suivante.
+• Angles possibles selon ce qui émerge :
+  — "Sur quoi tu t'appuies pour croire ça ?"
+  — "Est-ce qu'il y a eu des moments où ce n'était pas le cas ?"
+  — "Qu'est-ce que tu dirais à un ami proche qui aurait cette pensée ?"
+  — "Si tu l'observes de loin, qu'est-ce que tu vois ?"
+• Laisse ${firstName} cheminer à son rythme. Ne suggère jamais la réponse.
 
-Quand ${firstName} formule lui-même une pensée plus juste (après AU MOINS 2 échanges), tu l'ancres en la lui faisant répéter, puis tu appelles valider_restructuration avec la pensée originale et la pensée reformulée.
+━━━ PHASE 3 — REFORMULATION ━━━
+• Quand ${firstName} formule lui-même une pensée plus juste ou nuancée, accueille-la ("C'est ça, oui.") et invite-le/la à la répéter ou confirmer.
+• Appelle ensuite valider_restructuration(reformulated) avec exactement ce que le patient a dit.
 
 INTERDITS ABSOLUS :
-— formuler toi-même la pensée alternative
+— formuler toi-même la pensée alternative (ex. "et si tu pensais que…")
+— appeler capturer_pensee si le patient n'a pas encore répondu
+— appeler valider_restructuration avant capturer_pensee
+— appeler valider_restructuration si c'est toi qui as suggéré la reformulation
 — contredire directement ("c'est faux", "tu as tort")
 — minimiser ("c'est pas grave")
-— poser deux questions à la fois
-— appeler valider_restructuration après moins de 2 échanges avec ${firstName}`;
+— poser deux questions à la fois`;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Status = "loading" | "active" | "complete";
+type Status = "loading" | "active" | "exploring" | "complete";
 
 export interface RestructurationExerciseProps {
   patientId?:   string;
@@ -186,7 +204,6 @@ export default function RestructurationExercise({
   const pendingAdvanceRef  = useRef<(() => void) | null>(null);
   const outputTransRef     = useRef("");
   const patientSpokeRef    = useRef(false);
-  const patientTurnCountRef = useRef(0); // nombre de tours patient complets — garde-fou anti-fin prématurée
 
   const onTransitionRef = useRef(onTransitionToChat);
   const onCloseRef      = useRef(onClose);
@@ -210,11 +227,12 @@ export default function RestructurationExercise({
         advance();
       }
 
-      // Ré-activer le mic si on est en phase active
+      // Ré-activer le mic si on est en phase active ou exploring
       const st = statusRef.current;
-      if (st === "active") {
+      if (st === "active" || st === "exploring") {
         setTimeout(() => {
-          if (statusRef.current === "active") {
+          const cur = statusRef.current;
+          if (cur === "active" || cur === "exploring") {
             micEnabledRef.current = true;
             setIsListening(true);
           }
@@ -294,16 +312,49 @@ export default function RestructurationExercise({
       return;
     }
 
-    // ── Tool call : valider_restructuration ───────────────────────────────
+    // ── Tool calls ─────────────────────────────────────────────────────────
     const toolCallMsg = msg.toolCall as { functionCalls?: Array<{ name: string; id: string; args?: Record<string, unknown> }> } | undefined;
     if (toolCallMsg?.functionCalls) {
       for (const fc of toolCallMsg.functionCalls) {
-        if (fc.name === "valider_restructuration") {
-          const original     = typeof fc.args?.original     === "string" ? fc.args.original     : "";
-          const reformulated = typeof fc.args?.reformulated === "string" ? fc.args.reformulated : "";
 
-          // Garde-fou : au moins 2 tours patient pour éviter une fin prématurée
-          const isValid = patientSpokeRef.current && !!original && !!reformulated && patientTurnCountRef.current >= 2;
+        // ── capturer_pensee : fin de la phase identification ──────────────
+        if (fc.name === "capturer_pensee") {
+          const original = typeof fc.args?.original === "string" ? fc.args.original : "";
+          const inActivePhase = statusRef.current === "active";
+          const isValid = inActivePhase && patientSpokeRef.current && !!original;
+
+          wsRef.current?.send(JSON.stringify({
+            toolResponse: {
+              functionResponses: [{
+                id: fc.id,
+                response: {
+                  output: isValid
+                    ? "ok — passe maintenant en phase d'exploration socratique."
+                    : !inActivePhase
+                      ? "Erreur : capturer_pensee a déjà été appelé. Passe directement à l'exploration."
+                      : !patientSpokeRef.current
+                        ? "Erreur : le patient n'a pas encore répondu. Attends."
+                        : "Erreur : pensée originale manquante.",
+                },
+              }],
+            },
+          }));
+
+          if (!isValid) break;
+
+          patientSpokeRef.current = false;
+          setOriginalThought(original);
+          pendingAdvanceRef.current = () => {
+            setStatus("exploring");
+            statusRef.current = "exploring";
+          };
+        }
+
+        // ── valider_restructuration : fin de la phase exploration ─────────
+        if (fc.name === "valider_restructuration") {
+          const reformulated = typeof fc.args?.reformulated === "string" ? fc.args.reformulated : "";
+          const inExploringPhase = statusRef.current === "exploring";
+          const isValid = inExploringPhase && patientSpokeRef.current && !!reformulated;
 
           wsRef.current?.send(JSON.stringify({
             toolResponse: {
@@ -312,11 +363,11 @@ export default function RestructurationExercise({
                 response: {
                   output: isValid
                     ? "ok"
-                    : !patientSpokeRef.current
-                      ? "Erreur : le patient n'a pas encore répondu. Attends sa réponse."
-                      : patientTurnCountRef.current < 2
-                        ? "Trop tôt : il faut au moins 2 échanges avec le patient avant de valider. Continue le dialogue socratique."
-                        : "Erreur : pensée originale ou reformulée manquante.",
+                    : !inExploringPhase
+                      ? "Erreur : appelle d'abord capturer_pensee pour identifier la pensée de départ."
+                      : !patientSpokeRef.current
+                        ? "Erreur : le patient n'a pas encore formulé sa pensée alternative. Attends."
+                        : "Erreur : pensée reformulée manquante.",
                 },
               }],
             },
@@ -326,7 +377,6 @@ export default function RestructurationExercise({
 
           patientSpokeRef.current = false;
           pendingAdvanceRef.current = () => {
-            setOriginalThought(original);
             setReformulatedThought(reformulated);
             micEnabledRef.current = false;
             setIsListening(false);
@@ -359,11 +409,10 @@ export default function RestructurationExercise({
       }
     }
 
-    // Transcription entrée → patient a répondu
+    // Transcription entrée → patient a répondu (transition false → true)
     const inTrans = sc.inputTranscription as Record<string, unknown> | undefined;
     if (inTrans?.text && typeof inTrans.text === "string" && inTrans.text.trim()) {
       patientSpokeRef.current = true;
-      patientTurnCountRef.current += 1;
     }
 
     // Transcription sortie → clôture
@@ -382,13 +431,17 @@ export default function RestructurationExercise({
         return;
       }
 
-      // Premier tour (accueil) → passer en active après l'audio
       if (statusRef.current === "loading") {
+        // Premier tour (accueil) → passer en active après l'audio
         patientSpokeRef.current = false;
         pendingAdvanceRef.current = () => {
           setStatus("active");
           statusRef.current = "active";
         };
+      } else if (statusRef.current === "active" || statusRef.current === "exploring") {
+        // Gemini vient de terminer sa réponse → reset patientSpokeRef
+        // pour détecter le prochain tour patient (transition false → true)
+        patientSpokeRef.current = false;
       }
     }
 
@@ -467,18 +520,30 @@ export default function RestructurationExercise({
           inputAudioTranscription:  {},
           systemInstruction: { parts: [{ text: systemPrompt }] },
           tools: [{
-            functionDeclarations: [{
-              name: "valider_restructuration",
-              description: "Appelle cet outil quand le patient a formulé et validé sa propre pensée alternative. Ne l'appelle jamais si c'est toi qui as suggéré la reformulation.",
-              parameters: {
-                type: "object",
-                properties: {
-                  original:     { type: "string", description: "La pensée négative de départ telle que formulée par le patient." },
-                  reformulated: { type: "string", description: "La pensée plus équilibrée formulée par le patient lui-même." },
+            functionDeclarations: [
+              {
+                name: "capturer_pensee",
+                description: "Appelle cet outil en fin de phase d'identification, quand tu as reformulé la pensée du patient et qu'il l'a confirmée. Cela marque le début de l'exploration socratique.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    original: { type: "string", description: "La pensée négative telle que formulée et confirmée par le patient." },
+                  },
+                  required: ["original"],
                 },
-                required: ["original", "reformulated"],
               },
-            }],
+              {
+                name: "valider_restructuration",
+                description: "Appelle cet outil uniquement après capturer_pensee, quand le patient a lui-même formulé une pensée alternative plus équilibrée. Ne l'appelle jamais si c'est toi qui as suggéré la reformulation.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    reformulated: { type: "string", description: "La pensée plus équilibrée formulée par le patient lui-même, telle qu'il l'a dite." },
+                  },
+                  required: ["reformulated"],
+                },
+              },
+            ],
           }],
         },
       }));
@@ -566,7 +631,7 @@ export default function RestructurationExercise({
             letterSpacing: "0.18em", textTransform: "uppercase",
             color: `rgba(139,92,246,0.45)`,
           }}>
-            Défier une pensée négative
+            {status === "exploring" ? "Exploration" : "Défier une pensée négative"}
           </p>
         </div>
       )}
@@ -625,14 +690,35 @@ export default function RestructurationExercise({
               </motion.div>
             )}
 
-            {/* ── Active ────────────────────────────────────────────────── */}
-            {status === "active" && (
+            {/* ── Active / Exploring ────────────────────────────────────── */}
+            {(status === "active" || status === "exploring") && (
               <motion.div key="active"
                 initial={{ opacity: 0, scale: 0.93 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, width: "100%", maxWidth: 360 }}
               >
+                {/* Badge pensée capturée — visible seulement en phase exploring */}
+                {status === "exploring" && originalThought && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                    style={{
+                      width: "100%", padding: "10px 14px", borderRadius: 10,
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.09)",
+                    }}
+                  >
+                    <p style={{ margin: "0 0 4px", fontSize: 9, fontWeight: 600, color: TEXT_MUT, letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                      Pensée explorée
+                    </p>
+                    <p style={{ margin: 0, fontSize: 13, color: TEXT_SEC, lineHeight: 1.45 }}>
+                      {originalThought}
+                    </p>
+                  </motion.div>
+                )}
+
                 <PulseOrb
                   speaking={isAiSpeaking}
                   analyser={outputAnalyserRef.current}
@@ -706,7 +792,7 @@ export default function RestructurationExercise({
       )}
 
       {/* ── VioletWave (bas d'écran) ─────────────────────────────────────── */}
-      {!loadError && status === "active" && (
+      {!loadError && (status === "active" || status === "exploring") && (
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 0, paddingBottom: 34, zIndex: 1 }}>
           <VioletWave
             active={isListening && !isAiSpeaking}
