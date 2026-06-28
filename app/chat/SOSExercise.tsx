@@ -1675,47 +1675,60 @@ export default function SOSExercise({
 
       {/* ══ CONNECTING — rendu délégué au bloc showOrb ci-dessous (orb dim + blink) */}
 
-      {/* ══ CONNECTING + INTAKE — Wave Orb ══════════════════════════════════════
-          L'orb est monté dès la phase "connecting" à faible opacité, puis
-          s'illumine pleinement quand Gemini prend la parole (phase "loading").
-          Même logique que BreathingExercise : dim → full sans recréation.
-      ══════════════════════════════════════════════════════════════════════════ */}
-      {showOrb && !loadError && (
+      {/* ══ CONNECTING — icône cercle pulsant (pattern Ancrage) ════════════════ */}
+      {showOrb && !loadError && phase === "connecting" && (
+        <div style={{
+          display: "flex", flexDirection: "column",
+          alignItems: "center", gap: 20,
+          position: "relative", zIndex: 5,
+        }}>
+          <div style={{
+            width: 68, height: 68, borderRadius: "50%",
+            background: "rgba(6,182,212,0.08)",
+            border: "1.5px solid rgba(6,182,212,0.22)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 0 28px rgba(6,182,212,0.18)",
+            animation: "sos-blink 3s ease-in-out infinite",
+          }}>
+            {/* Icône onde / présence */}
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+              stroke="#06B6D4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 10 C4 6, 6 14, 8 10 S12 6, 14 10 S18 14, 20 10"/>
+              <path d="M6 16 C7 14, 8 18, 9.5 16 S12 14, 13.5 16 S16 18, 17 16"/>
+            </svg>
+          </div>
+          <p style={{
+            margin: 0, color: "#06B6D4", fontSize: 13,
+            letterSpacing: "0.10em", fontWeight: 400,
+            animation: "sos-blink 2s ease-in-out infinite",
+          }}>
+            Connexion en cours…
+          </p>
+          <div style={{
+            width: 160, height: 2, borderRadius: 2,
+            background: "rgba(6,182,212,0.12)",
+            overflow: "hidden", position: "relative",
+          }}>
+            <div style={{
+              position: "absolute", top: 0, left: 0,
+              height: "100%", width: "45%", borderRadius: 2,
+              background: "linear-gradient(90deg, transparent 0%, #06B6D4 50%, transparent 100%)",
+              animation: "sos-loading-bar 1.6s ease-in-out infinite",
+            }} />
+          </div>
+        </div>
+      )}
+
+      {/* ══ LOADING + INTAKE — PulseOrb (inchangé) ══════════════════════════════ */}
+      {showOrb && !loadError && phase !== "connecting" && (
         <div style={{
           display: "flex", flexDirection: "column",
           alignItems: "center", gap: 36,
           position: "relative", zIndex: 5,
-          opacity: phase === "connecting" ? 0.5 : 1,
-          transition: "opacity 1.4s ease",
         }}>
           <PulseOrb speaking={isAiSpeaking || isPatientSpeaking} analyser={outputAnalyserRef.current} />
 
           <div style={{ textAlign: "center", minHeight: 24 }}>
-            {phase === "connecting" && (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-                <p style={{
-                  margin: 0,
-                  color: "#06B6D4",
-                  fontSize: 14, letterSpacing: "0.10em", fontWeight: 400,
-                  animation: "sos-blink 2s ease-in-out infinite",
-                }}>
-                  Connexion en cours…
-                </p>
-                {/* Barre de chargement indéterminée */}
-                <div style={{
-                  width: 160, height: 2, borderRadius: 2,
-                  background: "rgba(6,182,212,0.12)",
-                  overflow: "hidden", position: "relative",
-                }}>
-                  <div style={{
-                    position: "absolute", top: 0, left: 0,
-                    height: "100%", width: "45%", borderRadius: 2,
-                    background: "linear-gradient(90deg, transparent 0%, #06B6D4 50%, transparent 100%)",
-                    animation: "sos-loading-bar 1.6s ease-in-out infinite",
-                  }} />
-                </div>
-              </div>
-            )}
             {phase === "intake" && !isAiSpeaking && (
               <p style={{
                 color: "#06B6D4",

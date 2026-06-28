@@ -31,6 +31,56 @@ const ACCENT_DIM    = "rgba(16,185,129,0.10)";
 const ACCENT_BORDER = "rgba(16,185,129,0.28)";
 const TEXT_MUTED    = "rgba(255,255,255,0.30)";
 
+// ─── GreenWave — onde audio-réactive pour l'écoute patient (checkpoint) ───────
+function GreenWave({ active, analyser }: { active: boolean; analyser?: AnalyserNode | null }) {
+  const barsRef   = useRef<(HTMLDivElement | null)[]>([]);
+  const activeRef = useRef(active);
+  const anRef     = useRef<AnalyserNode | null | undefined>(analyser);
+  activeRef.current = active;
+  anRef.current     = analyser;
+
+  useEffect(() => {
+    const buf = new Uint8Array(32);
+    let raf: number;
+    let t = 0;
+    const tick = () => {
+      raf = requestAnimationFrame(tick);
+      t += 0.06;
+      const isActive = activeRef.current;
+      const an = anRef.current;
+      barsRef.current.forEach((bar, i) => {
+        if (!bar) return;
+        let h: number;
+        if (isActive && an) {
+          an.getByteFrequencyData(buf);
+          const raw = buf[Math.floor((i / barsRef.current.length) * buf.length)] / 255;
+          h = 4 + raw * 28;
+        } else if (isActive) {
+          h = 6 + 10 * Math.abs(Math.sin(t + i * 0.5));
+        } else {
+          h = 3 + 1.5 * Math.abs(Math.sin(t * 0.4 + i * 0.4));
+        }
+        bar.style.height  = `${h}px`;
+        bar.style.opacity = isActive ? "0.75" : "0.18";
+      });
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 3, height: 40 }}>
+      {Array.from({ length: 20 }).map((_, i) => (
+        <div key={i} ref={el => { barsRef.current[i] = el; }} style={{
+          width: 3, height: 4, borderRadius: 2,
+          background: ACCENT,
+          transition: "height 0.05s ease, opacity 0.3s ease",
+        }} />
+      ))}
+    </div>
+  );
+}
+
 // ─── Timing CSS variables ─────────────────────────────────────────────────────
 // Pour changer le ratio inspire/expire : modifier INSPIRE_DUR + EXPIRE_DUR
 // La CSS keyframe est calculée à partir de INSPIRE_DUR / CYCLE_DUR = 40%
@@ -152,6 +202,7 @@ export default function BreathingExercise({
   const wsRef          = useRef<GeminiLiveClient | null>(null);
   const audioCtxRef         = useRef<AudioContext | null>(null);
   const outputAnalyserRef   = useRef<AnalyserNode | null>(null);
+  const inputAnalyserRef    = useRef<AnalyserNode | null>(null); // pour GreenWave (voix patient)
   const processorRef   = useRef<ScriptProcessorNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const micEnabledRef  = useRef(false);           // mic ON/OFF selon la phase
@@ -251,6 +302,7 @@ export default function BreathingExercise({
     audioCtxRef.current?.close().catch(() => {});
     audioCtxRef.current = null;
     outputAnalyserRef.current = null;
+    inputAnalyserRef.current  = null;
     wsRef.current?.close();
     wsRef.current = null;
     flushAudio();
@@ -545,7 +597,12 @@ export default function BreathingExercise({
     outAnalyser.connect(audioCtx.destination);
     outputAnalyserRef.current = outAnalyser;
 
-    const micSrc  = audioCtx.createMediaStreamSource(stream);
+    const micSrc = audioCtx.createMediaStreamSource(stream);
+    // Analyser branché en parallèle sur le mic (pour GreenWave — aucun son en sortie)
+    const inputAnalyser = audioCtx.createAnalyser();
+    inputAnalyser.fftSize = 256;
+    inputAnalyserRef.current = inputAnalyser;
+    micSrc.connect(inputAnalyser);
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     const proc    = audioCtx.createScriptProcessor(4096, 1, 1);
     processorRef.current = proc;
@@ -648,15 +705,26 @@ export default function BreathingExercise({
         }} />
       )}
 
-      {/* ══ ORB PRINCIPALE — visible uniquement quand Gemini parle ══════════ */}
-      {!loadError && isAiSpeaking && (
-        <div style={{ position: "relative", zIndex: 1 }}>
+      {/* ══ ORB PRINCIPALE — permanente hors loading ════════════════════════ */}
+      {status !== "loading" && !loadError && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, position: "relative", zIndex: 1 }}>
           <PulseOrb
-            color="#10B981"
+            color={ACCENT}
             speaking={isAiSpeaking}
             analyser={outputAnalyserRef.current}
-            size={220}
+            size={200}
+            breathPhase={status === "breathing_cycle" && !isAiSpeaking ? breathPhaseLabel : null}
           />
+          {/* "Je t'écoute" sous l'orbe au checkpoint */}
+          {status === "checkpoint" && checkpointGeminiHasSpoken && !isAiSpeaking && (
+            <p style={{
+              margin: 0, color: ACCENT, fontSize: 14,
+              letterSpacing: "0.05em",
+              animation: "br-fade-in 0.8s ease",
+            }}>
+              Je t&apos;écoute…
+            </p>
+          )}
         </div>
       )}
 
@@ -759,17 +827,14 @@ export default function BreathingExercise({
         </div>
       )}
 
-      {/* ── Checkpoint — "Je t'écoute" uniquement après que Gemini ait posé sa question ── */}
-      {status === "checkpoint" && checkpointGeminiHasSpoken && !isAiSpeaking && (
-        <p style={{
-          margin: 0,
-          marginTop: 28,
-          color: ACCENT,
-          fontSize: 14, letterSpacing: "0.05em",
-          animation: "br-fade-in 0.8s ease",
-        }}>
-          Je t'écoute…
-        </p>
+      {/* ── GreenWave (bas d'écran) — checkpoint seulement ─────────────────── */}
+      {status === "checkpoint" && !loadError && (
+        <div style={{ position: "absolute", bottom: 34, display: "flex", flexDirection: "column", alignItems: "center", zIndex: 1 }}>
+          <GreenWave
+            active={checkpointGeminiHasSpoken && !isAiSpeaking}
+            analyser={checkpointGeminiHasSpoken && !isAiSpeaking ? inputAnalyserRef.current : undefined}
+          />
+        </div>
       )}
 
       {/* ── Keyframes ─────────────────────────────────────────────────────── */}
