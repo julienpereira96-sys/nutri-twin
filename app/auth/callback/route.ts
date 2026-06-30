@@ -37,7 +37,11 @@ export async function GET(request: NextRequest) {
     if (!error) {
       return redirectResponse;
     }
+
+    // Debug: passer le message d'erreur dans l'URL pour comprendre pourquoi ça échoue
+    const errorMsg = encodeURIComponent(error.message ?? "unknown");
+    return NextResponse.redirect(`${origin}${loginPage}?error=lien_expire&debug=${errorMsg}`);
   }
 
-  return NextResponse.redirect(`${origin}${loginPage}?error=lien_expire`);
+  return NextResponse.redirect(`${origin}${loginPage}?error=lien_expire&debug=no_code`);
 }

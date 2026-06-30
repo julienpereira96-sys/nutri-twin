@@ -90,7 +90,8 @@ export default function LoginPage() {
     await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: `${window.location.origin}/auth/callback?next=/reset-password` });
     setResetSent(true);
     setResetLoading(false);
-  };  
+    setTimeout(() => closeModal(), 5000);
+  };
 
   const closeModal = () => {
     setShowForgotModal(false);
