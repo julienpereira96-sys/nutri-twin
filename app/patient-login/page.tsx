@@ -79,12 +79,14 @@ export default function PatientLoginPage() {
       setResetLoading(false);
       return;
     }
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { flowType: "implicit" } }
-    );
-    await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: `${window.location.origin}/set-password` });
+    await fetch("/api/auth/reset-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: forgotEmail.trim(),
+        redirectTo: `${window.location.origin}/auth/callback?next=/set-password`,
+      }),
+    });
     setResetSent(true);
     setResetLoading(false); 
   };

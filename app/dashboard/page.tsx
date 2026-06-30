@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { createBrowserClient } from "@supabase/ssr";
 import { buildMurmureExpiry } from "@/lib/murmure";
 import { findClosuresInWindow, closureFeeling, type SosClosureEvent, type SosSummary } from "@/lib/sosClosures";
 
@@ -3317,7 +3316,7 @@ export default function DashboardPage() {
                 <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Un lien de réinitialisation sera envoyé à <strong style={{ color: "white" }}>{practitionerEmail}</strong></p>
                 <div style={{ display: "flex", gap: 10 }}>
                   <button onClick={() => setShowPasswordModal(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
-                  <button onClick={async () => { const s = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { flowType: "implicit" } }); await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/reset-password` }); setPasswordResetSent(true); }} style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>Envoyer le lien</button>
+                  <button onClick={async () => { await fetch("/api/auth/reset-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: practitionerEmail }) }); setPasswordResetSent(true); setTimeout(() => setShowPasswordModal(false), 5000); }} style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>Envoyer le lien</button>
                 </div>
               </>
             )}
@@ -3523,9 +3522,9 @@ export default function DashboardPage() {
                       {changingPassword ? "Modification en cours…" : "Modifier le mot de passe"}
                     </button>
                     <button onClick={async () => {
-                      const s = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { flowType: "implicit" } });
-                      await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/reset-password` });
+                      await fetch("/api/auth/reset-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: practitionerEmail }) });
                       setPasswordResetSent(true);
+                      setTimeout(() => setShowPasswordModal(false), 5000);
                     }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#64748b", textDecoration: "underline", padding: 0, textAlign: "center" }}>
                       Mot de passe oublié ?
                     </button>
@@ -3560,7 +3559,7 @@ export default function DashboardPage() {
             <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
               <SubHeader title="Abonnement" />
               <div style={{ padding: "24px" }}>
-                <div style={{ background: "rgba(16,185,129,0.04)", borderRadius: 14, border: "1px solid rgba(16,185,129,0.12)", padding: "18px 20px", marginBottom: 20 }}>
+                <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", padding: "18px 20px", marginBottom: 20 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: planUpdateSuccess ? 12 : 0 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
