@@ -53,9 +53,17 @@ export default function SetPasswordPage() {
       setError("__expired__");
     }, 20000);
 
-    // createBrowserClient (@supabase/ssr) ne traite pas automatiquement les
-    // tokens dans le hash URL. On les extrait manuellement et on appelle
-    // setSession() pour initialiser la session côté cookie.
+    const handleReady = () => { clearTimeout(timeout); setReady(true); };
+
+    // Flow PKCE : ?code= dans les query params
+    const urlCode = new URLSearchParams(window.location.search).get("code");
+    if (urlCode) {
+      supabase.auth.exchangeCodeForSession(urlCode)
+        .then(({ error }) => { if (!error) handleReady(); })
+        .catch(() => {});
+    }
+
+    // Flow implicite (fallback) : #access_token= dans le hash
     const params = new URLSearchParams(hash.slice(1));
     const accessToken = params.get("access_token");
     const refreshToken = params.get("refresh_token");
@@ -63,10 +71,9 @@ export default function SetPasswordPage() {
     if (accessToken && refreshToken) {
       supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
         .then(({ data: { session }, error }) => {
-          if (session && !error) { clearTimeout(timeout); setReady(true); }
+          if (session && !error) handleReady();
         })
         .catch(() => {});
-      return () => clearTimeout(timeout);
     }
 
     // Fallback : vérifier si une session cookie existe déjà

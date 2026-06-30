@@ -22,30 +22,49 @@ function ResetPasswordForm() {
 
   const timeout = setTimeout(() => {
     setError("__expired__");
-  }, 5000);
+  }, 10000);
 
-  // Détecter le token dans le hash pour Safari
+  const handleReady = () => {
+    clearTimeout(timeout);
+    setReady(true);
+  };
+
+  // Flow PKCE (Supabase par défaut) : ?code= dans les query params
+  const urlCode = new URLSearchParams(window.location.search).get("code");
+  if (urlCode) {
+    supabase.auth.exchangeCodeForSession(urlCode).then(({ error }) => {
+      if (!error) handleReady();
+    });
+  }
+
+  // Flow implicite (fallback) : #access_token= dans le hash
   const hash = window.location.hash;
   if (hash.includes("access_token")) {
     const params = new URLSearchParams(hash.substring(1));
     const accessToken = params.get("access_token");
     const refreshToken = params.get("refresh_token");
     if (accessToken && refreshToken) {
-      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken }).then(() => {
-        clearTimeout(timeout);
-        setReady(true);
-      });
+      supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+        .then(() => handleReady());
     }
   }
 
-  supabase.auth.onAuthStateChange(async (event) => {
+  // Écouter l'événement auth (déclenché automatiquement après échange de code)
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
     if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
-      clearTimeout(timeout);
-      setReady(true);
+      handleReady();
     }
   });
 
-  return () => clearTimeout(timeout);
+  // Vérifier si une session existe déjà (ex: rechargement de page)
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (session) handleReady();
+  });
+
+  return () => {
+    clearTimeout(timeout);
+    subscription.unsubscribe();
+  };
 }, []);
 
 

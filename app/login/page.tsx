@@ -235,17 +235,17 @@ export default function LoginPage() {
             </div>
 
             {resetSent ? (
-              <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 14, padding: "20px", textAlign: "center" }}>
-                <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+              <div style={{ textAlign: "center", padding: "8px 0 4px" }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                  <div style={{ width: 48, height: 48, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.5)", background: "rgba(16,185,129,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                   </div>
                 </div>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "white" }}>Email envoyé !</p>
-                <p style={{ margin: "6px 0 0", fontSize: 13, color: "#64748b" }}>Vérifiez votre boîte mail à <strong style={{ color: "#10b981" }}>{forgotEmail}</strong></p>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "white" }}>Email envoyé !</p>
+                <p style={{ margin: "8px 0 0", fontSize: 13, color: "#64748b" }}>Vérifiez votre boîte mail à <strong style={{ color: "#10b981" }}>{forgotEmail}</strong></p>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Pensez à vérifier vos spams.</p>
                 <button onClick={closeModal}
-                  style={{ marginTop: 16, height: 40, borderRadius: 20, padding: "0 20px", background: "linear-gradient(135deg, #10b981, #059669)", border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
+                  style={{ marginTop: 20, height: 40, borderRadius: 20, padding: "0 24px", background: "linear-gradient(135deg, #10b981, #059669)", border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
                   onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                   onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>Fermer</button>
               </div>
