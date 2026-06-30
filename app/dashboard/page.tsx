@@ -616,6 +616,7 @@ export default function DashboardPage() {
   const [changingEmail, setChangingEmail] = useState(false);
   const [emailChangeSent, setEmailChangeSent] = useState(false);
   const [emailChangeError, setEmailChangeError] = useState("");
+  const [showEmailConfirmModal, setShowEmailConfirmModal] = useState(false);
   const [deletePinError, setDeletePinError] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState(0);
   const [practitionerPhoto, setPractitionerPhoto] = useState<string | null>(null);
@@ -2397,7 +2398,7 @@ export default function DashboardPage() {
                           <div data-message-id={message.id} data-message-date={message.created_at}
                             style={{ display: "flex", justifyContent: isPatient ? "flex-end" : "flex-start", transition: "all 0.3s" }}>
                             <div style={{ maxWidth: isPatient ? "78%" : "100%" }}>
-                              <div style={{ borderRadius: isPatient ? 14 : 0, padding: isPatient ? "10px 14px" : "3px 4px", fontSize: isPatient ? 13 : 14, lineHeight: 1.7, background: isHighlighted ? highlightColor : isPatient ? "rgba(16,185,129,0.03)" : "transparent", border: isPatient ? `1px solid ${isHighlighted ? highlightOutline : "rgba(16,185,129,0.2)"}` : "none", color: isPatient ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: isHighlighted && !isPatient ? `2px solid ${highlightOutline}` : "none" }}>
+                              <div style={{ borderRadius: isPatient ? 22 : (isHighlighted ? 14 : 0), padding: isPatient ? "12px 16px" : (isHighlighted ? "4px 14px" : "4px 0"), fontSize: isPatient ? 14 : 15, lineHeight: isPatient ? 1.6 : 1.8, background: isHighlighted ? highlightColor : isPatient ? "rgba(16,185,129,0.12)" : "transparent", border: isPatient ? "none" : (isHighlighted ? `1px solid ${highlightOutline}` : "none"), color: "rgba(255,255,255,0.95)", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: "none" }}>
                                 {message.content}
                               </div>
                               <p style={{ margin: "4px 0 0", fontSize: 10, color: "#4b5563", textAlign: isPatient ? "right" : "left" }}>
@@ -3259,6 +3260,40 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {showEmailConfirmModal && (
+        <div onClick={e => { if (e.target === e.currentTarget) setShowEmailConfirmModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 70, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 360, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", textAlign: "center" }}>
+            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            </div>
+            <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Modifier votre adresse email ?</h2>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
+              Un lien de confirmation sera envoyé à <strong style={{ color: "white" }}>{newEmail}</strong>. Cliquez dessus pour valider le changement.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setShowEmailConfirmModal(false)}
+                style={{ flex: 1, height: 42, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                Annuler
+              </button>
+              <button onClick={async () => {
+                setShowEmailConfirmModal(false);
+                setChangingEmail(true);
+                try {
+                  const s = createSupabaseBrowserClient();
+                  const { error } = await s.auth.updateUser({ email: newEmail });
+                  if (error) { setEmailChangeError(error.message); setChangingEmail(false); return; }
+                  setEmailChangeSent(true);
+                  setShowEmailChange(false);
+                } catch { setEmailChangeError("Une erreur est survenue."); }
+                setChangingEmail(false);
+              }} style={{ flex: 1, height: 42, borderRadius: 12, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showDeletePatientModal && selectedPatientId && (
         <div onClick={e => { if (e.target === e.currentTarget && !deletingPatient) setShowDeletePatientModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 360, border: "1px solid rgba(244,63,94,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", textAlign: "center" }}>
@@ -3389,7 +3424,7 @@ export default function DashboardPage() {
                     <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = ev => setPractitionerPhoto(ev.target?.result as string); reader.readAsDataURL(file); }} />
                   </div>
                   <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "white" }}>{practitionerName}</p>
-                  <div style={{ marginTop: 6, padding: "6px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ marginTop: 6, padding: "6px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 8 }}>
                     <p style={{ margin: 0, fontSize: 12, color: "#94a3b8" }}>{practitionerEmail || "—"}</p>
                     {!showEmailChange && !emailChangeSent && (
                       <button onClick={() => { setShowEmailChange(true); setEmailChangeError(""); setNewEmail(""); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "#475569", transition: "color 0.15s" }} onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"} onMouseLeave={e => e.currentTarget.style.color = "#475569"} title="Modifier l'adresse email">
@@ -3409,21 +3444,13 @@ export default function DashboardPage() {
                         style={{ width: "100%", height: 42, borderRadius: 10, border: `1px solid ${emailChangeError ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: "0 14px", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" }} />
                       {emailChangeError && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#f87171" }}>{emailChangeError}</p>}
                       <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                        <button onClick={async () => {
+                        <button onClick={() => {
                           if (!newEmail.includes("@")) { setEmailChangeError("Adresse email invalide."); return; }
                           if (newEmail === practitionerEmail) { setEmailChangeError("C'est déjà votre adresse actuelle."); return; }
-                          setChangingEmail(true);
-                          try {
-                            const s = createSupabaseBrowserClient();
-                            const { error } = await s.auth.updateUser({ email: newEmail });
-                            if (error) { setEmailChangeError(error.message); setChangingEmail(false); return; }
-                            setEmailChangeSent(true);
-                            setShowEmailChange(false);
-                          } catch { setEmailChangeError("Une erreur est survenue."); }
-                          setChangingEmail(false);
+                          setShowEmailConfirmModal(true);
                         }} disabled={changingEmail || !newEmail}
                           style={{ flex: 1, height: 38, borderRadius: 10, background: changingEmail || !newEmail ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${changingEmail || !newEmail ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: changingEmail || !newEmail ? "#64748b" : emerald, fontSize: 13, fontWeight: 600, cursor: changingEmail || !newEmail ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
-                          {changingEmail ? "Envoi…" : "Envoyer le lien"}
+                          {changingEmail ? "Mise à jour…" : "Mettre à jour"}
                         </button>
                         <button onClick={() => { setShowEmailChange(false); setNewEmail(""); setEmailChangeError(""); }}
                           style={{ height: 38, borderRadius: 10, padding: "0 14px", background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 13, cursor: "pointer" }}>
@@ -3522,16 +3549,18 @@ export default function DashboardPage() {
                       onMouseLeave={e => { if (!changingPassword && oldPassword && newPasswordField && confirmPassword) e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>
                       {changingPassword ? "Modification en cours…" : "Modifier le mot de passe"}
                     </button>
-                    <button onClick={async () => {
-                      setPasswordResetLoading(true);
-                      await fetch("/api/auth/reset-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: practitionerEmail }) });
-                      setPasswordResetLoading(false);
-                      setPasswordResetSent(true);
-                      setTimeout(() => setPasswordResetSent(false), 5000);
-                    }} disabled={passwordResetLoading} style={{ background: "none", border: "none", cursor: passwordResetLoading ? "not-allowed" : "pointer", fontSize: 12, color: "#64748b", textDecoration: "underline", padding: 0, textAlign: "center", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                      {passwordResetLoading && <span style={{ width: 10, height: 10, border: "1.5px solid rgba(100,116,139,0.3)", borderTopColor: "#64748b", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />}
-                      {passwordResetLoading ? "Envoi…" : "Mot de passe oublié ?"}
-                    </button>
+                    <div style={{ textAlign: "center" }}>
+                      <button onClick={async () => {
+                        setPasswordResetLoading(true);
+                        await fetch("/api/auth/reset-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: practitionerEmail }) });
+                        setPasswordResetLoading(false);
+                        setPasswordResetSent(true);
+                        setTimeout(() => setPasswordResetSent(false), 5000);
+                      }} disabled={passwordResetLoading} style={{ background: "none", border: "none", cursor: passwordResetLoading ? "not-allowed" : "pointer", fontSize: 12, color: "#64748b", textDecoration: "underline", padding: 0, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                        {passwordResetLoading && <span style={{ width: 10, height: 10, border: "1.5px solid rgba(100,116,139,0.3)", borderTopColor: "#64748b", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />}
+                        {passwordResetLoading ? "Envoi…" : "Mot de passe oublié ?"}
+                      </button>
+                    </div>
                     {passwordResetSent && <p style={{ margin: 0, fontSize: 12, color: emerald, textAlign: "center" }}>Lien envoyé à {practitionerEmail}</p>}
                   </div>
                 )}

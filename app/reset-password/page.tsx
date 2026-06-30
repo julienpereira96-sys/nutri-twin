@@ -206,7 +206,7 @@ function ResetPasswordForm() {
                onMouseEnter={e => { if (!loading) { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
                onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}
              >
-               {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Enregistrement</span> : "Enregistrer le nouveau mot de passe"}
+               {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Enregistrement</span> : "Enregistrer le mot de passe"}
              </button>
            </div>
          )}
