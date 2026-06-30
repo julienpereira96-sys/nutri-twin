@@ -157,7 +157,7 @@ export default function SetPasswordPage() {
         <div className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
           {error === "__expired__" ? (
             <div className="py-8 text-center">
-              <p style={{ fontSize: 44, marginBottom: 0, lineHeight: 1 }}>⏱</p>
+              <p style={{ fontSize: 44, marginBottom: 12, lineHeight: 1 }}>⏱</p>
               <p className="text-sm font-semibold text-white mb-2">Lien expiré</p>
               <p className="text-sm text-zinc-400 mb-6">Ce lien d'invitation n'est plus valide. Contactez votre praticien pour en recevoir un nouveau.</p>
             </div>
