@@ -3524,7 +3524,7 @@ export default function DashboardPage() {
                     <button onClick={async () => {
                       await fetch("/api/auth/reset-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: practitionerEmail }) });
                       setPasswordResetSent(true);
-                      setTimeout(() => setShowPasswordModal(false), 5000);
+                      setTimeout(() => { setPasswordResetSent(false); setShowSettingsModal(false); setSettingsScreen("main"); }, 5000);
                     }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#64748b", textDecoration: "underline", padding: 0, textAlign: "center" }}>
                       Mot de passe oublié ?
                     </button>
