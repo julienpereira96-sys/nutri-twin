@@ -600,6 +600,13 @@ export default function DashboardPage() {
   const [settingsScreen, setSettingsScreen] = useState<"main"|"profil"|"motdepasse"|"discret"|"abonnement"|"notifications">("main");
   const [notifyBehavioral, setNotifyBehavioral] = useState(true);
   const [notifyCritical, setNotifyCritical] = useState(true);
+  const [showDisableCriticalConfirm, setShowDisableCriticalConfirm] = useState(false);
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPasswordField, setNewPasswordField] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordChanged, setPasswordChanged] = useState(false);
   const [deletePinError, setDeletePinError] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState(0);
   const [practitionerPhoto, setPractitionerPhoto] = useState<string | null>(null);
@@ -1021,9 +1028,9 @@ export default function DashboardPage() {
       }
       const pid = data.user.id;
       setPractitionerId(pid);
-      const { data: practitioner } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin, cabinet_id, plan, subscription_status").eq("user_id", pid).single();
+      const { data: practitioner } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin, cabinet_id, plan, subscription_status, notify_behavioral, notify_critical").eq("user_id", pid).single();
       if (practitioner) {
-        const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string; cabinet_id?: string | null; plan?: string | null; subscription_status?: string | null };
+        const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string; cabinet_id?: string | null; plan?: string | null; subscription_status?: string | null; notify_behavioral?: boolean; notify_critical?: boolean };
         setPractitionerName(`${p.first_name} ${p.last_name}`);
         setPractitionerEmail(p.email ?? "");
         setPractitionerSpecialty(p.specialty ?? "");
@@ -1031,6 +1038,8 @@ export default function DashboardPage() {
         if (p.cabinet_id) setPractitionerCabinetId(p.cabinet_id);
         setPractitionerPlan(p.plan ?? null);
         setSubscriptionStatus(p.subscription_status ?? null);
+        if (p.notify_behavioral !== undefined) setNotifyBehavioral(p.notify_behavioral ?? true);
+        if (p.notify_critical !== undefined) setNotifyCritical(p.notify_critical ?? true);
       }
       // Tour check séparé pour ne pas bloquer le chargement si la colonne n'existe pas encore
       const { data: tourData, error: tourError } = await supabase.from("practitioners").select("dashboard_tour_done").eq("user_id", pid).single();
@@ -1063,6 +1072,37 @@ export default function DashboardPage() {
 
   // Sync patientsRef pour éviter les stale closures dans les intervals
   useEffect(() => { patientsRef.current = patients; }, [patients]);
+
+  // ═══ EMAIL COMPORTEMENTAL 12H ═══
+  // Sur chaque changement de la liste patients (polling 10s), on vérifie si un patient
+  // est en red_behavioral depuis > 12h — si oui on envoie une alerte email unique.
+  useEffect(() => {
+    if (!notifyBehavioral || !practitionerId) return;
+    const behavioralPatients = patients.filter(p => p.emotional_status === "red_behavioral");
+    if (behavioralPatients.length === 0) return;
+    for (const patient of behavioralPatients) {
+      const alerts = (patient.admin_alerts ?? []) as { alert_type?: string; date: string; email_sent?: boolean }[];
+      const latest = alerts
+        .filter(a => a.alert_type === "behavioral" || a.alert_type === "behavioral_sos_intake")
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+      if (!latest || latest.email_sent) continue;
+      const ageMs = Date.now() - new Date(latest.date).getTime();
+      if (ageMs < 12 * 60 * 60 * 1000) continue;
+      // Envoi silencieux — pas de re-déclenchement même si l'useEffect tourne à nouveau
+      // (le backend marque email_sent: true dans admin_alerts)
+      void (async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) return;
+          await fetch("/api/send-behavioral-alert", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+            body: JSON.stringify({ patientId: patient.id, practitionerId }),
+          });
+        } catch { /* silencieux */ }
+      })();
+    }
+  }, [patients, notifyBehavioral, practitionerId]);
 
   // ═══ CONVERSATIONS — chargement initial + polling incrémental 10s ═══
   useEffect(() => {
@@ -3289,18 +3329,9 @@ export default function DashboardPage() {
 
           {/* ══ ÉCRAN PRINCIPAL ══ */}
           {settingsScreen === "main" && (<>
-            <div style={{ display: "flex", justifyContent: "flex-end", padding: "14px 16px 0", flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+              <span style={{ fontSize: 17, fontWeight: 700, color: "rgba(255,255,255,0.90)", letterSpacing: "-0.01em" }}>Mes paramètres</span>
               <button onClick={closeSettings} style={SBtn} onMouseEnter={SBtnIn} onMouseLeave={SBtnOut}><XIcon /></button>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 20px 18px", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <div style={{ width: 52, height: 52, borderRadius: "50%", border: `2px solid ${emerald}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-                {practitionerPhoto ? <img src={practitionerPhoto} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : AVATARS[selectedAvatar]}
-              </div>
-              <div>
-                <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "white" }}>{practitionerName}</p>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>{practitionerEmail}</p>
-                {practitionerSpecialty && <p style={{ margin: "2px 0 0", fontSize: 11, color: emerald }}>{practitionerSpecialty}</p>}
-              </div>
             </div>
             <div style={{ padding: "6px 20px", overflowY: "auto", flex: 1 }}>
               <Row icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>} label="Profil" onClick={() => setSettingsScreen("profil")} />
@@ -3354,26 +3385,68 @@ export default function DashboardPage() {
           {settingsScreen === "motdepasse" && (
             <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
               <SubHeader title="Mot de passe" />
-              <div style={{ padding: "28px 24px" }}>
-                {passwordResetSent ? (
+              <div style={{ padding: "24px", overflowY: "auto", flex: 1 }}>
+                {passwordChanged ? (
                   <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 14, padding: "28px 20px", textAlign: "center" }}>
                     <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(5,150,105,0.15)", border: "2px solid #059669", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </div>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "white" }}>Email envoyé !</p>
-                    <p style={{ margin: "6px 0 20px", fontSize: 13, color: "#64748b" }}>Vérifiez votre boîte mail à <strong style={{ color: emerald }}>{practitionerEmail}</strong></p>
-                    <button onClick={() => { setPasswordResetSent(false); setSettingsScreen("main"); }} style={{ height: 40, borderRadius: 20, padding: "0 24px", background: emerald, border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Retour</button>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "white" }}>Mot de passe modifié !</p>
+                    <p style={{ margin: "6px 0 20px", fontSize: 13, color: "#64748b" }}>Votre nouveau mot de passe est actif.</p>
+                    <button onClick={() => { setPasswordChanged(false); setOldPassword(""); setNewPasswordField(""); setConfirmPassword(""); setPasswordError(""); setSettingsScreen("main"); }} style={{ height: 40, borderRadius: 20, padding: "0 24px", background: emerald, border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Retour</button>
                   </div>
                 ) : (
-                  <>
-                    <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b", lineHeight: 1.7 }}>Un lien de réinitialisation sera envoyé à <strong style={{ color: "rgba(255,255,255,0.88)" }}>{practitionerEmail}</strong></p>
-                    <button onClick={async () => { const s = createSupabaseBrowserClient(); await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/reset-password` }); setPasswordResetSent(true); }}
-                      style={{ width: "100%", height: 46, borderRadius: 12, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.20)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>
-                      Envoyer le lien de réinitialisation
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Mot de passe actuel</label>
+                      <input type="password" value={oldPassword} onChange={e => { setOldPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" autoComplete="current-password"
+                        style={{ width: "100%", height: 44, borderRadius: 10, border: `1px solid ${passwordError && passwordError.includes("actuel") ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" }} />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Nouveau mot de passe</label>
+                      <input type="password" value={newPasswordField} onChange={e => { setNewPasswordField(e.target.value); setPasswordError(""); }} placeholder="8 caractères minimum" autoComplete="new-password"
+                        style={{ width: "100%", height: 44, borderRadius: 10, border: `1px solid ${passwordError && passwordError.includes("8") ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" }} />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Confirmer le nouveau mot de passe</label>
+                      <input type="password" value={confirmPassword} onChange={e => { setConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" autoComplete="new-password"
+                        style={{ width: "100%", height: 44, borderRadius: 10, border: `1px solid ${passwordError && passwordError.includes("correspondent") ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" }} />
+                    </div>
+                    {passwordError && <p style={{ margin: 0, fontSize: 13, color: "#f87171", lineHeight: 1.5 }}>{passwordError}</p>}
+                    <button
+                      disabled={changingPassword || !oldPassword || !newPasswordField || !confirmPassword}
+                      onClick={async () => {
+                        if (newPasswordField.length < 8) { setPasswordError("Le nouveau mot de passe doit faire au moins 8 caractères."); return; }
+                        if (newPasswordField !== confirmPassword) { setPasswordError("Les mots de passe ne correspondent pas."); return; }
+                        setChangingPassword(true);
+                        setPasswordError("");
+                        try {
+                          // Vérifier l'ancien mot de passe en se reconnectant
+                          const s = createSupabaseBrowserClient();
+                          const { error: signInErr } = await s.auth.signInWithPassword({ email: practitionerEmail, password: oldPassword });
+                          if (signInErr) { setPasswordError("Mot de passe actuel incorrect."); setChangingPassword(false); return; }
+                          // Mettre à jour avec le nouveau mot de passe
+                          const { error: updateErr } = await s.auth.updateUser({ password: newPasswordField });
+                          if (updateErr) { setPasswordError("Erreur lors du changement : " + updateErr.message); setChangingPassword(false); return; }
+                          setPasswordChanged(true);
+                          setOldPassword(""); setNewPasswordField(""); setConfirmPassword("");
+                        } catch { setPasswordError("Une erreur est survenue. Réessayez."); }
+                        setChangingPassword(false);
+                      }}
+                      style={{ width: "100%", height: 46, borderRadius: 12, background: changingPassword || !oldPassword || !newPasswordField || !confirmPassword ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${changingPassword || !oldPassword || !newPasswordField || !confirmPassword ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: changingPassword || !oldPassword || !newPasswordField || !confirmPassword ? "#64748b" : emerald, fontSize: 14, fontWeight: 600, cursor: changingPassword || !oldPassword || !newPasswordField || !confirmPassword ? "not-allowed" : "pointer", transition: "all 0.2s", marginTop: 4 }}
+                      onMouseEnter={e => { if (!changingPassword && oldPassword && newPasswordField && confirmPassword) e.currentTarget.style.background = "rgba(16,185,129,0.20)"; }}
+                      onMouseLeave={e => { if (!changingPassword && oldPassword && newPasswordField && confirmPassword) e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>
+                      {changingPassword ? "Modification en cours…" : "Modifier le mot de passe"}
                     </button>
-                  </>
+                    <button onClick={async () => {
+                      const s = createSupabaseBrowserClient();
+                      await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/reset-password` });
+                      setPasswordResetSent(true);
+                    }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#64748b", textDecoration: "underline", padding: 0, textAlign: "center" }}>
+                      Mot de passe oublié ?
+                    </button>
+                    {passwordResetSent && <p style={{ margin: 0, fontSize: 12, color: emerald, textAlign: "center" }}>Lien envoyé à {practitionerEmail}</p>}
+                  </div>
                 )}
               </div>
             </div>
@@ -3442,30 +3515,82 @@ export default function DashboardPage() {
           {settingsScreen === "notifications" && (
             <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
               <SubHeader title="Notifications" />
-              <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 12 }}>
-                <p style={{ margin: "0 0 6px", fontSize: 13, color: "#64748b", lineHeight: 1.7 }}>Les alertes sont envoyées à <strong style={{ color: "rgba(255,255,255,0.75)" }}>{practitionerEmail}</strong></p>
+              <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 14, overflowY: "auto", flex: 1 }}>
+                <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.7 }}>
+                  Les alertes sont envoyées à{" "}
+                  <strong style={{ color: "rgba(255,255,255,0.80)" }}>{practitionerEmail || "votre adresse email"}</strong>
+                </p>
+
+                {/* Toggle alertes comportementales */}
                 <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", display: "flex", alignItems: "flex-start", gap: 14 }}>
                   <div style={{ flex: 1 }}>
-                    <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.88)" }}>Alertes comportementales</p>
-                    <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>Email si le patient ne revient pas au vert après 12h</p>
+                    <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.88)" }}>Alertes comportementales</p>
+                    <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.55 }}>Recevez une alerte par mail lorsqu'une crise est détectée dans le chat pour un de vos patients</p>
                   </div>
-                  <button onClick={() => setNotifyBehavioral(v => !v)}
-                    style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 12, background: notifyBehavioral ? "rgba(245,158,11,0.85)" : "rgba(255,255,255,0.12)", border: "none", cursor: "pointer", position: "relative", transition: "background 0.2s", marginTop: 2 }}>
+                  <button
+                    onClick={async () => {
+                      const next = !notifyBehavioral;
+                      setNotifyBehavioral(next);
+                      if (practitionerId) await supabase.from("practitioners").update({ notify_behavioral: next }).eq("user_id", practitionerId);
+                    }}
+                    style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 12, background: notifyBehavioral ? `${amber}d9` : "rgba(255,255,255,0.12)", border: "none", cursor: "pointer", position: "relative", transition: "background 0.2s", marginTop: 2 }}>
                     <span style={{ position: "absolute", top: 2, left: notifyBehavioral ? 20 : 2, width: 20, height: 20, borderRadius: "50%", background: "white", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.4)" }} />
                   </button>
                 </div>
-                <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: `1px solid ${!notifyCritical ? "rgba(244,63,94,0.2)" : "rgba(255,255,255,0.07)"}`, padding: "16px 18px", display: "flex", alignItems: "flex-start", gap: 14 }}>
+
+                {/* Toggle alertes d'urgence clinique */}
+                <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: `1px solid ${notifyCritical ? "rgba(244,63,94,0.18)" : "rgba(255,255,255,0.07)"}`, padding: "16px 18px", display: "flex", alignItems: "flex-start", gap: 14 }}>
                   <div style={{ flex: 1 }}>
-                    <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.88)" }}>Crises détectées</p>
-                    <p style={{ margin: "0 0 (notifyCritical ? 0 : 6)", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>Notification immédiate — recommandé pour votre couverture professionnelle</p>
-                    {!notifyCritical && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#f87171", lineHeight: 1.5 }}>⚠ Désactiver peut engager votre responsabilité en cas de crise non détectée</p>}
+                    <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.88)" }}>Alertes d'urgence clinique</p>
+                    <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.55 }}>Recevez une alerte par mail lorsque le patient exprime des propos à risque ou lorsque le chat détecte une mise en danger nécessitant une prise en charge humaine</p>
                   </div>
-                  <button onClick={() => setNotifyCritical(v => !v)}
-                    style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 12, background: notifyCritical ? "rgba(16,185,129,0.85)" : "rgba(255,255,255,0.12)", border: "none", cursor: "pointer", position: "relative", transition: "background 0.2s", marginTop: 2 }}>
+                  <button
+                    onClick={async () => {
+                      if (notifyCritical) {
+                        // Désactiver → popup de confirmation
+                        setShowDisableCriticalConfirm(true);
+                      } else {
+                        // Réactiver directement
+                        setNotifyCritical(true);
+                        if (practitionerId) await supabase.from("practitioners").update({ notify_critical: true }).eq("user_id", practitionerId);
+                      }
+                    }}
+                    style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 12, background: notifyCritical ? `${coral}d9` : "rgba(255,255,255,0.12)", border: "none", cursor: "pointer", position: "relative", transition: "background 0.2s", marginTop: 2 }}>
                     <span style={{ position: "absolute", top: 2, left: notifyCritical ? 20 : 2, width: 20, height: 20, borderRadius: "50%", background: "white", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.4)" }} />
                   </button>
                 </div>
               </div>
+
+              {/* Popup de confirmation désactivation alertes critiques */}
+              {showDisableCriticalConfirm && (
+                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, zIndex: 10 }}>
+                  <div style={{ background: "#0d0d0d", borderRadius: 16, padding: "28px 24px", border: "1px solid rgba(244,63,94,0.25)", maxWidth: 320, width: "100%" }}>
+                    <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.25)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={coral} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    </div>
+                    <p style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 700, color: "white", textAlign: "center" }}>Désactiver les alertes d'urgence ?</p>
+                    <p style={{ margin: "0 0 22px", fontSize: 13, color: "#94a3b8", lineHeight: 1.6, textAlign: "center" }}>Désactiver peut engager votre responsabilité en cas de crise non détectée. Êtes-vous sûr ?</p>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <button onClick={() => setShowDisableCriticalConfirm(false)}
+                        style={{ flex: 1, height: 42, borderRadius: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "white"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                        Annuler
+                      </button>
+                      <button onClick={async () => {
+                          setShowDisableCriticalConfirm(false);
+                          setNotifyCritical(false);
+                          if (practitionerId) await supabase.from("practitioners").update({ notify_critical: false }).eq("user_id", practitionerId);
+                        }}
+                        style={{ flex: 1, height: 42, borderRadius: 10, background: "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.25)", color: coral, cursor: "pointer", fontSize: 14, fontWeight: 600 }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.18)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.10)"; }}>
+                        Confirmer
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

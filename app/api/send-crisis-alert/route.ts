@@ -15,13 +15,18 @@ if (authHeader !== process.env.CRISIS_SECRET_TOKEN) {
 
   const [patientResult, practitionerResult] = await Promise.all([
     supabase.from("patients").select("first_name, last_name").eq("user_id", patientId).single(),
-    supabase.from("practitioners").select("first_name, last_name, email").eq("user_id", practitionerId).single(),
+    supabase.from("practitioners").select("first_name, last_name, email, notify_critical").eq("user_id", practitionerId).single(),
   ]);
 
   const patient = patientResult.data as { first_name?: string; last_name?: string } | null;
-  const practitioner = practitionerResult.data as { first_name?: string; last_name?: string; email?: string } | null;
+  const practitioner = practitionerResult.data as { first_name?: string; last_name?: string; email?: string; notify_critical?: boolean } | null;
 
   if (!practitioner?.email) return Response.json({ error: "Email praticien introuvable" }, { status: 400 });
+
+  // Respecter le choix du praticien — sauf pour les alertes via mots-clés bruts (toujours envoyées)
+  if (practitioner.notify_critical === false && alertType !== "suicide" && alertType !== "medical" && alertType !== "threat") {
+    return Response.json({ skipped: true, reason: "notify_critical désactivé" });
+  }
 
   const alertLabels: Record<string, string> = {
     suicide: "🚨 Idées suicidaires exprimées",
