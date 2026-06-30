@@ -97,7 +97,11 @@ function ResetPasswordForm() {
        <div className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
          {error === "__expired__" ? (
            <div className="py-8 text-center">
-             <p style={{ fontSize: 32, marginBottom: 12 }}>⏱</p>
+             <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+               <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                 <circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 15.5 15.5"/><line x1="9" y1="3" x2="15" y2="3"/>
+               </svg>
+             </div>
              <p className="text-sm font-semibold text-white mb-2">Lien expiré</p>
              <p className="text-sm text-zinc-400 mb-6">Ce lien de réinitialisation n'est plus valide.<br />Demandez-en un nouveau depuis la page de connexion.</p>
              <button onClick={() => router.push(isPatient ? "/patient-login" : "/login")}

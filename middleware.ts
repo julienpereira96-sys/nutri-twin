@@ -3,8 +3,10 @@ import { type NextRequest, NextResponse } from "next/server";
 
 export async function middleware(request: NextRequest) {
   // Redirection permanente depuis l'URL Vercel vers le domaine custom
+  // Exception : /reset-password et /set-password car ils utilisent des hash fragments (#access_token=...)
+  // qui sont perdus lors d'une redirection serveur.
   const host = request.headers.get("host") ?? "";
-  if (host === "nutri-twin.vercel.app") {
+  if (host === "nutri-twin.vercel.app" && !request.nextUrl.pathname.startsWith("/reset-password") && !request.nextUrl.pathname.startsWith("/set-password")) {
     const url = request.nextUrl.clone();
     url.host = "nutritwin.fr";
     url.port = "";
