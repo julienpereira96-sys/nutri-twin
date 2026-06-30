@@ -97,9 +97,23 @@ function ResetPasswordForm() {
        <div className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
          {error === "__expired__" ? (
            <div className="py-8 text-center">
-             <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-               <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                 <circle cx="12" cy="12" r="9"/><polyline points="12 6 12 12 15.5 15.5"/><line x1="9" y1="3" x2="15" y2="3"/>
+             <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+               <svg width="52" height="52" viewBox="0 0 24 24" fill="none">
+                 <defs>
+                   <radialGradient id="clock-grad" cx="40%" cy="35%" r="65%">
+                     <stop offset="0%" stopColor="#fcd34d"/>
+                     <stop offset="100%" stopColor="#92400e"/>
+                   </radialGradient>
+                 </defs>
+                 <circle cx="12" cy="12" r="10" fill="url(#clock-grad)"/>
+                 <ellipse cx="9" cy="8" rx="3.5" ry="2" fill="white" opacity="0.2"/>
+                 <circle cx="12" cy="3" r="0.8" fill="#451a03" opacity="0.6"/>
+                 <circle cx="21" cy="12" r="0.8" fill="#451a03" opacity="0.6"/>
+                 <circle cx="12" cy="21" r="0.8" fill="#451a03" opacity="0.6"/>
+                 <circle cx="3" cy="12" r="0.8" fill="#451a03" opacity="0.6"/>
+                 <line x1="12" y1="7" x2="12" y2="12.5" stroke="#451a03" strokeWidth="2.2" strokeLinecap="round"/>
+                 <line x1="12" y1="12.5" x2="15.5" y2="15" stroke="#451a03" strokeWidth="2" strokeLinecap="round"/>
+                 <circle cx="12" cy="12" r="1.5" fill="#78350f"/>
                </svg>
              </div>
              <p className="text-sm font-semibold text-white mb-2">Lien expiré</p>
