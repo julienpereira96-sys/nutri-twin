@@ -1036,19 +1036,31 @@ export default function DashboardPage() {
       }
       const pid = data.user.id;
       setPractitionerId(pid);
-      const { data: practitioner } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin, cabinet_id, plan, subscription_status").eq("user_id", pid).single();
+      // Requête principale — colonnes garanties existantes
+      const { data: practitioner, error: practError } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin, cabinet_id").eq("user_id", pid).single();
+      console.log("[Dashboard] practitioners query →", { practitioner, practError, authEmail: data.user.email });
       if (practitioner) {
-        const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string; cabinet_id?: string | null; plan?: string | null; subscription_status?: string | null };
+        const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string; cabinet_id?: string | null };
         setPractitionerName(`${p.first_name} ${p.last_name}`);
         setPractitionerEmail(p.email ?? data.user.email ?? "");
         setPractitionerSpecialty(p.specialty ?? "");
         setSavedPin(p.discrete_pin ?? "");
         if (p.cabinet_id) setPractitionerCabinetId(p.cabinet_id);
-        setPractitionerPlan(p.plan ?? null);
-        setSubscriptionStatus(p.subscription_status ?? null);
+      } else {
+        // Fallback email auth si la query practitioners échoue
+        if (data.user.email) setPractitionerEmail(data.user.email);
+      }
+      // Colonnes billing — requête séparée (plan/subscription_status ajoutés par Stripe webhook)
+      const { data: billingData, error: billingError } = await supabase.from("practitioners").select("plan, subscription_status").eq("user_id", pid).single();
+      console.log("[Dashboard] billing query →", { billingData, billingError });
+      if (!billingError && billingData) {
+        const b = billingData as { plan?: string | null; subscription_status?: string | null };
+        setPractitionerPlan(b.plan ?? null);
+        setSubscriptionStatus(b.subscription_status ?? null);
       }
       // Colonnes notify_* — requête séparée car nécessitent la migration SQL
       const { data: notifyData, error: notifyError } = await supabase.from("practitioners").select("notify_behavioral, notify_critical").eq("user_id", pid).single();
+      console.log("[Dashboard] notify query →", { notifyData, notifyError });
       if (!notifyError && notifyData) {
         const n = notifyData as { notify_behavioral?: boolean; notify_critical?: boolean };
         if (n.notify_behavioral !== undefined) setNotifyBehavioral(n.notify_behavioral ?? true);

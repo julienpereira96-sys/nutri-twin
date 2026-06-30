@@ -2,6 +2,15 @@ import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  // Redirection permanente depuis l'URL Vercel vers le domaine custom
+  const host = request.headers.get("host") ?? "";
+  if (host === "nutri-twin.vercel.app") {
+    const url = request.nextUrl.clone();
+    url.host = "nutritwin.fr";
+    url.port = "";
+    return NextResponse.redirect(url, { status: 301 });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
