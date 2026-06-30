@@ -20,24 +20,30 @@ function ResetPasswordForm() {
  useEffect(() => {
   const supabase = createSupabaseBrowserClient();
 
-  const timeout = setTimeout(() => {
-    setError("__expired__");
-  }, 10000);
-
   const handleReady = () => {
     clearTimeout(timeout);
     setReady(true);
   };
 
-  // Flow PKCE (Supabase par défaut) : ?code= dans les query params
+  const handleFail = (reason: string) => {
+    clearTimeout(timeout);
+    setError(`__expired__::${reason}`);
+  };
+
+  const timeout = setTimeout(() => {
+    handleFail("timeout_10s — aucun token détecté dans l'URL");
+  }, 10000);
+
+  // Flow PKCE : ?code= dans les query params
   const urlCode = new URLSearchParams(window.location.search).get("code");
   if (urlCode) {
     supabase.auth.exchangeCodeForSession(urlCode).then(({ error }) => {
       if (!error) handleReady();
+      else handleFail(`exchangeCodeForSession: ${error.message}`);
     });
   }
 
-  // Flow implicite (fallback) : #access_token= dans le hash
+  // Flow implicite : #access_token= dans le hash
   const hash = window.location.hash;
   if (hash.includes("access_token")) {
     const params = new URLSearchParams(hash.substring(1));
@@ -45,18 +51,17 @@ function ResetPasswordForm() {
     const refreshToken = params.get("refresh_token");
     if (accessToken && refreshToken) {
       supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
-        .then(() => handleReady());
+        .then(({ error }) => {
+          if (!error) handleReady();
+          else handleFail(`setSession: ${error.message}`);
+        });
     }
   }
 
-  // Écouter l'événement auth (déclenché automatiquement après échange de code)
   const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-    if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
-      handleReady();
-    }
+    if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") handleReady();
   });
 
-  // Vérifier si une session existe déjà (ex: rechargement de page)
   supabase.auth.getSession().then(({ data: { session } }) => {
     if (session) handleReady();
   });
@@ -114,11 +119,14 @@ function ResetPasswordForm() {
        </div>
 
        <div className="rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
-         {error === "__expired__" ? (
+         {error.startsWith("__expired__") ? (
            <div className="py-8 text-center">
              <p style={{ fontSize: 44, marginBottom: 12, lineHeight: 1 }}>⏱</p>
              <p className="text-sm font-semibold text-white mb-2">Lien expiré</p>
              <p className="text-sm text-zinc-400 mb-6">Ce lien de réinitialisation n'est plus valide.<br />Demandez-en un nouveau depuis la page de connexion.</p>
+             {error.includes("::") && (
+               <p className="text-xs text-zinc-600 mb-4 font-mono">{error.split("::")[1]}</p>
+             )}
              <button onClick={() => router.push(isPatient ? "/patient-login" : "/login")}
                className="text-sm font-semibold cursor-pointer" style={{ color: "#10b981" }}>
                Retour à la connexion

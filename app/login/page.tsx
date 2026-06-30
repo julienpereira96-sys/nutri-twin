@@ -242,7 +242,8 @@ export default function LoginPage() {
                   </div>
                 </div>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "white" }}>Email envoyé !</p>
-                <p style={{ margin: "8px 0 0", fontSize: 13, color: "#64748b" }}>Vérifiez votre boîte mail à <strong style={{ color: "#10b981" }}>{forgotEmail}</strong></p>
+                <p style={{ margin: "8px 0 0", fontSize: 13, color: "#64748b" }}>Un lien de réinitialisation a été envoyé à l'adresse suivante :</p>
+                <p style={{ margin: "4px 0 0", fontSize: 13, fontWeight: 600, color: "#10b981" }}>{forgotEmail}</p>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Pensez à vérifier vos spams.</p>
                 <button onClick={closeModal}
                   style={{ marginTop: 20, height: 40, borderRadius: 20, padding: "0 24px", background: "linear-gradient(135deg, #10b981, #059669)", border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
