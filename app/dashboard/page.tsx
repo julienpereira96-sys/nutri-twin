@@ -597,6 +597,9 @@ export default function DashboardPage() {
   const [passwordResetSent, setPasswordResetSent] = useState(false);
   const [showDeletePinModal, setShowDeletePinModal] = useState(false);
   const [deletePinInput, setDeletePinInput] = useState("");
+  const [settingsScreen, setSettingsScreen] = useState<"main"|"profil"|"motdepasse"|"discret"|"abonnement"|"notifications">("main");
+  const [notifyBehavioral, setNotifyBehavioral] = useState(true);
+  const [notifyCritical, setNotifyCritical] = useState(true);
   const [deletePinError, setDeletePinError] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState(0);
   const [practitionerPhoto, setPractitionerPhoto] = useState<string | null>(null);
@@ -2690,10 +2693,10 @@ export default function DashboardPage() {
                     })()}
                     <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
                       <button onClick={() => openMurmureModal()}
-                        style={{ width: 22, height: 22, borderRadius: 6, fontSize: 14, fontWeight: 400, cursor: "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.08)", color: emerald, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+                        style={{ width: 28, height: 28, borderRadius: "50%", cursor: "pointer", border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.08)", color: emerald, display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", flexShrink: 0 }}
                         onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
                         onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                        +
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                       </button>
                     </div>
                     </div>}
@@ -2757,10 +2760,10 @@ export default function DashboardPage() {
                         })()}
                         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
                           <button onClick={() => { setNewNoteText(""); setShowNoteModal(true); }}
-                            style={{ width: 22, height: 22, borderRadius: 6, fontSize: 14, fontWeight: 400, cursor: "pointer", border: "1px solid rgba(255,255,255,0.18)", background: "rgba(255,255,255,0.05)", color: "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; e.currentTarget.style.color = "white"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#94a3b8"; }}>
-                            +
+                            style={{ width: 28, height: 28, borderRadius: "50%", cursor: "pointer", border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.06)", color: "#94a3b8", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s", flexShrink: 0 }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.30)"; e.currentTarget.style.color = "white"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                           </button>
                         </div>
                       </div>}
@@ -3232,7 +3235,7 @@ export default function DashboardPage() {
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 400, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Changer le mot de passe</h2>
-              <button onClick={() => { setShowPasswordModal(false); setPasswordResetSent(false); }} style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", fontSize: 18, color: "#94a3b8", width: 30, height: 30, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+              <button onClick={() => { setShowPasswordModal(false); setPasswordResetSent(false); }} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", flexShrink: 0, transition: "all 0.15s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#64748b"; }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             {passwordResetSent ? (
               <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 14, padding: "20px", textAlign: "center" }}>
@@ -3256,130 +3259,220 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {showSettingsModal && (
-        <div onClick={e => { if (e.target === e.currentTarget) setShowSettingsModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 480, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>Paramètres</h2>
-                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>Gérez votre compte et vos préférences</p>
-              </div>
-              <button onClick={() => setShowSettingsModal(false)} style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+      {showSettingsModal && (() => {
+        const closeSettings = () => { setShowSettingsModal(false); setSettingsScreen("main"); setPasswordResetSent(false); };
+        const SBtn: React.CSSProperties = { width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", flexShrink: 0, transition: "all 0.15s" };
+        const SBtnIn  = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; };
+        const SBtnOut = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#64748b"; };
+        const XIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+        const BackIcon = () => <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>;
+        const SubHeader = ({ title }: { title: string }) => (
+          <div style={{ display: "flex", alignItems: "center", padding: "18px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, gap: 8 }}>
+            <button onClick={() => setSettingsScreen("main")} style={SBtn} onMouseEnter={SBtnIn} onMouseLeave={SBtnOut}><BackIcon /></button>
+            <span style={{ flex: 1, textAlign: "center", fontSize: 17, fontWeight: 700, color: "rgba(255,255,255,0.90)", letterSpacing: "-0.01em" }}>{title}</span>
+            <button onClick={closeSettings} style={SBtn} onMouseEnter={SBtnIn} onMouseLeave={SBtnOut}><XIcon /></button>
+          </div>
+        );
+        const Row = ({ icon, label, badge, onClick }: { icon: React.ReactNode; label: string; badge?: React.ReactNode; onClick: () => void }) => (
+          <button onClick={onClick} style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "0", minHeight: 54, background: "none", border: "none", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer", transition: "background 0.12s", textAlign: "left" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; }}>
+            <span style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", flexShrink: 0 }}>{icon}</span>
+            <span style={{ flex: 1, fontSize: 15, color: "rgba(255,255,255,0.88)", textAlign: "left" }}>{label}</span>
+            {badge}
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        );
+        return (
+        <div onClick={e => { if (e.target === e.currentTarget) closeSettings(); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.80)", backdropFilter: "blur(12px)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#060a08", borderRadius: 20, width: "100%", maxWidth: 420, maxHeight: "90dvh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 0 0 1px rgba(255,255,255,0.10), 0 24px 64px rgba(0,0,0,0.60), 0 0 52px rgba(16,185,129,0.06)" }}>
+
+          {/* ══ ÉCRAN PRINCIPAL ══ */}
+          {settingsScreen === "main" && (<>
+            <div style={{ display: "flex", justifyContent: "flex-end", padding: "14px 16px 0", flexShrink: 0 }}>
+              <button onClick={closeSettings} style={SBtn} onMouseEnter={SBtnIn} onMouseLeave={SBtnOut}><XIcon /></button>
             </div>
-            <div style={{ marginBottom: 24 }}>
-              <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Votre profil</p>
-              <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.06)", padding: "16px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-                  <div style={{ position: "relative", flexShrink: 0 }}>
-                    <div style={{ width: 52, height: 52, borderRadius: "50%", border: `2px solid ${emerald}`, background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 20px 18px", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ width: 52, height: 52, borderRadius: "50%", border: `2px solid ${emerald}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+                {practitionerPhoto ? <img src={practitionerPhoto} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : AVATARS[selectedAvatar]}
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "white" }}>{practitionerName}</p>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>{practitionerEmail}</p>
+                {practitionerSpecialty && <p style={{ margin: "2px 0 0", fontSize: 11, color: emerald }}>{practitionerSpecialty}</p>}
+              </div>
+            </div>
+            <div style={{ padding: "6px 20px", overflowY: "auto", flex: 1 }}>
+              <Row icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>} label="Profil" onClick={() => setSettingsScreen("profil")} />
+              <Row icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>} label="Mot de passe" onClick={() => setSettingsScreen("motdepasse")} />
+              <Row icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>} label="Mode discret"
+                badge={savedPin ? <span style={{ fontSize: 10, fontWeight: 600, color: amber, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, padding: "2px 8px", marginRight: 4 }}>PIN actif</span> : undefined}
+                onClick={() => setSettingsScreen("discret")} />
+              <Row icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>} label="Abonnement"
+                badge={<span style={{ fontSize: 12, color: emerald, marginRight: 4 }}>{practitionerPlan === "fondateur" ? "Fondateur" : practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Pro" : practitionerPlan === "cabinet" ? "Cabinet" : ""}</span>}
+                onClick={() => setSettingsScreen("abonnement")} />
+              <Row icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>} label="Notifications" onClick={() => setSettingsScreen("notifications")} />
+            </div>
+          </>)}
+
+          {/* ══ PROFIL ══ */}
+          {settingsScreen === "profil" && (
+            <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+              <SubHeader title="Profil" />
+              <div style={{ overflowY: "auto", flex: 1, padding: "24px 20px" }}>
+                <div style={{ textAlign: "center", marginBottom: 24 }}>
+                  <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 12px" }}>
+                    <div style={{ width: 72, height: 72, borderRadius: "50%", border: `2px solid ${emerald}`, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
                       {practitionerPhoto ? <img src={practitionerPhoto} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : AVATARS[selectedAvatar]}
                     </div>
-                    <button onClick={() => avatarInputRef.current?.click()} style={{ position: "absolute", bottom: -2, right: -2, width: 18, height: 18, borderRadius: "50%", background: emerald, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="black" strokeWidth="2.5" strokeLinecap="round"/></svg>
+                    <button onClick={() => avatarInputRef.current?.click()} style={{ position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: emerald, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                     </button>
                     <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = ev => setPractitionerPhoto(ev.target?.result as string); reader.readAsDataURL(file); }} />
                   </div>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "white" }}>{practitionerName}</p>
-                    <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{practitionerEmail}</p>
-                    {practitionerSpecialty && <p style={{ margin: "2px 0 0", fontSize: 11, color: emerald }}>{practitionerSpecialty}</p>}
-                  </div>
+                  <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "white" }}>{practitionerName}</p>
+                  <p style={{ margin: "3px 0 0", fontSize: 12, color: "#64748b" }}>{practitionerEmail}</p>
+                  {practitionerPhoto && <button onClick={() => setPractitionerPhoto(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", textDecoration: "underline", padding: 0, marginTop: 8 }}>Supprimer la photo</button>}
                 </div>
                 {!practitionerPhoto && (
-                  <>
-                    <p style={{ margin: "0 0 8px", fontSize: 11, color: "#64748b" }}>Choisir un avatar</p>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <div>
+                    <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>Choisir un avatar</p>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
                       {AVATARS.map((avatar, i) => (
-                        <button key={i} onClick={() => setSelectedAvatar(i)} style={{ width: 40, height: 40, borderRadius: "50%", border: `2px solid ${selectedAvatar === i ? emerald : "rgba(255,255,255,0.08)"}`, background: selectedAvatar === i ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s" }}>
+                        <button key={i} onClick={() => setSelectedAvatar(i)} style={{ width: 44, height: 44, borderRadius: "50%", border: `2px solid ${selectedAvatar === i ? emerald : "rgba(255,255,255,0.08)"}`, background: selectedAvatar === i ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s" }}>
                           {avatar}
                         </button>
                       ))}
                     </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ══ MOT DE PASSE ══ */}
+          {settingsScreen === "motdepasse" && (
+            <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+              <SubHeader title="Mot de passe" />
+              <div style={{ padding: "28px 24px" }}>
+                {passwordResetSent ? (
+                  <div style={{ background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 14, padding: "28px 20px", textAlign: "center" }}>
+                    <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(5,150,105,0.15)", border: "2px solid #059669", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "white" }}>Email envoyé !</p>
+                    <p style={{ margin: "6px 0 20px", fontSize: 13, color: "#64748b" }}>Vérifiez votre boîte mail à <strong style={{ color: emerald }}>{practitionerEmail}</strong></p>
+                    <button onClick={() => { setPasswordResetSent(false); setSettingsScreen("main"); }} style={{ height: 40, borderRadius: 20, padding: "0 24px", background: emerald, border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Retour</button>
+                  </div>
+                ) : (
+                  <>
+                    <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b", lineHeight: 1.7 }}>Un lien de réinitialisation sera envoyé à <strong style={{ color: "rgba(255,255,255,0.88)" }}>{practitionerEmail}</strong></p>
+                    <button onClick={async () => { const s = createSupabaseBrowserClient(); await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/reset-password` }); setPasswordResetSent(true); }}
+                      style={{ width: "100%", height: 46, borderRadius: 12, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.20)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>
+                      Envoyer le lien de réinitialisation
+                    </button>
                   </>
                 )}
-                {practitionerPhoto && <button onClick={() => setPractitionerPhoto(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", textDecoration: "underline", padding: 0, marginTop: 4 }}>Supprimer la photo</button>}
               </div>
             </div>
-            <div style={{ marginBottom: 24 }}>
-              <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Mode discret</p>
-              <div style={{ background: "rgba(245,158,11,0.05)", borderRadius: 12, border: "1px solid rgba(245,158,11,0.2)", padding: "16px" }}>
-                <p style={{ margin: "0 0 10px", fontSize: 11, color: "#64748b", lineHeight: 1.5 }}>{savedPin ? "Un PIN est défini. Entrez un nouveau code pour le modifier." : "Définissez un code PIN pour sécuriser la sortie du mode discret."}</p>
+          )}
+
+          {/* ══ MODE DISCRET ══ */}
+          {settingsScreen === "discret" && (
+            <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+              <SubHeader title="Mode discret" />
+              <div style={{ padding: "24px" }}>
+                <p style={{ margin: "0 0 18px", fontSize: 13, color: "#64748b", lineHeight: 1.7 }}>{savedPin ? "Un PIN est défini. Entrez un nouveau code pour le modifier." : "Définissez un code PIN pour sécuriser la sortie du mode discret."}</p>
                 <input type="password" value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder={savedPin ? "Nouveau PIN (4-6 chiffres)" : "Créer un PIN (4-6 chiffres)"} maxLength={6}
-                  style={{ width: "100%", height: 40, borderRadius: 10, border: "1px solid rgba(245,158,11,0.3)", background: "#161616", color: "white", padding: "0 12px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", marginBottom: 10 }} />
+                  style={{ width: "100%", height: 46, borderRadius: 12, border: "1px solid rgba(245,158,11,0.3)", background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", marginBottom: 12 }} />
                 <button onClick={() => void saveSettings()} disabled={savingSettings || !newPin || newPin.length < 4}
-                  style={{ width: "100%", height: 40, borderRadius: 10, background: savingSettings || !newPin || newPin.length < 4 ? "rgba(255,255,255,0.04)" : "rgba(245,158,11,0.08)", border: `1px solid ${savingSettings || !newPin || newPin.length < 4 ? "rgba(255,255,255,0.06)" : "rgba(245,158,11,0.2)"}`, color: savingSettings || !newPin || newPin.length < 4 ? "#64748b" : amber, fontSize: 13, fontWeight: 500, cursor: savingSettings || !newPin || newPin.length < 4 ? "not-allowed" : "pointer", transition: "all 0.2s", marginBottom: savedPin ? 8 : 0 }}
+                  style={{ width: "100%", height: 46, borderRadius: 12, background: savingSettings || !newPin || newPin.length < 4 ? "rgba(255,255,255,0.04)" : "rgba(245,158,11,0.08)", border: `1px solid ${savingSettings || !newPin || newPin.length < 4 ? "rgba(255,255,255,0.06)" : "rgba(245,158,11,0.2)"}`, color: savingSettings || !newPin || newPin.length < 4 ? "#64748b" : amber, fontSize: 14, fontWeight: 500, cursor: savingSettings || !newPin || newPin.length < 4 ? "not-allowed" : "pointer", transition: "all 0.2s", marginBottom: 10 }}
                   onMouseEnter={e => { if (!savingSettings && newPin && newPin.length >= 4) e.currentTarget.style.background = "rgba(245,158,11,0.15)"; }}
                   onMouseLeave={e => { if (!savingSettings && newPin && newPin.length >= 4) e.currentTarget.style.background = "rgba(245,158,11,0.08)"; }}>
-                  {settingsSaved ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>PIN sauvegardé</span> : savingSettings ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500/20 border-t-amber-400" />Sauvegarde</span> : "Sauvegarder le PIN"}
+                  {settingsSaved ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>PIN sauvegardé</span> : savingSettings ? "Sauvegarde…" : "Sauvegarder le PIN"}
                 </button>
-                {savedPin && <button onClick={() => setShowDeletePinModal(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#f87171", textDecoration: "underline", padding: 0 }}>Supprimer le PIN</button>}
+                {savedPin && <button onClick={() => setShowDeletePinModal(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", textDecoration: "underline", padding: 0 }}>Supprimer le PIN</button>}
               </div>
             </div>
-            <div style={{ marginBottom: 24 }}>
-              <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Sécurité</p>
-              <button onClick={() => setShowPasswordModal(true)} style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", fontSize: 14, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#94a3b8"; }}>Changer mon mot de passe</button>
-            </div>
+          )}
 
-            {/* ─── Abonnement & Facturation ─── */}
-            <div style={{ marginBottom: 24 }}>
-              <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Abonnement</p>
-              <div style={{ background: "rgba(16,185,129,0.04)", borderRadius: 12, border: "1px solid rgba(16,185,129,0.12)", padding: "14px 16px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    {/* Icône plan */}
-                    <div style={{ width: 34, height: 34, borderRadius: 9, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                      </svg>
+          {/* ══ ABONNEMENT ══ */}
+          {settingsScreen === "abonnement" && (
+            <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+              <SubHeader title="Abonnement" />
+              <div style={{ padding: "24px" }}>
+                <div style={{ background: "rgba(16,185,129,0.04)", borderRadius: 14, border: "1px solid rgba(16,185,129,0.12)", padding: "18px 20px", marginBottom: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: planUpdateSuccess ? 12 : 0 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
                     </div>
                     <div>
-                      <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "white", lineHeight: 1.2 }}>
-                        {practitionerPlan === "fondateur" ? "Fondateur"
-                          : practitionerPlan === "essentiel" ? "Essentiel"
-                          : practitionerPlan === "pro" ? "Professionnel"
-                          : practitionerPlan === "cabinet" ? "Cabinet"
-                          : "–"}
+                      <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "white" }}>
+                        {practitionerPlan === "fondateur" ? "Fondateur" : practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Professionnel" : practitionerPlan === "cabinet" ? "Cabinet" : "–"}
                       </p>
-                      <p style={{ margin: "2px 0 0", fontSize: 11, color: subscriptionStatus === "active" ? emerald : subscriptionStatus === "trialing" ? amber : "#64748b" }}>
-                        {subscriptionStatus === "active" ? "Actif"
-                          : subscriptionStatus === "trialing" ? "Période d'essai"
-                          : subscriptionStatus === "past_due" ? "Paiement en retard"
-                          : subscriptionStatus === "cancelled" ? "Résilié"
-                          : subscriptionStatus ?? "–"}
+                      <p style={{ margin: "2px 0 0", fontSize: 12, color: subscriptionStatus === "active" ? emerald : subscriptionStatus === "trialing" ? amber : "#64748b" }}>
+                        {subscriptionStatus === "active" ? "Actif" : subscriptionStatus === "trialing" ? "Période d'essai" : subscriptionStatus === "past_due" ? "Paiement en retard" : subscriptionStatus === "cancelled" ? "Résilié" : subscriptionStatus ?? "–"}
                       </p>
                     </div>
                   </div>
-                  {/* Bouton changer — masqué si fondateur */}
-                  {practitionerPlan !== "fondateur" && (
-                    <button
-                      onClick={() => { setPlanUpdateError(""); setShowBillingModal(true); }}
-                      style={{ flexShrink: 0, height: 34, padding: "0 14px", borderRadius: 8, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: emerald, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}
-                    >
-                      Changer de plan
-                    </button>
-                  )}
-                  {practitionerPlan === "fondateur" && (
-                    <span style={{ fontSize: 11, color: "#64748b", fontStyle: "italic" }}>Plan verrouillé</span>
+                  {planUpdateSuccess && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, paddingTop: 10, borderTop: "1px solid rgba(16,185,129,0.12)" }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      <span style={{ fontSize: 12, color: emerald }}>Plan mis à jour avec succès.</span>
+                    </div>
                   )}
                 </div>
-                {planUpdateSuccess && (
-                  <div style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6 }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    <span style={{ fontSize: 12, color: emerald }}>Plan mis à jour avec succès.</span>
-                  </div>
+                {practitionerPlan !== "fondateur" ? (
+                  <button onClick={() => { setPlanUpdateError(""); setShowBillingModal(true); }}
+                    style={{ width: "100%", height: 46, borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}>
+                    Changer de plan
+                  </button>
+                ) : (
+                  <p style={{ textAlign: "center", fontSize: 12, color: "#64748b", fontStyle: "italic" }}>Plan fondateur — verrouillé</p>
                 )}
               </div>
             </div>
+          )}
 
-            <div>
-              <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Session</p>
-              <button onClick={() => setShowLogoutModal(true)} style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; }}>Se déconnecter</button>
+          {/* ══ NOTIFICATIONS ══ */}
+          {settingsScreen === "notifications" && (
+            <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+              <SubHeader title="Notifications" />
+              <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 12 }}>
+                <p style={{ margin: "0 0 6px", fontSize: 13, color: "#64748b", lineHeight: 1.7 }}>Les alertes sont envoyées à <strong style={{ color: "rgba(255,255,255,0.75)" }}>{practitionerEmail}</strong></p>
+                <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", display: "flex", alignItems: "flex-start", gap: 14 }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.88)" }}>Alertes comportementales</p>
+                    <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>Email si le patient ne revient pas au vert après 12h</p>
+                  </div>
+                  <button onClick={() => setNotifyBehavioral(v => !v)}
+                    style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 12, background: notifyBehavioral ? "rgba(245,158,11,0.85)" : "rgba(255,255,255,0.12)", border: "none", cursor: "pointer", position: "relative", transition: "background 0.2s", marginTop: 2 }}>
+                    <span style={{ position: "absolute", top: 2, left: notifyBehavioral ? 20 : 2, width: 20, height: 20, borderRadius: "50%", background: "white", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.4)" }} />
+                  </button>
+                </div>
+                <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: `1px solid ${!notifyCritical ? "rgba(244,63,94,0.2)" : "rgba(255,255,255,0.07)"}`, padding: "16px 18px", display: "flex", alignItems: "flex-start", gap: 14 }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: "0 0 3px", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.88)" }}>Crises détectées</p>
+                    <p style={{ margin: "0 0 (notifyCritical ? 0 : 6)", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>Notification immédiate — recommandé pour votre couverture professionnelle</p>
+                    {!notifyCritical && <p style={{ margin: "6px 0 0", fontSize: 11, color: "#f87171", lineHeight: 1.5 }}>⚠ Désactiver peut engager votre responsabilité en cas de crise non détectée</p>}
+                  </div>
+                  <button onClick={() => setNotifyCritical(v => !v)}
+                    style={{ flexShrink: 0, width: 42, height: 24, borderRadius: 12, background: notifyCritical ? "rgba(16,185,129,0.85)" : "rgba(255,255,255,0.12)", border: "none", cursor: "pointer", position: "relative", transition: "background 0.2s", marginTop: 2 }}>
+                    <span style={{ position: "absolute", top: 2, left: notifyCritical ? 20 : 2, width: 20, height: 20, borderRadius: "50%", background: "white", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.4)" }} />
+                  </button>
+                </div>
+              </div>
             </div>
+          )}
+
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* ── Modale changement de plan ── */}
       {showBillingModal && (
@@ -3474,7 +3567,7 @@ export default function DashboardPage() {
                 <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white", lineHeight: 1.4 }}>Dictez des consignes qui seront traitées en priorité absolue pour ce patient</h2>
                 <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Choisissez la durée appropriée pour cette consigne.</p>
               </div>
-              <button onClick={() => setShowMurmureModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#64748b", marginTop: 2, flexShrink: 0 }}>×</button>
+              <button onClick={() => setShowMurmureModal(false)} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", flexShrink: 0, transition: "all 0.15s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#64748b"; }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <textarea value={murmureText} onChange={(e) => setMurmureText(e.target.value)} placeholder="Exemple: Sois plus doux cette semaine, elle traverse une période difficile au travail." rows={5}
               style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.6 }} />
@@ -3540,7 +3633,7 @@ export default function DashboardPage() {
                 <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>Votre expertise</p>
                 <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>Mon Jumeau</h2>
               </div>
-              <button onClick={() => setShowJumeauModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, color: "#94a3b8" }}>×</button>
+              <button onClick={() => setShowJumeauModal(false)} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", flexShrink: 0, transition: "all 0.15s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#64748b"; }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
 
             {/* MA VISION ET MA SIGNATURE */}
@@ -4389,7 +4482,7 @@ export default function DashboardPage() {
                 <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Ajoutez une note pour ce patient</h2>
                 <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Ces annotations restent strictement confidentielles et ne sont visibles que par vous.</p>
               </div>
-              <button onClick={() => setShowNoteModal(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#64748b", marginTop: 2, flexShrink: 0 }}>×</button>
+              <button onClick={() => setShowNoteModal(false)} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", flexShrink: 0, transition: "all 0.15s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#64748b"; }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <textarea value={newNoteText} onChange={e => setNewNoteText(e.target.value)} placeholder="Exemple: Patiente recommandée par Dr Martin. Attention au sujet du poids en consultation." rows={5}
               style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 16 }}
@@ -4422,9 +4515,7 @@ export default function DashboardPage() {
                 </div>
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Préparer ma séance</h2>
               </div>
-              <button onClick={() => { setShowBilanModal(false); setBilanContent(""); }} style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, transition: "all 0.2s" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "white"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#94a3b8"; }}>×</button>
+              <button onClick={() => { setShowBilanModal(false); setBilanContent(""); }} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", flexShrink: 0, transition: "all 0.15s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#64748b"; }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.12)", borderRadius: 12, padding: "12px 16px", marginBottom: 20 }}>
               <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>L'IA analyse les derniers échanges de votre patient pour vous suggérer 3 questions clés à poser lors de votre prochaine consultation.</p>
