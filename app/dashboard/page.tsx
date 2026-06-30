@@ -3523,7 +3523,7 @@ export default function DashboardPage() {
                     </button>
                     <button onClick={async () => {
                       const s = createSupabaseBrowserClient();
-                      await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/reset-password` });
+                      await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/auth/callback?next=/reset-password` });
                       setPasswordResetSent(true);
                     }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#64748b", textDecoration: "underline", padding: 0, textAlign: "center" }}>
                       Mot de passe oublié ?

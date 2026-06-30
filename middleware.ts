@@ -54,6 +54,11 @@ export async function middleware(request: NextRequest) {
   // Page d'accueil — publique
   if (path === "/") return supabaseResponse;
 
+  // /auth/callback — échange de code PKCE côté serveur, passe toujours
+  if (path.startsWith("/auth/callback")) {
+    return supabaseResponse;
+  }
+
   // /set-password et /reset-password — protégés par token Supabase
   if (path.startsWith("/set-password") || path.startsWith("/reset-password")) {
     return supabaseResponse;

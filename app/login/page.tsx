@@ -87,7 +87,7 @@ export default function LoginPage() {
       return;
     }
     const supabase = createSupabaseBrowserClient();
-    await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: `${window.location.origin}/reset-password` });
+    await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: `${window.location.origin}/auth/callback?next=/reset-password` });
     setResetSent(true);
     setResetLoading(false);
   };  
