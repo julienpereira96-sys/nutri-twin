@@ -607,6 +607,9 @@ export default function DashboardPage() {
   const [passwordError, setPasswordError] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordChanged, setPasswordChanged] = useState(false);
+  const [showOldPwd, setShowOldPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
   const [deletePinError, setDeletePinError] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState(0);
   const [practitionerPhoto, setPractitionerPhoto] = useState<string | null>(null);
@@ -1032,7 +1035,7 @@ export default function DashboardPage() {
       if (practitioner) {
         const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string; cabinet_id?: string | null; plan?: string | null; subscription_status?: string | null; notify_behavioral?: boolean; notify_critical?: boolean };
         setPractitionerName(`${p.first_name} ${p.last_name}`);
-        setPractitionerEmail(p.email ?? "");
+        setPractitionerEmail(p.email ?? data.user.email ?? "");
         setPractitionerSpecialty(p.specialty ?? "");
         setSavedPin(p.discrete_pin ?? "");
         if (p.cabinet_id) setPractitionerCabinetId(p.cabinet_id);
@@ -2203,7 +2206,7 @@ export default function DashboardPage() {
                     <button key={patient.id} onClick={() => { setSelectedPatientId(patient.id); setShowInterventionBubble(false); setReplyMode(false); setReplyText(""); setReplyIsFromJumeau(false); }}
                       style={{ width: "100%", borderRadius: 12, padding: "10px 12px", textAlign: "left", cursor: "pointer", marginBottom: 6, background: cardBg, border: `1px solid ${cardBorder}`, transition: "all 0.2s", boxShadow: cardShadow }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "white", flexShrink: 0 }}>
+                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "white", flexShrink: 0, filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
                           {patient.initials}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -2249,7 +2252,7 @@ export default function DashboardPage() {
                 <>
                   <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                     <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: selectedPatient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "white", flexShrink: 0 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: "50%", background: selectedPatient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "white", flexShrink: 0, filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
                         {selectedPatient.initials}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -2704,7 +2707,7 @@ export default function DashboardPage() {
                                 </div>
                               </>
                             ) : (
-                              <p style={{ margin: "0 0 3px", fontSize: 11, color: isExpired ? "#64748b" : "#94a3b8", lineHeight: 1.5, textDecoration: isExpired ? "line-through" : "none" }}>{m.text}</p>
+                              <p style={{ margin: "0 0 3px", fontSize: 11, color: isExpired ? "#64748b" : "#94a3b8", lineHeight: 1.5, textDecoration: isExpired ? "line-through" : "none", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{m.text}</p>
                             )}
                             {!isEditingThis && (
                               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -2773,7 +2776,7 @@ export default function DashboardPage() {
                                     </div>
                                   </>
                                 ) : (
-                                  <p style={{ margin: "0 0 3px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>{n.text}</p>
+                                  <p style={{ margin: "0 0 3px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5, filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{n.text}</p>
                                 )}
                                 {!isEditingThis && (
                                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -3054,7 +3057,7 @@ export default function DashboardPage() {
                         }}>
                         {/* Header carte */}
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: hasAlert || hasVictory ? 12 : 0 }}>
-                          <div style={{ width: 38, height: 38, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "white", flexShrink: 0 }}>{patient.initials}</div>
+                          <div style={{ width: 38, height: 38, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "white", flexShrink: 0, filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{patient.initials}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "white", filter: discretMode ? "blur(4px)" : "none" }}>{patient.firstName} {patient.lastName}</p>
                             {patient.emotional_insight && (
@@ -3329,8 +3332,9 @@ export default function DashboardPage() {
 
           {/* ══ ÉCRAN PRINCIPAL ══ */}
           {settingsScreen === "main" && (<>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
-              <span style={{ fontSize: 17, fontWeight: 700, color: "rgba(255,255,255,0.90)", letterSpacing: "-0.01em" }}>Mes paramètres</span>
+            <div style={{ display: "flex", alignItems: "center", padding: "18px 18px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0, gap: 8 }}>
+              <div style={{ width: 36, height: 36, flexShrink: 0 }} />
+              <span style={{ flex: 1, textAlign: "center", fontSize: 17, fontWeight: 700, color: "rgba(255,255,255,0.90)", letterSpacing: "-0.01em" }}>Mes paramètres</span>
               <button onClick={closeSettings} style={SBtn} onMouseEnter={SBtnIn} onMouseLeave={SBtnOut}><XIcon /></button>
             </div>
             <div style={{ padding: "6px 20px", overflowY: "auto", flex: 1 }}>
@@ -3340,7 +3344,7 @@ export default function DashboardPage() {
                 badge={savedPin ? <span style={{ fontSize: 10, fontWeight: 600, color: amber, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, padding: "2px 8px", marginRight: 4 }}>PIN actif</span> : undefined}
                 onClick={() => setSettingsScreen("discret")} />
               <Row icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>} label="Abonnement"
-                badge={<span style={{ fontSize: 12, color: emerald, marginRight: 4 }}>{practitionerPlan === "fondateur" ? "Fondateur" : practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Pro" : practitionerPlan === "cabinet" ? "Cabinet" : ""}</span>}
+                badge={<span style={{ fontSize: 12, color: practitionerPlan ? emerald : "#64748b", marginRight: 4 }}>{practitionerPlan === "fondateur" ? "Fondateur" : practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Pro" : practitionerPlan === "cabinet" ? "Cabinet" : "–"}</span>}
                 onClick={() => setSettingsScreen("abonnement")} />
               <Row icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>} label="Notifications" onClick={() => setSettingsScreen("notifications")} />
             </div>
@@ -3366,11 +3370,11 @@ export default function DashboardPage() {
                   {practitionerPhoto && <button onClick={() => setPractitionerPhoto(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", textDecoration: "underline", padding: 0, marginTop: 8 }}>Supprimer la photo</button>}
                 </div>
                 {!practitionerPhoto && (
-                  <div>
+                  <div style={{ marginTop: 16 }}>
                     <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>Choisir un avatar</p>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-                      {AVATARS.map((avatar, i) => (
-                        <button key={i} onClick={() => setSelectedAvatar(i)} style={{ width: 44, height: 44, borderRadius: "50%", border: `2px solid ${selectedAvatar === i ? emerald : "rgba(255,255,255,0.08)"}`, background: selectedAvatar === i ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s" }}>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", justifyContent: "center" }}>
+                      {AVATARS.slice(0, 7).map((avatar, i) => (
+                        <button key={i} onClick={() => setSelectedAvatar(i)} style={{ width: 40, height: 40, borderRadius: "50%", border: `2px solid ${selectedAvatar === i ? emerald : "rgba(255,255,255,0.08)"}`, background: selectedAvatar === i ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s", flexShrink: 0 }}>
                           {avatar}
                         </button>
                       ))}
@@ -3399,18 +3403,33 @@ export default function DashboardPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
                       <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Mot de passe actuel</label>
-                      <input type="password" value={oldPassword} onChange={e => { setOldPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" autoComplete="current-password"
-                        style={{ width: "100%", height: 44, borderRadius: 10, border: `1px solid ${passwordError && passwordError.includes("actuel") ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" }} />
+                      <div style={{ position: "relative" }}>
+                        <input type={showOldPwd ? "text" : "password"} value={oldPassword} onChange={e => { setOldPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" autoComplete="current-password"
+                          style={{ width: "100%", height: 44, borderRadius: 10, border: `1px solid ${passwordError && passwordError.includes("actuel") ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: "0 44px 0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" }} />
+                        <button type="button" onClick={() => setShowOldPwd(v => !v)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: 0, display: "flex", alignItems: "center" }}>
+                          {showOldPwd ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg> : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Nouveau mot de passe</label>
-                      <input type="password" value={newPasswordField} onChange={e => { setNewPasswordField(e.target.value); setPasswordError(""); }} placeholder="8 caractères minimum" autoComplete="new-password"
-                        style={{ width: "100%", height: 44, borderRadius: 10, border: `1px solid ${passwordError && passwordError.includes("8") ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" }} />
+                      <div style={{ position: "relative" }}>
+                        <input type={showNewPwd ? "text" : "password"} value={newPasswordField} onChange={e => { setNewPasswordField(e.target.value); setPasswordError(""); }} placeholder="8 caractères minimum" autoComplete="new-password"
+                          style={{ width: "100%", height: 44, borderRadius: 10, border: `1px solid ${passwordError && passwordError.includes("8") ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: "0 44px 0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" }} />
+                        <button type="button" onClick={() => setShowNewPwd(v => !v)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: 0, display: "flex", alignItems: "center" }}>
+                          {showNewPwd ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg> : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Confirmer le nouveau mot de passe</label>
-                      <input type="password" value={confirmPassword} onChange={e => { setConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" autoComplete="new-password"
-                        style={{ width: "100%", height: 44, borderRadius: 10, border: `1px solid ${passwordError && passwordError.includes("correspondent") ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" }} />
+                      <div style={{ position: "relative" }}>
+                        <input type={showConfirmPwd ? "text" : "password"} value={confirmPassword} onChange={e => { setConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" autoComplete="new-password"
+                          style={{ width: "100%", height: 44, borderRadius: 10, border: `1px solid ${passwordError && passwordError.includes("correspondent") ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: "0 44px 0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" }} />
+                        <button type="button" onClick={() => setShowConfirmPwd(v => !v)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#64748b", padding: 0, display: "flex", alignItems: "center" }}>
+                          {showConfirmPwd ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg> : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
+                        </button>
+                      </div>
                     </div>
                     {passwordError && <p style={{ margin: 0, fontSize: 13, color: "#f87171", lineHeight: 1.5 }}>{passwordError}</p>}
                     <button
