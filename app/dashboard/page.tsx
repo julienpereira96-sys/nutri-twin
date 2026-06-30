@@ -3366,7 +3366,13 @@ export default function DashboardPage() {
                     <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = ev => setPractitionerPhoto(ev.target?.result as string); reader.readAsDataURL(file); }} />
                   </div>
                   <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "white" }}>{practitionerName}</p>
-                  <p style={{ margin: "3px 0 0", fontSize: 12, color: "#64748b" }}>{practitionerEmail}</p>
+                  <div style={{ marginTop: 6, padding: "6px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, display: "inline-block" }}>
+                    <p style={{ margin: 0, fontSize: 12, color: "#94a3b8" }}>{practitionerEmail || "—"}</p>
+                  </div>
+                  <p style={{ margin: "6px 0 0", fontSize: 11, color: "#374151" }}>
+                    Besoin de changer d'adresse ?{" "}
+                    <a href="mailto:support@nutritwin.fr" style={{ color: "#64748b", textDecoration: "underline", cursor: "pointer" }}>Contacter le support</a>
+                  </p>
                   {practitionerPhoto && <button onClick={() => setPractitionerPhoto(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", textDecoration: "underline", padding: 0, marginTop: 8 }}>Supprimer la photo</button>}
                 </div>
                 {!practitionerPhoto && (
