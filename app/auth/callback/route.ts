@@ -39,8 +39,7 @@ export async function GET(request: NextRequest) {
       | "email"
       | "signup"
       | "invite"
-      | "email_change"
-      | "sms";
+      | "email_change";
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: otpType });
     if (!error) return redirectResponse;
     const errorMsg = encodeURIComponent(error.message ?? "unknown");
