@@ -43,6 +43,9 @@ export async function POST(request: Request) {
 <html lang="fr">
 <head>
   <meta charset="utf-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -63,7 +66,9 @@ export async function POST(request: Request) {
       padding-bottom: 20px;
       border-bottom: 1px solid #e2e8f0;
     }
-    .logo { font-size: 20px; font-weight: 800; color: #10b981; letter-spacing: -0.5px; }
+    .logo { font-size: 22px; font-family: 'Plus Jakarta Sans', Arial, sans-serif; letter-spacing: -0.03em; line-height: 1; }
+    .logo-nutri { font-weight: 400; color: #0f172a; }
+    .logo-twin  { font-weight: 800; color: #10b981; }
     .meta { text-align: right; font-size: 11px; color: #94a3b8; line-height: 1.9; }
 
     /* ── Badge ── */
@@ -122,7 +127,7 @@ export async function POST(request: Request) {
 </head>
 <body>
   <div class="header">
-    <div class="logo">NutriTwin</div>
+    <div class="logo"><span class="logo-nutri">Nutri</span><span class="logo-twin">Twin</span></div>
     <div class="meta">
       <div>${practitionerName ?? ""}</div>
       <div>Généré le ${new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</div>
