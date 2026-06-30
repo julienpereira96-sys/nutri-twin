@@ -1036,9 +1036,9 @@ export default function DashboardPage() {
       }
       const pid = data.user.id;
       setPractitionerId(pid);
-      const { data: practitioner } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin, cabinet_id, plan, subscription_status, notify_behavioral, notify_critical").eq("user_id", pid).single();
+      const { data: practitioner } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin, cabinet_id, plan, subscription_status").eq("user_id", pid).single();
       if (practitioner) {
-        const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string; cabinet_id?: string | null; plan?: string | null; subscription_status?: string | null; notify_behavioral?: boolean; notify_critical?: boolean };
+        const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string; cabinet_id?: string | null; plan?: string | null; subscription_status?: string | null };
         setPractitionerName(`${p.first_name} ${p.last_name}`);
         setPractitionerEmail(p.email ?? data.user.email ?? "");
         setPractitionerSpecialty(p.specialty ?? "");
@@ -1046,8 +1046,13 @@ export default function DashboardPage() {
         if (p.cabinet_id) setPractitionerCabinetId(p.cabinet_id);
         setPractitionerPlan(p.plan ?? null);
         setSubscriptionStatus(p.subscription_status ?? null);
-        if (p.notify_behavioral !== undefined) setNotifyBehavioral(p.notify_behavioral ?? true);
-        if (p.notify_critical !== undefined) setNotifyCritical(p.notify_critical ?? true);
+      }
+      // Colonnes notify_* — requête séparée car nécessitent la migration SQL
+      const { data: notifyData, error: notifyError } = await supabase.from("practitioners").select("notify_behavioral, notify_critical").eq("user_id", pid).single();
+      if (!notifyError && notifyData) {
+        const n = notifyData as { notify_behavioral?: boolean; notify_critical?: boolean };
+        if (n.notify_behavioral !== undefined) setNotifyBehavioral(n.notify_behavioral ?? true);
+        if (n.notify_critical !== undefined) setNotifyCritical(n.notify_critical ?? true);
       }
       // Tour check séparé pour ne pas bloquer le chargement si la colonne n'existe pas encore
       const { data: tourData, error: tourError } = await supabase.from("practitioners").select("dashboard_tour_done").eq("user_id", pid).single();
