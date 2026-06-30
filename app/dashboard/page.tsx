@@ -610,6 +610,11 @@ export default function DashboardPage() {
   const [showOldPwd, setShowOldPwd] = useState(false);
   const [showNewPwd, setShowNewPwd] = useState(false);
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+  const [showEmailChange, setShowEmailChange] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [changingEmail, setChangingEmail] = useState(false);
+  const [emailChangeSent, setEmailChangeSent] = useState(false);
+  const [emailChangeError, setEmailChangeError] = useState("");
   const [deletePinError, setDeletePinError] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState(0);
   const [practitionerPhoto, setPractitionerPhoto] = useState<string | null>(null);
@@ -3366,13 +3371,49 @@ export default function DashboardPage() {
                     <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = ev => setPractitionerPhoto(ev.target?.result as string); reader.readAsDataURL(file); }} />
                   </div>
                   <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "white" }}>{practitionerName}</p>
-                  <div style={{ marginTop: 6, padding: "6px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, display: "inline-block" }}>
+                  <div style={{ marginTop: 6, padding: "6px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 8 }}>
                     <p style={{ margin: 0, fontSize: 12, color: "#94a3b8" }}>{practitionerEmail || "—"}</p>
+                    {!showEmailChange && !emailChangeSent && (
+                      <button onClick={() => { setShowEmailChange(true); setEmailChangeError(""); setNewEmail(""); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, color: "#475569", transition: "color 0.15s" }} onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"} onMouseLeave={e => e.currentTarget.style.color = "#475569"} title="Modifier l'adresse email">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </button>
+                    )}
                   </div>
-                  <p style={{ margin: "6px 0 0", fontSize: 11, color: "#374151" }}>
-                    Besoin de changer d'adresse ?{" "}
-                    <a href="mailto:support@nutritwin.fr" style={{ color: "#64748b", textDecoration: "underline", cursor: "pointer" }}>Contacter le support</a>
-                  </p>
+                  {emailChangeSent && (
+                    <p style={{ margin: "8px 0 0", fontSize: 12, color: emerald, lineHeight: 1.5 }}>
+                      Un lien de confirmation a été envoyé à <strong>{newEmail}</strong>. Cliquez dessus pour valider le changement.
+                    </p>
+                  )}
+                  {showEmailChange && !emailChangeSent && (
+                    <div style={{ marginTop: 12, width: "100%", textAlign: "left" }}>
+                      <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Nouvelle adresse email</label>
+                      <input type="email" value={newEmail} onChange={e => { setNewEmail(e.target.value); setEmailChangeError(""); }} placeholder="nouvelle@adresse.fr" autoComplete="email"
+                        style={{ width: "100%", height: 42, borderRadius: 10, border: `1px solid ${emailChangeError ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: "0 14px", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" }} />
+                      {emailChangeError && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#f87171" }}>{emailChangeError}</p>}
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <button onClick={async () => {
+                          if (!newEmail.includes("@")) { setEmailChangeError("Adresse email invalide."); return; }
+                          if (newEmail === practitionerEmail) { setEmailChangeError("C'est déjà votre adresse actuelle."); return; }
+                          setChangingEmail(true);
+                          try {
+                            const s = createSupabaseBrowserClient();
+                            const { error } = await s.auth.updateUser({ email: newEmail });
+                            if (error) { setEmailChangeError(error.message); setChangingEmail(false); return; }
+                            setEmailChangeSent(true);
+                            setShowEmailChange(false);
+                          } catch { setEmailChangeError("Une erreur est survenue."); }
+                          setChangingEmail(false);
+                        }} disabled={changingEmail || !newEmail}
+                          style={{ flex: 1, height: 38, borderRadius: 10, background: changingEmail || !newEmail ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${changingEmail || !newEmail ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: changingEmail || !newEmail ? "#64748b" : emerald, fontSize: 13, fontWeight: 600, cursor: changingEmail || !newEmail ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
+                          {changingEmail ? "Envoi…" : "Envoyer le lien"}
+                        </button>
+                        <button onClick={() => { setShowEmailChange(false); setNewEmail(""); setEmailChangeError(""); }}
+                          style={{ height: 38, borderRadius: 10, padding: "0 14px", background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 13, cursor: "pointer" }}>
+                          Annuler
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {practitionerPhoto && <button onClick={() => setPractitionerPhoto(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", textDecoration: "underline", padding: 0, marginTop: 8 }}>Supprimer la photo</button>}
                 </div>
                 {!practitionerPhoto && (
