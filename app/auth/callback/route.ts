@@ -42,6 +42,17 @@ export async function GET(request: NextRequest) {
       | "email_change";
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: otpType });
     if (!error) return redirectResponse;
+
+    // Le token est à usage unique — si l'utilisateur reclique le lien sans avoir
+    // changé son mot de passe, verifyOtp échoue mais il a déjà une session active.
+    // Dans ce cas on le renvoie vers /reset-password plutôt que vers /login.
+    if (type === "recovery") {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        return NextResponse.redirect(`${origin}/reset-password`);
+      }
+    }
+
     const errorMsg = encodeURIComponent(error.message ?? "unknown");
     return NextResponse.redirect(`${origin}${loginPage}?error=lien_expire&debug=${errorMsg}`);
   }

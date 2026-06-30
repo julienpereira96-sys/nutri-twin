@@ -96,7 +96,7 @@ export default function LoginPage() {
     });
     setResetSent(true);
     setResetLoading(false);
-    setTimeout(() => closeModal(), 5000);
+    setTimeout(() => setResetSent(false), 5000);
   };
 
   const closeModal = () => {

@@ -200,13 +200,13 @@ function ResetPasswordForm() {
 
              <button
                onClick={() => void handleReset()}
-               disabled={loading || !password || !confirm}
-               className="mt-2 w-full rounded-xl py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
+               disabled={loading}
+               className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
                style={{ background: "linear-gradient(135deg, #10b981, #059669)", border: "none", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
-               onMouseEnter={e => { if (!loading && password && confirm) { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
+               onMouseEnter={e => { if (!loading) { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; } }}
                onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}
              >
-               {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Mise à jour</span> : "Enregistrer le nouveau mot de passe"}
+               {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Enregistrement</span> : "Enregistrer le nouveau mot de passe"}
              </button>
            </div>
          )}

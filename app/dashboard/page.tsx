@@ -595,6 +595,7 @@ export default function DashboardPage() {
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordResetSent, setPasswordResetSent] = useState(false);
+  const [passwordResetLoading, setPasswordResetLoading] = useState(false);
   const [showDeletePinModal, setShowDeletePinModal] = useState(false);
   const [deletePinInput, setDeletePinInput] = useState("");
   const [settingsScreen, setSettingsScreen] = useState<"main"|"profil"|"motdepasse"|"discret"|"abonnement"|"notifications">("main");
@@ -3316,7 +3317,7 @@ export default function DashboardPage() {
                 <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Un lien de réinitialisation sera envoyé à <strong style={{ color: "white" }}>{practitionerEmail}</strong></p>
                 <div style={{ display: "flex", gap: 10 }}>
                   <button onClick={() => setShowPasswordModal(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
-                  <button onClick={async () => { await fetch("/api/auth/reset-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: practitionerEmail }) }); setPasswordResetSent(true); setTimeout(() => setShowPasswordModal(false), 5000); }} style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>Envoyer le lien</button>
+                  <button onClick={async () => { setPasswordResetLoading(true); await fetch("/api/auth/reset-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: practitionerEmail }) }); setPasswordResetLoading(false); setPasswordResetSent(true); setTimeout(() => setPasswordResetSent(false), 5000); }} disabled={passwordResetLoading} style={{ flex: 2, height: 44, borderRadius: 10, background: passwordResetLoading ? "rgba(255,255,255,0.05)" : "rgba(16,185,129,0.12)", border: `1px solid ${passwordResetLoading ? "rgba(255,255,255,0.08)" : "rgba(16,185,129,0.3)"}`, color: passwordResetLoading ? "#64748b" : emerald, fontSize: 14, fontWeight: 600, cursor: passwordResetLoading ? "not-allowed" : "pointer" }} onMouseEnter={e => { if (!passwordResetLoading) e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }} onMouseLeave={e => { if (!passwordResetLoading) e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>{passwordResetLoading ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 13, height: 13, border: "2px solid rgba(100,116,139,0.3)", borderTopColor: "#64748b", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />Envoi</span> : "Envoyer le lien"}</button>
                 </div>
               </>
             )}
@@ -3522,11 +3523,14 @@ export default function DashboardPage() {
                       {changingPassword ? "Modification en cours…" : "Modifier le mot de passe"}
                     </button>
                     <button onClick={async () => {
+                      setPasswordResetLoading(true);
                       await fetch("/api/auth/reset-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: practitionerEmail }) });
+                      setPasswordResetLoading(false);
                       setPasswordResetSent(true);
-                      setTimeout(() => { setPasswordResetSent(false); setShowSettingsModal(false); setSettingsScreen("main"); }, 5000);
-                    }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#64748b", textDecoration: "underline", padding: 0, textAlign: "center" }}>
-                      Mot de passe oublié ?
+                      setTimeout(() => setPasswordResetSent(false), 5000);
+                    }} disabled={passwordResetLoading} style={{ background: "none", border: "none", cursor: passwordResetLoading ? "not-allowed" : "pointer", fontSize: 12, color: "#64748b", textDecoration: "underline", padding: 0, textAlign: "center", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                      {passwordResetLoading && <span style={{ width: 10, height: 10, border: "1.5px solid rgba(100,116,139,0.3)", borderTopColor: "#64748b", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />}
+                      {passwordResetLoading ? "Envoi…" : "Mot de passe oublié ?"}
                     </button>
                     {passwordResetSent && <p style={{ margin: 0, fontSize: 12, color: emerald, textAlign: "center" }}>Lien envoyé à {practitionerEmail}</p>}
                   </div>
