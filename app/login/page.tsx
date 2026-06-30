@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState, useEffect } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { createBrowserClient } from "@supabase/ssr";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -86,8 +87,15 @@ export default function LoginPage() {
       setResetLoading(false);
       return;
     }
-    const supabase = createSupabaseBrowserClient();
-    await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: `${window.location.origin}/auth/callback?next=/reset-password` });
+    // flowType: 'implicit' → Supabase envoie #access_token= dans le hash
+    // au lieu du flow PKCE qui nécessite un verifier stocké en local — inaccessible
+    // si l'email est ouvert dans un autre navigateur ou client mail
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { auth: { flowType: "implicit" } }
+    );
+    await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: `${window.location.origin}/reset-password` });
     setResetSent(true);
     setResetLoading(false);
     setTimeout(() => closeModal(), 5000);

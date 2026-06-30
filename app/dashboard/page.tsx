@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { createBrowserClient } from "@supabase/ssr";
 import { buildMurmureExpiry } from "@/lib/murmure";
 import { findClosuresInWindow, closureFeeling, type SosClosureEvent, type SosSummary } from "@/lib/sosClosures";
 
@@ -3316,7 +3317,7 @@ export default function DashboardPage() {
                 <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Un lien de réinitialisation sera envoyé à <strong style={{ color: "white" }}>{practitionerEmail}</strong></p>
                 <div style={{ display: "flex", gap: 10 }}>
                   <button onClick={() => setShowPasswordModal(false)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
-                  <button onClick={async () => { const s = createSupabaseBrowserClient(); await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/reset-password` }); setPasswordResetSent(true); }} style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>Envoyer le lien</button>
+                  <button onClick={async () => { const s = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { flowType: "implicit" } }); await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/reset-password` }); setPasswordResetSent(true); }} style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>Envoyer le lien</button>
                 </div>
               </>
             )}
@@ -3522,8 +3523,8 @@ export default function DashboardPage() {
                       {changingPassword ? "Modification en cours…" : "Modifier le mot de passe"}
                     </button>
                     <button onClick={async () => {
-                      const s = createSupabaseBrowserClient();
-                      await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/auth/callback?next=/reset-password` });
+                      const s = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { flowType: "implicit" } });
+                      await s.auth.resetPasswordForEmail(practitionerEmail, { redirectTo: `${window.location.origin}/reset-password` });
                       setPasswordResetSent(true);
                     }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#64748b", textDecoration: "underline", padding: 0, textAlign: "center" }}>
                       Mot de passe oublié ?
