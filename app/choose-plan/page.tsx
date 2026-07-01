@@ -198,10 +198,10 @@ export default function ChoosePlanPage() {
       {/* Plans */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+        gridTemplateColumns: "repeat(3, 1fr)",
         gap: 16,
         width: "100%",
-        maxWidth: 1024,
+        maxWidth: 1100,
       }}>
         {PLANS.map(p => (
           <PricingCard key={p.plan} {...p} />

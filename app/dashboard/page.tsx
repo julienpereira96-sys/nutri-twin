@@ -3431,16 +3431,14 @@ export default function DashboardPage() {
                       const reader = new FileReader();
                       reader.onload = ev => setPractitionerPhoto(ev.target?.result as string);
                       reader.readAsDataURL(file);
-                      // Upload vers Supabase Storage
+                      // Upload via route serveur (service role — bypass RLS)
                       setUploadingAvatar(true);
                       try {
-                        const sup = createSupabaseBrowserClient();
-                        await sup.storage.from("Avatars").upload(`${practitionerId}/practitioner-avatar.jpg`, file, { upsert: true, contentType: file.type || "image/jpeg", cacheControl: "no-store" });
-                        const { data: urlData } = sup.storage.from("Avatars").getPublicUrl(`${practitionerId}/practitioner-avatar.jpg`);
-                        if (urlData?.publicUrl) {
-                          await sup.from("practitioners").update({ avatar_url: urlData.publicUrl }).eq("user_id", practitionerId);
-                          setPractitionerPhoto(urlData.publicUrl + "?t=" + Date.now());
-                        }
+                        const fd = new FormData();
+                        fd.append("file", file);
+                        const res = await fetch("/api/practitioner/save-avatar", { method: "POST", body: fd });
+                        const json = await res.json() as { url?: string; error?: string };
+                        if (json.url) setPractitionerPhoto(json.url + "?t=" + Date.now());
                       } catch { /* silencieux */ }
                       setUploadingAvatar(false);
                       if (avatarInputRef.current) avatarInputRef.current.value = "";
@@ -3458,11 +3456,10 @@ export default function DashboardPage() {
                   {practitionerPhoto && (
                     <button onClick={async () => {
                       setPractitionerPhoto(null);
-                      if (!practitionerId) return;
                       try {
-                        const sup = createSupabaseBrowserClient();
-                        await sup.storage.from("Avatars").remove([`${practitionerId}/practitioner-avatar.jpg`]);
-                        await sup.from("practitioners").update({ avatar_url: null }).eq("user_id", practitionerId);
+                        const fd = new FormData();
+                        fd.append("action", "delete");
+                        await fetch("/api/practitioner/save-avatar", { method: "POST", body: fd });
                       } catch { /* silencieux */ }
                     }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", textDecoration: "underline", padding: 0, marginTop: 8, display: "block", width: "100%", textAlign: "center" }}>
                       Supprimer la photo
