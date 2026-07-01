@@ -3781,6 +3781,7 @@ export default function DashboardPage() {
                 {
                   plan: "essentiel", label: "Essentiel", price: "149€",
                   desc: "Pour démarrer et accompagner vos patients prioritaires.",
+                  footnoteMark: null as string | null,
                   features: [
                     { text: "Jusqu'à 10 patients suivis en simultané", included: true },
                     { text: "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)", included: true },
@@ -3788,39 +3789,44 @@ export default function DashboardPage() {
                     { text: "Préparation automatisée de vos consultations et bilans", included: true },
                     { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true },
                     { text: "Vision IA : Analyse et décodage des photos de repas", included: false },
-                    { text: "Mémoire clinique long terme", included: false },
+                    { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: false },
                   ],
-                  badge: null,
+                  badge: null as string | null,
                 },
                 {
                   plan: "pro", label: "Professionnel", price: "249€",
                   desc: "Idéal pour les praticiens indépendants qui gèrent un suivi actif au quotidien.",
+                  footnoteMark: null as string | null,
                   features: [
                     { text: "Jusqu'à 50 patients suivis en simultané", included: true },
                     { text: "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)", included: true },
                     { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true },
                     { text: "Préparation automatisée de vos consultations et bilans", included: true },
-                    { text: "Vision IA : Analyse et décodage des photos de repas", included: true },
+                    { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true },
+                    { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true },
                     { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true },
-                    { text: "Plafond d'échanges quotidien étendu par patient", included: true },
+                    { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true },
                   ],
-                  badge: "Recommandé",
+                  badge: "Recommandé" as string | null,
                 },
                 {
                   plan: "cabinet", label: "Cabinet", price: "599€",
                   desc: "Pour les cabinets multi-praticiens et centres de santé.",
+                  footnoteMark: "1" as string | null,
                   features: [
-                    { text: "3 praticiens inclus — 50 patients chacun", included: true },
-                    { text: "Jumeau personnalisé par praticien", included: true },
-                    { text: "Analyse en temps réel et alertes de crises", included: true },
-                    { text: "Préparation automatisée des consultations et bilans", included: true },
-                    { text: "Vision IA + Mémoire clinique long terme", included: true },
-                    { text: "Plafond d'échanges quotidien étendu par patient", included: true },
-                    { text: "Espace collaboratif : partage de dossiers entre confrères", included: true },
+                    { text: "Jusqu'à 150 patients suivis en simultané (2)", included: true },
+                    { text: "Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)", included: true },
+                    { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true },
+                    { text: "Préparation automatisée de vos consultations et bilans", included: true },
+                    { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true },
+                    { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true },
+                    { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true },
+                    { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true },
+                    { text: "Espace collaboratif : Possibilité de transférer ou de partager un dossier entre confrères", included: true },
                   ],
-                  badge: null,
+                  badge: null as string | null,
                 },
-              ] as { plan: string; label: string; price: string; desc: string; features: { text: string; included: boolean }[]; badge: string | null }[]).map(({ plan, label, price, desc, features, badge }) => {
+              ]).map(({ plan, label, price, desc, features, badge, footnoteMark }) => {
                 const isCurrent = plan === practitionerPlan;
                 const isFeatured = badge === "Recommandé";
                 return (
@@ -3838,22 +3844,27 @@ export default function DashboardPage() {
                       {isCurrent && <span style={{ fontSize: 10, fontWeight: 700, color: emerald, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 4, padding: "1px 7px", letterSpacing: "0.06em", textTransform: "uppercase" }}>Actuel</span>}
                     </div>
                     {/* Prix */}
-                    <div style={{ marginBottom: 8 }}>
+                    <div style={{ marginBottom: 8, display: "flex", alignItems: "baseline", gap: 2 }}>
                       <span style={{ fontSize: 28, fontWeight: 800, color: "white", lineHeight: 1 }}>{price}</span>
-                      <span style={{ fontSize: 12, color: "#64748b", marginLeft: 4 }}>/mois</span>
+                      {footnoteMark && <sup style={{ fontSize: 11, color: "#64748b", marginLeft: 2 }}>({footnoteMark})</sup>}
+                      <span style={{ fontSize: 12, color: "#64748b", marginLeft: 2 }}>/mois</span>
                     </div>
                     {/* Description */}
                     <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{desc}</p>
                     {/* Features */}
                     <ul style={{ margin: "0 0 16px", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
                       {features.map((f, i) => (
-                        <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: f.included ? (i < 3 ? "#d1d5db" : "#94a3b8") : "#3f3f46" }}>
+                        <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: f.included ? (i < 5 ? "#e4e4e7" : "#71717a") : "#3f3f46", textDecoration: f.included ? "none" : "line-through" }}>
                           {f.included ? (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ marginTop: 1, flexShrink: 0 }}><path d="M4.5 12.75l6 6 9-13.5" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ marginTop: 1, flexShrink: 0 }}><path d="M4.5 12.75l6 6 9-13.5" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                           ) : (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ marginTop: 1, flexShrink: 0 }}><path d="M6 18L18 6M6 6l12 12" stroke="#3f3f46" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ marginTop: 1, flexShrink: 0 }}><path d="M6 18L18 6M6 6l12 12" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                           )}
-                          {f.text}
+                          <span>
+                            {f.text.split(/(\([123]\))/).map((part, j) =>
+                              /^\([123]\)$/.test(part) ? <sup key={j} style={{ fontSize: "0.75em" }}>{part}</sup> : part
+                            )}
+                          </span>
                         </li>
                       ))}
                     </ul>
