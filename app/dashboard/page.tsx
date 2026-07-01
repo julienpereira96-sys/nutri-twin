@@ -1050,7 +1050,7 @@ export default function DashboardPage() {
         setPractitionerSpecialty(p.specialty ?? "");
         setSavedPin(p.discrete_pin ?? "");
         if (p.cabinet_id) setPractitionerCabinetId(p.cabinet_id);
-        if (p.avatar_url) setPractitionerPhoto(p.avatar_url + "?t=" + Date.now());
+        if (p.avatar_url) setPractitionerPhoto(p.avatar_url);
       } else {
         // Fallback email auth si la query practitioners échoue
         if (data.user.email) setPractitionerEmail(data.user.email);
@@ -3424,24 +3424,45 @@ export default function DashboardPage() {
                     <button onClick={() => avatarInputRef.current?.click()} style={{ position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: emerald, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                     </button>
-                    <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={async e => {
+                    <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => {
                       const file = e.target.files?.[0];
-                      if (!file || !practitionerId) return;
-                      // Afficher immédiatement en base64
-                      const reader = new FileReader();
-                      reader.onload = ev => setPractitionerPhoto(ev.target?.result as string);
-                      reader.readAsDataURL(file);
-                      // Upload via route serveur (service role — bypass RLS)
+                      if (!file) return;
                       setUploadingAvatar(true);
-                      try {
-                        const fd = new FormData();
-                        fd.append("file", file);
-                        const res = await fetch("/api/practitioner/save-avatar", { method: "POST", body: fd });
-                        const json = await res.json() as { url?: string; error?: string };
-                        if (json.url) setPractitionerPhoto(json.url + "?t=" + Date.now());
-                      } catch { /* silencieux */ }
-                      setUploadingAvatar(false);
-                      if (avatarInputRef.current) avatarInputRef.current.value = "";
+                      const img = new window.Image();
+                      const objectUrl = URL.createObjectURL(file);
+                      img.onload = async () => {
+                        URL.revokeObjectURL(objectUrl);
+                        // Redimensionner à max 300×300
+                        const maxSize = 300;
+                        let { width, height } = img;
+                        if (width > height) {
+                          if (width > maxSize) { height = Math.round(height * maxSize / width); width = maxSize; }
+                        } else {
+                          if (height > maxSize) { width = Math.round(width * maxSize / height); height = maxSize; }
+                        }
+                        const canvas = document.createElement("canvas");
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext("2d");
+                        if (!ctx) { setUploadingAvatar(false); return; }
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+                        // Aperçu immédiat
+                        setPractitionerPhoto(dataUrl);
+                        // Sauvegarde en DB (base64 → TEXT, pas de Storage)
+                        try {
+                          const res = await fetch("/api/practitioner/save-avatar", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ avatarDataUrl: dataUrl }),
+                          });
+                          const json = await res.json() as { ok?: boolean; error?: string };
+                          if (!json.ok) console.error("[Avatar] Erreur sauvegarde:", json.error);
+                        } catch (err) { console.error("[Avatar] Erreur réseau:", err); }
+                        setUploadingAvatar(false);
+                        if (avatarInputRef.current) avatarInputRef.current.value = "";
+                      };
+                      img.onerror = () => { URL.revokeObjectURL(objectUrl); setUploadingAvatar(false); };
+                      img.src = objectUrl;
                     }} />
                   </div>
                   <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "white" }}>{practitionerName}</p>
@@ -3457,9 +3478,11 @@ export default function DashboardPage() {
                     <button onClick={async () => {
                       setPractitionerPhoto(null);
                       try {
-                        const fd = new FormData();
-                        fd.append("action", "delete");
-                        await fetch("/api/practitioner/save-avatar", { method: "POST", body: fd });
+                        await fetch("/api/practitioner/save-avatar", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ action: "delete" }),
+                        });
                       } catch { /* silencieux */ }
                     }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", textDecoration: "underline", padding: 0, marginTop: 8, display: "block", width: "100%", textAlign: "center" }}>
                       Supprimer la photo

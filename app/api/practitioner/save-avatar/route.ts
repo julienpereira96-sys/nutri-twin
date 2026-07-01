@@ -11,40 +11,45 @@ export async function POST(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const formData = await req.formData();
-  const file = formData.get("file") as File | null;
-  const action = formData.get("action") as string | null;
+  const body = await req.json() as { avatarDataUrl?: string; action?: string };
 
   // Suppression
-  if (action === "delete") {
-    await supabaseAdmin.storage.from("Avatars").remove([`${user.id}/practitioner-avatar.jpg`]);
-    await supabaseAdmin.from("practitioners").update({ avatar_url: null }).eq("user_id", user.id);
+  if (body.action === "delete") {
+    const { error } = await supabaseAdmin
+      .from("practitioners")
+      .update({ avatar_url: null })
+      .eq("user_id", user.id);
+    if (error) {
+      console.error("[save-avatar] delete error:", error.message);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     return NextResponse.json({ ok: true });
   }
 
   // Upload
-  if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const { error: uploadError } = await supabaseAdmin.storage
-    .from("Avatars")
-    .upload(`${user.id}/practitioner-avatar.jpg`, buffer, {
-      upsert: true,
-      contentType: file.type || "image/jpeg",
-      cacheControl: "no-store",
-    });
-
-  if (uploadError) {
-    return NextResponse.json({ error: uploadError.message }, { status: 500 });
+  if (!body.avatarDataUrl) {
+    return NextResponse.json({ error: "No data" }, { status: 400 });
   }
 
-  const { data: urlData } = supabaseAdmin.storage
-    .from("Avatars")
-    .getPublicUrl(`${user.id}/practitioner-avatar.jpg`);
+  // Validation basique
+  if (!body.avatarDataUrl.startsWith("data:image/")) {
+    return NextResponse.json({ error: "Format invalide" }, { status: 400 });
+  }
 
-  const publicUrl = urlData.publicUrl;
+  // Taille max ~700 000 chars ≈ 525 KB d'image — largement suffisant pour une photo compressée
+  if (body.avatarDataUrl.length > 700_000) {
+    return NextResponse.json({ error: "Image trop volumineuse" }, { status: 400 });
+  }
 
-  await supabaseAdmin.from("practitioners").update({ avatar_url: publicUrl }).eq("user_id", user.id);
+  const { error } = await supabaseAdmin
+    .from("practitioners")
+    .update({ avatar_url: body.avatarDataUrl })
+    .eq("user_id", user.id);
 
-  return NextResponse.json({ url: publicUrl });
+  if (error) {
+    console.error("[save-avatar] update error:", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
 }
