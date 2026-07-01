@@ -620,6 +620,7 @@ export default function DashboardPage() {
   const [deletePinError, setDeletePinError] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState(0);
   const [practitionerPhoto, setPractitionerPhoto] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [practitionerPlan, setPractitionerPlan] = useState<string | null>(null);
@@ -1040,15 +1041,16 @@ export default function DashboardPage() {
       const pid = data.user.id;
       setPractitionerId(pid);
       // Requête principale — colonnes garanties existantes
-      const { data: practitioner, error: practError } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin, cabinet_id").eq("user_id", pid).single();
+      const { data: practitioner, error: practError } = await supabase.from("practitioners").select("first_name, last_name, email, specialty, discrete_pin, cabinet_id, avatar_url").eq("user_id", pid).single();
       console.log("[Dashboard] practitioners query →", { practitioner, practError, authEmail: data.user.email });
       if (practitioner) {
-        const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string; cabinet_id?: string | null };
+        const p = practitioner as { first_name: string; last_name: string; email?: string; specialty?: string; discrete_pin?: string; cabinet_id?: string | null; avatar_url?: string | null };
         setPractitionerName(`${p.first_name} ${p.last_name}`);
         setPractitionerEmail(p.email ?? data.user.email ?? "");
         setPractitionerSpecialty(p.specialty ?? "");
         setSavedPin(p.discrete_pin ?? "");
         if (p.cabinet_id) setPractitionerCabinetId(p.cabinet_id);
+        if (p.avatar_url) setPractitionerPhoto(p.avatar_url + "?t=" + Date.now());
       } else {
         // Fallback email auth si la query practitioners échoue
         if (data.user.email) setPractitionerEmail(data.user.email);
@@ -3288,7 +3290,7 @@ export default function DashboardPage() {
                 } catch { setEmailChangeError("Une erreur est survenue."); }
                 setChangingEmail(false);
               }} style={{ flex: 1, height: 42, borderRadius: 12, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-                Confirmer
+                Mettre à jour
               </button>
             </div>
           </div>
@@ -3422,7 +3424,27 @@ export default function DashboardPage() {
                     <button onClick={() => avatarInputRef.current?.click()} style={{ position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: emerald, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                     </button>
-                    <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = ev => setPractitionerPhoto(ev.target?.result as string); reader.readAsDataURL(file); }} />
+                    <input ref={avatarInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={async e => {
+                      const file = e.target.files?.[0];
+                      if (!file || !practitionerId) return;
+                      // Afficher immédiatement en base64
+                      const reader = new FileReader();
+                      reader.onload = ev => setPractitionerPhoto(ev.target?.result as string);
+                      reader.readAsDataURL(file);
+                      // Upload vers Supabase Storage
+                      setUploadingAvatar(true);
+                      try {
+                        const sup = createSupabaseBrowserClient();
+                        await sup.storage.from("Avatars").upload(`practitioners/${practitionerId}/avatar.jpg`, file, { upsert: true, contentType: file.type || "image/jpeg", cacheControl: "no-store" });
+                        const { data: urlData } = sup.storage.from("Avatars").getPublicUrl(`practitioners/${practitionerId}/avatar.jpg`);
+                        if (urlData?.publicUrl) {
+                          await sup.from("practitioners").update({ avatar_url: urlData.publicUrl }).eq("user_id", practitionerId);
+                          setPractitionerPhoto(urlData.publicUrl + "?t=" + Date.now());
+                        }
+                      } catch { /* silencieux */ }
+                      setUploadingAvatar(false);
+                      if (avatarInputRef.current) avatarInputRef.current.value = "";
+                    }} />
                   </div>
                   <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "white" }}>{practitionerName}</p>
                   <div style={{ marginTop: 6, padding: "6px 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 20, display: "inline-flex", alignItems: "center", gap: 8 }}>
@@ -3460,20 +3482,26 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   )}
-                  {practitionerPhoto && <button onClick={() => setPractitionerPhoto(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", textDecoration: "underline", padding: 0, marginTop: 8 }}>Supprimer la photo</button>}
+                  {practitionerPhoto && <button onClick={async () => {
+                    setPractitionerPhoto(null);
+                    if (!practitionerId) return;
+                    try {
+                      const sup = createSupabaseBrowserClient();
+                      await sup.storage.from("Avatars").remove([`practitioners/${practitionerId}/avatar.jpg`]);
+                      await sup.from("practitioners").update({ avatar_url: null }).eq("user_id", practitionerId);
+                    } catch { /* silencieux */ }
+                  }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", textDecoration: "underline", padding: 0, marginTop: 8 }}>Supprimer la photo</button>}
                 </div>
-                {!practitionerPhoto && (
-                  <div style={{ marginTop: 16 }}>
+                <div style={{ marginTop: 16 }}>
                     <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>Choisir un avatar</p>
                     <div style={{ display: "flex", gap: 6, flexWrap: "nowrap", justifyContent: "center" }}>
                       {AVATARS.slice(0, 7).map((avatar, i) => (
-                        <button key={i} onClick={() => setSelectedAvatar(i)} style={{ width: 40, height: 40, borderRadius: "50%", border: `2px solid ${selectedAvatar === i ? emerald : "rgba(255,255,255,0.08)"}`, background: selectedAvatar === i ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s", flexShrink: 0 }}>
+                        <button key={i} onClick={() => { setSelectedAvatar(i); setPractitionerPhoto(null); }} style={{ width: 40, height: 40, borderRadius: "50%", border: `2px solid ${!practitionerPhoto && selectedAvatar === i ? emerald : "rgba(255,255,255,0.08)"}`, background: !practitionerPhoto && selectedAvatar === i ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all 0.15s", flexShrink: 0 }}>
                           {avatar}
                         </button>
                       ))}
                     </div>
                   </div>
-                )}
               </div>
             </div>
           )}
