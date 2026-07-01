@@ -3432,8 +3432,8 @@ export default function DashboardPage() {
                       const objectUrl = URL.createObjectURL(file);
                       img.onload = async () => {
                         URL.revokeObjectURL(objectUrl);
-                        // Redimensionner à max 300×300
-                        const maxSize = 300;
+                        // Redimensionner à max 400×400
+                        const maxSize = 400;
                         let { width, height } = img;
                         if (width > height) {
                           if (width > maxSize) { height = Math.round(height * maxSize / width); width = maxSize; }
@@ -3445,7 +3445,7 @@ export default function DashboardPage() {
                         const ctx = canvas.getContext("2d");
                         if (!ctx) { setUploadingAvatar(false); return; }
                         ctx.drawImage(img, 0, 0, width, height);
-                        const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+                        const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
                         // Aperçu immédiat
                         setPractitionerPhoto(dataUrl);
                         // Sauvegarde en DB (base64 → TEXT, pas de Storage)
