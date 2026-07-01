@@ -3771,7 +3771,7 @@ export default function DashboardPage() {
       {/* ── Modale changement de plan ── */}
       {showBillingModal && (
         <div onClick={e => { if (e.target === e.currentTarget) setShowBillingModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ position: "relative", background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 580, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ position: "relative", background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 940, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -3792,7 +3792,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Cards plans */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "row", gap: 12, alignItems: "stretch", flexWrap: "wrap" }}>
               {([
                 {
                   plan: "essentiel", label: "Essentiel", price: "149€",
@@ -3840,56 +3840,57 @@ export default function DashboardPage() {
                 const isFeatured = badge === "Recommandé";
                 return (
                   <div key={plan}
-                    style={{ position: "relative", borderRadius: 16, border: isCurrent ? `1px solid ${emerald}` : isFeatured ? "1px solid rgba(16,185,129,0.30)" : "1px solid rgba(255,255,255,0.08)", background: isCurrent ? "rgba(16,185,129,0.06)" : isFeatured ? "linear-gradient(180deg, rgba(16,185,129,0.07), #080808)" : "#0d0d0d", padding: "18px 20px", transition: "all 0.2s" }}
+                    style={{ position: "relative", flex: "1 1 240px", borderRadius: 16, border: isCurrent ? `1px solid ${emerald}` : isFeatured ? "1px solid rgba(16,185,129,0.30)" : "1px solid rgba(255,255,255,0.08)", background: isCurrent ? "rgba(16,185,129,0.06)" : isFeatured ? "linear-gradient(180deg, rgba(16,185,129,0.07), #080808)" : "#0d0d0d", padding: "20px 18px", transition: "all 0.2s", display: "flex", flexDirection: "column" }}
                     onMouseEnter={e => { if (!isCurrent) { e.currentTarget.style.border = `1px solid ${isFeatured ? "rgba(16,185,129,0.6)" : "rgba(255,255,255,0.25)"}` ; e.currentTarget.style.transform = "translateY(-2px)"; } }}
                     onMouseLeave={e => { e.currentTarget.style.border = isCurrent ? `1px solid ${emerald}` : isFeatured ? "1px solid rgba(16,185,129,0.30)" : "1px solid rgba(255,255,255,0.08)"; e.currentTarget.style.transform = "translateY(0)"; }}
                   >
                     {badge && !isCurrent && (
                       <span style={{ position: "absolute", top: -11, left: "50%", transform: "translateX(-50%)", background: emerald, color: "black", fontSize: 10, fontWeight: 700, borderRadius: 999, padding: "2px 10px", whiteSpace: "nowrap" }}>{badge}</span>
                     )}
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: isCurrent ? emerald : "white" }}>{label}</span>
-                          {isCurrent && <span style={{ fontSize: 10, fontWeight: 700, color: emerald, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 4, padding: "1px 7px", letterSpacing: "0.06em", textTransform: "uppercase" }}>Actuel</span>}
-                        </div>
-                        <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{desc}</p>
-                        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
-                          {features.map((f, i) => (
-                            <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: f.included ? (i < 3 ? "#d1d5db" : "#64748b") : "#52525b" }}>
-                              {f.included ? (
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ marginTop: 1, flexShrink: 0 }}><path d="M4.5 12.75l6 6 9-13.5" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                              ) : (
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ marginTop: 1, flexShrink: 0 }}><path d="M6 18L18 6M6 6l12 12" stroke="#52525b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                              )}
-                              {f.text}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div style={{ flexShrink: 0, textAlign: "right", minWidth: 110 }}>
-                        <p style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "white", lineHeight: 1 }}>{price}</p>
-                        <p style={{ margin: "2px 0 14px", fontSize: 11, color: "#64748b" }}>/mois</p>
-                        {isCurrent ? (
-                          <span style={{ fontSize: 11, color: emerald, fontWeight: 600 }}>Plan actuel</span>
-                        ) : (
-                          <button
-                            disabled={isUpdatingPlan}
-                            onClick={() => setPendingPlanSwitch({ plan, label, price })}
-                            style={{ height: 36, padding: "0 16px", borderRadius: 10, background: isFeatured ? emerald : "rgba(16,185,129,0.1)", border: isFeatured ? "none" : `1px solid rgba(16,185,129,0.25)`, color: isFeatured ? "black" : emerald, fontSize: 12, fontWeight: 600, cursor: isUpdatingPlan ? "not-allowed" : "pointer", opacity: isUpdatingPlan ? 0.6 : 1, transition: "all 0.2s", whiteSpace: "nowrap" }}
-                            onMouseEnter={e => { if (!isUpdatingPlan) e.currentTarget.style.opacity = "0.85"; }}
-                            onMouseLeave={e => { if (!isUpdatingPlan) e.currentTarget.style.opacity = "1"; }}
-                          >
-                            {isUpdatingPlan ? (
-                              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>
-                                En cours
-                              </span>
-                            ) : "Choisir ce plan"}
-                          </button>
-                        )}
-                      </div>
+                    {/* Nom + badge actuel */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: isCurrent ? emerald : "white" }}>{label}</span>
+                      {isCurrent && <span style={{ fontSize: 10, fontWeight: 700, color: emerald, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 4, padding: "1px 7px", letterSpacing: "0.06em", textTransform: "uppercase" }}>Actuel</span>}
                     </div>
+                    {/* Prix */}
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ fontSize: 28, fontWeight: 800, color: "white", lineHeight: 1 }}>{price}</span>
+                      <span style={{ fontSize: 12, color: "#64748b", marginLeft: 4 }}>/mois</span>
+                    </div>
+                    {/* Description */}
+                    <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{desc}</p>
+                    {/* Features */}
+                    <ul style={{ margin: "0 0 16px", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
+                      {features.map((f, i) => (
+                        <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: f.included ? (i < 3 ? "#d1d5db" : "#94a3b8") : "#3f3f46" }}>
+                          {f.included ? (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ marginTop: 1, flexShrink: 0 }}><path d="M4.5 12.75l6 6 9-13.5" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          ) : (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ marginTop: 1, flexShrink: 0 }}><path d="M6 18L18 6M6 6l12 12" stroke="#3f3f46" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          )}
+                          {f.text}
+                        </li>
+                      ))}
+                    </ul>
+                    {/* CTA */}
+                    {isCurrent ? (
+                      <div style={{ textAlign: "center", padding: "9px 0", borderRadius: 10, border: `1px solid rgba(16,185,129,0.25)`, fontSize: 12, color: emerald, fontWeight: 600 }}>Plan actuel</div>
+                    ) : (
+                      <button
+                        disabled={isUpdatingPlan}
+                        onClick={() => setPendingPlanSwitch({ plan, label, price })}
+                        style={{ width: "100%", height: 38, borderRadius: 10, background: isFeatured ? emerald : "rgba(16,185,129,0.1)", border: isFeatured ? "none" : `1px solid rgba(16,185,129,0.25)`, color: isFeatured ? "black" : emerald, fontSize: 13, fontWeight: 600, cursor: isUpdatingPlan ? "not-allowed" : "pointer", opacity: isUpdatingPlan ? 0.6 : 1, transition: "all 0.2s" }}
+                        onMouseEnter={e => { if (!isUpdatingPlan) e.currentTarget.style.opacity = "0.85"; }}
+                        onMouseLeave={e => { if (!isUpdatingPlan) e.currentTarget.style.opacity = "1"; }}
+                      >
+                        {isUpdatingPlan ? (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>
+                            En cours
+                          </span>
+                        ) : "Choisir ce plan"}
+                      </button>
+                    )}
                   </div>
                 );
               })}
