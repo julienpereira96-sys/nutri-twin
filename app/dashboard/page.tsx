@@ -2684,7 +2684,7 @@ export default function DashboardPage() {
                   {(selectedPatient.admin_alerts?.filter(a => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request")).length ?? 0) > 0 && !onboardingDemoMode && (
                     <p style={{ margin: "0 0 10px", fontSize: 11, color: "#64748b", display: "flex", alignItems: "center", gap: 5 }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      <span>{selectedPatient.admin_alerts!.filter(a => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request")).length} correction{(selectedPatient.admin_alerts!.filter(a => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request")).length) > 1 ? "s" : ""} en attente</span>
+                      <span style={{ color: "#f59e0b" }}>{selectedPatient.admin_alerts!.filter(a => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request")).length} correction{(selectedPatient.admin_alerts!.filter(a => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request")).length) > 1 ? "s" : ""} en attente</span>
                       <button onClick={() => openProfileModal()} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", textDecoration: "underline", fontSize: 11, padding: 0, marginLeft: 2 }}>Voir</button>
                     </p>
                   )}
@@ -4516,7 +4516,7 @@ export default function DashboardPage() {
             )}
             {reportLoading && (
               <div style={{ textAlign: "center", padding: "44px 0" }}>
-                <svg style={{ animation: "spin 1s linear infinite", marginBottom: 14 }} width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(99,102,241,0.2)" strokeWidth="3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="#818cf8" strokeWidth="3" strokeLinecap="round"/></svg>
+                <svg style={{ animation: "spin 1s linear infinite", marginBottom: 14, display: "block", margin: "0 auto 14px" }} width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(99,102,241,0.2)" strokeWidth="3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="#818cf8" strokeWidth="3" strokeLinecap="round"/></svg>
                 <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>Génération du rapport en cours</p>
               </div>
             )}
@@ -4526,7 +4526,6 @@ export default function DashboardPage() {
                 if (parsed.lowData) {
                   return (
                     <div style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.18)", borderRadius: 14, padding: "20px", textAlign: "center", marginBottom: 16 }}>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 10 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                       <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.7 }}>{parsed.message}</p>
                     </div>
                   );
@@ -4913,7 +4912,7 @@ export default function DashboardPage() {
             )}
             {bilanLoading ? (
               <div style={{ textAlign: "center", padding: "20px 0 40px" }}>
-                <svg style={{ animation: "spin 1s linear infinite", marginBottom: 10 }} width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(99,102,241,0.2)" strokeWidth="3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="#818cf8" strokeWidth="3" strokeLinecap="round"/></svg>
+                <svg style={{ animation: "spin 1s linear infinite", display: "block", margin: "0 auto 10px" }} width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="rgba(99,102,241,0.2)" strokeWidth="3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="#818cf8" strokeWidth="3" strokeLinecap="round"/></svg>
                 <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>Analyse de l'historique du chat en cours</p>
               </div>
             ) : bilanContent ? (
@@ -4924,7 +4923,6 @@ export default function DashboardPage() {
                     const isErr = !!(parsed as { isError?: boolean }).isError;
                     return (
                       <div style={{ background: isErr ? "rgba(244,63,94,0.05)" : "rgba(245,158,11,0.05)", border: `1px solid ${isErr ? "rgba(244,63,94,0.2)" : "rgba(245,158,11,0.2)"}`, borderRadius: 14, padding: "20px", textAlign: "center" }}>
-                        {!isErr && <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 10 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
                         <p style={{ margin: 0, fontSize: 13, color: isErr ? "#f87171" : "#94a3b8", lineHeight: 1.7 }}>{(parsed as { message?: string }).message}</p>
                       </div>
                     );

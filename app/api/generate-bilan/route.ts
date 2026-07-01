@@ -140,7 +140,7 @@ export async function POST(request: Request) {
         : "dans l'historique";
       return NextResponse.json({
         lowData: true,
-        message: `${firstName} n'a envoyé que ${messageCount} message${messageCount > 1 ? "s" : ""} ${sinceText}. Il n'y a pas encore suffisamment d'échanges pour générer des questions pertinentes. Revenez après quelques nouvelles conversations.`,
+        message: `Pas encore suffisamment d'échanges récents avec ${firstName} pour générer des questions pertinentes. Revenez après quelques nouvelles conversations.`,
       });
     }
 

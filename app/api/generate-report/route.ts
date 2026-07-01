@@ -121,7 +121,7 @@ export async function POST(request: Request) {
     if (messageCount < 5) {
       return NextResponse.json({
         lowData: true,
-        message: `${firstName} n'a que peu d'activité sur cette période (${messageCount} message${messageCount > 1 ? "s" : ""} de chat). Il n'y a pas encore suffisamment de données pour générer un rapport pertinent. Essayez une période plus longue ou revenez après quelques échanges supplémentaires.`,
+        message: `Pas encore suffisamment de données sur cette période pour générer un rapport pertinent. Essayez une période plus longue ou revenez après quelques échanges supplémentaires avec ${firstName}.`,
       });
     }
 
