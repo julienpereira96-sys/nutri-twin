@@ -2569,7 +2569,7 @@ export default function ChatPage() {
           </div>
 
           {/* ═══ SIDEBAR BOTTOM — Profil ═══ */}
-          <div style={{ paddingBottom: isMobile ? "max(44px, env(safe-area-inset-bottom, 44px))" : 28, flexShrink: 0 }}>
+          <div style={{ paddingBottom: isMobile ? "max(44px, env(safe-area-inset-bottom, 44px))" : 32, flexShrink: 0 }}>
           <button
             onClick={() => setShowProfileModal(true)}
             style={{ padding: "10px 8px", display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left", borderRadius: 12, transition: "background 0.15s" }}
