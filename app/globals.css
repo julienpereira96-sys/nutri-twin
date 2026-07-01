@@ -42,10 +42,3 @@ input[type="number"]::-webkit-inner-spin-button {
   color: rgba(255, 255, 255, 0.52);
   font-weight: 300;
 }
-
-/* Modale Mon Profil — alignée sur la zone chat (desktop uniquement) */
-@media (min-width: 1024px) {
-  .profile-modal-overlay {
-    padding-left: 312px !important; /* 280px sidebar patients + 16px gap + 16px */
-  }
-}

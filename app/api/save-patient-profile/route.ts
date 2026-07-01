@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Supprimer l'alerte de correction d'identité si demandé
+  // Supprimer les alertes de correction d'identité ET de rectification si demandé
   if (clearIdentityAlert) {
     const { data: patient } = await supabase
       .from("patients")
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
 
     if (patient?.admin_alerts) {
       const filtered = (patient.admin_alerts as { alert_type?: string }[])
-        .filter(a => a.alert_type !== "identity_correction");
+        .filter(a => a.alert_type !== "identity_correction" && a.alert_type !== "rectification_request");
       await supabase.from("patients").update({ admin_alerts: filtered }).eq("user_id", patientId);
     }
   }

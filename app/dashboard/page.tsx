@@ -770,6 +770,7 @@ export default function DashboardPage() {
   const fidelityColor = documents.length === 0 ? amber : documents.length >= 3 ? emerald : "#06b6d4";
   const firstNameInputRef = useRef<HTMLInputElement>(null);
   const [focusFirstNameOnOpen, setFocusFirstNameOnOpen] = useState(false);
+  const [pendingCorrections, setPendingCorrections] = useState<{ field: string; correction: string }[]>([]);
   const [editFirstName, setEditFirstName] = useState("");
   const [editLastName, setEditLastName] = useState("");
   const [editAge, setEditAge] = useState("");
@@ -1718,6 +1719,11 @@ export default function DashboardPage() {
     setEditNotes("");
     setProfileSaved(false);
     setFocusFirstNameOnOpen(focusFirst);
+    // Extraire les corrections en attente pour les afficher dans la modale
+    const corrections = ((patient.admin_alerts ?? []) as { type?: string; alert_type?: string; seen?: boolean; field?: string; correction?: string }[])
+      .filter(a => !a.seen && a.type === "admin_alert" && a.alert_type === "rectification_request" && a.field)
+      .map(a => ({ field: a.field!, correction: a.correction ?? "" }));
+    setPendingCorrections(corrections);
     setShowProfileModal(true);
     if (focusFirst) setTimeout(() => firstNameInputRef.current?.focus(), 120);
   };
@@ -1787,7 +1793,7 @@ export default function DashboardPage() {
           objectif_clinique: editObjectifClinique || p.objectif_clinique,
           niveau_activite: editNiveauActivite || p.niveau_activite,
           regime_specifique: editRegime || p.regime_specifique,
-          admin_alerts: (p.admin_alerts ?? []).filter((a: { alert_type?: string }) => a.alert_type !== "identity_correction"),
+          admin_alerts: (p.admin_alerts ?? []).filter((a: { alert_type?: string }) => a.alert_type !== "identity_correction" && a.alert_type !== "rectification_request"),
         };
       }));
       setShowProfileModal(false);
@@ -2674,32 +2680,13 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   )}
-                  {/* ── Bloc bleu : alertes administratives (dossier patient) ── */}
+                  {/* ── Correction(s) en attente — discrète, intégrée dans "Modifier le profil" ── */}
                   {(selectedPatient.admin_alerts?.filter(a => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request")).length ?? 0) > 0 && !onboardingDemoMode && (
-                    <div style={{ background: "rgba(96,165,250,0.07)", border: "1px solid rgba(96,165,250,0.22)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={SLATE_BLUE} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: SLATE_BLUE }}>Demande de rectification</span>
-                      </div>
-                      {selectedPatient.admin_alerts?.filter(a => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request")).map((alert, i) => {
-                        const a = alert as { alert_type?: string; field?: string; correction?: string };
-                        return (
-                          <div key={i} style={{ marginBottom: 8 }}>
-                            <p style={{ margin: "0 0 6px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
-                              {a.alert_type === "rectification_request" && a.field
-                                ? <><strong style={{ color: "#cbd5e1" }}>{a.field}</strong> — {a.correction}</>
-                                : "Le patient signale une erreur dans son dossier."}
-                            </p>
-                            <button onClick={() => openProfileModal(true)}
-                              style={{ height: 28, borderRadius: 8, padding: "0 12px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: `1px solid rgba(96,165,250,0.3)`, background: "rgba(96,165,250,0.08)", color: SLATE_BLUE, transition: "all 0.2s" }}
-                              onMouseEnter={e => { e.currentTarget.style.background = "rgba(96,165,250,0.16)"; }}
-                              onMouseLeave={e => { e.currentTarget.style.background = "rgba(96,165,250,0.08)"; }}>
-                              Modifier le profil →
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <p style={{ margin: "0 0 10px", fontSize: 11, color: "#64748b", display: "flex", alignItems: "center", gap: 5 }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      <span>{selectedPatient.admin_alerts!.filter(a => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request")).length} correction{(selectedPatient.admin_alerts!.filter(a => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request")).length) > 1 ? "s" : ""} en attente</span>
+                      <button onClick={() => openProfileModal()} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", textDecoration: "underline", fontSize: 11, padding: 0, marginLeft: 2 }}>Voir</button>
+                    </p>
                   )}
 
                   {/* Murmures */}
@@ -3778,7 +3765,7 @@ export default function DashboardPage() {
                 <button onClick={() => setShowBillingModal(false)} style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", color: "#94a3b8", width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.12)"} onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
                 </button>
-                <div>
+                <div style={{ textAlign: "center" }}>
                   <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Choisissez votre plan</h2>
                   <p style={{ margin: "2px 0 0", fontSize: 13, color: "#64748b" }}>
                     Plan actuel&nbsp;:&nbsp;
@@ -4316,7 +4303,7 @@ export default function DashboardPage() {
       )}
 
       {showProfileModal && (
-        <div onClick={(e) => { if (e.target === e.currentTarget) setShowProfileModal(false); }} className="profile-modal-overlay" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 20, paddingTop: 88 }}>
+        <div onClick={(e) => { if (e.target === e.currentTarget) setShowProfileModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 760, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
               <div>
@@ -4325,6 +4312,18 @@ export default function DashboardPage() {
               </div>
               <button onClick={() => setShowProfileModal(false)} style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
             </div>
+
+            {pendingCorrections.length > 0 && (
+              <div style={{ background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 20, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                <div>
+                  <p style={{ margin: "0 0 5px", fontSize: 12, fontWeight: 700, color: "#f59e0b" }}>{pendingCorrections.length} correction{pendingCorrections.length > 1 ? "s" : ""} demandée{pendingCorrections.length > 1 ? "s" : ""} par le patient</p>
+                  {pendingCorrections.map((c, i) => (
+                    <p key={i} style={{ margin: "0 0 2px", fontSize: 11, color: "#94a3b8" }}><strong style={{ color: "#e2e8f0" }}>{c.field}</strong>{c.correction ? ` — ${c.correction}` : ""}</p>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
               {/* Colonne gauche - Informations patient */}
@@ -4355,20 +4354,23 @@ export default function DashboardPage() {
                       { label: "Âge", value: editAge, setter: setEditAge, placeholder: "34", min: 0, max: 110 },
                       { label: "Taille (cm)", value: editTaille, setter: setEditTaille, placeholder: "168", min: 0, max: 250 },
                       { label: "Poids (kg)", value: editPoids, setter: setEditPoids, placeholder: "72", min: 0, max: 500 },
-                    ].map(({ label, value, setter, placeholder, min, max }) => (
-                      <div key={label}>
-                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
-                        <input type="number" value={value}
-                          onChange={e => { const val = parseInt(e.target.value); if (e.target.value === "" || (val >= min && val <= max)) setter(e.target.value); }}
-                          placeholder={placeholder} min={min} max={max}
-                          style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", MozAppearance: "textfield" } as React.CSSProperties}
-                          onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
-                      </div>
-                    ))}
+                    ].map(({ label, value, setter, placeholder, min, max }) => {
+                      const pending = pendingCorrections.some(c => { const cl = (c.field ?? "").toLowerCase(); const dl = label.toLowerCase().split(" ")[0]; return cl === dl || cl.startsWith(dl) || dl.startsWith(cl); });
+                      return (
+                        <div key={label}>
+                          <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: pending ? "#f59e0b" : "#94a3b8" }}>{label}{pending && <span style={{ marginLeft: 5, fontSize: 8 }}>●</span>}</p>
+                          <input type="number" value={value}
+                            onChange={e => { const val = parseInt(e.target.value); if (e.target.value === "" || (val >= min && val <= max)) setter(e.target.value); }}
+                            placeholder={placeholder} min={min} max={max}
+                            style={{ width: "100%", height: 42, borderRadius: 10, border: pending ? "1.5px solid rgba(245,158,11,0.45)" : "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", MozAppearance: "textfield" } as React.CSSProperties}
+                            onFocus={e => { e.target.style.borderColor = pending ? "#f59e0b" : emerald; }} onBlur={e => { e.target.style.borderColor = pending ? "rgba(245,158,11,0.45)" : "rgba(255,255,255,0.1)"; }} />
+                        </div>
+                      );
+                    })}
                     <div>
-                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
+                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: pendingCorrections.some(c => (c.field ?? "").toLowerCase() === "sexe") ? "#f59e0b" : "#94a3b8" }}>Sexe{pendingCorrections.some(c => (c.field ?? "").toLowerCase() === "sexe") && <span style={{ marginLeft: 5, fontSize: 8 }}>●</span>}</p>
                       <select value={editSexe} onChange={e => setEditSexe(e.target.value)}
-                        style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
+                        style={{ width: "100%", height: 42, borderRadius: 10, border: pendingCorrections.some(c => (c.field ?? "").toLowerCase() === "sexe") ? "1.5px solid rgba(245,158,11,0.45)" : "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
                         <option value="">Choisir</option>
                         <option value="Femme">Femme</option>
                         <option value="Homme">Homme</option>
@@ -4392,11 +4394,12 @@ export default function DashboardPage() {
                     { label: "Régime", value: editRegime, setter: setEditRegime, id: "regime", options: ["Végétarien", "Vegan", "Sans gluten", "Halal", "Méditerranéen"] },
                   ].map(({ label, value, setter, id, options }) => {
                     const isAutre = value !== "" && !options.includes(value) && value !== "Aucune" && value !== "Aucun";
+                    const pending = pendingCorrections.some(c => { const cl = (c.field ?? "").toLowerCase(); const dl = label.toLowerCase(); return cl.startsWith(dl) || dl.startsWith(cl); });
                     return (
                       <div key={id}>
-                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: pending ? "#f59e0b" : "#94a3b8" }}>{label}{pending && <span style={{ marginLeft: 5, fontSize: 8 }}>●</span>}</p>
                         <select value={isAutre ? "Autre" : value} onChange={e => { if (e.target.value === "Autre") setter("__autre__"); else setter(e.target.value); }}
-                          style={{ width: "100%", height: 42, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}>
+                          style={{ width: "100%", height: 42, borderRadius: 8, border: pending ? "1.5px solid rgba(245,158,11,0.45)" : "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}>
                           <option value="">Choisir</option>
                           <option value="Aucune">{["Pathologies", "Allergies", "Activité"].includes(label) ? "Aucune" : "Aucun"}</option>
                           {options.map(o => <option key={o} value={o}>{o}</option>)}
