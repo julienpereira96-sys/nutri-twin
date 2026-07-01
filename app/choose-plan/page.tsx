@@ -2,19 +2,21 @@
 
 const emerald = "#10b981";
 
-const PLANS = [
+type Feature = { text: string; included: boolean; exclusive: boolean };
+
+const PLANS: { name: string; price: string; badge?: string; description: string; features: Feature[]; plan: string; featured: boolean; footnoteMark?: string }[] = [
   {
     name: "Essentiel",
     price: "149€",
     description: "Pour démarrer et accompagner vos patients prioritaires.",
     features: [
-      "Jusqu'à 10 patients",
-      "1 praticien",
-      "Jumeau configuré sur 31 questions",
-      "Chat patient 24h/24",
-      "Journal de bord patient",
-      "Dashboard praticien",
-      "Support par email",
+      { text: "Jusqu'à 10 patients suivis en simultané", included: true, exclusive: false },
+      { text: "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)", included: true, exclusive: false },
+      { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
+      { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
+      { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
+      { text: "Vision IA : Analyse et décodage des photos de repas", included: false, exclusive: true },
+      { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: false, exclusive: true },
     ],
     plan: "essentiel",
     featured: false,
@@ -23,41 +25,44 @@ const PLANS = [
     name: "Professionnel",
     price: "249€",
     badge: "Recommandé",
-    description: "Le jumeau le plus fidèle à votre expertise.",
+    description: "Idéal pour les praticiens indépendants qui gèrent un suivi actif au quotidien.",
     features: [
-      "Jusqu'à 100 patients",
-      "1 praticien",
-      "Jumeau configuré sur 31 questions",
-      "Upload documents & protocoles",
-      "Fidélité maximale du jumeau",
-      "Rapport IA mensuel par patient",
-      "Journal de bord patient",
-      "Support prioritaire",
+      { text: "Jusqu'à 50 patients suivis en simultané", included: true, exclusive: false },
+      { text: "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)", included: true, exclusive: false },
+      { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
+      { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
+      { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
+      { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true, exclusive: true },
+      { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true, exclusive: true },
+      { text: "Plafond d'échanges quotidien étendu par patient", included: true, exclusive: true },
     ],
     plan: "pro",
     featured: true,
   },
   {
     name: "Cabinet",
-    price: "499€",
-    description: "Pour les cabinets multi-praticiens.",
+    price: "599€",
+    description: "Pour les cabinets multi-praticiens et centres de santé.",
     features: [
-      "Patients illimités",
-      "3 praticiens inclus",
-      "Upload documents illimité",
-      "Rapport IA mensuel par patient",
-      "Journal de bord patient",
-      "+99€/praticien supplémentaire",
-      "Support dédié",
+      { text: "Jusqu'à 150 patients suivis en simultané", included: true, exclusive: false },
+      { text: "Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)", included: true, exclusive: false },
+      { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
+      { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
+      { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
+      { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true, exclusive: true },
+      { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true, exclusive: true },
+      { text: "Plafond d'échanges quotidien étendu par patient", included: true, exclusive: true },
+      { text: "Espace collaboratif : partage de dossiers entre confrères", included: true, exclusive: true },
     ],
     plan: "cabinet",
     featured: false,
+    footnoteMark: "1",
   },
 ];
 
 function PricingCard({ name, price, badge, description, features, plan, featured }: {
   name: string; price: string; badge?: string; description: string;
-  features: string[]; plan: string; featured: boolean;
+  features: { text: string; included: boolean; exclusive: boolean }[]; plan: string; featured: boolean; footnoteMark?: string;
 }) {
   return (
     <div
@@ -103,10 +108,16 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       <ul className="mb-6 flex flex-1 flex-col gap-2.5" style={{ padding: 0, listStyle: "none" }}>
         {features.map((f, i) => (
           <li key={i} className="flex items-start gap-2">
-            <svg className="mt-0.5 size-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-            </svg>
-            <span className={`text-[12px] leading-snug ${i < 3 ? "text-zinc-200" : "text-zinc-500"}`}>{f}</span>
+            {f.included ? (
+              <svg className="mt-0.5 size-4 shrink-0 text-emerald-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+              </svg>
+            ) : (
+              <svg className="mt-0.5 size-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#52525b">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            )}
+            <span className={`text-[12px] leading-snug ${f.included ? (i < 3 ? "text-zinc-200" : "text-zinc-400") : "text-zinc-600"}`}>{f.text}</span>
           </li>
         ))}
       </ul>
@@ -198,7 +209,7 @@ export default function ChoosePlanPage() {
       </div>
 
       <p style={{ marginTop: 28, fontSize: 12, color: "#52525b", textAlign: "center" }}>
-        Sans engagement · Résiliable à tout moment · Paiement sécurisé par Stripe
+        Sans engagement · Résiliable à tout moment · Paiement sécurisé
       </p>
     </div>
   );

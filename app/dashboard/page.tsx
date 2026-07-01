@@ -628,6 +628,7 @@ export default function DashboardPage() {
   const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
   const [planUpdateError, setPlanUpdateError] = useState("");
   const [planUpdateSuccess, setPlanUpdateSuccess] = useState(false);
+  const [pendingPlanSwitch, setPendingPlanSwitch] = useState<{ plan: string; label: string; price: string } | null>(null);
   const [reportError, setReportError] = useState("");
   const [showBilanModal, setShowBilanModal] = useState(false);
   const [bilanContent, setBilanContent] = useState("");
@@ -3718,61 +3719,118 @@ export default function DashboardPage() {
       {/* ── Modale changement de plan ── */}
       {showBillingModal && (
         <div onClick={e => { if (e.target === e.currentTarget) setShowBillingModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 520, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
+          <div style={{ position: "relative", background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 580, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Changer de plan</h2>
-                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>
-                  Plan actuel&nbsp;:&nbsp;
-                  <span style={{ color: emerald, fontWeight: 600 }}>
-                    {practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Professionnel" : practitionerPlan === "cabinet" ? "Cabinet" : "–"}
-                  </span>
-                </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <button onClick={() => setShowBillingModal(false)} style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", color: "#94a3b8", width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.12)"} onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+                </button>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "white" }}>Choisissez votre plan</h2>
+                  <p style={{ margin: "2px 0 0", fontSize: 13, color: "#64748b" }}>
+                    Plan actuel&nbsp;:&nbsp;
+                    <span style={{ color: emerald, fontWeight: 600 }}>
+                      {practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Professionnel" : practitionerPlan === "cabinet" ? "Cabinet" : "–"}
+                    </span>
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setShowBillingModal(false)} style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+              <button onClick={() => setShowBillingModal(false)} style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", fontSize: 18, color: "#94a3b8", width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.12)"} onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}>×</button>
             </div>
 
             {/* Cards plans */}
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {([
-                { plan: "essentiel", label: "Essentiel",      price: "149€", desc: "Jusqu'à 10 patients · 1 praticien · Chat 24h/24",            features: ["Jusqu'à 10 patients", "Dashboard praticien", "Chat patient 24h/24", "Support par email"] },
-                { plan: "pro",       label: "Professionnel",  price: "249€", desc: "Jusqu'à 100 patients · Upload protocoles · Rapport IA",       features: ["Jusqu'à 100 patients", "Upload documents & protocoles", "Rapport IA mensuel par patient", "Support prioritaire"] },
-                { plan: "cabinet",   label: "Cabinet",        price: "499€", desc: "Patients illimités · 3 praticiens · Support dédié",           features: ["Patients illimités", "3 praticiens inclus", "Upload illimité", "Support dédié"] },
-              ] as { plan: string; label: string; price: string; desc: string; features: string[] }[]).map(({ plan, label, price, desc, features }) => {
+                {
+                  plan: "essentiel", label: "Essentiel", price: "149€",
+                  desc: "Pour démarrer et accompagner vos patients prioritaires.",
+                  features: [
+                    { text: "Jusqu'à 10 patients suivis en simultané", included: true },
+                    { text: "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)", included: true },
+                    { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true },
+                    { text: "Préparation automatisée de vos consultations et bilans", included: true },
+                    { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true },
+                    { text: "Vision IA : Analyse et décodage des photos de repas", included: false },
+                    { text: "Mémoire clinique long terme", included: false },
+                  ],
+                  badge: null,
+                },
+                {
+                  plan: "pro", label: "Professionnel", price: "249€",
+                  desc: "Idéal pour les praticiens indépendants qui gèrent un suivi actif au quotidien.",
+                  features: [
+                    { text: "Jusqu'à 50 patients suivis en simultané", included: true },
+                    { text: "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)", included: true },
+                    { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true },
+                    { text: "Préparation automatisée de vos consultations et bilans", included: true },
+                    { text: "Vision IA : Analyse et décodage des photos de repas", included: true },
+                    { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true },
+                    { text: "Plafond d'échanges quotidien étendu par patient", included: true },
+                  ],
+                  badge: "Recommandé",
+                },
+                {
+                  plan: "cabinet", label: "Cabinet", price: "599€",
+                  desc: "Pour les cabinets multi-praticiens et centres de santé.",
+                  features: [
+                    { text: "Jusqu'à 150 patients suivis en simultané", included: true },
+                    { text: "Jumeau personnalisé par praticien", included: true },
+                    { text: "Vision IA + Mémoire clinique long terme", included: true },
+                    { text: "Plafond d'échanges quotidien étendu par patient", included: true },
+                    { text: "Espace collaboratif : partage de dossiers entre confrères", included: true },
+                    { text: "+99€/praticien supplémentaire", included: true },
+                  ],
+                  badge: null,
+                },
+              ] as { plan: string; label: string; price: string; desc: string; features: { text: string; included: boolean }[]; badge: string | null }[]).map(({ plan, label, price, desc, features, badge }) => {
                 const isCurrent = plan === practitionerPlan;
+                const isFeatured = badge === "Recommandé";
                 return (
-                  <div key={plan} style={{ borderRadius: 14, border: isCurrent ? `1px solid ${emerald}` : "1px solid rgba(255,255,255,0.08)", background: isCurrent ? "rgba(16,185,129,0.05)" : "rgba(255,255,255,0.02)", padding: "16px 18px", transition: "all 0.2s" }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <div key={plan}
+                    style={{ position: "relative", borderRadius: 16, border: isCurrent ? `1px solid ${emerald}` : isFeatured ? "1px solid rgba(16,185,129,0.30)" : "1px solid rgba(255,255,255,0.08)", background: isCurrent ? "rgba(16,185,129,0.06)" : isFeatured ? "linear-gradient(180deg, rgba(16,185,129,0.07), #080808)" : "#0d0d0d", padding: "18px 20px", transition: "all 0.2s" }}
+                    onMouseEnter={e => { if (!isCurrent) { e.currentTarget.style.border = `1px solid ${isFeatured ? "rgba(16,185,129,0.6)" : "rgba(255,255,255,0.25)"}` ; e.currentTarget.style.transform = "translateY(-2px)"; } }}
+                    onMouseLeave={e => { e.currentTarget.style.border = isCurrent ? `1px solid ${emerald}` : isFeatured ? "1px solid rgba(16,185,129,0.30)" : "1px solid rgba(255,255,255,0.08)"; e.currentTarget.style.transform = "translateY(0)"; }}
+                  >
+                    {badge && !isCurrent && (
+                      <span style={{ position: "absolute", top: -11, left: "50%", transform: "translateX(-50%)", background: emerald, color: "black", fontSize: 10, fontWeight: 700, borderRadius: 999, padding: "2px 10px", whiteSpace: "nowrap" }}>{badge}</span>
+                    )}
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
                           <span style={{ fontSize: 14, fontWeight: 700, color: isCurrent ? emerald : "white" }}>{label}</span>
                           {isCurrent && <span style={{ fontSize: 10, fontWeight: 700, color: emerald, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 4, padding: "1px 7px", letterSpacing: "0.06em", textTransform: "uppercase" }}>Actuel</span>}
                         </div>
-                        <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{desc}</p>
-                        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 3 }}>
-                          {features.map(f => (
-                            <li key={f} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#94a3b8" }}>
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                              {f}
+                        <p style={{ margin: "0 0 10px", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{desc}</p>
+                        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 4 }}>
+                          {features.map((f, i) => (
+                            <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: f.included ? (i < 3 ? "#d1d5db" : "#64748b") : "#52525b" }}>
+                              {f.included ? (
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ marginTop: 1, flexShrink: 0 }}><path d="M4.5 12.75l6 6 9-13.5" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              ) : (
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ marginTop: 1, flexShrink: 0 }}><path d="M6 18L18 6M6 6l12 12" stroke="#52525b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                              )}
+                              {f.text}
                             </li>
                           ))}
                         </ul>
                       </div>
-                      <div style={{ flexShrink: 0, textAlign: "right" }}>
-                        <p style={{ margin: "0 0 10px", fontSize: 20, fontWeight: 800, color: "white", lineHeight: 1 }}>{price}</p>
-                        <p style={{ margin: "0 0 10px", fontSize: 10, color: "#64748b" }}>/ mois</p>
-                        {!isCurrent && (
+                      <div style={{ flexShrink: 0, textAlign: "right", minWidth: 110 }}>
+                        <p style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "white", lineHeight: 1 }}>{price}</p>
+                        <p style={{ margin: "2px 0 14px", fontSize: 11, color: "#64748b" }}>/mois</p>
+                        {isCurrent ? (
+                          <span style={{ fontSize: 11, color: emerald, fontWeight: 600 }}>Plan actuel</span>
+                        ) : (
                           <button
                             disabled={isUpdatingPlan}
-                            onClick={() => void handlePlanSwitch(plan)}
-                            style={{ height: 34, padding: "0 16px", borderRadius: 8, background: "rgba(16,185,129,0.1)", border: `1px solid rgba(16,185,129,0.25)`, color: emerald, fontSize: 12, fontWeight: 600, cursor: isUpdatingPlan ? "not-allowed" : "pointer", opacity: isUpdatingPlan ? 0.6 : 1, transition: "all 0.2s", whiteSpace: "nowrap" }}
-                            onMouseEnter={e => { if (!isUpdatingPlan) e.currentTarget.style.background = "rgba(16,185,129,0.18)"; }}
-                            onMouseLeave={e => { if (!isUpdatingPlan) e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}
+                            onClick={() => setPendingPlanSwitch({ plan, label, price })}
+                            style={{ height: 36, padding: "0 16px", borderRadius: 10, background: isFeatured ? emerald : "rgba(16,185,129,0.1)", border: isFeatured ? "none" : `1px solid rgba(16,185,129,0.25)`, color: isFeatured ? "black" : emerald, fontSize: 12, fontWeight: 600, cursor: isUpdatingPlan ? "not-allowed" : "pointer", opacity: isUpdatingPlan ? 0.6 : 1, transition: "all 0.2s", whiteSpace: "nowrap" }}
+                            onMouseEnter={e => { if (!isUpdatingPlan) e.currentTarget.style.opacity = "0.85"; }}
+                            onMouseLeave={e => { if (!isUpdatingPlan) e.currentTarget.style.opacity = "1"; }}
                           >
                             {isUpdatingPlan ? (
                               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ animation: "spin 1s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.22-8.56"/></svg>
                                 En cours
                               </span>
                             ) : "Choisir ce plan"}
@@ -3792,9 +3850,37 @@ export default function DashboardPage() {
 
             {/* Note prorata */}
             <p style={{ margin: "16px 0 0", fontSize: 11, color: "#475569", textAlign: "center", lineHeight: 1.5 }}>
-              Le changement est effectif immédiatement. Le prorata est facturé ou crédité sur votre prochaine facture Stripe.
+              Sans engagement · Résiliable à tout moment · Le changement est effectif immédiatement.
               {onboardingDemoMode && <span style={{ display: "block", color: amber, marginTop: 4 }}>Mode démo — aucun paiement réel.</span>}
             </p>
+
+            {/* Popup confirmation changement de plan */}
+            {pendingPlanSwitch && (
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.80)", backdropFilter: "blur(6px)", borderRadius: 24, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+                <div style={{ background: "#0d0d0d", borderRadius: 18, padding: "28px 24px", border: "1px solid rgba(255,255,255,0.1)", width: "100%", maxWidth: 320, textAlign: "center" }}>
+                  <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                  </div>
+                  <p style={{ margin: "0 0 6px", fontSize: 16, fontWeight: 700, color: "white" }}>Passer au plan {pendingPlanSwitch.label} ?</p>
+                  <p style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, color: emerald }}>{pendingPlanSwitch.price}<span style={{ fontSize: 13, fontWeight: 400, color: "#64748b" }}>/mois</span></p>
+                  <p style={{ margin: "0 0 22px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Le changement est effectif immédiatement. Le prorata sera calculé sur votre prochaine facture.</p>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button onClick={() => setPendingPlanSwitch(null)}
+                      style={{ flex: 1, height: 42, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "white"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#64748b"; }}>
+                      Annuler
+                    </button>
+                    <button onClick={() => { const p = pendingPlanSwitch; setPendingPlanSwitch(null); void handlePlanSwitch(p.plan); }}
+                      style={{ flex: 1, height: 42, borderRadius: 12, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; }}>
+                      Confirmer
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
