@@ -3435,8 +3435,8 @@ export default function DashboardPage() {
                       setUploadingAvatar(true);
                       try {
                         const sup = createSupabaseBrowserClient();
-                        await sup.storage.from("Avatars").upload(`practitioners/${practitionerId}/avatar.jpg`, file, { upsert: true, contentType: file.type || "image/jpeg", cacheControl: "no-store" });
-                        const { data: urlData } = sup.storage.from("Avatars").getPublicUrl(`practitioners/${practitionerId}/avatar.jpg`);
+                        await sup.storage.from("Avatars").upload(`${practitionerId}/practitioner-avatar.jpg`, file, { upsert: true, contentType: file.type || "image/jpeg", cacheControl: "no-store" });
+                        const { data: urlData } = sup.storage.from("Avatars").getPublicUrl(`${practitionerId}/practitioner-avatar.jpg`);
                         if (urlData?.publicUrl) {
                           await sup.from("practitioners").update({ avatar_url: urlData.publicUrl }).eq("user_id", practitionerId);
                           setPractitionerPhoto(urlData.publicUrl + "?t=" + Date.now());
@@ -3455,6 +3455,19 @@ export default function DashboardPage() {
                       </button>
                     )}
                   </div>
+                  {practitionerPhoto && (
+                    <button onClick={async () => {
+                      setPractitionerPhoto(null);
+                      if (!practitionerId) return;
+                      try {
+                        const sup = createSupabaseBrowserClient();
+                        await sup.storage.from("Avatars").remove([`${practitionerId}/practitioner-avatar.jpg`]);
+                        await sup.from("practitioners").update({ avatar_url: null }).eq("user_id", practitionerId);
+                      } catch { /* silencieux */ }
+                    }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", textDecoration: "underline", padding: 0, marginTop: 8, display: "block", width: "100%", textAlign: "center" }}>
+                      Supprimer la photo
+                    </button>
+                  )}
                   {emailChangeSent && (
                     <p style={{ margin: "8px 0 0", fontSize: 12, color: emerald, lineHeight: 1.5 }}>
                       Un lien de confirmation a été envoyé à <strong>{newEmail}</strong>. Cliquez dessus pour valider le changement.
@@ -3482,15 +3495,6 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   )}
-                  {practitionerPhoto && <button onClick={async () => {
-                    setPractitionerPhoto(null);
-                    if (!practitionerId) return;
-                    try {
-                      const sup = createSupabaseBrowserClient();
-                      await sup.storage.from("Avatars").remove([`practitioners/${practitionerId}/avatar.jpg`]);
-                      await sup.from("practitioners").update({ avatar_url: null }).eq("user_id", practitionerId);
-                    } catch { /* silencieux */ }
-                  }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", textDecoration: "underline", padding: 0, marginTop: 8 }}>Supprimer la photo</button>}
                 </div>
                 <div style={{ marginTop: 16 }}>
                     <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.1em" }}>Choisir un avatar</p>
