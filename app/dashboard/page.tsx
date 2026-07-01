@@ -3775,7 +3775,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Cards plans */}
-            <div style={{ display: "flex", flexDirection: "row", gap: 12, alignItems: "stretch", flexWrap: "wrap", marginTop: 16 }}>
+            <div style={{ display: "flex", flexDirection: "row", gap: 12, alignItems: "stretch", flexWrap: "wrap", marginTop: 32 }}>
               {([
                 {
                   plan: "essentiel", label: "Essentiel", price: "149€",
