@@ -1521,7 +1521,7 @@ export default function ChatPage() {
 
       {/* ═══ SAS DE DÉCOMPRESSION ═══ */}
       {showSasButtons && !activeTool && (
-        <div style={{ position: "fixed", bottom: hasMessages ? 110 : 190, left: "50%", transform: "translateX(-50%)", zIndex: 91, width: "calc(100% - 32px)", maxWidth: 520, background: "#0a0f0c", borderRadius: 18, border: `1px solid ${ACCENT_BORDER}`, padding: "16px 18px", boxShadow: "0 8px 36px rgba(16,185,129,0.08), 0 8px 32px rgba(0,0,0,0.5)", animation: "fadeUp 0.3s ease" }}>
+        <div style={{ position: "fixed", bottom: hasMessages ? 110 : 190, left: "50%", transform: "translateX(-50%)", zIndex: 91, width: "calc(100% - 36px)", maxWidth: 520, background: "#0a0f0c", borderRadius: 18, border: `1px solid ${ACCENT_BORDER}`, padding: "16px 18px", boxShadow: "0 8px 36px rgba(16,185,129,0.08), 0 8px 32px rgba(0,0,0,0.5)", animation: "fadeUp 0.3s ease" }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
             <div style={{ width: 34, height: 34, borderRadius: "50%", border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconWave size={16} color={ACCENT} strokeWidth={1.5} /></div>
             <p style={{ margin: 0, fontSize: 13, color: TEXT_PRIMARY, lineHeight: 1.55 }}>
