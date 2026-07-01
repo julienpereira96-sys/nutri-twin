@@ -3467,6 +3467,10 @@ export default function DashboardPage() {
                         style={{ width: "100%", height: 42, borderRadius: 10, border: `1px solid ${emailChangeError ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "#161616", color: "white", padding: "0 14px", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" }} />
                       {emailChangeError && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#f87171" }}>{emailChangeError}</p>}
                       <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <button onClick={() => { setShowEmailChange(false); setNewEmail(""); setEmailChangeError(""); }}
+                          style={{ height: 38, borderRadius: 10, padding: "0 14px", background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 13, cursor: "pointer" }}>
+                          Annuler
+                        </button>
                         <button onClick={() => {
                           if (!newEmail.includes("@")) { setEmailChangeError("Adresse email invalide."); return; }
                           if (newEmail === practitionerEmail) { setEmailChangeError("C'est déjà votre adresse actuelle."); return; }
@@ -3474,10 +3478,6 @@ export default function DashboardPage() {
                         }} disabled={changingEmail || !newEmail}
                           style={{ flex: 1, height: 38, borderRadius: 10, background: changingEmail || !newEmail ? "rgba(255,255,255,0.04)" : "rgba(16,185,129,0.12)", border: `1px solid ${changingEmail || !newEmail ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: changingEmail || !newEmail ? "#64748b" : emerald, fontSize: 13, fontWeight: 600, cursor: changingEmail || !newEmail ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
                           {changingEmail ? "Mise à jour…" : "Mettre à jour"}
-                        </button>
-                        <button onClick={() => { setShowEmailChange(false); setNewEmail(""); setEmailChangeError(""); }}
-                          style={{ height: 38, borderRadius: 10, padding: "0 14px", background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#64748b", fontSize: 13, cursor: "pointer" }}>
-                          Annuler
                         </button>
                       </div>
                     </div>
