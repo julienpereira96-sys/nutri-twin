@@ -2398,7 +2398,7 @@ export default function DashboardPage() {
                           <div data-message-id={message.id} data-message-date={message.created_at}
                             style={{ display: "flex", justifyContent: isPatient ? "flex-end" : "flex-start", transition: "all 0.3s" }}>
                             <div style={{ maxWidth: isPatient ? "78%" : "100%" }}>
-                              <div style={{ borderRadius: isPatient ? 22 : (isHighlighted ? 14 : 0), padding: isPatient ? "12px 16px" : (isHighlighted ? "4px 14px" : "4px 0"), fontSize: isPatient ? 14 : 15, lineHeight: isPatient ? 1.6 : 1.8, background: isHighlighted ? highlightColor : isPatient ? "rgba(16,185,129,0.12)" : "transparent", border: isPatient ? "none" : (isHighlighted ? `1px solid ${highlightOutline}` : "none"), color: "rgba(255,255,255,0.95)", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: "none" }}>
+                              <div style={{ borderRadius: isPatient ? 22 : (isHighlighted ? 14 : 0), padding: isPatient ? "12px 16px" : (isHighlighted ? "4px 14px" : "4px 0"), fontSize: isPatient ? 13 : 14, lineHeight: isPatient ? 1.6 : 1.8, background: isHighlighted ? highlightColor : isPatient ? "rgba(16,185,129,0.12)" : "transparent", border: isPatient ? "none" : (isHighlighted ? `1px solid ${highlightOutline}` : "none"), color: "rgba(255,255,255,0.95)", filter: discretMode ? "blur(4px)" : "none", transition: "background 0.3s, filter 0.2s", outline: "none" }}>
                                 {message.content}
                               </div>
                               <p style={{ margin: "4px 0 0", fontSize: 10, color: "#4b5563", textAlign: isPatient ? "right" : "left" }}>
