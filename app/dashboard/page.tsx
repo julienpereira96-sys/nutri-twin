@@ -2107,7 +2107,7 @@ export default function DashboardPage() {
                 {practitionerPhoto ? <img src={practitionerPhoto} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : AVATARS[selectedAvatar]}
               </div>
               <div style={{ display: "flex", flexDirection: "column" }}>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "white" }}>
+                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
                   {practitionerName ? `${new Date().getHours() >= 18 ? "Bonsoir" : "Bonjour"} ${practitionerName.split(" ")[0]}` : "Dashboard"}
                   <span style={{ fontSize: 11, color: "#64748b", marginLeft: 6 }}>▾</span>
                 </p>
@@ -2122,7 +2122,7 @@ export default function DashboardPage() {
                 <div onClick={() => setShowAccountMenu(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
                 <div style={{ position: "absolute", top: "calc(100% + 8px)", left: 0, zIndex: 50, background: "#0d0d0d", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 8px 32px rgba(0,0,0,0.6)", padding: "6px", minWidth: 230 }}>
                   <div style={{ padding: "10px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", marginBottom: 4 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white" }}>{practitionerName}</p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{practitionerName}</p>
                   </div>
                   <button onClick={() => { handleDiscretClick(); setShowAccountMenu(false); }}
                     style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, background: discretMode ? "rgba(245,158,11,0.08)" : "transparent", border: "none", cursor: "pointer", transition: "all 0.15s", marginBottom: 2 }}

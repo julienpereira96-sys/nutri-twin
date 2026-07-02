@@ -1733,7 +1733,7 @@ export default function ChatPage() {
                 )}
                 <button
                   onClick={() => patientAvatarRef.current?.click()} disabled={uploadingPhoto}
-                  style={{ position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: ACCENT, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  style={{ position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: ACCENT, border: "2px solid black", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                 >
                   {uploadingPhoto
                     ? <span style={{ width: 10, height: 10, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid #000", display: "inline-block", animation: "spin 1s linear infinite" }} />
