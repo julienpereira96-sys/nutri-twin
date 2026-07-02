@@ -10,55 +10,33 @@ export function createSupabaseBrowserClient() {
     );
   }
 
-  // Intercepteur fetch : reconstruit les headers proprement pour éviter
-  // tout strip lié au service worker, CORS preflight caché ou autre middleware.
+  // Correctif CORS preflight cache :
+  // Le navigateur peut cacher une réponse preflight CORS qui ne liste pas
+  // "apikey" dans Access-Control-Allow-Headers, ce qui le conduit à stripper
+  // ce header des requêtes suivantes — même si le client JS l'avait bien ajouté.
+  // Solution : passer l'apikey AUSSI en paramètre URL.
+  // Supabase supporte les deux : header ET param URL (cf. message d'erreur Kong :
+  // "No 'apikey' request header or url param was found").
   const safeFetch: typeof fetch = async (input, init) => {
-    const url =
+    const rawUrl =
       typeof input === "string"
         ? input
         : input instanceof URL
           ? input.href
           : (input as Request).url;
 
-    if (!url.includes("/rest/v1/")) {
+    if (!rawUrl.includes("/rest/v1/")) {
       return fetch(input, init);
     }
 
-    // Reconstruction explicite des headers depuis toutes les sources possibles
-    const newHeaders = new Headers();
-
-    // 1. Headers depuis un éventuel Request object (input)
-    if (input instanceof Request) {
-      input.headers.forEach((value, key) => newHeaders.set(key, value));
+    // Ajoute apikey en paramètre URL — contourne tout strip CORS sur les headers
+    const urlObj = new URL(rawUrl);
+    if (!urlObj.searchParams.has("apikey")) {
+      urlObj.searchParams.set("apikey", supabaseAnonKey);
     }
+    const finalUrl = urlObj.toString();
 
-    // 2. Headers depuis init (écrasent ceux du Request si doublon)
-    const raw = init?.headers;
-    if (raw instanceof Headers) {
-      raw.forEach((value, key) => newHeaders.set(key, value));
-    } else if (Array.isArray(raw)) {
-      (raw as string[][]).forEach(([k, v]) => newHeaders.set(k, v));
-    } else if (raw) {
-      Object.entries(raw as Record<string, string>).forEach(([k, v]) =>
-        newHeaders.set(k, v),
-      );
-    }
-
-    // 3. Garantit apikey même si le client l'avait omis
-    if (!newHeaders.has("apikey")) {
-      newHeaders.set("apikey", supabaseAnonKey);
-      console.warn(
-        "[SupabaseFetch] apikey manquant → injecté",
-        url.replace(supabaseUrl, "").slice(0, 80),
-      );
-    } else {
-      console.log(
-        "[SupabaseFetch] ✓",
-        url.replace(supabaseUrl, "").slice(0, 80),
-      );
-    }
-
-    return fetch(url, { ...init, headers: newHeaders, mode: "cors" });
+    return fetch(finalUrl, init);
   };
 
   return createBrowserClient(supabaseUrl, supabaseAnonKey, {
