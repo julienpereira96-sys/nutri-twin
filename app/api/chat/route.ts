@@ -1056,6 +1056,15 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
           await supabase.from("patients").update({
             admin_alerts: [...alerts, { type: "admin_alert", alert_type: "behavioral", date: new Date().toISOString(), seen: false, murmure: crisisAnalysis.murmure, trigger_message_id: savedMessageId }],
           }).eq("user_id", patientId);
+          // Ouvrir une crisis_event si aucune n'est déjà ouverte pour ce patient
+          try {
+            const { count: openCrises } = await supabase.from("crisis_events")
+              .select("id", { count: "exact", head: true })
+              .eq("patient_id", patientId).is("resolved_at", null);
+            if ((openCrises ?? 0) === 0) {
+              await supabase.from("crisis_events").insert({ patient_id: patientId, practitioner_id: practitionerId });
+            }
+          } catch { /* silencieux */ }
           // Pas d'alerte email (pour ne pas spammer le praticien), pas d'override de
           // la réponse : le message de clôture chaleureux habituel suit normalement.
         }
@@ -1237,6 +1246,15 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
         await supabase.from("patients").update({
           admin_alerts: [...alerts, { type: "admin_alert", alert_type: "behavioral_sos_intake", date: new Date().toISOString(), seen: false, message: trimmedMessage.slice(0, 200), trigger_message_id: savedMessageId }],
         }).eq("user_id", patientId);
+        // Ouvrir une crisis_event si aucune n'est déjà ouverte pour ce patient
+        try {
+          const { count: openCrises } = await supabase.from("crisis_events")
+            .select("id", { count: "exact", head: true })
+            .eq("patient_id", patientId).is("resolved_at", null);
+          if ((openCrises ?? 0) === 0) {
+            await supabase.from("crisis_events").insert({ patient_id: patientId, practitioner_id: practitionerId });
+          }
+        } catch { /* silencieux */ }
         // Pas d'alerte email (pour ne pas spammer le praticien), pas d'interruption
         // de l'exercice en cours — Gemini Live continue normalement en direct.
         return Response.json({ level: "red_behavioral" });
@@ -1390,6 +1408,15 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       await supabaseMain.from("patients").update({
         admin_alerts: [...alerts, { type: "admin_alert", alert_type: "behavioral", date: new Date().toISOString(), seen: false, murmure: crisisAnalysis.murmure, trigger_message_id: userMsgId }]
       }).eq("user_id", patientId);
+      // Ouvrir une crisis_event si aucune n'est déjà ouverte pour ce patient
+      try {
+        const { count: openCrises } = await supabaseMain.from("crisis_events")
+          .select("id", { count: "exact", head: true })
+          .eq("patient_id", patientId).is("resolved_at", null);
+        if ((openCrises ?? 0) === 0) {
+          await supabaseMain.from("crisis_events").insert({ patient_id: patientId, practitioner_id: practitionerId });
+        }
+      } catch { /* silencieux */ }
     }
 
     const forceAncrage = crisisAnalysis.level === "red_behavioral"
@@ -1583,6 +1610,16 @@ Max 150 mots. Sans markdown.`;
           if (resolvedSosEvent?.id) {
             try {
               await supabase.from("sos_events").update({ status: "success" }).eq("id", resolvedSosEvent.id);
+            } catch { /* silencieux */ }
+          }
+
+          // Apaisement → résoudre la crisis_event ouverte
+          if (shouldResolveApaisement) {
+            try {
+              await supabase.from("crisis_events")
+                .update({ resolved_at: new Date().toISOString() })
+                .eq("patient_id", patientId)
+                .is("resolved_at", null);
             } catch { /* silencieux */ }
           }
 

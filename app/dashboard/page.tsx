@@ -816,12 +816,31 @@ export default function DashboardPage() {
   };
 
   const loadMonthlyStats = async (pid: string) => {
-    const { count: totalMessages } = await supabase.from("conversations").select("*", { count: "exact", head: true }).eq("practitioner_id", pid);
-    const { count: sosCount } = await supabase.from("sos_events").select("*", { count: "exact", head: true }).eq("practitioner_id", pid);
-    const { data: sosFeedbacks } = await supabase.from("sos_feedback").select("score_after, stress_before_proxy").eq("practitioner_id", pid);
-    const chatResolutions = (sosFeedbacks ?? []).filter(f => f.score_after < f.stress_before_proxy).length;
-    const msgs = totalMessages ?? 0;
-    const tempsLibere = Math.round(((msgs * 0.75) + ((sosCount ?? 0) * 5)) / 60 * 10) / 10;
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    // Messages du mois (avec contenu pour le calcul du temps libéré)
+    const { data: monthMessages } = await supabase.from("conversations")
+      .select("role, content")
+      .eq("practitioner_id", pid)
+      .gte("created_at", startOfMonth);
+
+    const msgs = (monthMessages ?? []).length;
+
+    // Temps libéré — basé sur le volume de mots échangés
+    // Hypothèse : le praticien aurait mis ~40 mots/min à l'oral pour répondre,
+    // et ~200 mots/min à lire les messages patients.
+    const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
+    const totalMotsIA = (monthMessages ?? [])
+      .filter(m => m.role === "assistant")
+      .reduce((sum, m) => sum + countWords((m.content as string) ?? ""), 0);
+    const totalMotsPatient = (monthMessages ?? [])
+      .filter(m => m.role === "user")
+      .reduce((sum, m) => sum + countWords((m.content as string) ?? ""), 0);
+    const tempsLibereMinutes = (totalMotsIA / 40) + (totalMotsPatient / 200);
+    const tempsLibere = Math.round(tempsLibereMinutes / 60 * 10) / 10; // → heures, 1 décimale
+
+    // Sessions pour le temps d'accompagnement
     const { data: sessions } = await supabase.from("conversations_sessions").select("created_at, last_message_at").eq("practitioner_id", pid);
     const tempsAccompagnement = Math.round(
       (sessions ?? []).reduce((sum, s) => {
@@ -831,11 +850,14 @@ export default function DashboardPage() {
       }, 0) / 60 * 10
     ) / 10;
 
-    // Taux d'Apaisement : % d'épisodes SOS résolus (score_after < stress_before_proxy)
-    const totalFeedbacks = (sosFeedbacks ?? []).length;
-    const tauxApaisement = totalFeedbacks > 0
-      ? Math.round((chatResolutions / totalFeedbacks) * 100)
-      : null;
+    // crisis_events — source de vérité pour taux d'apaisement et crises apaisées
+    const { data: crisisEvents } = await supabase.from("crisis_events")
+      .select("triggered_at, resolved_at")
+      .eq("practitioner_id", pid)
+      .gte("triggered_at", startOfMonth);
+    const triggered = (crisisEvents ?? []).length;
+    const resolved = (crisisEvents ?? []).filter(e => e.resolved_at !== null).length;
+    const tauxApaisement = triggered > 0 ? Math.round((resolved / triggered) * 100) : null;
 
     // Contexte de crise le plus fréquent → météo émotionnelle "Avant"
     const { data: sosEvents } = await supabase
@@ -861,8 +883,8 @@ export default function DashboardPage() {
       temps_accompagnement_heures: tempsAccompagnement,
       taux_retention: 85,
       questions_repetitives_pct: 72,
-      sos_resolutions: sosCount ?? 0,
-      chat_resolutions: chatResolutions,
+      sos_resolutions: resolved, // crises apaisées ce mois
+      chat_resolutions: triggered, // crises déclenchées ce mois
       taux_apaisement: tauxApaisement,
       top_crisis_context: topCrisisContext,
     });
@@ -2086,7 +2108,7 @@ export default function DashboardPage() {
               </div>
               <div style={{ display: "flex", flexDirection: "column" }}>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "white" }}>
-                  {practitionerName ? `Bonjour ${practitionerName.split(" ")[0]} 👋` : "Dashboard"}
+                  {practitionerName ? `${new Date().getHours() >= 18 ? "Bonsoir" : "Bonjour"} ${practitionerName.split(" ")[0]}` : "Dashboard"}
                   <span style={{ fontSize: 11, color: "#64748b", marginLeft: 6 }}>▾</span>
                 </p>
                 <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
@@ -2920,9 +2942,13 @@ export default function DashboardPage() {
 
               {/* KPI blocks */}
               {(() => {
-                const crises = onboardingDemoMode ? 3 : (patients.reduce((sum, p) => sum + (p.totalMessages > 0 ? 1 : 0), 0) || 0);
+                const crises = onboardingDemoMode ? 3 : (monthlyStats?.sos_resolutions ?? 0);
                 const messages = onboardingDemoMode ? 92 : (monthlyStats?.messages_geres ?? 0);
                 const heures = onboardingDemoMode ? 14 : (monthlyStats?.temps_economise_heures ?? 0);
+                const totalMinutes = Math.round(heures * 60);
+                const displayTime = totalMinutes < 60
+                  ? `${totalMinutes} min`
+                  : `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60 > 0 ? `${totalMinutes % 60}min` : ""}`.trim();
                 const tauxApaisement = onboardingDemoMode ? 85 : (monthlyStats?.taux_apaisement ?? null);
                 const crisisAvant = onboardingDemoMode ? "Submergé(e)" : (monthlyStats?.top_crisis_context ?? null);
                 return (
@@ -2970,12 +2996,12 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div style={{ background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 16, padding: 20 }}>
-                  <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Interventions hors-cabinet</p>
+                  <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#64748b", letterSpacing: "0.1em", textTransform: "uppercase" }}>Messages traités par votre Jumeau</p>
                   <p style={{ margin: "0 0 4px", fontSize: 48, fontWeight: 900, color: amber, lineHeight: 1 }}>{messages}</p>
                   <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b" }}>messages gérés</p>
                   <div style={{ background: "rgba(245,158,11,0.08)", borderRadius: 8, padding: "6px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
                     <ClockIcon size={13} color={amber} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: amber }}>{heures}h libérées</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: amber }}>{displayTime} libérées</span>
                   </div>
                 </div>
               </div>
@@ -3078,7 +3104,6 @@ export default function DashboardPage() {
                                 {patient.emotional_insight}
                               </p>
                             )}
-                            <p style={{ margin: "2px 0 0", fontSize: 10, color: "#475569" }}>{patient.totalMessages} messages</p>
                           </div>
                           {hasVictory && <span style={{ fontSize: 14, flexShrink: 0, alignSelf: "flex-start" }} title={patient.latest_victory}>🏆</span>}
                           {hasIdentityAlertGrid && <span style={{ fontSize: 10, fontWeight: 600, color: SLATE_BLUE, background: "rgba(96,165,250,0.12)", border: "1px solid rgba(96,165,250,0.25)", borderRadius: 6, padding: "2px 6px", flexShrink: 0, alignSelf: "flex-start", whiteSpace: "nowrap" }}>Correction nom</span>}
@@ -3187,7 +3212,8 @@ export default function DashboardPage() {
                               <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Messages cette semaine</p>
                               <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#94a3b8" }}>{patient.totalMessages}</p>
                             </div>
-                            {(patient as RealPatient).objectif_clinique && (
+                            {(patient as RealPatient).objectif_clinique &&
+                              (patient as RealPatient).objectif_clinique !== "Aucune" && (
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <p style={{ margin: 0, fontSize: 10, color: "#4b5563" }}>Objectif clinique</p>
                                 <p style={{ margin: 0, fontSize: 11, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(patient as RealPatient).objectif_clinique}</p>
