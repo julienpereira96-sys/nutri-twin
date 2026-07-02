@@ -13,12 +13,18 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json() as { avatarDataUrl?: string; action?: string };
 
-  // Suppression
+  // ── Suppression ────────────────────────────────────────────────────────
   if (body.action === "delete") {
+    // Supprimer le fichier dans Storage (silencieux si absent)
+    await supabaseAdmin.storage
+      .from("Avatars")
+      .remove([`prac_${user.id}/avatar.jpg`]);
+
     const { error } = await supabaseAdmin
       .from("practitioners")
       .update({ avatar_url: null })
       .eq("user_id", user.id);
+
     if (error) {
       console.error("[save-avatar] delete error:", error.message);
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -26,30 +32,58 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // Upload
+  // ── Upload ─────────────────────────────────────────────────────────────
   if (!body.avatarDataUrl) {
     return NextResponse.json({ error: "No data" }, { status: 400 });
   }
 
-  // Validation basique
   if (!body.avatarDataUrl.startsWith("data:image/")) {
     return NextResponse.json({ error: "Format invalide" }, { status: 400 });
   }
 
-  // Taille max ~700 000 chars ≈ 525 KB d'image — largement suffisant pour une photo compressée
   if (body.avatarDataUrl.length > 700_000) {
     return NextResponse.json({ error: "Image trop volumineuse" }, { status: 400 });
   }
 
-  const { error } = await supabaseAdmin
-    .from("practitioners")
-    .update({ avatar_url: body.avatarDataUrl })
-    .eq("user_id", user.id);
+  // Convertir dataUrl → Buffer
+  const base64Data = body.avatarDataUrl.split(",")[1];
+  if (!base64Data) {
+    return NextResponse.json({ error: "Data URL invalide" }, { status: 400 });
+  }
+  const buffer = Buffer.from(base64Data, "base64");
 
-  if (error) {
-    console.error("[save-avatar] update error:", error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  // Upload dans le même bucket que les patients — préfixe "prac_" pour séparer
+  const storagePath = `prac_${user.id}/avatar.jpg`;
+  const { error: storageError } = await supabaseAdmin.storage
+    .from("Avatars")
+    .upload(storagePath, buffer, {
+      contentType: "image/jpeg",
+      upsert: true,
+      cacheControl: "no-store",
+    });
+
+  if (storageError) {
+    console.error("[save-avatar] storage error:", storageError.message);
+    return NextResponse.json({ error: storageError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  // URL publique avec cache-buster (identique au pattern patient)
+  const { data: publicData } = supabaseAdmin.storage
+    .from("Avatars")
+    .getPublicUrl(storagePath);
+
+  const publicUrl = publicData.publicUrl + "?t=" + Date.now();
+
+  // Stocker l'URL (pas le base64) dans la colonne avatar_url
+  const { error: dbError } = await supabaseAdmin
+    .from("practitioners")
+    .update({ avatar_url: publicUrl })
+    .eq("user_id", user.id);
+
+  if (dbError) {
+    console.error("[save-avatar] db error:", dbError.message);
+    return NextResponse.json({ error: dbError.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, url: publicUrl });
 }

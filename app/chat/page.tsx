@@ -1733,11 +1733,11 @@ export default function ChatPage() {
                 )}
                 <button
                   onClick={() => patientAvatarRef.current?.click()} disabled={uploadingPhoto}
-                  style={{ position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.5)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(8px)" }}
+                  style={{ position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: ACCENT, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                 >
                   {uploadingPhoto
-                    ? <span style={{ width: 10, height: 10, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: `2px solid ${ACCENT}`, display: "inline-block", animation: "spin 1s linear infinite" }} />
-                    : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    ? <span style={{ width: 10, height: 10, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid #000", display: "inline-block", animation: "spin 1s linear infinite" }} />
+                    : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                   }
                 </button>
                 <input
