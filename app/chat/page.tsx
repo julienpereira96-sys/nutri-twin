@@ -2878,7 +2878,7 @@ export default function ChatPage() {
           }}>
             <div style={{ maxWidth: 700, margin: "0 auto" }}>
               {pendingImage && (
-                <div style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 12, background: "rgba(16,185,129,0.05)", border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 12, background: "#0b0f0d", border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", gap: 10 }}>
                   <img
                     src={pendingImage.previewUrl}
                     alt="Aperçu"
