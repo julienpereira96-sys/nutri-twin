@@ -2750,7 +2750,7 @@ export default function ChatPage() {
                               <circle cx="10" cy="10" r="8" stroke="#10b981" strokeWidth="1.5" strokeDasharray="16 35" strokeLinecap="round"/>
                             </svg>
                           </div>
-                          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", fontStyle: "italic", animation: "nt-analyse 1.8s ease-in-out infinite" }}>Analyse en cours</span>
+                          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", animation: "nt-analyse 1.8s ease-in-out infinite" }}>Analyse en cours</span>
                         </div>
                       </div>
                     );

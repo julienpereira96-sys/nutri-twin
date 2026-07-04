@@ -3822,7 +3822,7 @@ export default function DashboardPage() {
             <div style={{ display: "flex", flexDirection: "row", gap: 12, alignItems: "stretch", flexWrap: "wrap", marginTop: 32 }}>
               {([
                 {
-                  plan: "essentiel", label: "Essentiel", price: "149€",
+                  plan: "essentiel", label: "Essentiel", price: "89€",
                   desc: "Pour démarrer et accompagner vos patients prioritaires.",
                   footnoteMark: null as string | null,
                   features: [
@@ -3837,7 +3837,7 @@ export default function DashboardPage() {
                   badge: null as string | null,
                 },
                 {
-                  plan: "pro", label: "Professionnel", price: "249€",
+                  plan: "pro", label: "Professionnel", price: "199€",
                   desc: "Idéal pour les praticiens indépendants qui gèrent un suivi actif au quotidien.",
                   footnoteMark: null as string | null,
                   features: [
@@ -3985,7 +3985,7 @@ export default function DashboardPage() {
                       <button
                         onClick={() => void handlePurchasePack()}
                         disabled={isPurchasingPack}
-                        style={{ flexShrink: 0, padding: "8px 16px", borderRadius: 10, background: emerald, color: "black", fontSize: 12, fontWeight: 700, border: "none", cursor: isPurchasingPack ? "not-allowed" : "pointer", opacity: isPurchasingPack ? 0.6 : 1, transition: "opacity 0.15s" }}
+                        style={{ flexShrink: 0, padding: "8px 16px", borderRadius: 10, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: emerald, fontSize: 12, fontWeight: 600, cursor: isPurchasingPack ? "not-allowed" : "pointer", opacity: isPurchasingPack ? 0.6 : 1, transition: "all 0.2s" }}
                       >
                         {isPurchasingPack ? "Chargement…" : "Ajouter le pack"}
                       </button>

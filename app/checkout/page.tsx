@@ -20,14 +20,14 @@ const PLANS: Record<string, {
 }> = {
   essentiel: {
     name: "Essentiel",
-    price: "149€",
+    price: "89€",
     description: "Pour démarrer et accompagner vos patients prioritaires.",
     features: ["Jusqu'à 10 patients", "1 praticien", "Jumeau configuré sur 31 questions", "Chat patient 24h/24", "Dashboard praticien", "Support par email"],
     color: emerald,
   },
   pro: {
     name: "Professionnel",
-    price: "249€",
+    price: "199€",
     badge: "Recommandé",
     description: "Le jumeau le plus fidèle à votre expertise.",
     features: ["Jusqu'à 50 patients", "1 praticien", "Jumeau configuré sur 31 questions", "Upload documents & protocoles", "Fidélité maximale du jumeau", "Rapport IA mensuel par patient", "Support prioritaire"],

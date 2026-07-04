@@ -64,13 +64,13 @@ function AnimatedChat() {
               <div key={i} style={{ display: "flex", justifyContent: msg.role === "patient" ? "flex-end" : "flex-start", animation: "chatFadeIn 0.35s ease forwards" }}>
                 <div style={{
                   maxWidth: msg.role === "patient" ? "82%" : "100%",
-                  borderRadius: msg.role === "patient" ? 14 : 0,
-                  padding: msg.role === "patient" ? "7px 12px" : "2px 4px",
+                  borderRadius: msg.role === "patient" ? 22 : 0,
+                  padding: msg.role === "patient" ? "12px 16px" : "2px 4px",
                   fontSize: 13,
-                  lineHeight: msg.role === "patient" ? 1.5 : 1.7,
-                  background: msg.role === "patient" ? "rgba(16,185,129,0.03)" : "transparent",
-                  border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.2)" : "none",
-                  color: msg.role === "patient" ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)",
+                  lineHeight: msg.role === "patient" ? 1.6 : 1.7,
+                  background: msg.role === "patient" ? "rgba(16,185,129,0.12)" : "transparent",
+                  border: "none",
+                  color: "rgba(255,255,255,0.95)",
                 }}>
                   {msg.text}
                 </div>
@@ -91,11 +91,11 @@ function AnimatedChat() {
         </div>
 
         <div className="border-t border-white/[0.06] px-4 py-3">
-          <div style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 24, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "8px 14px 8px 16px" }}>
-            <span style={{ flex: 1, fontSize: 12, color: "rgba(255,255,255,0.2)" }}>Écrire un message...</span>
-            <div style={{ width: 24, height: 24, borderRadius: 7, background: "transparent", border: "1.5px solid rgba(16,185,129,0.55)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                <path d="M12 19V5M5 12l7-7 7 7" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 24, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "10px 8px 10px 18px" }}>
+            <span style={{ flex: 1, fontSize: 13, color: "rgba(255,255,255,0.2)" }}>Écrire un message…</span>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M12 19V5M5 12l7-7 7 7" stroke="rgba(255,255,255,0.3)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
           </div>
@@ -829,7 +829,7 @@ export default function Home() {
             <div className="grid gap-4 sm:grid-cols-3 max-w-5xl mx-auto">
               <PricingCard
                 name="Essentiel"
-                price="149€"
+                price="89€"
                 description="Pour démarrer et accompagner vos patients prioritaires."
                 features={[
                   { text: "Jusqu'à 10 patients suivis en simultané", included: true, exclusive: false },
@@ -845,7 +845,7 @@ export default function Home() {
               />
               <PricingCard
                 name="Professionnel"
-                price="249€"
+                price="199€"
                 badge="Recommandé"
                 description="Idéal pour les praticiens indépendants qui gèrent un suivi actif au quotidien."
                 features={[

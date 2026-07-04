@@ -7,7 +7,7 @@ type Feature = { text: string; included: boolean; exclusive: boolean };
 const PLANS: { name: string; price: string; badge?: string; description: string; features: Feature[]; plan: string; featured: boolean; footnoteMark?: string }[] = [
   {
     name: "Essentiel",
-    price: "149€",
+    price: "89€",
     description: "Pour démarrer et accompagner vos patients prioritaires.",
     features: [
       { text: "Jusqu'à 10 patients suivis en simultané", included: true, exclusive: false },
@@ -23,7 +23,7 @@ const PLANS: { name: string; price: string; badge?: string; description: string;
   },
   {
     name: "Professionnel",
-    price: "249€",
+    price: "199€",
     badge: "Recommandé",
     description: "Idéal pour les praticiens indépendants qui gèrent un suivi actif au quotidien.",
     features: [
