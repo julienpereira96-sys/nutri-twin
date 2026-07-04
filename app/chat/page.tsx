@@ -233,9 +233,10 @@ type InputBarProps = {
   handleImageClick: () => void;
   handleKeyDown: (e: KeyboardEvent<HTMLTextAreaElement> | KeyboardEvent<HTMLInputElement>) => void;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
+  isMobile?: boolean;
 };
 
-const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendingImage, photoHovered, setPhotoHovered, handleImageClick, handleKeyDown, inputRef }: InputBarProps) => {
+const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendingImage, photoHovered, setPhotoHovered, handleImageClick, handleKeyDown, inputRef, isMobile = false }: InputBarProps) => {
   const canSend = !loading && (message.trim().length > 0 || !!pendingImage);
   const [focused, setFocused] = useState(false);
 
@@ -273,7 +274,7 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
           onKeyDown={handleKeyDown as React.KeyboardEventHandler<HTMLTextAreaElement>}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          placeholder={pendingImage ? "Ajoutez un commentaire..." : "Écrire un message…"}
+          placeholder={pendingImage ? "Posez votre question…" : "Écrire un message…"}
           rows={isCenter ? 3 : 1}
           spellCheck={false}
           className="chat-input"
@@ -286,7 +287,7 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
         <div style={{ display: "flex", alignItems: "center", gap: 4, overflow: "hidden" }}
           onMouseEnter={() => setPhotoHovered(true)}
           onMouseLeave={() => setPhotoHovered(false)}>
-          <span style={{ fontSize: 11, color: ACCENT, fontWeight: 500, whiteSpace: "nowrap", maxWidth: photoHovered ? 120 : 0, opacity: photoHovered ? 1 : 0, transition: "max-width 0.25s ease, opacity 0.2s", overflow: "hidden" }}>Partager une photo</span>
+          {!isMobile && <span style={{ fontSize: 11, color: ACCENT, fontWeight: 500, whiteSpace: "nowrap", maxWidth: photoHovered ? 120 : 0, opacity: photoHovered ? 1 : 0, transition: "max-width 0.25s ease, opacity 0.2s", overflow: "hidden" }}>Partager une photo</span>}
           <button onClick={handleImageClick} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: ACCENT, transition: "all 0.15s", flexShrink: 0 }}
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.14)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.45)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.07)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.25)"; }}>
@@ -2710,7 +2711,7 @@ export default function ChatPage() {
                   Je suis votre compagnon de suivi, créé à partir de l'expertise de votre praticien.
                 </p>
                 <div style={{ marginBottom: 40 }}>
-                  <InputBar isCenter={true} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} />
+                  <InputBar isCenter={true} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} isMobile={isMobile} />
                 </div>
                 <p style={{ margin: "0 0 16px", fontSize: 11, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.1em", textTransform: "uppercase" }}>Questions fréquentes</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
@@ -2733,7 +2734,7 @@ export default function ChatPage() {
           )}
 
           {hasMessages && (
-            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? "16px 16px 100px" : "24px 36px 24px" }}>
+            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? `16px 16px ${pendingImage ? 180 : 100}px` : "24px 36px 24px" }}>
               <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28, touchAction: "auto" }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
@@ -2903,7 +2904,7 @@ export default function ChatPage() {
                   </div>
                 </div>
               )}
-              <InputBar isCenter={false} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} />
+              <InputBar isCenter={false} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} isMobile={isMobile} />
               <p style={{ margin: "10px 0 0", fontSize: 10, color: TEXT_MUTED, textAlign: "center", whiteSpace: "nowrap" }}>
                 NutriTwin est une IA · En cas de doute, consultez votre praticien
               </p>
