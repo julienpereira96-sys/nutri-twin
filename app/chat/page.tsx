@@ -286,7 +286,7 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
         <div style={{ display: "flex", alignItems: "center", gap: 4, overflow: "hidden" }}
           onMouseEnter={() => setPhotoHovered(true)}
           onMouseLeave={() => setPhotoHovered(false)}>
-          <span style={{ fontSize: 11, color: ACCENT, fontWeight: 500, whiteSpace: "nowrap", maxWidth: photoHovered ? 120 : 0, opacity: photoHovered ? 1 : 0, transition: "max-width 0.25s ease, opacity 0.2s", overflow: "hidden" }}>Analyser votre repas</span>
+          <span style={{ fontSize: 11, color: ACCENT, fontWeight: 500, whiteSpace: "nowrap", maxWidth: photoHovered ? 120 : 0, opacity: photoHovered ? 1 : 0, transition: "max-width 0.25s ease, opacity 0.2s", overflow: "hidden" }}>Partager une photo</span>
           <button onClick={handleImageClick} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(16,185,129,0.07)", border: "1px solid rgba(16,185,129,0.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: ACCENT, transition: "all 0.15s", flexShrink: 0 }}
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.14)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.45)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.07)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.25)"; }}>
@@ -345,8 +345,8 @@ const onboardingSteps: {
     id: "camera",
     highlight: "camera",
     icon: <CameraIcon size={18} color={ACCENT} />,
-    title: "Analyse de repas",
-    text: "Prenez votre assiette en photo. Je l'analyserai instantanément pour vérifier si elle respecte nos objectifs de la semaine.",
+    title: "Analyse visuelle",
+    text: "Partagez une photo — repas, étiquette, menu, produit. Accompagnez-la de votre question et je l'analyserai en tenant compte de votre profil.",
     position: "bottom" as const,
     glowColor: "rgba(16,185,129,0.4)",
   },
@@ -830,12 +830,13 @@ export default function ChatPage() {
       // Heartbeat "dernière connexion" — indépendant de l'envoi de messages,
       // affiché dans le dashboard praticien (cf. migration add_patients_last_seen_at.sql)
       void supabase.from("patients").update({ last_seen_at: new Date().toISOString() }).eq("user_id", data.user.id);
-      const { data: rel } = await supabase.from("patient_practitioner").select("practitioner_id").eq("patient_id", data.user.id).single();
-      if (rel) {
-        const practId = rel.practitioner_id as string;
+      // Charger les infos praticien via API sécurisée (service role, bypass RLS)
+      const practInfoRes = await fetch("/api/patient/practitioner-info");
+      if (practInfoRes.ok) {
+        const practInfo = await practInfoRes.json() as { practitionerId: string; plan: string; firstName: string; lastName: string };
+        const practId = practInfo.practitionerId;
         setPractitionerIdFromDb(practId);
-        const { data: pract } = await supabase.from("practitioners").select("first_name, last_name, plan").eq("user_id", practId).single();
-        if (pract) { const p = pract as { first_name: string; last_name: string; plan: string }; setPractitionerPlan(p.plan || "essentiel"); }
+        setPractitionerPlan(practInfo.plan || "essentiel");
         const { data: hist } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", data.user.id).eq("practitioner_id", practId).is("session_id", null).eq("practitioner_only", false).order("created_at", { ascending: true });
         if (hist?.length) {
           setMessages(hist as ChatMessage[]);
@@ -1306,7 +1307,7 @@ export default function ChatPage() {
   };
 
   const handleImageClick = () => {
-    if (!["pro", "cabinet", "fondateur"].includes(practitionerPlan)) { setShowUpsellModal(true); return; }
+    if (!["pro", "cabinet"].includes(practitionerPlan)) { setShowUpsellModal(true); return; }
     fileInputRef.current?.click();
   };
 
@@ -1343,7 +1344,7 @@ export default function ChatPage() {
     const trimmed = (text ?? message).trim();
     if ((!trimmed && !pendingImage) || loading) return;
     const img = pendingImage;
-    const userMsg: ChatMessage = { role: "user", content: trimmed || "📷 Photo de repas", imageUrl: img?.previewUrl, ...(opts?.hidden ? { hidden: true } : {}) };
+    const userMsg: ChatMessage = { role: "user", content: trimmed || "📷 Photo", imageUrl: img?.previewUrl, ...(opts?.hidden ? { hidden: true } : {}) };
     const newMessages: ChatMessage[] = [...messages, userMsg];
     const assistantIndex = newMessages.length;
     setMessages([...newMessages, { role: "assistant", content: "" }]);
@@ -2876,12 +2877,23 @@ export default function ChatPage() {
           }}>
             <div style={{ maxWidth: 700, margin: "0 auto" }}>
               {pendingImage && (
-                <div style={{ marginBottom: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <img src={pendingImage.previewUrl} alt="Preview" style={{ width: 44, height: 44, borderRadius: 8, objectFit: "cover", border: `1px solid ${ACCENT_BORDER}` }} />
-                    <p style={{ margin: 0, fontSize: 12, color: TEXT_SECONDARY }}>Photo prête</p>
-                    <button onClick={() => setPendingImage(null)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: TEXT_SECONDARY, fontSize: 18 }}>×</button>
+                <div style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 12, background: "rgba(16,185,129,0.05)", border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", gap: 10 }}>
+                  <img
+                    src={pendingImage.previewUrl}
+                    alt="Aperçu"
+                    style={{ width: 52, height: 52, borderRadius: 8, objectFit: "cover", border: `1px solid ${ACCENT_BORDER}`, flexShrink: 0 }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: TEXT_PRIMARY, lineHeight: 1.3 }}>Photo prête à l&apos;envoi</p>
+                    <p style={{ margin: "2px 0 0", fontSize: 11, color: TEXT_SECONDARY, lineHeight: 1.4 }}>Ajoutez un message pour préciser votre question</p>
                   </div>
+                  <button
+                    onClick={() => setPendingImage(null)}
+                    style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TEXT_SECONDARY, fontSize: 14, flexShrink: 0, transition: "all 0.15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.color = TEXT_PRIMARY; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = TEXT_SECONDARY; }}>
+                    ×
+                  </button>
                 </div>
               )}
               {imageCompressing && (

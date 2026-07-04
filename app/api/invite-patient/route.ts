@@ -5,9 +5,8 @@ import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 const PLAN_LIMITS: Record<string, number> = {
   essentiel: 10,
-  pro: 100,
-  cabinet: Infinity,
-  fondateur: Infinity,
+  pro: 25,
+  cabinet: 80,
 };
 
 export async function POST(request: Request) {
@@ -47,12 +46,13 @@ export async function POST(request: Request) {
 
   const { data: practitioner } = await supabase
     .from("practitioners")
-    .select("plan, subscription_status")
+    .select("plan, subscription_status, extra_patients")
     .eq("user_id", practitionerId)
     .single();
 
   const plan = practitioner?.plan ?? "essentiel";
-  const limit = PLAN_LIMITS[plan] ?? 10;
+  const baseLimit = PLAN_LIMITS[plan] ?? 10;
+  const limit = baseLimit + (practitioner?.extra_patients ?? 0);
 
   const { count } = await supabase
     .from("patient_practitioner")

@@ -625,11 +625,14 @@ export default function DashboardPage() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [practitionerPlan, setPractitionerPlan] = useState<string | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
+  const [extraPatients, setExtraPatients] = useState<number>(0);
   const [showBillingModal, setShowBillingModal] = useState(false);
   const [isUpdatingPlan, setIsUpdatingPlan] = useState(false);
   const [planUpdateError, setPlanUpdateError] = useState("");
   const [planUpdateSuccess, setPlanUpdateSuccess] = useState(false);
   const [pendingPlanSwitch, setPendingPlanSwitch] = useState<{ plan: string; label: string; price: string } | null>(null);
+  const [isPurchasingPack, setIsPurchasingPack] = useState(false);
+  const [packError, setPackError] = useState("");
   const [reportError, setReportError] = useState("");
   const [showBilanModal, setShowBilanModal] = useState(false);
   const [bilanContent, setBilanContent] = useState("");
@@ -1079,12 +1082,13 @@ export default function DashboardPage() {
         if (data.user.email) setPractitionerEmail(data.user.email);
       }
       // Colonnes billing — requête séparée (plan/subscription_status ajoutés par Stripe webhook)
-      const { data: billingData, error: billingError } = await supabase.from("practitioners").select("plan, subscription_status").eq("user_id", pid).single();
+      const { data: billingData, error: billingError } = await supabase.from("practitioners").select("plan, subscription_status, extra_patients").eq("user_id", pid).single();
       console.log("[Dashboard] billing query →", { billingData, billingError });
       if (!billingError && billingData) {
-        const b = billingData as { plan?: string | null; subscription_status?: string | null };
+        const b = billingData as { plan?: string | null; subscription_status?: string | null; extra_patients?: number | null };
         setPractitionerPlan(b.plan ?? null);
         setSubscriptionStatus(b.subscription_status ?? null);
+        setExtraPatients(b.extra_patients ?? 0);
       }
       // Colonnes notify_* — requête séparée car nécessitent la migration SQL
       const { data: notifyData, error: notifyError } = await supabase.from("practitioners").select("notify_behavioral, notify_critical").eq("user_id", pid).single();
@@ -1868,6 +1872,24 @@ export default function DashboardPage() {
       setPlanUpdateError("Erreur réseau. Veuillez réessayer.");
     } finally {
       setIsUpdatingPlan(false);
+    }
+  };
+
+  const handlePurchasePack = async () => {
+    setPackError("");
+    setIsPurchasingPack(true);
+    try {
+      const res = await fetch("/api/billing/purchase-pack", { method: "POST" });
+      const json = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !json.url) {
+        setPackError(json.error ?? "Erreur lors de la création de la session de paiement.");
+      } else {
+        window.location.assign(json.url);
+      }
+    } catch {
+      setPackError("Erreur réseau. Veuillez réessayer.");
+    } finally {
+      setIsPurchasingPack(false);
     }
   };
 
@@ -3417,7 +3439,7 @@ export default function DashboardPage() {
                 badge={savedPin ? <span style={{ fontSize: 10, fontWeight: 600, color: amber, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, padding: "2px 8px", marginRight: 4 }}>PIN actif</span> : undefined}
                 onClick={() => setSettingsScreen("discret")} />
               <Row icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>} label="Abonnement"
-                badge={<span style={{ fontSize: 12, color: practitionerPlan ? emerald : "#64748b", marginRight: 4 }}>{practitionerPlan === "fondateur" ? "Fondateur" : practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Pro" : practitionerPlan === "cabinet" ? "Cabinet" : "–"}</span>}
+                badge={<span style={{ fontSize: 12, color: practitionerPlan ? emerald : "#64748b", marginRight: 4 }}>{practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Pro" : practitionerPlan === "cabinet" ? "Cabinet" : "–"}</span>}
                 onClick={() => setSettingsScreen("abonnement")} />
               <Row icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>} label="Notifications" onClick={() => setSettingsScreen("notifications")} />
             </div>
@@ -3664,7 +3686,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "white" }}>
-                        {practitionerPlan === "fondateur" ? "Fondateur" : practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Professionnel" : practitionerPlan === "cabinet" ? "Cabinet" : "–"}
+                        {practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Professionnel" : practitionerPlan === "cabinet" ? "Cabinet" : "–"}
                       </p>
                       <p style={{ margin: "2px 0 0", fontSize: 12, color: subscriptionStatus === "active" ? emerald : subscriptionStatus === "trialing" ? amber : "#64748b" }}>
                         {subscriptionStatus === "active" ? "Actif" : subscriptionStatus === "trialing" ? "Période d'essai" : subscriptionStatus === "past_due" ? "Paiement en retard" : subscriptionStatus === "cancelled" ? "Résilié" : subscriptionStatus ?? "–"}
@@ -3678,16 +3700,12 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
-                {practitionerPlan !== "fondateur" ? (
-                  <button onClick={() => { setPlanUpdateError(""); setShowBillingModal(true); }}
-                    style={{ width: "100%", height: 46, borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}>
-                    Changer de plan
-                  </button>
-                ) : (
-                  <p style={{ textAlign: "center", fontSize: 12, color: "#64748b", fontStyle: "italic" }}>Plan fondateur — verrouillé</p>
-                )}
+                <button onClick={() => { setPlanUpdateError(""); setShowBillingModal(true); }}
+                  style={{ width: "100%", height: 46, borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}>
+                  Changer de plan
+                </button>
               </div>
             </div>
           )}
@@ -3823,7 +3841,7 @@ export default function DashboardPage() {
                   desc: "Idéal pour les praticiens indépendants qui gèrent un suivi actif au quotidien.",
                   footnoteMark: null as string | null,
                   features: [
-                    { text: "Jusqu'à 50 patients suivis en simultané", included: true },
+                    { text: "Jusqu'à 25 patients suivis en simultané", included: true },
                     { text: "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)", included: true },
                     { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true },
                     { text: "Préparation automatisée de vos consultations et bilans", included: true },
@@ -3835,11 +3853,11 @@ export default function DashboardPage() {
                   badge: "Recommandé" as string | null,
                 },
                 {
-                  plan: "cabinet", label: "Cabinet", price: "599€",
+                  plan: "cabinet", label: "Cabinet", price: "499€",
                   desc: "Pour les cabinets multi-praticiens et centres de santé.",
                   footnoteMark: "1" as string | null,
                   features: [
-                    { text: "Jusqu'à 150 patients suivis en simultané (2)", included: true },
+                    { text: "Jusqu'à 80 patients suivis en simultané (2)", included: true },
                     { text: "Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)", included: true },
                     { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true },
                     { text: "Préparation automatisée de vos consultations et bilans", included: true },
@@ -3922,6 +3940,62 @@ export default function DashboardPage() {
               <p style={{ margin: "14px 0 0", fontSize: 12, color: "#f87171", textAlign: "center" }}>{planUpdateError}</p>
             )}
 
+            {/* ── Bloc pack patients upsell ── */}
+            {(practitionerPlan === "essentiel" || practitionerPlan === "pro") && (() => {
+              const PLAN_BASES: Record<string, number> = { essentiel: 10, pro: 25 };
+              const PACK_SIZES: Record<string, number> = { essentiel: 5, pro: 10 };
+              const PACK_PRICES: Record<string, number> = { essentiel: 39, pro: 59 };
+              const MAX_PACKS: Record<string, number> = { essentiel: 1, pro: 2 };
+              const baseLimit = PLAN_BASES[practitionerPlan] ?? 10;
+              const packSize = PACK_SIZES[practitionerPlan] ?? 5;
+              const packPrice = PACK_PRICES[practitionerPlan] ?? 39;
+              const maxPacks = MAX_PACKS[practitionerPlan] ?? 1;
+              const currentPacks = Math.floor(extraPatients / packSize);
+              const effectiveLimit = baseLimit + extraPatients;
+              const patientCount = patients.length;
+              const pct = Math.min(100, Math.round((patientCount / effectiveLimit) * 100));
+              const atMaxPacks = currentPacks >= maxPacks;
+
+              return (
+                <div style={{ marginTop: 20, padding: "16px 18px", borderRadius: 14, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Capacité patients</span>
+                    <span style={{ fontSize: 12, color: pct >= 90 ? "#f87171" : pct >= 70 ? "#fb923c" : "#94a3b8", fontWeight: 600 }}>
+                      {patientCount} / {effectiveLimit}
+                    </span>
+                  </div>
+                  {/* Barre de progression */}
+                  <div style={{ height: 5, borderRadius: 99, background: "rgba(255,255,255,0.07)", marginBottom: 14, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${pct}%`, borderRadius: 99, background: pct >= 90 ? "#f87171" : pct >= 70 ? "#fb923c" : emerald, transition: "width 0.4s ease" }} />
+                  </div>
+                  {/* CTA pack */}
+                  {atMaxPacks ? (
+                    <p style={{ margin: 0, fontSize: 11, color: "#64748b", textAlign: "center" }}>
+                      Limite de packs atteinte ({currentPacks}/{maxPacks}). Passez au plan supérieur pour accueillir davantage de patients.
+                    </p>
+                  ) : (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                      <div>
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "white" }}>
+                          Ajouter +{packSize} patients
+                          {currentPacks > 0 && <span style={{ fontSize: 11, color: "#64748b", fontWeight: 400 }}> ({currentPacks}/{maxPacks} pack{maxPacks > 1 ? "s" : ""} actif{currentPacks > 1 ? "s" : ""})</span>}
+                        </p>
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: "#64748b" }}>{packPrice}€/mois · sans engagement</p>
+                      </div>
+                      <button
+                        onClick={() => void handlePurchasePack()}
+                        disabled={isPurchasingPack}
+                        style={{ flexShrink: 0, padding: "8px 16px", borderRadius: 10, background: emerald, color: "black", fontSize: 12, fontWeight: 700, border: "none", cursor: isPurchasingPack ? "not-allowed" : "pointer", opacity: isPurchasingPack ? 0.6 : 1, transition: "opacity 0.15s" }}
+                      >
+                        {isPurchasingPack ? "Chargement…" : "Ajouter le pack"}
+                      </button>
+                    </div>
+                  )}
+                  {packError && <p style={{ margin: "8px 0 0", fontSize: 11, color: "#f87171" }}>{packError}</p>}
+                </div>
+              );
+            })()}
+
             {/* Notes légales */}
             <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 6 }}>
               <p style={{ margin: 0, fontSize: 11, color: "#475569", textAlign: "center", lineHeight: 1.5 }}>
@@ -3930,8 +4004,8 @@ export default function DashboardPage() {
               </p>
               <div style={{ marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 5 }}>
                 {[
-                  "(1) Le plan Cabinet inclut 3 comptes praticiens indépendants. Chaque praticien supplémentaire est facturé 99 €/mois.",
-                  "(2) 50 patients par praticien. Les 3 praticiens inclus cumulent 150 patients ; chaque praticien supplémentaire bénéficie de 50 patients additionnels.",
+                  "(1) Le plan Cabinet inclut 3 comptes praticiens indépendants. Chaque praticien supplémentaire est facturé 149 €/mois et ouvre 25 patients additionnels.",
+                  "(2) 80 patients inclus pour les 3 praticiens du plan Cabinet ; chaque praticien supplémentaire bénéficie de 25 patients additionnels.",
                   "(3) L'enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel et élargie à 100 messages/jour sur les plans Professionnel et Cabinet. Conformément à la réglementation, toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais utilisées pour entraîner des modèles d'IA publics.",
                 ].map((note, i) => (
                   <p key={i} style={{ margin: 0, fontSize: 10, color: "#374151", lineHeight: 1.6 }}>{note}</p>

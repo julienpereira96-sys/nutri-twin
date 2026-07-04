@@ -26,9 +26,37 @@ export async function POST(request: Request) {
   // Ancien flow - Checkout Sessions
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
-    const plan = session.metadata?.plan ?? "pro";
     const customerId = session.customer as string;
     const userId = session.metadata?.userId;
+
+    // ─── Pack upsell ─────────────────────────────────────────────────────────
+    if (session.metadata?.type === "pack") {
+      const packSize = parseInt(session.metadata?.packSize ?? "0", 10);
+      const packSubscriptionId = session.subscription as string | null;
+
+      if (userId && packSize > 0) {
+        // Récupère la valeur actuelle pour incrémenter
+        const { data: current } = await supabase
+          .from("practitioners")
+          .select("extra_patients")
+          .eq("user_id", userId)
+          .single();
+
+        const newTotal = (current?.extra_patients ?? 0) + packSize;
+
+        await supabase
+          .from("practitioners")
+          .update({
+            extra_patients: newTotal,
+            ...(packSubscriptionId ? { pack_subscription_id: packSubscriptionId } : {}),
+          })
+          .eq("user_id", userId);
+      }
+      return new Response("OK", { status: 200 });
+    }
+
+    // ─── Flow abonnement principal ────────────────────────────────────────────
+    const plan = session.metadata?.plan ?? "pro";
 
     if (userId) {
       await supabase
@@ -41,9 +69,6 @@ export async function POST(request: Request) {
         .eq("user_id", userId);
     }
 
-    if (plan === "fondateur") {
-      await supabase.rpc("decrement_founder_counter");
-    }
   }
 
   // Nouveau flow - SetupIntent + Subscription
@@ -60,10 +85,6 @@ export async function POST(request: Request) {
         subscription_status: status,
       })
       .eq("stripe_customer_id", customerId);
-
-    if (plan === "fondateur") {
-      await supabase.rpc("decrement_founder_counter");
-    }
   }
 
   if (event.type === "customer.subscription.updated") {
@@ -79,7 +100,6 @@ export async function POST(request: Request) {
           [process.env.STRIPE_PRICE_ESSENTIEL, "essentiel"],
           [process.env.STRIPE_PRICE_PRO,       "pro"],
           [process.env.STRIPE_PRICE_CABINET,   "cabinet"],
-          [process.env.STRIPE_PRICE_FONDATEUR, "fondateur"],
         ] as [string | undefined, string][]
       ).filter((entry): entry is [string, string] => Boolean(entry[0]))
     );
@@ -87,17 +107,9 @@ export async function POST(request: Request) {
     const priceId = subscription.items.data[0]?.price.id;
     const resolvedPlan = priceId ? priceToplan[priceId] : undefined;
 
-    // Guard fondateur — on récupère le plan actuel pour ne jamais l'écraser
-    const { data: practitioner } = await supabase
-      .from("practitioners")
-      .select("plan")
-      .eq("stripe_customer_id", customerId)
-      .single();
-
     const updatePayload: Record<string, string> = { subscription_status: status };
 
-    // Met à jour le plan seulement si on peut le résoudre ET que l'actuel n'est pas fondateur
-    if (resolvedPlan && practitioner?.plan !== "fondateur") {
+    if (resolvedPlan) {
       updatePayload.plan = resolvedPlan;
     }
 
@@ -111,10 +123,30 @@ export async function POST(request: Request) {
     const subscription = event.data.object as Stripe.Subscription;
     const customerId = subscription.customer as string;
 
-    await supabase
+    // Si c'est un abonnement pack (pack_subscription_id correspond), retirer les slots
+    const { data: practitioner } = await supabase
       .from("practitioners")
-      .update({ subscription_status: "cancelled", plan: null })
-      .eq("stripe_customer_id", customerId);
+      .select("plan, extra_patients, pack_subscription_id")
+      .eq("stripe_customer_id", customerId)
+      .single();
+
+    if (practitioner?.pack_subscription_id === subscription.id) {
+      // Identifier la taille du pack annulé selon le plan
+      const packSizes: Record<string, number> = { essentiel: 5, pro: 10 };
+      const packSize = packSizes[practitioner.plan ?? ""] ?? 0;
+      const newTotal = Math.max(0, (practitioner.extra_patients ?? 0) - packSize);
+
+      await supabase
+        .from("practitioners")
+        .update({ extra_patients: newTotal, pack_subscription_id: null })
+        .eq("stripe_customer_id", customerId);
+    } else {
+      // Annulation de l'abonnement principal
+      await supabase
+        .from("practitioners")
+        .update({ subscription_status: "cancelled", plan: null })
+        .eq("stripe_customer_id", customerId);
+    }
   }
 
   if (event.type === "invoice.payment_failed") {

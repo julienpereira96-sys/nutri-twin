@@ -9,7 +9,6 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 const emerald = "#10b981";
-const amber = "#f59e0b";
 
 const PLANS: Record<string, {
   name: string;
@@ -38,16 +37,8 @@ const PLANS: Record<string, {
     name: "Cabinet",
     price: "499€",
     description: "Pour les cabinets multi-praticiens.",
-    features: ["Jusqu'à 150 patients", "3 praticiens inclus", "Upload documents illimité", "Rapport IA mensuel par patient", "+99€/praticien supplémentaire", "Support dédié"],
+    features: ["Jusqu'à 150 patients", "3 praticiens inclus", "Upload documents illimité", "Rapport IA mensuel par patient", "+149€/praticien supplémentaire (+25 patients)", "Support dédié"],
     color: emerald,
-  },
-  fondateur: {
-    name: "Fondateur",
-    price: "149€",
-    badge: "Offre limitée",
-    description: "Plan Pro au prix Essentiel - garanti à vie.",
-    features: ["Jusqu'à 50 patients", "1 praticien", "Upload documents & protocoles", "Rapport IA mensuel par patient", "Accès prioritaire aux nouvelles features", "Influence sur la roadmap"],
-    color: amber,
   },
 };
 
@@ -309,7 +300,7 @@ function CheckoutForm() {
               Récapitulatif de votre commande
             </p>
 
-            <div className={`rounded-xl border px-4 py-3.5 mb-4 ${plan === "fondateur" ? "border-amber-500/20 bg-amber-500/[0.05]" : "border-emerald-500/20 bg-emerald-500/[0.05]"}`}>
+            <div className="rounded-xl border px-4 py-3.5 mb-4 border-emerald-500/20 bg-emerald-500/[0.05]">
               <div className="flex items-center gap-3">
                 <span className="text-[18px]">🎁</span>
                 <div>

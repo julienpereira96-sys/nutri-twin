@@ -26,14 +26,13 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
 
   const { plan } = await request.json() as {
-    plan: "essentiel" | "pro" | "cabinet" | "fondateur";
+    plan: "essentiel" | "pro" | "cabinet";
   };
 
   const priceMap: Record<string, string> = {
     essentiel: process.env.STRIPE_PRICE_ESSENTIEL!,
     pro: process.env.STRIPE_PRICE_PRO!,
     cabinet: process.env.STRIPE_PRICE_CABINET!,
-    fondateur: process.env.STRIPE_PRICE_FONDATEUR!,
   };
 
   try {

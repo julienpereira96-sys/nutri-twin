@@ -61,12 +61,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Aucun customer Stripe associé à ce compte." }, { status: 400 });
   }
 
-  // Guard fondateur — plan spécial non modifiable
-  if (practitioner.plan === "fondateur") {
-    return forbidden();
-  }
-
-  const newPriceId = PLAN_PRICES[newPlan as SwitchablePlan];
+const newPriceId = PLAN_PRICES[newPlan as SwitchablePlan];
   if (!newPriceId) {
     return NextResponse.json({ error: `Variable d'environnement manquante pour le plan "${newPlan}".` }, { status: 500 });
   }

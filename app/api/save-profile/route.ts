@@ -60,6 +60,7 @@ export async function POST(request: Request) {
     "situation_craquage","situation_stagnation","situation_abandon",
     "situation_prediabete","situation_alcool","situation_marketing","situation_drastique",
     "situation_flemme","situation_coup_dur",
+    "situation_victoire","situation_arret",
   ];
 
   // Vision et Signature peuvent être des textes longs

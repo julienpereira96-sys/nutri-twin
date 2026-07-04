@@ -34,7 +34,6 @@ export async function POST(request: Request) {
     essentiel: process.env.STRIPE_PRICE_ESSENTIEL!,
     pro: process.env.STRIPE_PRICE_PRO!,
     cabinet: process.env.STRIPE_PRICE_CABINET!,
-    fondateur: process.env.STRIPE_PRICE_FONDATEUR!,
   };
 
   try {

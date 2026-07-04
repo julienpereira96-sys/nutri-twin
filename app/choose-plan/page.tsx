@@ -27,7 +27,7 @@ const PLANS: { name: string; price: string; badge?: string; description: string;
     badge: "Recommandé",
     description: "Idéal pour les praticiens indépendants qui gèrent un suivi actif au quotidien.",
     features: [
-      { text: "Jusqu'à 50 patients suivis en simultané", included: true, exclusive: false },
+      { text: "Jusqu'à 25 patients suivis en simultané", included: true, exclusive: false },
       { text: "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)", included: true, exclusive: false },
       { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
       { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
@@ -41,10 +41,10 @@ const PLANS: { name: string; price: string; badge?: string; description: string;
   },
   {
     name: "Cabinet",
-    price: "599€",
+    price: "499€",
     description: "Pour les cabinets multi-praticiens et centres de santé.",
     features: [
-      { text: "Jusqu'à 150 patients suivis en simultané", included: true, exclusive: false },
+      { text: "Jusqu'à 80 patients suivis en simultané", included: true, exclusive: false },
       { text: "Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)", included: true, exclusive: false },
       { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
       { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },

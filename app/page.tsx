@@ -4,21 +4,6 @@ import Link from "next/link";
 import { useState, useEffect, useRef } from "react";
 
 const emerald = "#10b981";
-const amber = "#f59e0b";
-
-function useInView(threshold = 0.2) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setInView(true); },
-      { threshold }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [threshold]);
-  return { ref, inView };
-}
 
 function AnimatedChat() {
   const messages = [
@@ -864,7 +849,7 @@ export default function Home() {
                 badge="Recommandé"
                 description="Idéal pour les praticiens indépendants qui gèrent un suivi actif au quotidien."
                 features={[
-                  { text: "Jusqu'à 50 patients suivis en simultané", included: true, exclusive: false },
+                  { text: "Jusqu'à 25 patients suivis en simultané", included: true, exclusive: false },
                   { text: "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)", included: true, exclusive: false },
                   { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
                   { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
@@ -878,10 +863,10 @@ export default function Home() {
               />
               <PricingCard
                 name="Cabinet"
-                price="599€"
+                price="499€"
                 description="Pour les cabinets multi-praticiens et centres de santé."
                 features={[
-                  { text: "Jusqu'à 150 patients suivis en simultané (2)", included: true, exclusive: false },
+                  { text: "Jusqu'à 80 patients suivis en simultané (2)", included: true, exclusive: false },
                   { text: "Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)", included: true, exclusive: false },
                   { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
                   { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
@@ -899,18 +884,12 @@ export default function Home() {
 
             {/* Notes de bas de grille tarifaire */}
             <div className="mx-auto mt-8 max-w-3xl text-left text-[11px] leading-relaxed text-zinc-500 flex flex-col gap-2">
-              <p><sup>(1)</sup> Le plan Cabinet inclut 3 comptes praticiens indépendants. Chaque praticien supplémentaire est facturé 99&nbsp;€/mois.</p>
-              <p><sup>(2)</sup> 50 patients par praticien. Les 3 praticiens inclus cumulent 150 patients ; chaque praticien supplémentaire bénéficie de 50 patients additionnels.</p>
+              <p><sup>(1)</sup> Le plan Cabinet inclut 3 comptes praticiens indépendants. Chaque praticien supplémentaire est facturé 149&nbsp;€/mois et ouvre 25 patients additionnels.</p>
+              <p><sup>(2)</sup> 80 patients inclus pour les 3 praticiens du plan Cabinet ; chaque praticien supplémentaire bénéficie de 25 patients additionnels.</p>
               <p><sup>(3)</sup> Gestion des volumes et sécurité : L&apos;enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel et élargie à 100 messages/jour sur les plans Professionnel et Cabinet afin de garantir la stabilité technique de la plateforme et de maintenir un cadre d&apos;échange structuré pour le patient. Conformément à la réglementation, toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais utilisées pour entraîner des modèles d&apos;IA publics.</p>
             </div>
           </div>
         </section>
-
-        <div className="relative h-px w-full">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
-        </div>
-
-        <FounderSection />
 
       </main>
 
@@ -936,85 +915,6 @@ export default function Home() {
 
 
     </div>
-  );
-}
-
-function FounderSection() {
-  const [count, setCount] = useState(10);
-  const { ref, inView } = useInView();
-
-  useEffect(() => {
-    fetch("/api/founder-count")
-      .then((res) => res.json())
-      .then((data: { count: number }) => {
-        if (data.count !== undefined) setCount(data.count);
-      })
-      .catch(() => null);
-  }, []);
-
-  if (count <= 0) return null;
-
-  return (
-    <section className="py-16 sm:py-24" style={{ background: "#070707" }}>
-      <div className="mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
-        <div className="rounded-2xl border p-8 sm:p-12" style={{ borderColor: `${amber}30`, background: `rgba(245,158,11,0.04)` }}>
-        <h2 className="font-black tracking-tight text-white mb-2 text-[26px] sm:text-[clamp(28px,4vw,48px)]">
-  Prêt à vous dédoubler ?
-</h2>
-
-          <h3 className="text-[22px] sm:text-[26px] font-black tracking-tight mb-6" style={{ color: amber }}>
-            Devenez Fondateur NutriTwin
-          </h3>
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border px-3 py-1.5" style={{ borderColor: `${amber}30`, background: `${amber}08` }}>
-            <div className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: amber }} />
-            <span className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: amber }}>Programme Fondateur</span>
-          </div>
-          <p className="text-[14px] sm:text-[15px] leading-relaxed text-zinc-400 mb-2 max-w-xl mx-auto">
-            Rejoignez les nutritionnistes qui transforment le suivi patient,<br />
-            sans jamais compromettre la qualité humaine.
-          </p>
-          <p className="text-[14px] sm:text-[15px] leading-relaxed text-zinc-400 mb-8 max-w-xl mx-auto">
-            En tant que membre fondateur, bénéficiez d'un surclassement permanent :<br />
-            profitez de toute la puissance du plan Pro au tarif de l'offre Essentiel.<br />
-            <strong className="text-white">149€/mois - Garanti à vie.</strong>
-          </p>
-          <div ref={ref} className="mx-auto mb-8 max-w-xs sm:max-w-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <span className="text-[12px] text-zinc-500">{10 - count} fondateurs ont rejoint</span>
-              <span className="text-[18px] sm:text-[20px] font-black" style={{ color: amber }}>{count} places restantes</span>
-            </div>
-            <div className="h-2 w-full rounded-full bg-white/[0.05]">
-              <div className="h-2 rounded-full transition-all duration-1000" style={{ width: inView ? `${((10 - count) / 10) * 100}%` : "0%", background: `linear-gradient(90deg, ${amber}, #fbbf24)` }} />
-            </div>
-          </div>
-          <button
-    onClick={() => {
-      if (typeof window !== "undefined" && document.cookie.includes("changing_plan=true")) {
-        document.cookie = `selected_plan=fondateur; path=/; max-age=300`;
-        window.location.assign(`/checkout?plan=fondateur`);
-      } else {
-        window.location.assign(`/signup?plan=fondateur`);
-      }
-    }}    
-  className="inline-flex h-[48px] sm:h-[52px] items-center justify-center rounded-xl px-8 sm:px-10 text-[14px] sm:text-[15px] font-semibold text-black active:scale-95 cursor-pointer"
-  style={{ background: `linear-gradient(135deg, ${amber}, #d97706)`, color: "#000000", border: "none", boxShadow: "0 4px 24px rgba(245,158,11,0.25)", transition: "all 0.25s ease" }}
-  onMouseEnter={(e) => {
-    e.currentTarget.style.boxShadow = "0 8px 32px rgba(245,158,11,0.4)";
-    e.currentTarget.style.transform = "translateY(-1px)";
-  }}
-  onMouseLeave={(e) => {
-    e.currentTarget.style.boxShadow = "0 4px 24px rgba(245,158,11,0.25)";
-    e.currentTarget.style.transform = "translateY(0)";
-  }}
->
-  Je veux devenir Fondateur
-</button>
-          <p className="mt-4 text-[11px] text-zinc-600">
-            Aucun engagement · Annulable à tout moment
-          </p>
-        </div>
-      </div>
-    </section>
   );
 }
 

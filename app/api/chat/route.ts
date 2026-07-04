@@ -121,12 +121,6 @@ const PLAN_CONFIG = {
     dailyMessageLimit: 100,
     isFounder: false,
   },
-  fondateur: {
-    maxOutputTokens: 650,
-    ragChunks: 8,
-    dailyMessageLimit: 100,
-    isFounder: true,
-  },
 };
 
 type PlanType = keyof typeof PLAN_CONFIG;
@@ -423,7 +417,7 @@ async function getRelevantDocuments(
     if (allResults.length === 0) return "";
 
     const relevant = allResults
-      .filter(d => d.similarity > 0.5)
+      .filter(d => d.similarity > 0.70)
       .sort((a, b) => b.similarity - a.similarity)
       .slice(0, ragChunks)
       .map(d => d.content)
@@ -625,6 +619,17 @@ async function getConversationHistory(
   }
 }
 
+// Mappe la préférence longueur_reponses du praticien à une contrainte en mots.
+// Les valeurs correspondent aux options de l'onboarding (question id: longueur_reponses).
+function resolveWordLimit(longueurReponses?: string): string {
+  if (!longueurReponses) return "Maximum 150 mots par réponse.";
+  if (longueurReponses.startsWith("Court")) return "Maximum 80 mots par réponse. L'essentiel en 2-3 phrases, pas de développement.";
+  if (longueurReponses.startsWith("Détaillé")) return "Tu peux développer jusqu'à 200 mots si la question le justifie. Explique, illustre, rassure.";
+  if (longueurReponses.startsWith("Empathique")) return "Maximum 150 mots par réponse. Commence toujours par valider l'émotion avant tout conseil.";
+  if (longueurReponses.startsWith("Adapté")) return "Adapte la longueur à la complexité : 2-3 phrases pour une question simple, jusqu'à 200 mots pour une question complexe ou émotionnelle.";
+  return "Maximum 150 mots par réponse.";
+}
+
 function buildSystemPrompt(
   profile: Record<string, string> | null,
   patientContext: string,
@@ -649,7 +654,6 @@ IDENTITÉ & POSTURE :
 - Ton de communication : ${profile.tone_of_voice || "bienveillant et professionnel"}
 - Mode d'adresse : ${profile.tutoiement || "vouvoiement"}
 - Niveau de langage : ${profile.technicite || "adapté au patient"}
-- Longueur des réponses : ${profile.longueur_reponses || "courte et précise"}
 - Émojis : ${profile.emojis || "avec modération"}
 
 PHILOSOPHIE NUTRITIONNELLE :
@@ -672,6 +676,8 @@ GESTION HUMAINE :
 - Pour remotiver : ${profile.levier_motivation || "valoriser les petits progrès"}
 - Face à un patient perfectionniste : ${profile.profil_perfectionniste || "valoriser la rigueur tout en aidant à accepter l'équilibre sur la durée"}
 - Adaptation selon le profil patient : ${profile.adaptation_profil || "j'adapte le fond et la forme selon la personne"}
+- Quand un patient annonce une victoire ou une réussite : ${profile.situation_victoire || "Célèbre sincèrement et avec chaleur. Valorise l'effort autant que le résultat. Ancre la victoire dans le travail de fond accompli."}
+- Quand un patient veut voler de ses propres ailes : ${profile.situation_arret || "Valorise l'autonomie acquise comme l'aboutissement du travail commun. Conclus positivement, reste disponible sans créer de dépendance."}
 
 SÉCURITÉ & LIMITES :
 - Périmètre d'action : ${profile.perimetre || "prudence sur les pathologies"}
@@ -685,14 +691,14 @@ ${profile.vision || "Bienveillant, personnalisé, centré sur le patient."}
 MA SIGNATURE — VOIX, MÉTAPHORES ET MANTRAS :
 ${profile.signature ? profile.signature : "Utilise un ton authentique et humain, cohérent avec la posture définie ci-dessus."}
 
-EXEMPLES DE RÉPONSES ATTENDUES :
-- Craquage nocturne : "${profile.situation_craquage || "Un écart ne définit pas votre parcours. On repart ensemble."}"
-- Stagnation de la balance : "${profile.situation_stagnation || "La stagnation est normale, explorons ce qui se passe ensemble."}"
+VOIX DU PRATICIEN — Ces formulations illustrent son ton et sa posture dans des situations courantes. Inspire-t'en pour l'intention et la chaleur, adapte au contexte sans reproduire mot pour mot :
+- Craquage ou écart alimentaire : "${profile.situation_craquage || "Un écart ne définit pas votre parcours. On repart ensemble."}"
+- Stagnation du poids : "${profile.situation_stagnation || "La stagnation est normale, explorons ce qui se passe ensemble."}"
 - Patient disparu / honte de revenir : "${profile.situation_abandon || "Aucun jugement ici. L'important c'est que vous soyez là maintenant."}"
-- Question prédiabète/féculents : "${profile.situation_prediabete || "C'est une excellente question pour votre médecin traitant."}"
-- Question alcool week-end : "${profile.situation_alcool || "L'équilibre se construit sur la durée, pas sur une soirée."}"
+- Question prédiabète / féculents : "${profile.situation_prediabete || "C'est une excellente question pour votre médecin traitant."}"
+- Question alcool / week-end : "${profile.situation_alcool || "L'équilibre se construit sur la durée, pas sur une soirée."}"
 - Complément ou tendance douteuse : "${profile.situation_marketing || "Restons sur des approches dont l'efficacité est prouvée."}"
-- Objectif irréaliste : "${profile.situation_drastique || "Je comprends l'urgence. Voyons ce qui est raisonnablement atteignable."}"
+- Objectif irréaliste ou trop rapide : "${profile.situation_drastique || "Je comprends l'urgence. Voyons ce qui est raisonnablement atteignable."}"
 - Flemme / pas le temps de cuisiner : "${profile.situation_flemme || "Pas de panique. Voici 2-3 options rapides qui respectent votre protocole."}"
 - Coup dur / plus la force : "${profile.situation_coup_dur || "On met le programme entre parenthèses. Prenez soin de vous d'abord."}"
 
@@ -705,11 +711,10 @@ Tu dois respecter cet ordre de priorité strict, du plus important au moins impo
 ${patientContext}${documentsContext}
 
 RÈGLES ABSOLUES :
-- PRIORITÉ EMPATHIQUE : Si le patient exprime une vulnérabilité, privilégie la chaleur AVANT tout conseil.
-- INTERDICTION de Markdown (gras, listes, titres). Texte brut uniquement.
-- Maximum 150 mots par réponse.
-- Commencer par une validation empathique avant tout conseil.
-- Utiliser le prénom du patient pour créer du lien.
+- ${resolveWordLimit(profile.longueur_reponses)}
+- Si le patient exprime une émotion, une difficulté ou une vulnérabilité, commence par valider ce qu'il ressent avant tout conseil. Pour une question purement pratique ou technique, réponds directement.
+- Utiliser le prénom du patient avec parcimonie : en début de suivi pour créer le lien, et ponctuellement lors d'un moment fort ou pour marquer une rupture de ton. Jamais de façon systématique à chaque message.
+- INTERDICTION de Markdown : pas de gras, pas de tirets en début de ligne, pas d'astérisques, pas de numérotation. Toujours des paragraphes continus.
 - Ne JAMAIS dire "En tant qu'IA", "En tant que modèle de langue" ou similaire.
 - Ne jamais inventer des informations médicales non confirmées.
 - Grossesse : félicite, redirige vers gynécologue/sage-femme, praticien adaptera le suivi.
@@ -721,7 +726,7 @@ Si le message commence par [ADMIN:identity_correction] :
 - Réponds uniquement : "C'est noté. J'ai transmis la demande de correction à votre praticien pour que votre dossier soit parfaitement à jour. Pouvez-vous me préciser l'orthographe exacte de votre nom ?"
 - Ajoute obligatoirement : |||{"status":"green","reason":"demande correction identité","victory":"","action":"admin_alert","alert_type":"identity_correction"}|||
 
-JSON TECHNIQUE OBLIGATOIRE - À ajouter en toute fin de réponse, invisible pour le patient :
+JSON TECHNIQUE OBLIGATOIRE - À ajouter en toute fin de réponse, après le texte visible :
 |||{"status":"green","reason":"météo émotionnelle en 4-8 mots","notable":false,"victory":"","apaisement":"non"}|||
 - status : "red_critical" si urgence vitale implicite détectée, "red_behavioral" si détresse comportementale/TCA/psychologique sévère, "green" si tout va bien
 - reason : TOUJOURS rempli — météo émotionnelle du patient en 4-8 mots, dynamique et précise.
@@ -1430,9 +1435,9 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       conversationHistory = await getConversationHistory(patientId, practitionerId, plan, sessionId);
     }
 
-    // ═══ GARDE VISION — plan pro/cabinet/fondateur requis ═══
+    // ═══ GARDE VISION — plan pro/cabinet requis ═══
     if (imageBase64) {
-      const visionAllowedPlans: PlanType[] = ["pro", "cabinet", "fondateur"];
+      const visionAllowedPlans: PlanType[] = ["pro", "cabinet"];
       if (!visionAllowedPlans.includes(plan)) {
         // Invalide le cache au cas où le plan aurait changé récemment
         if (practitionerId) await invalidatePractitionerCache(practitionerId);
@@ -1443,22 +1448,31 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       }
     }
 
-    // Routage modèle : gemini-3.1-flash-lite pour tout le texte (tous plans),
-    // gemini-3.5-flash uniquement si image Base64 présente dans la requête.
-    const modelName = imageBase64 ? "gemini-3.5-flash" : "gemini-3.1-flash-lite";
+    // Routage modèle :
+    // - gemini-3.5-flash pour tout le chat principal (meilleure nuance clinique, ~$2/cabinet/mois de plus)
+    // - gemini-3.5-flash aussi si image Base64 présente (déjà le cas, inchangé)
+    // - gemini-3.1-flash-lite conservé pour les tâches de fond : analyzeCrisisWithLLM,
+    //   detectApaisementWithLLM, summarizeOldMessages, vertexGenerate SOS/post-exercice
+    const modelName = "gemini-3.5-flash";
 
     // Build Vertex AI content array: history + current user turn
     let userParts: unknown[];
     if (imageBase64 && imageMimeType) {
-      const visionPrompt = `Tu reçois une photo de repas d'un patient en suivi nutritionnel.
+      const hasMessage = message.trim().length > 0;
+      const visionPrompt = hasMessage
+        ? `Un patient en suivi nutritionnel te partage cette image avec ce message : "${message}"
+
 ${patientContext}${documentsContext}
-Analyse :
-1. Identifie les aliments visibles et les proportions approximatives
-2. Croise avec le protocole du praticien et le profil patient
-3. Signale tout écart (allergies, intolérances, consignes spécifiques)
-4. Réponds en tant que jumeau numérique - ton bienveillant, jamais culpabilisant
-${message ? `\nMessage du patient : "${message}"` : ""}
+
+Réponds directement à sa question ou demande en exploitant l'image. Si elle montre un aliment, un repas, une étiquette nutritionnelle, un menu, un produit alimentaire ou tout élément lié à l'alimentation, intègre une lecture nutritionnelle adaptée à son profil et ses objectifs. Tu restes dans ta posture de jumeau numérique — bienveillant, jamais culpabilisant, jamais dans le jugement.
+Max 200 mots. Sans markdown.`
+        : `Un patient en suivi nutritionnel te partage une photo sans commentaire.
+
+${patientContext}${documentsContext}
+
+Identifie ce que montre l'image. Si c'est un repas ou un aliment : analyse les portions visibles, la qualité nutritionnelle, les éventuels écarts par rapport aux objectifs et au protocole du praticien. Si c'est une étiquette, un emballage, un menu ou un produit : donne une lecture utile pour son suivi. Croise systématiquement avec son profil (allergies, intolérances, objectifs). Termine par une question courte et naturelle pour approfondir. Tu restes bienveillant, jamais culpabilisant.
 Max 150 mots. Sans markdown.`;
+
       userParts = [
         { inlineData: { data: imageBase64, mimeType: imageMimeType } },
         { text: visionPrompt },
