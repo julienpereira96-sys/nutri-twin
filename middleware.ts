@@ -117,6 +117,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/patient-onboarding", request.url));
   }
 
+  // /checkout-pack — praticien avec plan uniquement (achat pack additionnel)
+  if (path.startsWith("/checkout-pack")) {
+    if (!user) return NextResponse.redirect(new URL("/login", request.url));
+    const practitioner = await getPractitioner();
+    if (!practitioner?.plan) return NextResponse.redirect(new URL("/choose-plan", request.url));
+    return supabaseResponse;
+  }
+
   // /checkout — praticien connecté sans plan uniquement
   if (path.startsWith("/checkout")) {
     if (!user) return NextResponse.redirect(new URL("/signup", request.url));
