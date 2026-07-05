@@ -271,12 +271,14 @@ function CheckoutForm() {
     <div className="min-h-screen bg-[#070707] text-white">
             <header className="border-b border-white/[0.04] bg-[#070707]/80 backdrop-blur-2xl px-4 sm:px-6 py-4 sticky top-0 z-50">
         <div className="mx-auto max-w-6xl flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-md" />
-              <img src="/logo.svg" alt="NutriTwin" className="h-7 w-auto relative" style={{ filter: "hue-rotate(17deg) saturate(165%) brightness(87%)" }} />
+          <Link href="/" className="flex items-center gap-2.5">
+            <div style={{ position: "relative", flexShrink: 0, width: 34, height: 34 }}>
+              <div style={{ position: "absolute", inset: -8, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.2), transparent 70%)", pointerEvents: "none" }} />
+              <div style={{ width: 34, height: 34, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.6)", display: "flex", alignItems: "center", justifyContent: "center", background: "#070707", position: "relative" }}>
+                <img src="/logo-new.svg" alt="" style={{ width: 18, height: 18 }} />
+              </div>
             </div>
-            <span className="text-[15px] tracking-tight">Nutri<strong className="font-black" style={{ color: emerald }}>Twin</strong></span>
+            <span className="text-[20px] tracking-tight" style={{ fontFamily: "var(--font-jakarta), sans-serif" }}>Nutri<strong className="font-black" style={{ color: emerald }}>Twin</strong></span>
           </Link>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/[0.05] px-3 py-1.5">

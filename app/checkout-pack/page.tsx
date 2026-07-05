@@ -195,7 +195,7 @@ function PackPaymentForm({ packInfo }: { packInfo: PackInfo }) {
             Traitement en cours
           </span>
         ) : (
-          `Ajouter ${pack?.label ?? "le pack"} — ${pack?.amount ?? 0}€/mois`
+          `Ajouter ce pack`
         )}
       </button>
 
@@ -292,17 +292,14 @@ function CheckoutPackForm() {
       {/* Header */}
       <header className="border-b border-white/[0.04] bg-[#070707]/80 backdrop-blur-2xl px-4 sm:px-6 py-4 sticky top-0 z-50">
         <div className="mx-auto max-w-6xl flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-md" />
-              <img
-                src="/logo.svg"
-                alt="NutriTwin"
-                className="h-7 w-auto relative"
-                style={{ filter: "hue-rotate(17deg) saturate(165%) brightness(87%)" }}
-              />
+          <Link href="/" className="flex items-center gap-2.5">
+            <div style={{ position: "relative", flexShrink: 0, width: 34, height: 34 }}>
+              <div style={{ position: "absolute", inset: -8, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.2), transparent 70%)", pointerEvents: "none" }} />
+              <div style={{ width: 34, height: 34, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.6)", display: "flex", alignItems: "center", justifyContent: "center", background: "#070707", position: "relative" }}>
+                <img src="/logo-new.svg" alt="" style={{ width: 18, height: 18 }} />
+              </div>
             </div>
-            <span className="text-[15px] tracking-tight">
+            <span className="text-[20px] tracking-tight" style={{ fontFamily: "var(--font-jakarta), sans-serif" }}>
               Nutri<strong className="font-black" style={{ color: emerald }}>Twin</strong>
             </span>
           </Link>
@@ -323,27 +320,21 @@ function CheckoutPackForm() {
           <p className="mt-2 text-[14px] text-zinc-500">Étendez votre capacité d'accueil sans changer de plan.</p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 lg:items-stretch">
           {/* Left — pack summary */}
-          <div className="lg:sticky lg:top-24">
+          <div className="lg:sticky lg:top-24 flex flex-col">
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-4" style={{ color: emerald }}>
               Récapitulatif de votre commande
             </p>
 
             {pack && (
               <>
-                <div className="rounded-xl border px-4 py-3.5 mb-4 border-emerald-500/20 bg-emerald-500/[0.05]">
-                  <div className="flex items-center gap-3">
-                    <span className="text-[18px]">✦</span>
-                    <div>
-                      <p className="text-[13px] font-semibold text-white">Pack {planLabel} — {pack.label}</p>
-                      <p className="text-[11px] text-zinc-500">Actif immédiatement · Résiliable à tout moment</p>
-                    </div>
-                  </div>
-                </div>
+                <p className="text-[11px] text-zinc-600 mb-3">
+                  {pack.currentPacks}/{pack.maxPacks} pack{pack.maxPacks > 1 ? "s" : ""} utilisé{pack.currentPacks > 1 ? "s" : ""} sur votre plan {planLabel}
+                </p>
 
                 <div
-                  className="rounded-2xl border p-8 mb-5"
+                  className="rounded-2xl border p-8 mb-5 flex-1"
                   style={{
                     borderColor: `${emerald}30`,
                     background: `${emerald}06`,
@@ -355,7 +346,7 @@ function CheckoutPackForm() {
                         Pack {pack.label}
                       </h2>
                       <p className="text-[13px]" style={{ color: emerald }}>
-                        Plan {planLabel} · {pack.currentPacks}/{pack.maxPacks} pack{pack.maxPacks > 1 ? "s" : ""} utilisé{pack.currentPacks > 1 ? "s" : ""}
+                        Plan {planLabel}
                       </p>
                     </div>
                     <div className="sm:text-right shrink-0 sm:ml-4">
@@ -403,7 +394,7 @@ function CheckoutPackForm() {
           </div>
 
           {/* Right — payment */}
-          <div>
+          <div className="flex flex-col">
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-6" style={{ color: emerald }}>
               Informations de paiement
             </p>
