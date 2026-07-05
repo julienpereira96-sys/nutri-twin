@@ -3964,16 +3964,16 @@ export default function DashboardPage() {
                       <div>
                         <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "white" }}>
                           Ajouter +{packSize} patients
-                          {currentPacks > 0 && <span style={{ fontSize: 11, color: "#64748b", fontWeight: 400 }}> ({currentPacks}/{maxPacks} pack{maxPacks > 1 ? "s" : ""} actif{currentPacks > 1 ? "s" : ""})</span>}
                         </p>
-                        <p style={{ margin: "2px 0 0", fontSize: 11, color: "#64748b" }}>{packPrice}€/mois · sans engagement</p>
+                        <p style={{ margin: "1px 0 1px", fontSize: 11, color: "#64748b" }}>{currentPacks}/{maxPacks} pack{maxPacks > 1 ? "s" : ""} utilisé{currentPacks !== 1 ? "s" : ""}</p>
+                        <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{packPrice}€/mois · sans engagement</p>
                       </div>
                       <button
                         onClick={() => void handlePurchasePack()}
                         disabled={isPurchasingPack}
                         style={{ flexShrink: 0, padding: "8px 16px", borderRadius: 10, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: emerald, fontSize: 12, fontWeight: 600, cursor: isPurchasingPack ? "not-allowed" : "pointer", opacity: isPurchasingPack ? 0.6 : 1, transition: "all 0.2s" }}
                       >
-                        {isPurchasingPack ? "Chargement…" : "Ajouter le pack"}
+                        {isPurchasingPack ? "Chargement…" : "Ajouter ce pack"}
                       </button>
                     </div>
                   )}

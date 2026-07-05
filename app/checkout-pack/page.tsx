@@ -195,7 +195,7 @@ function PackPaymentForm({ packInfo }: { packInfo: PackInfo }) {
             Traitement en cours
           </span>
         ) : (
-          `Ajouter ce pack`
+          `Ajouter le pack — ${pack?.amount ?? 0}€/mois`
         )}
       </button>
 
@@ -315,26 +315,22 @@ function CheckoutPackForm() {
       </header>
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
-        <div className="mb-10">
-          <h1 className="text-[24px] sm:text-[32px] font-black text-white">Ajouter un pack patients</h1>
-          <p className="mt-2 text-[14px] text-zinc-500">Étendez votre capacité d'accueil sans changer de plan.</p>
-        </div>
-
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 lg:items-stretch">
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-start">
           {/* Left — pack summary */}
-          <div className="lg:sticky lg:top-24 flex flex-col">
+          <div className="lg:sticky lg:top-24">
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-4" style={{ color: emerald }}>
               Récapitulatif de votre commande
             </p>
 
+            <div className="mb-6">
+              <h1 className="text-[24px] sm:text-[28px] font-black text-white">Ajouter un pack patients</h1>
+              <p className="mt-1 text-[13px] text-zinc-500">Étendez votre capacité d'accueil sans changer de plan.</p>
+            </div>
+
             {pack && (
               <>
-                <p className="text-[11px] text-zinc-600 mb-3">
-                  {pack.currentPacks}/{pack.maxPacks} pack{pack.maxPacks > 1 ? "s" : ""} utilisé{pack.currentPacks > 1 ? "s" : ""} sur votre plan {planLabel}
-                </p>
-
                 <div
-                  className="rounded-2xl border p-8 mb-5 flex-1"
+                  className="rounded-2xl border p-8 mb-5"
                   style={{
                     borderColor: `${emerald}30`,
                     background: `${emerald}06`,
@@ -394,7 +390,7 @@ function CheckoutPackForm() {
           </div>
 
           {/* Right — payment */}
-          <div className="flex flex-col">
+          <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-6" style={{ color: emerald }}>
               Informations de paiement
             </p>
