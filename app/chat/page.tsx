@@ -274,7 +274,7 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
           onKeyDown={handleKeyDown as React.KeyboardEventHandler<HTMLTextAreaElement>}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          placeholder={pendingImage ? "Posez votre question…" : "Écrire un message…"}
+          placeholder={pendingImage ? "Votre question…" : "Écrire un message…"}
           rows={isCenter ? 3 : 1}
           spellCheck={false}
           className="chat-input"
@@ -2878,11 +2878,11 @@ export default function ChatPage() {
           }}>
             <div style={{ maxWidth: 700, margin: "0 auto" }}>
               {pendingImage && (
-                <div style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 12, background: "#0b0f0d", border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "none", display: "flex", alignItems: "center", gap: 10 }}>
                   <img
                     src={pendingImage.previewUrl}
                     alt="Aperçu"
-                    style={{ width: 52, height: 52, borderRadius: 8, objectFit: "cover", border: `1px solid ${ACCENT_BORDER}`, flexShrink: 0 }}
+                    style={{ width: 52, height: 52, borderRadius: 8, objectFit: "cover", border: "1px solid rgba(255,255,255,0.1)", flexShrink: 0 }}
                   />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: TEXT_PRIMARY, lineHeight: 1.3 }}>Photo prête à l&apos;envoi</p>

@@ -1875,22 +1875,8 @@ export default function DashboardPage() {
     }
   };
 
-  const handlePurchasePack = async () => {
-    setPackError("");
-    setIsPurchasingPack(true);
-    try {
-      const res = await fetch("/api/billing/purchase-pack", { method: "POST" });
-      const json = await res.json() as { url?: string; error?: string };
-      if (!res.ok || !json.url) {
-        setPackError(json.error ?? "Erreur lors de la création de la session de paiement.");
-      } else {
-        window.location.assign(json.url);
-      }
-    } catch {
-      setPackError("Erreur réseau. Veuillez réessayer.");
-    } finally {
-      setIsPurchasingPack(false);
-    }
+  const handlePurchasePack = () => {
+    window.location.assign("/checkout-pack");
   };
 
   const handleDiscretClick = () => {
