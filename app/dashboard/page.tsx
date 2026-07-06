@@ -585,7 +585,9 @@ export default function DashboardPage() {
   // ═══ MODE TEST ═══
   const [testMode, setTestMode] = useState(false);
   // chatPanelWidth : largeur du panneau chat (redimensionnable par drag)
-  const [chatPanelWidth, setChatPanelWidth] = useState(420);
+  const [chatPanelWidth, setChatPanelWidth] = useState(() =>
+    typeof window !== "undefined" ? Math.round(window.innerWidth * 0.5) : 500
+  );
   const testDrag = useRef({ active: false, startX: 0, startW: 0 });
   const [testDragHover, setTestDragHover] = useState(false);
   // realPatientsRef : sauvegarde des vrais patients quand on entre en mode test
@@ -767,6 +769,7 @@ export default function DashboardPage() {
   const [replySending, setReplySending] = useState(false);
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
   const patientsRef = useRef<RealPatient[]>([]);
+  const testModeRef = useRef(false);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   // Scroll déterministe cross-tab : ID exact du message cible (alerte ou victoire)
   const [pendingScrollMessageId, setPendingScrollMessageId] = useState<string | null>(null);
@@ -1290,8 +1293,9 @@ export default function DashboardPage() {
     return () => { subscription.unsubscribe(); };
   }, []);
 
-  // Sync patientsRef pour éviter les stale closures dans les intervals
+  // Sync patientsRef / testModeRef pour éviter les stale closures dans les intervals
   useEffect(() => { patientsRef.current = patients; }, [patients]);
+  useEffect(() => { testModeRef.current = testMode; }, [testMode]);
 
   // ═══ EMAIL COMPORTEMENTAL 12H ═══
   // Sur chaque changement de la liste patients (polling 10s), on vérifie si un patient
@@ -1378,7 +1382,7 @@ export default function DashboardPage() {
   // ═══ ALERTES — window.focus + polling 30s ═══
   useEffect(() => {
     if (!practitionerId || onboardingDemoMode) return;
-    const handleFocus = () => void loadPatients(practitionerId);
+    const handleFocus = () => { if (testModeRef.current) return; void loadPatients(practitionerId); };
     window.addEventListener("focus", handleFocus);
     const alertInterval = setInterval(async () => {
       const ids = patientsRef.current.map(p => p.id);
@@ -2527,7 +2531,9 @@ export default function DashboardPage() {
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{selectedPatient.firstName} {selectedPatient.lastName}</p>
-                        <p style={{ margin: 0, fontSize: 12, color: "#64748b", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{onboardingDemoMode ? "patient@email.fr" : (selectedPatient as RealPatient).email}</p>
+                        {!(selectedPatient as RealPatient).is_test && (
+                          <p style={{ margin: 0, fontSize: 12, color: "#64748b", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{onboardingDemoMode ? "patient@email.fr" : (selectedPatient as RealPatient).email}</p>
+                        )}
                       </div>
                     </div>
                     {/* Bandeau alerte contextuel */}
@@ -2776,7 +2782,9 @@ export default function DashboardPage() {
                   {/* Identité */}
                   <div style={{ textAlign: "center", marginBottom: 16 }}>
                     <p style={{ margin: 0, fontSize: 15, fontWeight: 700, filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{selectedPatient.firstName} {selectedPatient.lastName}</p>
-                    <p style={{ margin: "2px 0 4px", fontSize: 12, color: "#64748b", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{onboardingDemoMode ? "patient@email.fr" : (selectedPatient as RealPatient).email}</p>
+                    {!(selectedPatient as RealPatient).is_test && (
+                      <p style={{ margin: "2px 0 4px", fontSize: 12, color: "#64748b", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>{onboardingDemoMode ? "patient@email.fr" : (selectedPatient as RealPatient).email}</p>
+                    )}
                     <button onClick={() => openProfileModal()}
                       style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "#4b5563", padding: "0 0 8px", display: "flex", alignItems: "center", gap: 4, margin: "0 auto", transition: "color 0.2s" }}
                       onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
@@ -5357,9 +5365,9 @@ export default function DashboardPage() {
             <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b", lineHeight: 1.6, maxWidth: 260 }}>Ajoutez un patient test pour simuler une conversation avec votre jumeau numérique.</p>
             <button
               onClick={() => { setShowAddTestPatientModal(true); setAddTestPatientStep(1); }}
-              style={{ background: emerald, border: "none", borderRadius: 10, padding: "11px 22px", color: "#000", fontSize: 13, fontWeight: 700, cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.15s" }}
-              onMouseEnter={e => { e.currentTarget.style.opacity = "0.85"; }}
-              onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+              style={{ background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", borderRadius: 10, padding: "11px 22px", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}
             >
               + Ajouter un patient test
             </button>
@@ -5384,7 +5392,7 @@ export default function DashboardPage() {
             <div>
               <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>Étape {addTestPatientStep} sur 3</p>
               <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>
-                {addTestPatientStep === 1 ? "Identité du patient test" : addTestPatientStep === 2 ? "Contexte médical" : "Scénario"}
+                {addTestPatientStep === 1 ? "Identité du patient test" : addTestPatientStep === 2 ? "Contexte médical" : "Profil patient"}
               </h2>
             </div>
             <button onClick={() => { setShowAddTestPatientModal(false); setAddTestPatientStep(1); }}
@@ -5404,7 +5412,7 @@ export default function DashboardPage() {
           {/* ── Étape 1 : Identité ── */}
           {addTestPatientStep === 1 && (
             <>
-              <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Les informations de base pour personnaliser la simulation.</p>
+              <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Créer un patient fictif pour tester la précision des réponses de votre Jumeau Numérique. Plus le profil est réaliste et complet, plus le test sera révélateur.</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
@@ -5472,8 +5480,6 @@ export default function DashboardPage() {
           {/* ── Étape 2 : Contexte médical ── */}
           {addTestPatientStep === 2 && (
             <>
-              <p style={{ margin: "0 0 4px", fontSize: 13, color: "#94a3b8" }}>Pour que le jumeau ne donne jamais un conseil inadapté.</p>
-              <p style={{ margin: "0 0 20px", fontSize: 12, color: "#4b5563" }}>Vous pourrez modifier depuis la fiche patient.</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
                 {([
                   { label: "Pathologies", key: "pathologies", options: ["Diabète type 2", "Hypertension", "Hypothyroïdie", "SOPK", "Cholestérol", "TCA", "Surpoids"] },
@@ -5537,13 +5543,6 @@ export default function DashboardPage() {
               background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none",
               boxSizing: "border-box", cursor: "pointer",
             };
-            const chipD = (active: boolean): React.CSSProperties => ({
-              padding: "5px 10px", borderRadius: 20,
-              border: `1px solid ${active ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.08)"}`,
-              background: active ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)",
-              color: active ? emerald : "#64748b",
-              cursor: "pointer", fontSize: 11, fontWeight: active ? 600 : 400, transition: "all 0.15s",
-            });
             const toggleAliment = (a: string) => setAddTestPatientAlimentsDetestes(prev =>
               prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]
             );
@@ -5557,8 +5556,6 @@ export default function DashboardPage() {
             };
             return (
               <>
-                <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Ces données configurent la fidélité du jumeau — il adaptera ses réponses à ce profil.</p>
-
                 {/* 3 sélecteurs + inconforts digestifs en 2 colonnes */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
                   {([
@@ -5576,15 +5573,17 @@ export default function DashboardPage() {
                       </select>
                     </div>
                   ))}
-                  {/* Inconforts digestifs — multi-select compact chips */}
+                  {/* Inconforts digestifs — select simple */}
                   <div>
                     <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Inconforts digestifs</p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                      {["Ballonnements", "Transit lent", "Transit rapide", "Reflux", "Aucun"].map(o => (
-                        <button key={o} onClick={() => setAddTestPatientDigestif(prev => prev.includes(o) ? prev.filter(x => x !== o) : [...prev, o])}
-                          style={chipD(addTestPatientDigestif.includes(o))}>{o}</button>
+                    <select value={addTestPatientDigestif[0] ?? ""}
+                      onChange={e => setAddTestPatientDigestif(e.target.value ? [e.target.value] : [])}
+                      style={sel}>
+                      <option value="">Choisir</option>
+                      {["Ballonnements fréquents", "Transit lent", "Transit rapide", "Reflux / brûlures", "Aucun inconfort"].map(o => (
+                        <option key={o} value={o}>{o}</option>
                       ))}
-                    </div>
+                    </select>
                   </div>
                 </div>
 

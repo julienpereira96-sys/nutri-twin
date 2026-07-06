@@ -1471,8 +1471,11 @@ export default function ChatPage() {
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement> | KeyboardEvent<HTMLInputElement>) => {
-    // Mobile : Enter insère un saut de ligne — envoi uniquement sur desktop (Enter sans Shift)
-    if (e.key === "Enter" && !e.shiftKey && !isMobile) { e.preventDefault(); void send(); }
+    // Desktop (non-touch) : Enter envoie. Mobile/tactile : Enter insère un saut de ligne.
+    // On utilise navigator.maxTouchPoints plutôt que window.innerWidth pour éviter les faux
+    // positifs dans l'iframe test mode (largeur ~640px < 768px alors qu'on est sur desktop).
+    const isTouch = typeof window !== "undefined" && navigator.maxTouchPoints > 0;
+    if (e.key === "Enter" && !e.shiftKey && !isTouch) { e.preventDefault(); void send(); }
   };
 
   const handleSasReprendreFile = async () => {
