@@ -5256,37 +5256,35 @@ export default function DashboardPage() {
           document.body.style.userSelect = "none";
           e.preventDefault();
         }}
-        title="Glisser pour redimensionner le chat"
+        title="Maintenir clic + glisser pour redimensionner"
         style={{
-          width: 8,
+          width: 6,
           flexShrink: 0,
           cursor: "ew-resize",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "rgba(255,255,255,0.02)",
-          borderLeft: "1px solid rgba(255,255,255,0.06)",
-          zIndex: 20,
           userSelect: "none",
+          background: "rgba(255,255,255,0.04)",
+          borderLeft: "1px solid rgba(255,255,255,0.07)",
         }}
-        onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
-        onMouseLeave={e => { if (!testDrag.current.active) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 3, pointerEvents: "none" }}>
-          {[0, 1, 2, 3].map(i => (
-            <div key={i} style={{ width: 2, height: 2, borderRadius: "50%", background: "rgba(255,255,255,0.2)" }} />
-          ))}
-        </div>
-      </div>
+      />
     )}
 
     {/* ═══ Panneau test : chat iframe (droite) ═══ */}
     {testMode && (
       <div style={{ width: chatPanelWidth, minWidth: 320, flexShrink: 0, display: "flex", flexDirection: "column", background: "#070B09" }}>
-        <div style={{ height: 36, display: "flex", alignItems: "center", gap: 7, padding: "0 14px", borderBottom: "1px solid rgba(255,255,255,0.07)", background: "rgba(16,185,129,0.05)", flexShrink: 0 }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: emerald, display: "inline-block", flexShrink: 0 }} />
-          <span style={{ fontSize: 10, fontWeight: 600, color: "#6ee7b7", letterSpacing: "0.1em", textTransform: "uppercase" }}>Mode test - vue patient simulée</span>
-          <button onClick={() => setTestMode(false)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "0 2px" }} title="Quitter le mode test">×</button>
+        <div style={{ height: 36, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", borderBottom: "1px solid rgba(255,255,255,0.07)", background: "rgba(16,185,129,0.05)", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: emerald, display: "inline-block", flexShrink: 0 }} />
+            <span style={{ fontSize: 10, fontWeight: 600, color: "#6ee7b7", letterSpacing: "0.1em", textTransform: "uppercase" }}>Mode test - vue patient simulée</span>
+          </div>
+          <button
+            onClick={() => setTestMode(false)}
+            title="Quitter le mode test"
+            style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", color: "#94a3b8", width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#94a3b8"; }}
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
         <iframe
           src="/chat?test=true"
@@ -5379,6 +5377,9 @@ export default function DashboardPage() {
               onClick={async () => {
                 setTestConfigSaving(true);
                 try {
+                  // Étape 1 : créer le patient test s'il n'existe pas encore (idempotent)
+                  await fetch("/api/test-mode/setup", { method: "POST" });
+                  // Étape 2 : mettre à jour le profil
                   await fetch("/api/test-mode/setup", {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },

@@ -2687,8 +2687,8 @@ export default function ChatPage() {
           if (dx < -50 && sidebarOpen) setSidebarOpen(false);
         }}>
 
-        {/* ═══ BANDEAU MODE TEST ═══ */}
-        {isTestMode && (
+        {/* ═══ BANDEAU MODE TEST — masqué si dans iframe (le dashboard l'affiche déjà) ═══ */}
+        {isTestMode && typeof window !== "undefined" && window.self === window.top && (
           <div style={{ height: 28, background: "rgba(16,185,129,0.1)", borderBottom: "1px solid rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, flexShrink: 0 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", display: "inline-block", flexShrink: 0 }} />
             <span style={{ fontSize: 10, fontWeight: 600, color: "#6ee7b7", letterSpacing: "0.1em", textTransform: "uppercase" }}>Mode test — vue patient simulée</span>
