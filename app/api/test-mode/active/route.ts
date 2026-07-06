@@ -24,27 +24,16 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "testPatientUserId requis." }, { status: 400 });
   }
 
-  // Récupérer l'ID DB du praticien
-  const { data: practData } = await supabase
-    .from("practitioners")
-    .select("id")
-    .eq("user_id", user.id)
+  // Vérifier que ce patient appartient bien à ce praticien via patient_practitioner
+  // (patient_practitioner.practitioner_id = auth user_id, pas l'UUID interne)
+  const { data: relation } = await supabase
+    .from("patient_practitioner")
+    .select("patient_id")
+    .eq("patient_id", testPatientUserId)
+    .eq("practitioner_id", user.id)
     .single();
 
-  const practDbId = (practData as { id: string } | null)?.id;
-  if (!practDbId) {
-    return NextResponse.json({ error: "Praticien introuvable." }, { status: 404 });
-  }
-
-  // Vérifier que ce patient test appartient bien à ce praticien
-  const { data: patient } = await supabase
-    .from("patients")
-    .select("user_id, is_test")
-    .eq("user_id", testPatientUserId)
-    .eq("practitioner_id", practDbId)
-    .single();
-
-  if (!patient) {
+  if (!relation) {
     return NextResponse.json({ error: "Patient test introuvable." }, { status: 404 });
   }
 

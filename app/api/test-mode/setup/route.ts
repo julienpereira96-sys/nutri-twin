@@ -32,6 +32,13 @@ export async function POST(request: Request) {
     objectifClinique?: string | null;
     activite?: string | null;
     regime?: string | null;
+    // Champs profil patient (étape 3 — fidélité du jumeau)
+    objectifPatient?: string | null;
+    humeur?: string | null;
+    defiPrincipal?: string | null;
+    digestif?: string | null;
+    alimentsDetestes?: string | null;
+    // Champ legacy
     objective?: string | null;
   };
 
@@ -65,10 +72,14 @@ export async function POST(request: Request) {
 
   const practitionerId = (practData as { id: string } | null)?.id;
 
+  // Construire la colonne notes à partir des inconforts digestifs
+  const notesStr = body.digestif ? `Digestif: ${body.digestif}` : null;
+
   // Créer le patient test dans la table patients avec le profil complet
+  // Note : la relation praticien↔patient passe par patient_practitioner, pas par une
+  // colonne practitioner_id sur la table patients.
   await supabase.from("patients").insert({
     user_id: testUserId,
-    practitioner_id: practitionerId,
     first_name: body.firstName || "Patient",
     last_name: body.lastName || "Test",
     email,
@@ -82,11 +93,23 @@ export async function POST(request: Request) {
     objectif_clinique: body.objectifClinique ?? null,
     niveau_activite: body.activite ?? null,
     regime_specifique: body.regime ?? null,
-    objective: body.objective ?? null,
+    // Profil patient (étape 3) — mêmes colonnes que patient-onboarding/page.tsx
+    objective: body.objectifPatient ?? body.objective ?? null,
+    motivation: body.humeur ?? null,
+    defi: body.defiPrincipal ?? null,
+    aliments_detestes: body.alimentsDetestes ?? null,
+    notes: notesStr,
     onboarding_completed: true,
     onboarding_status: "completed",
     onboarding_done: true,
     is_test: true,
+  });
+
+  // Lier le patient test au praticien via patient_practitioner
+  // (practitioner_id = auth user_id, cohérent avec invite-patient/route.ts)
+  await supabase.from("patient_practitioner").insert({
+    patient_id: testUserId,
+    practitioner_id: user.id,
   });
 
   // Mettre à jour le patient test actif sur le praticien

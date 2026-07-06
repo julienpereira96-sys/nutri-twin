@@ -599,8 +599,9 @@ export default function DashboardPage() {
   const [addTestPatientForm, setAddTestPatientForm] = useState({
     firstName: "", lastName: "", age: "", taille: "", poids: "", sexe: "",
     pathologies: "", allergies: "", traitements: "", objectifClinique: "", activite: "", regime: "",
-    scenario: "",
+    objectifPatient: "", humeur: "", defiPrincipal: "", alimentsDetestes: "",
   });
+  const [addTestPatientDigestif, setAddTestPatientDigestif] = useState<string[]>([]);
 
   // Drag global mouse events (resize du chat panel)
   useEffect(() => {
@@ -1110,19 +1111,32 @@ export default function DashboardPage() {
   const loadTestPatients = useCallback(async (pid: string) => {
     const { data: practData } = await supabase
       .from("practitioners")
-      .select("test_patient_user_id, id")
+      .select("test_patient_user_id")
       .eq("user_id", pid)
       .single();
-    const activeTestUserId = (practData as { test_patient_user_id?: string | null; id?: string } | null)?.test_patient_user_id;
-    const practDbId = (practData as { id?: string } | null)?.id;
-    if (!practDbId) { setPatients([]); setSelectedPatientId(null); return; }
+    const activeTestUserId = (practData as { test_patient_user_id?: string | null } | null)?.test_patient_user_id;
+
+    // Récupérer les IDs patients via patient_practitioner (même pattern que loadPatients)
+    const { data: relations } = await supabase
+      .from("patient_practitioner")
+      .select("patient_id")
+      .eq("practitioner_id", pid);
+
+    if (!relations || relations.length === 0) { setPatients([]); setSelectedPatientId(null); return; }
+    const patientIds = relations.map(r => r.patient_id as string);
 
     const baseSelect = "user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, is_test";
-    const { data: testPatients } = await supabase
+    let { data: testPatients, error: testError } = await supabase
       .from("patients")
       .select(baseSelect)
-      .eq("practitioner_id", practDbId)
+      .in("user_id", patientIds)
       .eq("is_test", true);
+
+    if (testError) {
+      // Fallback si la colonne is_test n'existe pas encore (migration non appliquée)
+      const { data: fallback } = await supabase.from("patients").select(baseSelect).in("user_id", patientIds);
+      testPatients = (fallback ?? []).filter(p => (p as { is_test?: boolean }).is_test === true);
+    }
 
     if (!testPatients || testPatients.length === 0) {
       setPatients([]);
@@ -5480,64 +5494,127 @@ export default function DashboardPage() {
             </>
           )}
 
-          {/* ── Étape 3 : Scénario ── */}
-          {addTestPatientStep === 3 && (
-            <>
-              <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Décrivez librement le profil de ce patient — le jumeau adaptera son comportement à ce scénario.</p>
-              <textarea value={addTestPatientForm.scenario}
-                onChange={e => setAddTestPatientForm(f => ({ ...f, scenario: e.target.value }))}
-                placeholder="Exemple : Sophie est anxieuse autour de la balance — évite ce sujet. Elle se culpabilise facilement, reste bienveillant avant d'être technique. Elle adore cuisiner, utilise ça pour l'engager."
-                rows={6}
-                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 20 }}
-                onFocus={e => { e.target.style.borderColor = emerald; }} onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }} />
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => setAddTestPatientStep(2)}
-                  style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
-                  ← Retour
-                </button>
-                <button
-                  disabled={addTestPatientSaving}
-                  onClick={async () => {
-                    setAddTestPatientSaving(true);
-                    try {
-                      const res = await fetch("/api/test-mode/setup", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          firstName: addTestPatientForm.firstName || "Patient",
-                          lastName: addTestPatientForm.lastName || "Test",
-                          age: addTestPatientForm.age ? Number(addTestPatientForm.age) : null,
-                          taille: addTestPatientForm.taille ? Number(addTestPatientForm.taille) : null,
-                          poids: addTestPatientForm.poids ? Number(addTestPatientForm.poids) : null,
-                          sexe: addTestPatientForm.sexe || null,
-                          pathologies: addTestPatientForm.pathologies || null,
-                          allergies: addTestPatientForm.allergies || null,
-                          traitements: addTestPatientForm.traitements || null,
-                          objectifClinique: addTestPatientForm.objectifClinique || null,
-                          activite: addTestPatientForm.activite || null,
-                          regime: addTestPatientForm.regime || null,
-                          objective: addTestPatientForm.scenario || null,
-                        }),
-                      });
-                      const data = await res.json() as { testPatientUserId?: string };
-                      if (data.testPatientUserId && practitionerId) {
-                        await loadTestPatients(practitionerId);
-                      }
-                    } catch { /* silencieux */ }
-                    setAddTestPatientSaving(false);
-                    setShowAddTestPatientModal(false);
-                    setAddTestPatientStep(1);
-                    setAddTestPatientForm({ firstName: "", lastName: "", age: "", taille: "", poids: "", sexe: "", pathologies: "", allergies: "", traitements: "", objectifClinique: "", activite: "", regime: "", scenario: "" });
-                  }}
-                  style={{ flex: 2, height: 44, borderRadius: 10, background: addTestPatientSaving ? "rgba(16,185,129,0.08)" : emerald, border: "none", color: addTestPatientSaving ? emerald : "black", cursor: addTestPatientSaving ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700, opacity: addTestPatientSaving ? 0.7 : 1, transition: "all 0.2s" }}
-                >
-                  {addTestPatientSaving ? "Création…" : "Créer le patient test"}
-                </button>
-              </div>
-            </>
-          )}
+          {/* ── Étape 3 : Profil & Préférences ── */}
+          {addTestPatientStep === 3 && (() => {
+            const chipBtn = (active: boolean): React.CSSProperties => ({
+              padding: "7px 12px", borderRadius: 8, border: `1.5px solid ${active ? emerald : "rgba(255,255,255,0.08)"}`,
+              background: active ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)", color: active ? emerald : "#94a3b8",
+              cursor: "pointer", fontSize: 12, fontWeight: active ? 600 : 400, transition: "all 0.15s", whiteSpace: "nowrap" as const,
+            });
+            const toggleDigestif = (val: string) => {
+              setAddTestPatientDigestif(prev =>
+                prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val]
+              );
+            };
+            return (
+              <>
+                <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Ces données configurent la fidélité du jumeau — il adaptera ses réponses à ce profil.</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+                  {/* Objectif patient */}
+                  <div>
+                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Objectif du patient</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {["Perdre du poids", "Avoir plus d'énergie", "Améliorer ma digestion", "Prendre du muscle", "Gérer une pathologie", "Manger plus équilibré"].map(o => (
+                        <button key={o} onClick={() => setAddTestPatientForm(f => ({ ...f, objectifPatient: f.objectifPatient === o ? "" : o }))}
+                          style={chipBtn(addTestPatientForm.objectifPatient === o)}>{o}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Humeur de départ */}
+                  <div>
+                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>État d&apos;esprit au départ</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {["Très motivé(e)", "Optimiste", "Un peu anxieux(se)", "Complètement perdu(e)", "Volontaire, mais fatigué(e)"].map(o => (
+                        <button key={o} onClick={() => setAddTestPatientForm(f => ({ ...f, humeur: f.humeur === o ? "" : o }))}
+                          style={chipBtn(addTestPatientForm.humeur === o)}>{o}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Défi principal */}
+                  <div>
+                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Défi principal</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {["Manque de temps", "Pulsions sucrées", "Repas au restaurant", "Manque de motivation", "Manque d'organisation en cuisine", "Manger sous le stress"].map(o => (
+                        <button key={o} onClick={() => setAddTestPatientForm(f => ({ ...f, defiPrincipal: f.defiPrincipal === o ? "" : o }))}
+                          style={chipBtn(addTestPatientForm.defiPrincipal === o)}>{o}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Inconforts digestifs */}
+                  <div>
+                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Inconforts digestifs <span style={{ fontWeight: 400, color: "#4b5563" }}>(multi)</span></p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {["Ballonnements fréquents", "Transit lent", "Transit rapide", "Reflux / brûlures", "Aucun inconfort"].map(o => (
+                        <button key={o} onClick={() => toggleDigestif(o)}
+                          style={chipBtn(addTestPatientDigestif.includes(o))}>{o}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Aliments détestés */}
+                  <div>
+                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Aliments à éviter <span style={{ fontWeight: 400, color: "#4b5563" }}>(optionnel)</span></p>
+                    <input type="text" value={addTestPatientForm.alimentsDetestes}
+                      onChange={e => setAddTestPatientForm(f => ({ ...f, alimentsDetestes: e.target.value }))}
+                      placeholder="Ex : Poisson, fromage, viande rouge…"
+                      style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 14px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                      onFocus={e => { e.target.style.borderColor = emerald; }} onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }} />
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+                  <button onClick={() => setAddTestPatientStep(2)}
+                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                    ← Retour
+                  </button>
+                  <button
+                    disabled={addTestPatientSaving}
+                    onClick={async () => {
+                      setAddTestPatientSaving(true);
+                      try {
+                        const digestifStr = addTestPatientDigestif.length > 0 ? addTestPatientDigestif.join(", ") : null;
+                        const res = await fetch("/api/test-mode/setup", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            firstName: addTestPatientForm.firstName || "Patient",
+                            lastName: addTestPatientForm.lastName || "Test",
+                            age: addTestPatientForm.age ? Number(addTestPatientForm.age) : null,
+                            taille: addTestPatientForm.taille ? Number(addTestPatientForm.taille) : null,
+                            poids: addTestPatientForm.poids ? Number(addTestPatientForm.poids) : null,
+                            sexe: addTestPatientForm.sexe || null,
+                            pathologies: addTestPatientForm.pathologies || null,
+                            allergies: addTestPatientForm.allergies || null,
+                            traitements: addTestPatientForm.traitements || null,
+                            objectifClinique: addTestPatientForm.objectifClinique || null,
+                            activite: addTestPatientForm.activite || null,
+                            regime: addTestPatientForm.regime || null,
+                            objectifPatient: addTestPatientForm.objectifPatient || null,
+                            humeur: addTestPatientForm.humeur || null,
+                            defiPrincipal: addTestPatientForm.defiPrincipal || null,
+                            digestif: digestifStr,
+                            alimentsDetestes: addTestPatientForm.alimentsDetestes || null,
+                          }),
+                        });
+                        const data = await res.json() as { testPatientUserId?: string };
+                        if (data.testPatientUserId && practitionerId) {
+                          await loadTestPatients(practitionerId);
+                        }
+                      } catch { /* silencieux */ }
+                      setAddTestPatientSaving(false);
+                      setShowAddTestPatientModal(false);
+                      setAddTestPatientStep(1);
+                      setAddTestPatientForm({ firstName: "", lastName: "", age: "", taille: "", poids: "", sexe: "", pathologies: "", allergies: "", traitements: "", objectifClinique: "", activite: "", regime: "", objectifPatient: "", humeur: "", defiPrincipal: "", alimentsDetestes: "" });
+                      setAddTestPatientDigestif([]);
+                    }}
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: addTestPatientSaving ? "rgba(16,185,129,0.08)" : emerald, border: "none", color: addTestPatientSaving ? emerald : "black", cursor: addTestPatientSaving ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700, opacity: addTestPatientSaving ? 0.7 : 1, transition: "all 0.2s" }}
+                  >
+                    {addTestPatientSaving ? "Création…" : "Créer le patient test"}
+                  </button>
+                </div>
+              </>
+            );
+          })()}
         </div>
       </>
     )}
