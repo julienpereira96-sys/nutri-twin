@@ -35,8 +35,17 @@ export async function middleware(request: NextRequest) {
 
   const getPractitioner = async () => {
     if (!user) return null;
-    const { data } = await supabase.from("practitioners").select("plan, last_active_at, pending_plan, test_patient_user_id").eq("user_id", user.id).single();
+    const { data } = await supabase.from("practitioners").select("plan, last_active_at, pending_plan").eq("user_id", user.id).single();
     return data;
+  };
+
+  // Sélection séparée pour le mode test — colonne optionnelle (migration peut ne pas être appliquée)
+  const getTestPatientUserId = async (): Promise<string | null> => {
+    if (!user) return null;
+    try {
+      const { data } = await supabase.from("practitioners").select("test_patient_user_id").eq("user_id", user.id).single();
+      return (data as { test_patient_user_id?: string | null } | null)?.test_patient_user_id ?? null;
+    } catch { return null; }
   };
 
   const getProfile = async () => {
@@ -184,8 +193,9 @@ export async function middleware(request: NextRequest) {
     if (practitioner) {
       // Exception mode test : praticien qui accède au chat comme patient test
       const isTestMode = request.nextUrl.searchParams.get("test") === "true";
-      if (isTestMode && (practitioner as { test_patient_user_id?: string | null }).test_patient_user_id) {
-        return supabaseResponse;
+      if (isTestMode) {
+        const testPatientUserId = await getTestPatientUserId();
+        if (testPatientUserId) return supabaseResponse;
       }
       return NextResponse.redirect(new URL("/", request.url));
     }
