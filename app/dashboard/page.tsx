@@ -584,31 +584,32 @@ export default function DashboardPage() {
   // ═══ MODE TEST ═══
   const [testMode, setTestMode] = useState(false);
   const [testPatientSetup, setTestPatientSetup] = useState(false);
-  // dashboardWidth : largeur du panneau dashboard en mode test (0 = chat plein écran)
-  const [dashboardWidth, setDashboardWidth] = useState(0);
+  // chatPanelWidth : largeur du panneau chat (redimensionnable par drag)
+  const [chatPanelWidth, setChatPanelWidth] = useState(420);
   const testDrag = useRef({ active: false, startX: 0, startW: 0 });
+  // realPatientsRef : sauvegarde des vrais patients quand on entre en mode test
+  const realPatientsRef = useRef<RealPatient[]>([]);
+  const realSelectedIdRef = useRef<string | null>(null);
+  // Modal de configuration du patient test
+  const [showTestConfigModal, setShowTestConfigModal] = useState(false);
+  const [testConfigForm, setTestConfigForm] = useState({ firstName: "Patient", age: "", sexe: "", objective: "", pathologies: "" });
+  const [testConfigSaving, setTestConfigSaving] = useState(false);
 
-  // Quand le mode test s'active : chat plein écran par défaut
-  useEffect(() => {
-    if (testMode) setDashboardWidth(0);
-  }, [testMode]);
-
-  // Drag global mouse events
+  // Drag global mouse events (resize du chat panel)
   useEffect(() => {
     if (!testMode) return;
     const onMove = (e: MouseEvent) => {
       if (!testDrag.current.active) return;
-      const dx = e.clientX - testDrag.current.startX;
+      // Glisser gauche = chat plus large, glisser droite = chat plus étroit
+      const dx = testDrag.current.startX - e.clientX;
       const raw = testDrag.current.startW + dx;
-      setDashboardWidth(Math.max(0, Math.min(raw, window.innerWidth - 340)));
+      setChatPanelWidth(Math.max(320, Math.min(raw, window.innerWidth - 400)));
     };
     const onUp = () => {
       if (!testDrag.current.active) return;
       testDrag.current.active = false;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
-      // Snap : < 80px → fermer le dashboard, entre 80-380px → ouvrir à 380px
-      setDashboardWidth(w => w < 80 ? 0 : w < 380 ? 380 : w);
     };
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
@@ -1097,6 +1098,84 @@ export default function DashboardPage() {
     }));
     setCabinetSharedPatients(shared);
   };
+
+  // ═══ LOAD TEST PATIENT ═══
+  const loadTestPatient = useCallback(async (pid: string) => {
+    const { data: practData } = await supabase
+      .from("practitioners")
+      .select("test_patient_user_id")
+      .eq("user_id", pid)
+      .single();
+    const testUserId = (practData as { test_patient_user_id?: string | null } | null)?.test_patient_user_id;
+    if (!testUserId) return;
+
+    const baseSelect = "user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, last_seen_at";
+    const { data: p } = await supabase.from("patients").select(baseSelect).eq("user_id", testUserId).single();
+    if (!p) return;
+
+    const testPatient: RealPatient = {
+      id: p.user_id as string,
+      firstName: (p.first_name as string) ?? "Patient",
+      lastName: (p.last_name as string) ?? "Test",
+      initials: `${((p.first_name as string) ?? "P")[0]}${((p.last_name as string) ?? "T")[0]}`.toUpperCase(),
+      avatarColor: emerald,
+      email: (p.email as string) ?? "",
+      age: (p.age as number) ?? undefined,
+      sexe: (p.sexe as string) ?? undefined,
+      taille: (p.taille as number) ?? undefined,
+      poids: (p.poids as number) ?? undefined,
+      objective: (p.objective as string) ?? "",
+      pathologies: (p.pathologies as string) ?? "",
+      allergies: (p.allergies as string) ?? "",
+      traitements: (p.traitements as string) ?? "",
+      objectif_clinique: (p.objectif_clinique as string) ?? "",
+      niveau_activite: (p.niveau_activite as string) ?? "",
+      regime_specifique: (p.regime_specifique as string) ?? "",
+      practitioner_instruction: (p.practitioner_instruction as RealPatient["practitioner_instruction"]) ?? [],
+      private_notes: (p.private_notes as RealPatient["private_notes"]) ?? [],
+      admin_alerts: (p.admin_alerts as RealPatient["admin_alerts"]) ?? [],
+      emotional_status: (p.emotional_status as string) ?? "green",
+      emotional_insight: (p.emotional_insight as string) ?? "",
+      red_behavioral_until: (p.red_behavioral_until as string) ?? null,
+      last_patient_message_at: (p.last_patient_message_at as string) ?? null,
+      latest_victory: (p.latest_victory as string) ?? "",
+      victory_detected_at: (p.victory_detected_at as string) ?? null,
+      lastMessage: "",
+      lastMessageTime: "",
+      lastMessageRole: "",
+      totalMessages: 0,
+      streak: 0,
+      sosResolved: 0,
+      onboardingCompleted: true,
+      onboardingStatus: "completed",
+      created_at: (p.created_at as string) ?? new Date().toISOString(),
+    };
+    setPatients([testPatient]);
+    setSelectedPatientId(testPatient.id);
+    // pré-remplir le formulaire config avec les données actuelles
+    setTestConfigForm({
+      firstName: testPatient.firstName,
+      age: testPatient.age !== undefined ? String(testPatient.age) : "",
+      sexe: testPatient.sexe ?? "",
+      objective: testPatient.objective ?? "",
+      pathologies: testPatient.pathologies ?? "",
+    });
+  }, [supabase]);
+
+  // Swap patients quand testMode change
+  useEffect(() => {
+    if (!practitionerId) return;
+    if (testMode) {
+      realPatientsRef.current = patients;
+      realSelectedIdRef.current = selectedPatientId;
+      void loadTestPatient(practitionerId);
+    } else {
+      // Restaurer les vrais patients
+      setPatients(realPatientsRef.current);
+      setSelectedPatientId(realSelectedIdRef.current ?? (realPatientsRef.current[0]?.id ?? null));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [testMode]);
 
   useEffect(() => {
     // Écouter l'expiration de session en cours d'utilisation
@@ -2151,17 +2230,14 @@ export default function DashboardPage() {
     <div style={{ display: "flex", height: "100dvh", background: "#070B09", overflow: "hidden" }}>
     {/* ═══ Dashboard (gauche) ═══ */}
     <div style={{
-      flex: testMode ? undefined : 1,
-      width: testMode ? dashboardWidth : undefined,
+      flex: 1,
       minWidth: 0,
-      flexShrink: 0,
       overflow: "hidden",
-      overflowY: testMode && dashboardWidth > 0 ? "auto" : "hidden",
+      overflowY: "auto",
       minHeight: "100dvh",
       background: "#070B09",
       color: "white",
       fontFamily: "Inter, sans-serif",
-      visibility: testMode && dashboardWidth === 0 ? "hidden" : "visible",
     }}>
 
       {showOnboarding && (
@@ -2212,7 +2288,10 @@ export default function DashboardPage() {
                     {discretMode && <div style={{ width: 8, height: 8, borderRadius: "50%", background: amber, flexShrink: 0 }} />}
                   </button>
                   {/* ─── Mode test ─── */}
-                  <button onClick={() => { setTestMode(m => !m); setShowAccountMenu(false); }}
+                  <button onClick={() => {
+                    if (testMode) { setTestMode(false); setShowAccountMenu(false); }
+                    else { setShowTestConfigModal(true); setShowAccountMenu(false); }
+                  }}
                     style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, background: testMode ? "rgba(16,185,129,0.08)" : "transparent", border: "none", cursor: "pointer", transition: "all 0.15s", marginBottom: 2 }}
                     onMouseEnter={e => { if (!testMode) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = testMode ? "rgba(16,185,129,0.08)" : "transparent"; }}>
@@ -5166,38 +5245,36 @@ export default function DashboardPage() {
       `}</style>
     </div>
 
-    {/* ═══ Drag handle (entre dashboard et chat) ═══ */}
+    {/* ═══ Drag handle (bordure gauche du chat) ═══ */}
     {testMode && (
       <div
         onMouseDown={(e) => {
           testDrag.current.active = true;
           testDrag.current.startX = e.clientX;
-          testDrag.current.startW = dashboardWidth;
+          testDrag.current.startW = chatPanelWidth;
           document.body.style.cursor = "ew-resize";
           document.body.style.userSelect = "none";
           e.preventDefault();
         }}
-        title={dashboardWidth === 0 ? "Glisser pour révéler le dashboard" : "Glisser pour redimensionner"}
+        title="Glisser pour redimensionner le chat"
         style={{
-          width: dashboardWidth === 0 ? 16 : 10,
+          width: 8,
           flexShrink: 0,
           cursor: "ew-resize",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: dashboardWidth === 0 ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)",
-          borderRight: "1px solid rgba(255,255,255,0.07)",
-          borderLeft: dashboardWidth === 0 ? "none" : "1px solid rgba(255,255,255,0.05)",
+          background: "rgba(255,255,255,0.02)",
+          borderLeft: "1px solid rgba(255,255,255,0.06)",
           zIndex: 20,
           userSelect: "none",
-          transition: "background 0.15s, width 0.1s",
         }}
-        onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.18)"; }}
-        onMouseLeave={e => { if (!testDrag.current.active) e.currentTarget.style.background = dashboardWidth === 0 ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)"; }}
+        onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
+        onMouseLeave={e => { if (!testDrag.current.active) e.currentTarget.style.background = "rgba(255,255,255,0.02)"; }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, pointerEvents: "none" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3, pointerEvents: "none" }}>
           {[0, 1, 2, 3].map(i => (
-            <div key={i} style={{ width: 2, height: 2, borderRadius: "50%", background: dashboardWidth === 0 ? "rgba(16,185,129,0.6)" : "rgba(255,255,255,0.2)" }} />
+            <div key={i} style={{ width: 2, height: 2, borderRadius: "50%", background: "rgba(255,255,255,0.2)" }} />
           ))}
         </div>
       </div>
@@ -5205,7 +5282,7 @@ export default function DashboardPage() {
 
     {/* ═══ Panneau test : chat iframe (droite) ═══ */}
     {testMode && (
-      <div style={{ flex: 1, minWidth: 340, display: "flex", flexDirection: "column", background: "#070B09" }}>
+      <div style={{ width: chatPanelWidth, minWidth: 320, flexShrink: 0, display: "flex", flexDirection: "column", background: "#070B09" }}>
         <div style={{ height: 36, display: "flex", alignItems: "center", gap: 7, padding: "0 14px", borderBottom: "1px solid rgba(255,255,255,0.07)", background: "rgba(16,185,129,0.05)", flexShrink: 0 }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: emerald, display: "inline-block", flexShrink: 0 }} />
           <span style={{ fontSize: 10, fontWeight: 600, color: "#6ee7b7", letterSpacing: "0.1em", textTransform: "uppercase" }}>Mode test - vue patient simulée</span>
@@ -5217,6 +5294,114 @@ export default function DashboardPage() {
           key="test-chat-iframe"
         />
       </div>
+    )}
+
+    {/* ═══ Modale configuration patient test ═══ */}
+    {showTestConfigModal && (
+      <>
+        <div onClick={() => setShowTestConfigModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", zIndex: 1000 }} />
+        <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1001, background: "#0f1410", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 18, padding: "28px 32px", width: 440, maxWidth: "90vw", boxShadow: "0 24px 64px rgba(0,0,0,0.8)" }}>
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 22 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>
+            </div>
+            <div>
+              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "white" }}>Configurer le patient test</p>
+              <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>Ces données seront utilisées dans le chat</p>
+            </div>
+            <button onClick={() => setShowTestConfigModal(false)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: "0 2px" }}>×</button>
+          </div>
+
+          {/* Champs */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", gap: 12 }}>
+              <div style={{ flex: 2 }}>
+                <label style={{ display: "block", fontSize: 11, color: "#94a3b8", marginBottom: 5, fontWeight: 500 }}>Prénom</label>
+                <input
+                  value={testConfigForm.firstName}
+                  onChange={e => setTestConfigForm(f => ({ ...f, firstName: e.target.value }))}
+                  placeholder="Ex: Sophie"
+                  style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "white", fontSize: 13, outline: "none" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: "block", fontSize: 11, color: "#94a3b8", marginBottom: 5, fontWeight: 500 }}>Âge</label>
+                <input
+                  type="number"
+                  value={testConfigForm.age}
+                  onChange={e => setTestConfigForm(f => ({ ...f, age: e.target.value }))}
+                  placeholder="32"
+                  style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "white", fontSize: 13, outline: "none" }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: "block", fontSize: 11, color: "#94a3b8", marginBottom: 5, fontWeight: 500 }}>Sexe</label>
+                <select
+                  value={testConfigForm.sexe}
+                  onChange={e => setTestConfigForm(f => ({ ...f, sexe: e.target.value }))}
+                  style={{ width: "100%", boxSizing: "border-box", background: "#0f1410", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 10px", color: testConfigForm.sexe ? "white" : "#64748b", fontSize: 13, outline: "none" }}
+                >
+                  <option value="">—</option>
+                  <option value="F">F</option>
+                  <option value="M">M</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: 11, color: "#94a3b8", marginBottom: 5, fontWeight: 500 }}>Objectif</label>
+              <textarea
+                value={testConfigForm.objective}
+                onChange={e => setTestConfigForm(f => ({ ...f, objective: e.target.value }))}
+                placeholder="Ex: Retrouver une relation apaisée avec la nourriture"
+                rows={2}
+                style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "white", fontSize: 13, outline: "none", resize: "none", fontFamily: "inherit" }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: 11, color: "#94a3b8", marginBottom: 5, fontWeight: 500 }}>Pathologies / contexte clinique</label>
+              <input
+                value={testConfigForm.pathologies}
+                onChange={e => setTestConfigForm(f => ({ ...f, pathologies: e.target.value }))}
+                placeholder="Ex: TCA, anxiété, hypertension…"
+                style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "white", fontSize: 13, outline: "none" }}
+              />
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
+            <button onClick={() => setShowTestConfigModal(false)} style={{ flex: 1, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 13, fontWeight: 500 }}>Annuler</button>
+            <button
+              disabled={testConfigSaving}
+              onClick={async () => {
+                setTestConfigSaving(true);
+                try {
+                  await fetch("/api/test-mode/setup", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      firstName: testConfigForm.firstName || "Patient",
+                      age: testConfigForm.age ? Number(testConfigForm.age) : null,
+                      sexe: testConfigForm.sexe || null,
+                      objective: testConfigForm.objective || null,
+                      pathologies: testConfigForm.pathologies || null,
+                    }),
+                  });
+                } catch { /* silencieux */ }
+                setTestConfigSaving(false);
+                setShowTestConfigModal(false);
+                setTestMode(true);
+              }}
+              style={{ flex: 2, height: 40, borderRadius: 10, background: emerald, border: "none", color: "white", cursor: testConfigSaving ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, opacity: testConfigSaving ? 0.7 : 1 }}
+            >
+              {testConfigSaving ? "Enregistrement…" : "Lancer le mode test"}
+            </button>
+          </div>
+        </div>
+      </>
     )}
     </div>
   );

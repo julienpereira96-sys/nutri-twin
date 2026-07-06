@@ -86,3 +86,50 @@ export async function POST() {
 
   return NextResponse.json({ testPatientUserId: testUserId, created: true });
 }
+
+/**
+ * PATCH /api/test-mode/setup
+ *
+ * Met à jour le profil du patient test existant.
+ * Accepte : firstName, age, sexe, objective, pathologies
+ */
+export async function PATCH(request: Request) {
+  const user = await getSessionUser();
+  if (!user) return unauthorized();
+
+  const supabase = createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const body = await request.json() as {
+    firstName?: string;
+    age?: number | null;
+    sexe?: string | null;
+    objective?: string | null;
+    pathologies?: string | null;
+  };
+
+  // Récupérer l'id du patient test
+  const { data: practitioner } = await supabase
+    .from("practitioners")
+    .select("test_patient_user_id")
+    .eq("user_id", user.id)
+    .single();
+
+  const testUserId = (practitioner as { test_patient_user_id?: string | null } | null)?.test_patient_user_id;
+  if (!testUserId) {
+    return NextResponse.json({ error: "Patient test introuvable." }, { status: 404 });
+  }
+
+  const updates: Record<string, unknown> = {};
+  if (body.firstName !== undefined) updates.first_name = body.firstName;
+  if (body.age !== undefined) updates.age = body.age;
+  if (body.sexe !== undefined) updates.sexe = body.sexe;
+  if (body.objective !== undefined) updates.objective = body.objective;
+  if (body.pathologies !== undefined) updates.pathologies = body.pathologies;
+
+  await supabase.from("patients").update(updates).eq("user_id", testUserId);
+
+  return NextResponse.json({ ok: true });
+}
