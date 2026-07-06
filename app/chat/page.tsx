@@ -971,8 +971,10 @@ export default function ChatPage() {
   // Rafraîchit last_seen_at toutes les 5 min tant que l'onglet est visible, et
   // au retour au premier plan, pour que le dashboard praticien reflète une
   // session en cours même sans nouveaux messages.
+  // Désactivé en mode test pour ne pas polluer les métriques d'assiduité réelles.
   useEffect(() => {
     if (!patientId) return;
+    if (isTestMode) return;
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     const ping = () => { void supabase.from("patients").update({ last_seen_at: new Date().toISOString() }).eq("user_id", patientId); };
     const interval = setInterval(() => { if (document.visibilityState === "visible") ping(); }, 5 * 60 * 1000);

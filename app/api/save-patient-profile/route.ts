@@ -1,6 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
+import { Redis } from "@upstash/redis";
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 export async function POST(request: Request) {
   const user = await getSessionUser();
@@ -24,6 +30,9 @@ export async function POST(request: Request) {
       niveau_activite?: string | null;
       regime_specifique?: string | null;
       notes?: string | null;
+      motivation?: string | null;
+      defi?: string | null;
+      aliments_detestes?: string | null;
     };
     clearIdentityAlert?: boolean;
   };
@@ -55,6 +64,9 @@ export async function POST(request: Request) {
     .eq("user_id", patientId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Invalider le cache profil IA pour que le jumeau voie les changements immédiatement
+  await redis.del(`patient_profile_v2:${patientId}`).catch(() => {});
 
   // Supprimer les alertes de correction d'identité ET de rectification si demandé
   if (clearIdentityAlert) {

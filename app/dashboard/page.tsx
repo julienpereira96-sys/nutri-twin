@@ -353,6 +353,7 @@ type RealPatient = {
   lastActive?: string | null; streak?: number; sosResolved?: number; sosEvents?: { triggered_at: string; sos_context: string; tool_id?: string; status?: string | null; origin?: string | null }[]; red_behavioral_until?: string | null; last_patient_message_at?: string | null; onboardingCompleted?: boolean; onboardingStatus?: string | null;
   sharing_status?: string; cabinet_id?: string;
   is_test?: boolean;
+  motivation?: string; defi?: string; notes?: string; aliments_detestes?: string;
 };
 
 type Conversation = {
@@ -853,6 +854,10 @@ export default function DashboardPage() {
   const [editNiveauActivite, setEditNiveauActivite] = useState("");
   const [editRegime, setEditRegime] = useState("");
   const [editNotes, setEditNotes] = useState("");
+  const [editSommeil, setEditSommeil] = useState("");
+  const [editHumeur, setEditHumeur] = useState("");
+  const [editDefiPrincipal, setEditDefiPrincipal] = useState("");
+  const [editDigestif, setEditDigestif] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [visionText, setVisionText] = useState("");
@@ -1140,7 +1145,7 @@ export default function DashboardPage() {
     if (!relations || relations.length === 0) { setPatients([]); setSelectedPatientId(null); return; }
     const patientIds = relations.map(r => r.patient_id as string);
 
-    const baseSelect = "user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, is_test";
+    const baseSelect = "user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, is_test, motivation, defi, notes, aliments_detestes";
     let { data: testPatients, error: testError } = await supabase
       .from("patients")
       .select(baseSelect)
@@ -1195,6 +1200,10 @@ export default function DashboardPage() {
       onboardingCompleted: true,
       onboardingStatus: "completed",
       is_test: true,
+      motivation: (p.motivation as string) ?? "",
+      defi: (p.defi as string) ?? "",
+      notes: (p.notes as string) ?? "",
+      aliments_detestes: (p.aliments_detestes as string) ?? "",
       created_at: (p.created_at as string) ?? new Date().toISOString(),
     }));
 
@@ -1913,6 +1922,14 @@ export default function DashboardPage() {
     setEditNiveauActivite(patient.niveau_activite ?? "");
     setEditRegime(patient.regime_specifique ?? "");
     setEditNotes("");
+    // Champs profil patient (étape 3) — uniquement pour les patients test
+    const notesStr = patient.notes ?? "";
+    const sommeilMatch = notesStr.match(/Sommeil:\s*([^;]+)/);
+    const digestifMatch = notesStr.match(/Digestif:\s*([^;]+)/);
+    setEditSommeil(sommeilMatch?.[1]?.trim() ?? "");
+    setEditDigestif(digestifMatch?.[1]?.trim() ?? "");
+    setEditHumeur(patient.motivation ?? "");
+    setEditDefiPrincipal(patient.defi ?? "");
     setProfileSaved(false);
     setFocusFirstNameOnOpen(focusFirst);
     // Extraire les corrections en attente pour les afficher dans la modale
@@ -1946,6 +1963,16 @@ export default function DashboardPage() {
     }
     if (!practitionerId) { setSavingProfile(false); return; }
     try {
+      // Construire les champs de base
+      const isTestPatient = patients.find(p => p.id === selectedPatientId)?.is_test === true;
+      // Pour les patients test : reconstruire notes depuis sommeil + digestif
+      const notesParts: string[] = [];
+      if (editDigestif) notesParts.push(`Digestif: ${editDigestif}`);
+      if (editSommeil) notesParts.push(`Sommeil: ${editSommeil}`);
+      const notesForSave = isTestPatient
+        ? (notesParts.length > 0 ? notesParts.join("; ") : null)
+        : (editNotes || null);
+
       const res = await fetch("/api/save-patient-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1966,7 +1993,11 @@ export default function DashboardPage() {
             objectif_clinique: editObjectifClinique || null,
             niveau_activite: editNiveauActivite || null,
             regime_specifique: editRegime || null,
-            notes: editNotes || null,
+            notes: notesForSave,
+            ...(isTestPatient && {
+              motivation: editHumeur || null,
+              defi: editDefiPrincipal || null,
+            }),
           },
           clearIdentityAlert: true,
         }),
@@ -2807,6 +2838,7 @@ export default function DashboardPage() {
                   <div style={{ marginBottom: 10, padding: "2px 0" }}>
                     {(() => {
                       const p = selectedPatient as RealPatient;
+                      const isTest = p.is_test === true;
                       const lastActiveStr = onboardingDemoMode
                         ? ((p as unknown as { lastActive?: string }).lastActive ?? "Jamais")
                         : p.lastActive ? (() => {
@@ -2829,7 +2861,12 @@ export default function DashboardPage() {
                       };
                       return (
                         <>
-                          {[
+                          {isTest ? (
+                            <div style={{ marginBottom: 8, padding: "6px 10px", borderRadius: 8, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#6ee7b7", display: "inline-block", flexShrink: 0 }} />
+                              <span style={{ fontSize: 11, color: "#6ee7b7" }}>Connexion et assiduité non suivies en mode test</span>
+                            </div>
+                          ) : [
                             { label: "Dernière connexion", value: lastActiveStr },
                             { label: "Assiduité", value: streak > 0 ? `${streak} jours actifs` : "Aucune activité" },
                           ].map((item) => (
@@ -4636,7 +4673,12 @@ export default function DashboardPage() {
                 <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>Modifier le profil</p>
                 <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>{selectedPatient?.firstName} {selectedPatient?.lastName}</h2>
               </div>
-              <button onClick={() => setShowProfileModal(false)} style={{ background: "rgba(255,255,255,0.06)", border: "none", cursor: "pointer", fontSize: 20, color: "#94a3b8", width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>×</button>
+              <button onClick={() => setShowProfileModal(false)}
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", color: "#94a3b8", width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
             </div>
 
             {pendingCorrections.length > 0 && (
@@ -4743,7 +4785,37 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+            {/* ── Étape 3 : Profil patient — uniquement pour les patients test ── */}
+            {selectedPatient?.is_test && (
+              <>
+                <div style={{ margin: "24px 0 20px", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                    <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Profil patient</p>
+                    <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
+                    <span style={{ fontSize: 10, fontWeight: 600, color: emerald, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 4, padding: "2px 7px", letterSpacing: "0.08em", textTransform: "uppercase" }}>Test</span>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    {([
+                      { label: "Sommeil", key: "sommeil" as const, value: editSommeil, setter: setEditSommeil, options: ["Moins de 6h", "6 à 7h", "7 à 8h", "Plus de 8h"] },
+                      { label: "État d'esprit", key: "humeur" as const, value: editHumeur, setter: setEditHumeur, options: ["Très motivé(e)", "Optimiste", "Un peu anxieux(se)", "Complètement perdu(e)", "Volontaire mais fatigué(e)", "Aucun", "Autre"] },
+                      { label: "Défi principal", key: "defi" as const, value: editDefiPrincipal, setter: setEditDefiPrincipal, options: ["Manque de temps", "Pulsions sucrées", "Repas au restaurant", "Manque de motivation", "Organisation en cuisine", "Manger sous le stress", "Aucun", "Autre"] },
+                      { label: "Inconforts digestifs", key: "digestif" as const, value: editDigestif, setter: setEditDigestif, options: ["Ballonnements fréquents", "Transit lent", "Transit rapide", "Reflux / brûlures", "Aucun inconfort", "Autre"] },
+                    ] as { label: string; key: string; value: string; setter: (v: string) => void; options: string[] }[]).map(({ label, key, value, setter, options }) => (
+                      <div key={key}>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
+                        <select value={value} onChange={e => setter(e.target.value)}
+                          style={{ width: "100%", height: 42, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}>
+                          <option value="">Choisir</option>
+                          {options.map(o => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            <div style={{ display: "flex", gap: 10, marginTop: selectedPatient?.is_test ? 4 : 24 }}>
               <button onClick={() => setShowProfileModal(false)}
                 style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
@@ -5066,7 +5138,7 @@ export default function DashboardPage() {
                         style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: checkingEmail ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s", opacity: checkingEmail ? 0.7 : 1 }}
                         onMouseEnter={e => { if (!checkingEmail) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
                         onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                        {checkingEmail ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Vérification</span> : "Suivant →"}
+                        {checkingEmail ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />Vérification</span> : "Suivant"}
                       </button>
                     </div>
                   </>
@@ -5110,13 +5182,13 @@ export default function DashboardPage() {
                     style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
                     onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
-                    ← Retour
+                    Retour
                   </button>
                   <button onClick={() => setInviteStep(3)}
                     style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}
                     onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                    Suivant →
+                    Suivant
                   </button>
                 </div>
               </>
@@ -5174,7 +5246,7 @@ export default function DashboardPage() {
                     style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
                     onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
-                    ← Retour
+                    Retour
                   </button>
                   <button onClick={() => void sendInvite()} disabled={inviting}
                     style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: inviting ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, opacity: inviting ? 0.7 : 1, transition: "all 0.2s" }}
@@ -5475,7 +5547,7 @@ export default function DashboardPage() {
                   style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: addTestPatientForm.firstName.trim() ? "pointer" : "not-allowed", fontSize: 14, fontWeight: 600, transition: "all 0.2s", opacity: addTestPatientForm.firstName.trim() ? 1 : 0.5 }}
                   onMouseEnter={e => { if (addTestPatientForm.firstName.trim()) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
                   onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                  Suivant →
+                  Suivant
                 </button>
               </div>
             </>
@@ -5522,13 +5594,13 @@ export default function DashboardPage() {
                   style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
-                  ← Retour
+                  Retour
                 </button>
                 <button onClick={() => setAddTestPatientStep(3)}
                   style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                  Suivant →
+                  Suivant
                 </button>
               </div>
             </>
@@ -5637,7 +5709,7 @@ export default function DashboardPage() {
                     style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
                     onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
-                    ← Retour
+                    Retour
                   </button>
                   <button
                     disabled={addTestPatientSaving}
