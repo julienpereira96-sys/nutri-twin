@@ -312,24 +312,27 @@ const OnboardingTour = ({ practitionerName, onSkip }: Omit<OnboardingProps, "ste
         <h1 style={{ margin: "0 0 16px", fontSize: 28, fontWeight: 800, color: "white", textAlign: "center", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
           Bienvenue sur votre<br />Dashboard, {firstName}&nbsp;!
         </h1>
-        <p style={{ margin: "0 0 12px", fontSize: 14, color: "#a1a1aa", textAlign: "center", lineHeight: 1.7 }}>
-          Votre cabinet numérique est prêt. Pour l'instant, votre dashboard est en <strong style={{ color: "#d4d4d8" }}>mode démo</strong> avec 3 patients fictifs — explorez toutes les fonctionnalités librement.
+        <p style={{ margin: "0 0 10px", fontSize: 14, color: "#a1a1aa", textAlign: "center", lineHeight: 1.7 }}>
+          Votre cabinet numérique est prêt. Avant d'inviter vos premiers patients, découvrez l'expérience depuis leur perspective grâce au <strong style={{ color: "#d4d4d8" }}>mode test</strong>.
         </p>
-        <p style={{ margin: "0 0 36px", fontSize: 13, color: "#71717a", textAlign: "center", lineHeight: 1.6 }}>
-          Le mode démo disparaîtra automatiquement dès que vous aurez invité votre premier patient.
-        </p>
+        <div style={{ margin: "0 0 28px", padding: "14px 16px", borderRadius: 12, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", textAlign: "left" }}>
+          <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>Comment ça marche ?</p>
+          <p style={{ margin: 0, fontSize: 12, color: "#71717a", lineHeight: 1.6 }}>
+            Le mode test ouvre le chat côte à côte avec votre dashboard. Écrivez comme si vous étiez un patient — vous verrez en temps réel comment l'IA répond et comment votre dashboard se met à jour.
+          </p>
+        </div>
         <div style={{ display: "flex", gap: 12 }}>
           <button onClick={onSkip}
             style={{ flex: 1, height: 48, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#71717a", fontSize: 14, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#a1a1aa"; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#71717a"; }}>
-            Fermer
+            Plus tard
           </button>
           <button onClick={onSkip}
             style={{ flex: 2, height: 48, borderRadius: 12, background: "linear-gradient(135deg, #10b981, #059669)", border: "none", color: "white", fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif", boxShadow: "0 4px 20px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.15)", letterSpacing: "0.01em" }}
             onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.5), inset 0 1px 0 rgba(255,255,255,0.15)"; }}
             onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.15)"; }}>
-            Explorer le dashboard →
+            Accéder au dashboard →
           </button>
         </div>
       </div>
@@ -577,6 +580,10 @@ export default function DashboardPage() {
     private_notes: { id: string; text: string; created_at: string }[];
   };
   const [demoPatients, setDemoPatients] = useState<DemoPatient[]>(DEMO_PATIENTS_INITIAL as unknown as DemoPatient[]);
+
+  // ═══ MODE TEST ═══
+  const [testMode, setTestMode] = useState(false);
+  const [testPatientSetup, setTestPatientSetup] = useState(false);
 
   // ═══ ÉTATS PRINCIPAUX ═══
   const [activeTab, setActiveTab] = useState<ActiveTab>("patients");
@@ -898,7 +905,7 @@ export default function DashboardPage() {
     if (!relations || relations.length === 0) { setLoading(false); setOnboardingDemoMode(true); return true; }
     const patientIds = relations.map((r) => r.patient_id as string);
 
-    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, last_seen_at").in("user_id", patientIds);
+    const { data: patientsData } = await supabase.from("patients").select("user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, last_seen_at").in("user_id", patientIds).or("is_test.is.null,is_test.eq.false");
     if (!patientsData) { setLoading(false); return false; }
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -1107,6 +1114,11 @@ export default function DashboardPage() {
         // Colonne absente (migration non encore lancée) → afficher le tour quand même
         setTimeout(() => { setShowOnboarding(true); setOnboardingDemoMode(true); }, 800);
       }
+      // Setup patient test silencieux (idempotent — ne fait rien si déjà créé)
+      fetch("/api/test-mode/setup", { method: "POST" })
+        .then(r => r.json())
+        .then((d: { testPatientUserId?: string }) => { if (d.testPatientUserId) setTestPatientSetup(true); })
+        .catch(() => { /* silencieux */ });
       const { count } = await supabase.from("documents").select("*", { count: "exact", head: true }).eq("practitioner_id", pid);
       setHasDocuments((count ?? 0) > 0);
       if ((count ?? 0) > 0) { const hidden = localStorage.getItem("fidelity_hidden"); if (hidden === "true") setShowFidelity(false); }
@@ -2096,7 +2108,9 @@ export default function DashboardPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#070B09", color: "white", fontFamily: "Inter, sans-serif" }}>
+    <div style={{ display: "flex", height: "100dvh", background: "#070B09", overflow: "hidden" }}>
+    {/* ═══ Dashboard (gauche) ═══ */}
+    <div style={{ flex: 1, minWidth: 0, overflowY: "auto", minHeight: "100dvh", background: "#070B09", color: "white", fontFamily: "Inter, sans-serif" }}>
 
       {showOnboarding && (
         <OnboardingTour practitionerName={practitionerName} onSkip={handleOnboardingSkip} />
@@ -2144,6 +2158,20 @@ export default function DashboardPage() {
                       <p style={{ margin: 0, fontSize: 10, color: "#64748b" }}>{discretMode ? "Actif - cliquer pour désactiver" : "Masquer les données patients"}</p>
                     </div>
                     {discretMode && <div style={{ width: 8, height: 8, borderRadius: "50%", background: amber, flexShrink: 0 }} />}
+                  </button>
+                  {/* ─── Mode test ─── */}
+                  <button onClick={() => { setTestMode(m => !m); setShowAccountMenu(false); }}
+                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, background: testMode ? "rgba(16,185,129,0.08)" : "transparent", border: "none", cursor: "pointer", transition: "all 0.15s", marginBottom: 2 }}
+                    onMouseEnter={e => { if (!testMode) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = testMode ? "rgba(16,185,129,0.08)" : "transparent"; }}>
+                    <div style={{ width: 30, height: 30, borderRadius: 8, background: testMode ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.06)", border: `1px solid ${testMode ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.08)"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={testMode ? emerald : "#94a3b8"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>
+                    </div>
+                    <div style={{ textAlign: "left", flex: 1 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: testMode ? emerald : "white" }}>Mode test</p>
+                      <p style={{ margin: 0, fontSize: 10, color: "#64748b" }}>{testMode ? "Actif - cliquer pour quitter" : "Tester l'expérience patient"}</p>
+                    </div>
+                    {testMode && <div style={{ width: 8, height: 8, borderRadius: "50%", background: emerald, flexShrink: 0 }} />}
                   </button>
                   <button onClick={() => { setShowSettingsModal(true); setShowAccountMenu(false); }}
                     style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, background: "transparent", border: "none", cursor: "pointer", transition: "all 0.15s", marginBottom: 2 }}
@@ -3965,8 +3993,8 @@ export default function DashboardPage() {
                         <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "white" }}>
                           Ajouter +{packSize} patients
                         </p>
-                        <p style={{ margin: "1px 0 1px", fontSize: 11, color: "#64748b" }}>{currentPacks}/{maxPacks} pack{maxPacks > 1 ? "s" : ""} utilisé{currentPacks !== 1 ? "s" : ""}</p>
-                        <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{packPrice}€/mois · sans engagement</p>
+                        <p style={{ margin: "2px 0 1px", fontSize: 14, fontWeight: 700, color: "white" }}>{packPrice}€<span style={{ fontSize: 11, fontWeight: 400, color: "#64748b" }}>/mois</span></p>
+                        <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{currentPacks}/{maxPacks} pack{maxPacks > 1 ? "s" : ""} utilisé{currentPacks !== 1 ? "s" : ""}</p>
                       </div>
                       <button
                         onClick={() => void handlePurchasePack()}
@@ -5084,6 +5112,24 @@ export default function DashboardPage() {
         @keyframes onboardingPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes criticalPulse { 0%, 100% { box-shadow: 0 0 32px rgba(244,63,94,0.25); } 50% { box-shadow: 0 0 48px rgba(244,63,94,0.5); } }
       `}</style>
+    </div>
+
+    {/* ═══ Panneau test : chat iframe (droite) ═══ */}
+    {testMode && (
+      <div style={{ width: 420, flexShrink: 0, borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", background: "#070B09" }}>
+        <div style={{ height: 40, display: "flex", alignItems: "center", gap: 8, padding: "0 14px", borderBottom: "1px solid rgba(255,255,255,0.08)", background: "rgba(16,185,129,0.06)", flexShrink: 0 }}>
+          <div style={{ width: 7, height: 7, borderRadius: "50%", background: emerald, boxShadow: `0 0 6px ${emerald}` }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: emerald, letterSpacing: "0.06em", textTransform: "uppercase" }}>Mode test actif</span>
+          <span style={{ fontSize: 11, color: "#64748b", marginLeft: 4 }}>— vue patient</span>
+          <button onClick={() => setTestMode(false)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "0 2px" }} title="Quitter le mode test">×</button>
+        </div>
+        <iframe
+          src="/chat?test=true"
+          style={{ flex: 1, border: "none", width: "100%" }}
+          key="test-chat-iframe"
+        />
+      </div>
+    )}
     </div>
   );
 }

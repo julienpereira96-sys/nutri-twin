@@ -642,6 +642,17 @@ export default function ChatPage() {
   const [chatSearchIdx, setChatSearchIdx] = useState(0);
   const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  // ─── Mode test (praticien qui simule l'expérience patient) ──────────────────
+  const isTestMode = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("test") === "true";
+  const [testToken, setTestToken] = useState<string | null>(null);
+  // tFetch : wrapper fetch qui ajoute Authorization: Bearer en mode test
+  const tFetch = useCallback((url: string, opts?: RequestInit): Promise<Response> => {
+    if (!testToken) return fetch(url, opts);
+    const headers = new Headers(opts?.headers);
+    headers.set("Authorization", `Bearer ${testToken}`);
+    return fetch(url, { ...opts, headers });
+  }, [testToken]);
+
   // ─── Voix thérapeutique ────────────────────────────────────────────────────
   const { voices: therapeuticVoices, selectedVoice: selectedTherapeuticVoice, setSelectedVoice: setTherapeuticVoice, previewVoice: previewTherapeuticVoice, warmUp: warmUpVoice, isPlaying: isVoicePlaying } = useTherapeuticVoice();
 
@@ -779,13 +790,13 @@ export default function ChatPage() {
     rows: { role: "user" | "assistant"; content: string; created_at: string }[],
   ) => {
     try {
-      const res = await fetch(`/api/sos/closures?patientId=${pid}&practitionerId=${practId}`);
+      const res = await tFetch(`/api/sos/closures?patientId=${pid}&practitionerId=${practId}`);
       if (!res.ok) return;
       const data = await res.json() as { events?: SosClosureEvent[] };
       if (!data.events?.length) return;
       setMessages(mergeSosClosures(rows, data.events) as ChatMessage[]);
     } catch { /* silencieux */ }
-  }, []);
+  }, [tFetch]);
 
   const completeOnboarding = useCallback(async (pid: string) => {
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
@@ -811,6 +822,45 @@ export default function ChatPage() {
   }, [patientId, completeOnboarding]);
 
   useEffect(() => {
+    // ── Mode test : authentification via Bearer token (praticien qui simule le patient) ──
+    if (isTestMode) {
+      fetch("/api/test-mode/session")
+        .then(r => r.json())
+        .then(async (d: { access_token?: string; refresh_token?: string; patient_user_id?: string; error?: string }) => {
+          if (!d.access_token || !d.patient_user_id) { setSessionLoading(false); return; }
+          setTestToken(d.access_token);
+          const pid = d.patient_user_id;
+          setPatientId(pid);
+          setPatientFirstName("Patient");
+          setPatientInitials("PT");
+          // Créer un client Supabase avec une clé de stockage séparée pour ne pas écraser la session praticien
+          const testSupabase = createBrowserClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            { auth: { storageKey: "sb-test-auth-token" } }
+          );
+          await testSupabase.auth.setSession({ access_token: d.access_token, refresh_token: d.refresh_token! });
+          // Charger les infos praticien (avec Bearer token)
+          const practInfoRes = await fetch("/api/patient/practitioner-info", {
+            headers: { Authorization: `Bearer ${d.access_token}` },
+          });
+          if (practInfoRes.ok) {
+            const practInfo = await practInfoRes.json() as { practitionerId: string; plan: string };
+            const practId = practInfo.practitionerId;
+            setPractitionerIdFromDb(practId);
+            setPractitionerPlan(practInfo.plan || "essentiel");
+            // Charger l'historique de conversation test
+            const { data: hist } = await testSupabase.from("conversations").select("role, content, created_at").eq("patient_id", pid).eq("practitioner_id", practId).is("session_id", null).eq("practitioner_only", false).order("created_at", { ascending: true });
+            if (hist?.length) setMessages(hist as ChatMessage[]);
+          }
+          await loadSessions(pid);
+          setSessionLoading(false);
+        })
+        .catch(() => setSessionLoading(false));
+      return; // pas de subscription onAuthStateChange en mode test
+    }
+
+    // ── Mode normal : authentification par cookie ────────────────────────────
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
     // Écouter l'expiration de session en cours d'utilisation
@@ -832,7 +882,7 @@ export default function ChatPage() {
       // affiché dans le dashboard praticien (cf. migration add_patients_last_seen_at.sql)
       void supabase.from("patients").update({ last_seen_at: new Date().toISOString() }).eq("user_id", data.user.id);
       // Charger les infos praticien via API sécurisée (service role, bypass RLS)
-      const practInfoRes = await fetch("/api/patient/practitioner-info");
+      const practInfoRes = await tFetch("/api/patient/practitioner-info");
       if (practInfoRes.ok) {
         const practInfo = await practInfoRes.json() as { practitionerId: string; plan: string; firstName: string; lastName: string };
         const practId = practInfo.practitionerId;
@@ -902,6 +952,7 @@ export default function ChatPage() {
     });
 
     return () => { subscription.unsubscribe(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadSessions, hydrateSosClosures]);
 
   // ─── Heartbeat "dernière connexion" ─────────────────────────────────────────
@@ -1114,7 +1165,7 @@ export default function ChatPage() {
 
     // Tracer l'événement SOS en arrière-plan (placeholder)
     if (patientId && practitionerIdFromDb) {
-      fetch("/api/sos-feedback", {
+      tFetch("/api/sos-feedback", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ patientId, practitionerId: practitionerIdFromDb, eventId: null, stressBeforeProxy: 5, scoreAfter: 5, isPlaceholder: true }),
       }).catch(() => {});
@@ -1123,7 +1174,7 @@ export default function ChatPage() {
     // Envoyer la réponse post-exercice à Gemini → récupérer le message de clôture → l'afficher dans le chat
     if (patientId && practitionerIdFromDb) {
       try {
-        const res = await fetch("/api/chat", {
+        const res = await tFetch("/api/chat", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             message: answer.trim(),
@@ -1167,7 +1218,7 @@ export default function ChatPage() {
     // Enregistrer l'événement (sos_events) en arrière-plan — alimente le Dashboard
     // ("Crises désamorcées" / "Exercices pratiqués") et la 🏆 victoire automatique.
     if (patientId && practitionerIdFromDb) {
-      void fetch("/api/chat", {
+      void tFetch("/api/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: "", patientId, practitionerId: practitionerIdFromDb, isSOS: true,
@@ -1230,14 +1281,14 @@ export default function ChatPage() {
 
   const sendHidden = async (msg: string) => {
     if (!patientId || !practitionerIdFromDb) return;
-    try { await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: msg, patientId, practitionerId: practitionerIdFromDb, sessionId: currentSessionId ?? undefined }) }); }
+    try { await tFetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: msg, patientId, practitionerId: practitionerIdFromDb, sessionId: currentSessionId ?? undefined }) }); }
     catch { /* silencieux */ }
   };
 
   const sendStressData = async (before: number, after: number, toolId: string) => {
     if (!patientId || !practitionerIdFromDb) return;
     try {
-      await fetch("/api/sos-feedback", {
+      await tFetch("/api/sos-feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ patientId, practitionerId: practitionerIdFromDb, toolId, stressBefore: before, stressAfter: after }),
@@ -1361,7 +1412,7 @@ export default function ChatPage() {
     try {
       const body: Record<string, string | undefined> = { message: trimmed || "Analyse cette photo", patientId: patientId ?? undefined, practitionerId: practitionerIdFromDb ?? undefined };
       if (img) { body.imageBase64 = img.base64; body.imageMimeType = img.mimeType; }
-      const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: abortControllerRef.current.signal });
+      const res = await tFetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: abortControllerRef.current.signal });
       if (!res.ok || !res.body) throw new Error("Erreur");
 
       // ─── Stream : chaque chunk est affiché immédiatement, sans RAF ───
@@ -2439,7 +2490,7 @@ export default function ChatPage() {
                   ? `[contexte chat récent]\n${recentLines.join("\n")}`
                   : "Mon Soutien";
                 setSosSosContext(builtContext);
-                void fetch("/api/chat", {
+                void tFetch("/api/chat", {
                   method: "POST", headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ message: "", patientId, practitionerId: practitionerIdFromDb, isSOS: true, sosContext: "Mon Soutien", origin: "crise" }),
                 }).catch(() => {});
@@ -2635,6 +2686,14 @@ export default function ChatPage() {
           if (dx > 50 && !sidebarOpen) setSidebarOpen(true);
           if (dx < -50 && sidebarOpen) setSidebarOpen(false);
         }}>
+
+        {/* ═══ BANDEAU MODE TEST ═══ */}
+        {isTestMode && (
+          <div style={{ height: 28, background: "rgba(16,185,129,0.1)", borderBottom: "1px solid rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, flexShrink: 0 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", display: "inline-block", flexShrink: 0 }} />
+            <span style={{ fontSize: 10, fontWeight: 600, color: "#6ee7b7", letterSpacing: "0.1em", textTransform: "uppercase" }}>Mode test — vue patient simulée</span>
+          </div>
+        )}
 
         <header style={{ background: "rgba(8,14,11,0.75)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", height: 60, display: "flex", alignItems: "center", flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}>
           <div style={{ flex: 1, padding: isMobile ? "0 16px" : "0 24px", display: "flex", alignItems: "center" }}>

@@ -195,7 +195,7 @@ function PackPaymentForm({ packInfo }: { packInfo: PackInfo }) {
             Traitement en cours
           </span>
         ) : (
-          `Ajouter le pack — ${pack?.amount ?? 0}€/mois`
+          "Confirmer le paiement"
         )}
       </button>
 

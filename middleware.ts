@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
 
   const getPractitioner = async () => {
     if (!user) return null;
-    const { data } = await supabase.from("practitioners").select("plan, last_active_at, pending_plan").eq("user_id", user.id).single();
+    const { data } = await supabase.from("practitioners").select("plan, last_active_at, pending_plan, test_patient_user_id").eq("user_id", user.id).single();
     return data;
   };
 
@@ -177,11 +177,18 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // /chat — patient avec onboarding terminé uniquement
+  // /chat — patient avec onboarding terminé, OU praticien en mode test
   if (path.startsWith("/chat")) {
     if (!user) return NextResponse.redirect(new URL("/patient-login?reason=session_expired", request.url));
     const practitioner = await getPractitioner();
-    if (practitioner) return NextResponse.redirect(new URL("/", request.url));
+    if (practitioner) {
+      // Exception mode test : praticien qui accède au chat comme patient test
+      const isTestMode = request.nextUrl.searchParams.get("test") === "true";
+      if (isTestMode && (practitioner as { test_patient_user_id?: string | null }).test_patient_user_id) {
+        return supabaseResponse;
+      }
+      return NextResponse.redirect(new URL("/", request.url));
+    }
     const patient = await getPatient();
     if (!patient?.onboarding_completed) return NextResponse.redirect(new URL("/patient-onboarding", request.url));
     return supabaseResponse;
