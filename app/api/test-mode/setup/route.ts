@@ -5,11 +5,11 @@ import { getSessionUser, unauthorized } from "@/lib/api-auth";
 /**
  * POST /api/test-mode/setup
  *
- * Crée silencieusement un patient test lié au praticien.
- * Idempotent : si le patient test existe déjà, retourne ses infos sans rien créer.
- * Appelé une fois au chargement du dashboard.
+ * Crée un nouveau patient test lié au praticien avec un profil complet.
+ * Non idempotent — crée toujours un nouveau patient.
+ * Appelé explicitement depuis la modale "Ajouter un patient test".
  */
-export async function POST() {
+export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user) return unauthorized();
 
@@ -18,23 +18,27 @@ export async function POST() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Vérifier si le patient test existe déjà
-  const { data: practitioner } = await supabase
-    .from("practitioners")
-    .select("test_patient_user_id, test_patient_email, test_patient_password")
-    .eq("user_id", user.id)
-    .single();
+  // Accepter le profil complet depuis le body (tous les champs optionnels)
+  const body = await request.json().catch(() => ({})) as {
+    firstName?: string;
+    lastName?: string;
+    age?: number | null;
+    taille?: number | null;
+    poids?: number | null;
+    sexe?: string | null;
+    pathologies?: string | null;
+    allergies?: string | null;
+    traitements?: string | null;
+    objectifClinique?: string | null;
+    activite?: string | null;
+    regime?: string | null;
+    objective?: string | null;
+  };
 
-  if (practitioner?.test_patient_user_id) {
-    return NextResponse.json({
-      testPatientUserId: practitioner.test_patient_user_id,
-      created: false,
-    });
-  }
-
-  // Générer des credentials uniques
+  // Générer des credentials uniques pour ce nouveau patient test
+  const uniqueId = crypto.randomUUID();
   const password = crypto.randomUUID();
-  const email = `test-${user.id}@nutri-twin.internal`;
+  const email = `test-${uniqueId}@nutri-twin.internal`;
 
   // Créer le compte Auth
   const { data: authData, error: authError } = await supabase.auth.admin.createUser({
@@ -61,20 +65,31 @@ export async function POST() {
 
   const practitionerId = (practData as { id: string } | null)?.id;
 
-  // Créer le patient test dans la table patients
+  // Créer le patient test dans la table patients avec le profil complet
   await supabase.from("patients").insert({
     user_id: testUserId,
     practitioner_id: practitionerId,
-    first_name: "Patient",
-    last_name: "Test",
+    first_name: body.firstName || "Patient",
+    last_name: body.lastName || "Test",
     email,
+    age: body.age ?? null,
+    taille: body.taille ?? null,
+    poids: body.poids ?? null,
+    sexe: body.sexe ?? null,
+    pathologies: body.pathologies ?? null,
+    allergies: body.allergies ?? null,
+    traitements: body.traitements ?? null,
+    objectif_clinique: body.objectifClinique ?? null,
+    niveau_activite: body.activite ?? null,
+    regime_specifique: body.regime ?? null,
+    objective: body.objective ?? null,
     onboarding_completed: true,
     onboarding_status: "completed",
     onboarding_done: true,
     is_test: true,
   });
 
-  // Sauvegarder les credentials sur le praticien
+  // Mettre à jour le patient test actif sur le praticien
   await supabase
     .from("practitioners")
     .update({

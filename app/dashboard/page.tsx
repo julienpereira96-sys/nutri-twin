@@ -352,6 +352,7 @@ type RealPatient = {
   latest_victory?: string; victory_detected_at?: string | null; victory_message_id?: string; private_notes?: { id: string; text: string; created_at: string }[]; created_at?: string;
   lastActive?: string | null; streak?: number; sosResolved?: number; sosEvents?: { triggered_at: string; sos_context: string; tool_id?: string; status?: string | null; origin?: string | null }[]; red_behavioral_until?: string | null; last_patient_message_at?: string | null; onboardingCompleted?: boolean; onboardingStatus?: string | null;
   sharing_status?: string; cabinet_id?: string;
+  is_test?: boolean;
 };
 
 type Conversation = {
@@ -583,17 +584,23 @@ export default function DashboardPage() {
 
   // ═══ MODE TEST ═══
   const [testMode, setTestMode] = useState(false);
-  const [testPatientSetup, setTestPatientSetup] = useState(false);
   // chatPanelWidth : largeur du panneau chat (redimensionnable par drag)
   const [chatPanelWidth, setChatPanelWidth] = useState(420);
   const testDrag = useRef({ active: false, startX: 0, startW: 0 });
+  const [testDragHover, setTestDragHover] = useState(false);
   // realPatientsRef : sauvegarde des vrais patients quand on entre en mode test
   const realPatientsRef = useRef<RealPatient[]>([]);
   const realSelectedIdRef = useRef<string | null>(null);
-  // Modal de configuration du patient test
-  const [showTestConfigModal, setShowTestConfigModal] = useState(false);
-  const [testConfigForm, setTestConfigForm] = useState({ firstName: "Patient", age: "", sexe: "", objective: "", pathologies: "" });
-  const [testConfigSaving, setTestConfigSaving] = useState(false);
+  const [testIframeKey, setTestIframeKey] = useState("test-chat-0");
+  // Modal ajout patient test (3 étapes)
+  const [showAddTestPatientModal, setShowAddTestPatientModal] = useState(false);
+  const [addTestPatientStep, setAddTestPatientStep] = useState(1);
+  const [addTestPatientSaving, setAddTestPatientSaving] = useState(false);
+  const [addTestPatientForm, setAddTestPatientForm] = useState({
+    firstName: "", lastName: "", age: "", taille: "", poids: "", sexe: "",
+    pathologies: "", allergies: "", traitements: "", objectifClinique: "", activite: "", regime: "",
+    scenario: "",
+  });
 
   // Drag global mouse events (resize du chat panel)
   useEffect(() => {
@@ -1099,21 +1106,31 @@ export default function DashboardPage() {
     setCabinetSharedPatients(shared);
   };
 
-  // ═══ LOAD TEST PATIENT ═══
-  const loadTestPatient = useCallback(async (pid: string) => {
+  // ═══ LOAD TEST PATIENTS ═══
+  const loadTestPatients = useCallback(async (pid: string) => {
     const { data: practData } = await supabase
       .from("practitioners")
-      .select("test_patient_user_id")
+      .select("test_patient_user_id, id")
       .eq("user_id", pid)
       .single();
-    const testUserId = (practData as { test_patient_user_id?: string | null } | null)?.test_patient_user_id;
-    if (!testUserId) return;
+    const activeTestUserId = (practData as { test_patient_user_id?: string | null; id?: string } | null)?.test_patient_user_id;
+    const practDbId = (practData as { id?: string } | null)?.id;
+    if (!practDbId) { setPatients([]); setSelectedPatientId(null); return; }
 
-    const baseSelect = "user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, last_seen_at";
-    const { data: p } = await supabase.from("patients").select(baseSelect).eq("user_id", testUserId).single();
-    if (!p) return;
+    const baseSelect = "user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, is_test";
+    const { data: testPatients } = await supabase
+      .from("patients")
+      .select(baseSelect)
+      .eq("practitioner_id", practDbId)
+      .eq("is_test", true);
 
-    const testPatient: RealPatient = {
+    if (!testPatients || testPatients.length === 0) {
+      setPatients([]);
+      setSelectedPatientId(null);
+      return;
+    }
+
+    const mapped: RealPatient[] = testPatients.map(p => ({
       id: p.user_id as string,
       firstName: (p.first_name as string) ?? "Patient",
       lastName: (p.last_name as string) ?? "Test",
@@ -1148,18 +1165,15 @@ export default function DashboardPage() {
       sosResolved: 0,
       onboardingCompleted: true,
       onboardingStatus: "completed",
+      is_test: true,
       created_at: (p.created_at as string) ?? new Date().toISOString(),
-    };
-    setPatients([testPatient]);
-    setSelectedPatientId(testPatient.id);
-    // pré-remplir le formulaire config avec les données actuelles
-    setTestConfigForm({
-      firstName: testPatient.firstName,
-      age: testPatient.age !== undefined ? String(testPatient.age) : "",
-      sexe: testPatient.sexe ?? "",
-      objective: testPatient.objective ?? "",
-      pathologies: testPatient.pathologies ?? "",
-    });
+    }));
+
+    setPatients(mapped);
+    // Sélectionner le patient actif ou le premier de la liste
+    const activeId = activeTestUserId ?? mapped[0]?.id ?? null;
+    setSelectedPatientId(activeId);
+    if (activeId) setTestIframeKey(`test-chat-${activeId}`);
   }, [supabase]);
 
   // Swap patients quand testMode change
@@ -1168,7 +1182,7 @@ export default function DashboardPage() {
     if (testMode) {
       realPatientsRef.current = patients;
       realSelectedIdRef.current = selectedPatientId;
-      void loadTestPatient(practitionerId);
+      void loadTestPatients(practitionerId);
     } else {
       // Restaurer les vrais patients
       setPatients(realPatientsRef.current);
@@ -1233,11 +1247,6 @@ export default function DashboardPage() {
         // Colonne absente (migration non encore lancée) → afficher le tour quand même
         setTimeout(() => { setShowOnboarding(true); setOnboardingDemoMode(true); }, 800);
       }
-      // Setup patient test silencieux (idempotent — ne fait rien si déjà créé)
-      fetch("/api/test-mode/setup", { method: "POST" })
-        .then(r => r.json())
-        .then((d: { testPatientUserId?: string }) => { if (d.testPatientUserId) setTestPatientSetup(true); })
-        .catch(() => { /* silencieux */ });
       const { count } = await supabase.from("documents").select("*", { count: "exact", head: true }).eq("practitioner_id", pid);
       setHasDocuments((count ?? 0) > 0);
       if ((count ?? 0) > 0) { const hidden = localStorage.getItem("fidelity_hidden"); if (hidden === "true") setShowFidelity(false); }
@@ -2290,7 +2299,7 @@ export default function DashboardPage() {
                   {/* ─── Mode test ─── */}
                   <button onClick={() => {
                     if (testMode) { setTestMode(false); setShowAccountMenu(false); }
-                    else { setShowTestConfigModal(true); setShowAccountMenu(false); }
+                    else { setTestMode(true); setShowAccountMenu(false); }
                   }}
                     style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, background: testMode ? "rgba(16,185,129,0.08)" : "transparent", border: "none", cursor: "pointer", transition: "all 0.15s", marginBottom: 2 }}
                     onMouseEnter={e => { if (!testMode) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
@@ -2374,7 +2383,7 @@ export default function DashboardPage() {
 
         {/* ═══ VUE SUIVI ═══ */}
         {activeTab === "patients" && (
-          <div style={{ display: "grid", gridTemplateColumns: "280px minmax(0,1fr) 300px", gap: 16, height: "calc(100vh - 113px)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: testMode ? "280px minmax(0,1fr)" : "280px minmax(0,1fr) 300px", gap: 16, height: "calc(100vh - 113px)" }}>
 
             {/* Sidebar patients */}
             <div data-tour="patients" style={{ display: "flex", flexDirection: "column", background: "#060908", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
@@ -2424,7 +2433,21 @@ export default function DashboardPage() {
                     : (patient.lastMessage || "Aucun message");
                   const subColor = activeAlert ? (isRed ? "rgba(244,63,94,0.9)" : "rgba(245,158,11,0.9)") : "#475569";
                   return (
-                    <button key={patient.id} onClick={() => { setSelectedPatientId(patient.id); setShowInterventionBubble(false); setReplyMode(false); setReplyText(""); setReplyIsFromJumeau(false); }}
+                    <button key={patient.id} onClick={() => {
+                      setSelectedPatientId(patient.id);
+                      setShowInterventionBubble(false);
+                      setReplyMode(false);
+                      setReplyText("");
+                      setReplyIsFromJumeau(false);
+                      if (testMode) {
+                        setTestIframeKey(`test-chat-${patient.id}`);
+                        void fetch("/api/test-mode/active", {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ testPatientUserId: patient.id }),
+                        });
+                      }
+                    }}
                       style={{ width: "100%", borderRadius: 12, padding: "10px 12px", textAlign: "left", cursor: "pointer", marginBottom: 6, background: cardBg, border: `1px solid ${cardBorder}`, transition: "all 0.2s", boxShadow: cardShadow }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <div style={{ width: 36, height: 36, borderRadius: "50%", background: patient.avatarColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "white", flexShrink: 0, filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
@@ -2452,7 +2475,10 @@ export default function DashboardPage() {
                 })}
               </div>
               <div data-tour="invite" style={{ padding: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                <button onClick={() => { setShowInviteModal(true); setInviteSuccess(false); setInviteStep(1); }}
+                <button
+                  onClick={testMode
+                    ? () => { setShowAddTestPatientModal(true); setAddTestPatientStep(1); }
+                    : () => { setShowInviteModal(true); setInviteSuccess(false); setInviteStep(1); }}
                   style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 12, background: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))", border: "1px solid rgba(16,185,129,0.18)", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 12px rgba(0,0,0,0.3)" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.22), rgba(16,185,129,0.08))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))"; e.currentTarget.style.transform = "translateY(0)"; }}>
@@ -2460,15 +2486,15 @@ export default function DashboardPage() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
                   </div>
                   <div style={{ textAlign: "left" }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: emerald }}>Inviter un patient</p>
-                    <p style={{ margin: 0, fontSize: 10, color: "#64748b" }}>Envoyer un accès personnalisé</p>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: emerald }}>{testMode ? "Ajouter un patient test" : "Inviter un patient"}</p>
+                    <p style={{ margin: 0, fontSize: 10, color: "#64748b" }}>{testMode ? "Créer un nouveau profil de test" : "Envoyer un accès personnalisé"}</p>
                   </div>
                 </button>
               </div>
             </div>
 
-            {/* Zone conversation */}
-            <div style={{ display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
+            {/* Zone conversation — masquée en mode test (remplacée par l'iframe) */}
+            {!testMode && <div style={{ display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.02)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
               {selectedPatient ? (
                 <>
                   <div style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -2718,7 +2744,7 @@ export default function DashboardPage() {
                   <p style={{ fontSize: 14, color: "#4b5563" }}>{loading ? "Chargement..." : "Sélectionnez un patient"}</p>
                 </div>
               )}
-            </div>
+            </div>}
 
             {/* Fiche patient */}
             <div style={{ overflowY: "auto", background: "#060908", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 16 }}>
@@ -3482,7 +3508,7 @@ export default function DashboardPage() {
             <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><polyline points="3,6 5,6 21,6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M10 11v6M14 11v6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
-            <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Supprimer ce patient ?</h2>
+            <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>{(selectedPatient as RealPatient)?.is_test ? "Supprimer ce patient test ?" : "Supprimer ce patient ?"}</h2>
             <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>Toutes les données et l'accès du patient seront supprimés définitivement.<br/>Cette action est irréversible.</p>
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setShowDeletePatientModal(false)} disabled={deletingPatient} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: deletingPatient ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 500, opacity: deletingPatient ? 0.5 : 1, transition: "all 0.2s" }} onMouseEnter={e => { if (!deletingPatient) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "white"; } }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
@@ -5248,6 +5274,8 @@ export default function DashboardPage() {
     {/* ═══ Drag handle (bordure gauche du chat) ═══ */}
     {testMode && (
       <div
+        onMouseEnter={() => setTestDragHover(true)}
+        onMouseLeave={() => setTestDragHover(false)}
         onMouseDown={(e) => {
           testDrag.current.active = true;
           testDrag.current.startX = e.clientX;
@@ -5260,12 +5288,20 @@ export default function DashboardPage() {
         style={{
           width: 6,
           flexShrink: 0,
-          cursor: "ew-resize",
+          cursor: testDragHover ? "ew-resize" : "default",
           userSelect: "none",
-          background: "rgba(255,255,255,0.04)",
-          borderLeft: "1px solid rgba(255,255,255,0.07)",
+          background: testDragHover ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
+          borderLeft: `1px solid ${testDragHover ? "rgba(16,185,129,0.3)" : "rgba(255,255,255,0.07)"}`,
+          transition: "background 0.15s, border-color 0.15s",
+          position: "relative",
         }}
-      />
+      >
+        {testDragHover && (
+          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", display: "flex", flexDirection: "column", gap: 2, pointerEvents: "none" }}>
+            {[0, 1, 2].map(i => <div key={i} style={{ width: 2, height: 2, borderRadius: "50%", background: "rgba(16,185,129,0.7)" }} />)}
+          </div>
+        )}
+      </div>
     )}
 
     {/* ═══ Panneau test : chat iframe (droite) ═══ */}
@@ -5289,118 +5325,219 @@ export default function DashboardPage() {
         <iframe
           src="/chat?test=true"
           style={{ flex: 1, border: "none", width: "100%" }}
-          key="test-chat-iframe"
+          key={testIframeKey}
         />
       </div>
     )}
 
-    {/* ═══ Modale configuration patient test ═══ */}
-    {showTestConfigModal && (
+    {/* ═══ Modale ajout patient test (3 étapes) ═══ */}
+    {showAddTestPatientModal && (
       <>
-        <div onClick={() => setShowTestConfigModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)", zIndex: 1000 }} />
-        <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 1001, background: "#0f1410", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 18, padding: "28px 32px", width: 440, maxWidth: "90vw", boxShadow: "0 24px 64px rgba(0,0,0,0.8)" }}>
+        <div onClick={() => { setShowAddTestPatientModal(false); setAddTestPatientStep(1); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 50 }} />
+        <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", zIndex: 51, background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 500, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", overflowY: "auto", maxHeight: "90vh" }}>
           {/* Header */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 22 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>
-            </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
             <div>
-              <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "white" }}>Configurer le patient test</p>
-              <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>Ces données seront utilisées dans le chat</p>
+              <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>Étape {addTestPatientStep} sur 3</p>
+              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>
+                {addTestPatientStep === 1 ? "Identité du patient test" : addTestPatientStep === 2 ? "Contexte médical" : "Scénario"}
+              </h2>
             </div>
-            <button onClick={() => setShowTestConfigModal(false)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 20, lineHeight: 1, padding: "0 2px" }}>×</button>
-          </div>
-
-          {/* Champs */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "flex", gap: 12 }}>
-              <div style={{ flex: 2 }}>
-                <label style={{ display: "block", fontSize: 11, color: "#94a3b8", marginBottom: 5, fontWeight: 500 }}>Prénom</label>
-                <input
-                  value={testConfigForm.firstName}
-                  onChange={e => setTestConfigForm(f => ({ ...f, firstName: e.target.value }))}
-                  placeholder="Ex: Sophie"
-                  style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "white", fontSize: 13, outline: "none" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: "block", fontSize: 11, color: "#94a3b8", marginBottom: 5, fontWeight: 500 }}>Âge</label>
-                <input
-                  type="number"
-                  value={testConfigForm.age}
-                  onChange={e => setTestConfigForm(f => ({ ...f, age: e.target.value }))}
-                  placeholder="32"
-                  style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "white", fontSize: 13, outline: "none" }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: "block", fontSize: 11, color: "#94a3b8", marginBottom: 5, fontWeight: 500 }}>Sexe</label>
-                <select
-                  value={testConfigForm.sexe}
-                  onChange={e => setTestConfigForm(f => ({ ...f, sexe: e.target.value }))}
-                  style={{ width: "100%", boxSizing: "border-box", background: "#0f1410", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 10px", color: testConfigForm.sexe ? "white" : "#64748b", fontSize: 13, outline: "none" }}
-                >
-                  <option value="">—</option>
-                  <option value="F">F</option>
-                  <option value="M">M</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: 11, color: "#94a3b8", marginBottom: 5, fontWeight: 500 }}>Objectif</label>
-              <textarea
-                value={testConfigForm.objective}
-                onChange={e => setTestConfigForm(f => ({ ...f, objective: e.target.value }))}
-                placeholder="Ex: Retrouver une relation apaisée avec la nourriture"
-                rows={2}
-                style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "white", fontSize: 13, outline: "none", resize: "none", fontFamily: "inherit" }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: 11, color: "#94a3b8", marginBottom: 5, fontWeight: 500 }}>Pathologies / contexte clinique</label>
-              <input
-                value={testConfigForm.pathologies}
-                onChange={e => setTestConfigForm(f => ({ ...f, pathologies: e.target.value }))}
-                placeholder="Ex: TCA, anxiété, hypertension…"
-                style={{ width: "100%", boxSizing: "border-box", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "9px 12px", color: "white", fontSize: 13, outline: "none" }}
-              />
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div style={{ display: "flex", gap: 10, marginTop: 22 }}>
-            <button onClick={() => setShowTestConfigModal(false)} style={{ flex: 1, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 13, fontWeight: 500 }}>Annuler</button>
-            <button
-              disabled={testConfigSaving}
-              onClick={async () => {
-                setTestConfigSaving(true);
-                try {
-                  // Étape 1 : créer le patient test s'il n'existe pas encore (idempotent)
-                  await fetch("/api/test-mode/setup", { method: "POST" });
-                  // Étape 2 : mettre à jour le profil
-                  await fetch("/api/test-mode/setup", {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      firstName: testConfigForm.firstName || "Patient",
-                      age: testConfigForm.age ? Number(testConfigForm.age) : null,
-                      sexe: testConfigForm.sexe || null,
-                      objective: testConfigForm.objective || null,
-                      pathologies: testConfigForm.pathologies || null,
-                    }),
-                  });
-                } catch { /* silencieux */ }
-                setTestConfigSaving(false);
-                setShowTestConfigModal(false);
-                setTestMode(true);
-              }}
-              style={{ flex: 2, height: 40, borderRadius: 10, background: emerald, border: "none", color: "white", cursor: testConfigSaving ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600, opacity: testConfigSaving ? 0.7 : 1 }}
-            >
-              {testConfigSaving ? "Enregistrement…" : "Lancer le mode test"}
+            <button onClick={() => { setShowAddTestPatientModal(false); setAddTestPatientStep(1); }}
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", color: "#94a3b8", width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#94a3b8"; }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
+          {/* Stepper */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 28 }}>
+            {[1, 2, 3].map(i => (
+              <div key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= addTestPatientStep ? emerald : "rgba(255,255,255,0.08)", transition: "background 0.3s" }} />
+            ))}
+          </div>
+
+          {/* ── Étape 1 : Identité ── */}
+          {addTestPatientStep === 1 && (
+            <>
+              <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Les informations de base pour personnaliser la simulation.</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Prénom *</p>
+                    <input type="text" value={addTestPatientForm.firstName}
+                      onChange={e => setAddTestPatientForm(f => ({ ...f, firstName: e.target.value }))}
+                      placeholder="Sophie"
+                      style={{ width: "100%", height: 46, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                      onFocus={e => { e.target.style.borderColor = emerald; }} onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }} />
+                  </div>
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Nom</p>
+                    <input type="text" value={addTestPatientForm.lastName}
+                      onChange={e => setAddTestPatientForm(f => ({ ...f, lastName: e.target.value }))}
+                      placeholder="Martin"
+                      style={{ width: "100%", height: 46, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                      onFocus={e => { e.target.style.borderColor = emerald; }} onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }} />
+                  </div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 10 }}>
+                  {([
+                    { label: "Âge", key: "age", placeholder: "34", min: 0, max: 110 },
+                    { label: "Taille (cm)", key: "taille", placeholder: "168", min: 0, max: 250 },
+                    { label: "Poids (kg)", key: "poids", placeholder: "72", min: 0, max: 500 },
+                  ] as { label: string; key: keyof typeof addTestPatientForm; placeholder: string; min: number; max: number }[]).map(({ label, key, placeholder, min, max }) => (
+                    <div key={key}>
+                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
+                      <input type="number" value={addTestPatientForm[key]}
+                        onChange={e => { const val = parseInt(e.target.value); if (e.target.value === "" || (val >= min && val <= max)) setAddTestPatientForm(f => ({ ...f, [key]: e.target.value })); }}
+                        placeholder={placeholder} min={min} max={max}
+                        style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", MozAppearance: "textfield" } as React.CSSProperties}
+                        onFocus={e => { e.target.style.borderColor = emerald; }} onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }} />
+                    </div>
+                  ))}
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
+                    <select value={addTestPatientForm.sexe}
+                      onChange={e => setAddTestPatientForm(f => ({ ...f, sexe: e.target.value }))}
+                      style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
+                      <option value="">Choisir</option>
+                      <option value="Femme">Femme</option>
+                      <option value="Homme">Homme</option>
+                      <option value="Autre">Autre</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 28 }}>
+                <button onClick={() => { setShowAddTestPatientModal(false); setAddTestPatientStep(1); }}
+                  style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                  Annuler
+                </button>
+                <button onClick={() => { if (addTestPatientForm.firstName.trim()) setAddTestPatientStep(2); }}
+                  style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: addTestPatientForm.firstName.trim() ? "pointer" : "not-allowed", fontSize: 14, fontWeight: 600, transition: "all 0.2s", opacity: addTestPatientForm.firstName.trim() ? 1 : 0.5 }}
+                  onMouseEnter={e => { if (addTestPatientForm.firstName.trim()) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
+                  Suivant →
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ── Étape 2 : Contexte médical ── */}
+          {addTestPatientStep === 2 && (
+            <>
+              <p style={{ margin: "0 0 4px", fontSize: 13, color: "#94a3b8" }}>Pour que le jumeau ne donne jamais un conseil inadapté.</p>
+              <p style={{ margin: "0 0 20px", fontSize: 12, color: "#4b5563" }}>Vous pourrez modifier depuis la fiche patient.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+                {([
+                  { label: "Pathologies", key: "pathologies", options: ["Diabète type 2", "Hypertension", "Hypothyroïdie", "SOPK", "Cholestérol", "TCA", "Surpoids"] },
+                  { label: "Allergies", key: "allergies", options: ["Gluten", "Lactose", "Fruits à coque", "Œufs", "Fruits de mer"] },
+                  { label: "Traitements", key: "traitements", options: ["Metformine", "Lévothyrox", "Pilule contraceptive", "Antidépresseurs", "Insuline"] },
+                  { label: "Objectif", key: "objectifClinique", options: ["Perte de poids", "Prise de masse", "Équilibre glycémique", "Bien-être général", "Grossesse"] },
+                  { label: "Activité", key: "activite", options: ["Sédentaire", "Légère", "Modérée", "Intense", "Athlète"] },
+                  { label: "Régime", key: "regime", options: ["Végétarien", "Vegan", "Sans gluten", "Halal", "Méditerranéen"] },
+                ] as { label: string; key: keyof typeof addTestPatientForm; options: string[] }[]).map(({ label, key, options }) => {
+                  const val = addTestPatientForm[key] as string;
+                  const isAutre = val !== "" && !options.includes(val) && val !== "Aucune" && val !== "Aucun";
+                  return (
+                    <div key={key}>
+                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
+                      <select value={isAutre ? "Autre" : val}
+                        onChange={e => { if (e.target.value === "Autre") setAddTestPatientForm(f => ({ ...f, [key]: "__autre__" })); else setAddTestPatientForm(f => ({ ...f, [key]: e.target.value })); }}
+                        style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}>
+                        <option value="">Choisir</option>
+                        <option value="Aucune">{["Pathologies", "Allergies", "Activité"].includes(label) ? "Aucune" : "Aucun"}</option>
+                        {options.map(o => <option key={o} value={o}>{o}</option>)}
+                        <option value="Autre">Autre...</option>
+                      </select>
+                      {(val === "__autre__" || isAutre) && (
+                        <input type="text" value={val === "__autre__" ? "" : val}
+                          onChange={e => setAddTestPatientForm(f => ({ ...f, [key]: e.target.value }))}
+                          placeholder="Précisez..." autoFocus
+                          style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", marginTop: 6 }}
+                          onFocus={e => { e.target.style.borderColor = emerald; }} onBlur={e => { e.target.style.borderColor = "rgba(16,185,129,0.3)"; }} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+                <button onClick={() => setAddTestPatientStep(1)}
+                  style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                  ← Retour
+                </button>
+                <button onClick={() => setAddTestPatientStep(3)}
+                  style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
+                  Suivant →
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ── Étape 3 : Scénario ── */}
+          {addTestPatientStep === 3 && (
+            <>
+              <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Décrivez librement le profil de ce patient — le jumeau adaptera son comportement à ce scénario.</p>
+              <textarea value={addTestPatientForm.scenario}
+                onChange={e => setAddTestPatientForm(f => ({ ...f, scenario: e.target.value }))}
+                placeholder="Exemple : Sophie est anxieuse autour de la balance — évite ce sujet. Elle se culpabilise facilement, reste bienveillant avant d'être technique. Elle adore cuisiner, utilise ça pour l'engager."
+                rows={6}
+                style={{ width: "100%", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "14px", fontSize: 13, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "Inter, sans-serif", lineHeight: 1.7, marginBottom: 20 }}
+                onFocus={e => { e.target.style.borderColor = emerald; }} onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }} />
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setAddTestPatientStep(2)}
+                  style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                  ← Retour
+                </button>
+                <button
+                  disabled={addTestPatientSaving}
+                  onClick={async () => {
+                    setAddTestPatientSaving(true);
+                    try {
+                      const res = await fetch("/api/test-mode/setup", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          firstName: addTestPatientForm.firstName || "Patient",
+                          lastName: addTestPatientForm.lastName || "Test",
+                          age: addTestPatientForm.age ? Number(addTestPatientForm.age) : null,
+                          taille: addTestPatientForm.taille ? Number(addTestPatientForm.taille) : null,
+                          poids: addTestPatientForm.poids ? Number(addTestPatientForm.poids) : null,
+                          sexe: addTestPatientForm.sexe || null,
+                          pathologies: addTestPatientForm.pathologies || null,
+                          allergies: addTestPatientForm.allergies || null,
+                          traitements: addTestPatientForm.traitements || null,
+                          objectifClinique: addTestPatientForm.objectifClinique || null,
+                          activite: addTestPatientForm.activite || null,
+                          regime: addTestPatientForm.regime || null,
+                          objective: addTestPatientForm.scenario || null,
+                        }),
+                      });
+                      const data = await res.json() as { testPatientUserId?: string };
+                      if (data.testPatientUserId && practitionerId) {
+                        await loadTestPatients(practitionerId);
+                      }
+                    } catch { /* silencieux */ }
+                    setAddTestPatientSaving(false);
+                    setShowAddTestPatientModal(false);
+                    setAddTestPatientStep(1);
+                    setAddTestPatientForm({ firstName: "", lastName: "", age: "", taille: "", poids: "", sexe: "", pathologies: "", allergies: "", traitements: "", objectifClinique: "", activite: "", regime: "", scenario: "" });
+                  }}
+                  style={{ flex: 2, height: 44, borderRadius: 10, background: addTestPatientSaving ? "rgba(16,185,129,0.08)" : emerald, border: "none", color: addTestPatientSaving ? emerald : "black", cursor: addTestPatientSaving ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700, opacity: addTestPatientSaving ? 0.7 : 1, transition: "all 0.2s" }}
+                >
+                  {addTestPatientSaving ? "Création…" : "Créer le patient test"}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </>
     )}
