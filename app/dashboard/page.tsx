@@ -602,12 +602,21 @@ export default function DashboardPage() {
     objectifPatient: "", humeur: "", defiPrincipal: "", alimentsDetestes: "",
   });
   const [addTestPatientDigestif, setAddTestPatientDigestif] = useState<string[]>([]);
+  const [addTestPatientAlimentsDetestes, setAddTestPatientAlimentsDetestes] = useState<string[]>([]);
+  const [addTestPatientCustomAliments, setAddTestPatientCustomAliments] = useState<string[]>([]);
 
   // Drag global mouse events (resize du chat panel)
   useEffect(() => {
     if (!testMode) return;
     const onMove = (e: MouseEvent) => {
       if (!testDrag.current.active) return;
+      // Si le bouton est relâché hors de la fenêtre, on annule le drag
+      if (e.buttons === 0) {
+        testDrag.current.active = false;
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        return;
+      }
       // Glisser gauche = chat plus large, glisser droite = chat plus étroit
       const dx = testDrag.current.startX - e.clientX;
       const raw = testDrag.current.startW + dx;
@@ -5336,11 +5345,32 @@ export default function DashboardPage() {
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
-        <iframe
-          src="/chat?test=true"
-          style={{ flex: 1, border: "none", width: "100%" }}
-          key={testIframeKey}
-        />
+        {patients.length === 0 ? (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center" }}>
+            <div style={{ width: 60, height: 60, borderRadius: "50%", background: "rgba(16,185,129,0.10)", border: "1px solid rgba(16,185,129,0.20)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, flexShrink: 0 }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="8" r="4"/>
+                <path d="M6 20v-2a6 6 0 0 1 12 0v2"/>
+              </svg>
+            </div>
+            <p style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 600, color: "#e2e8f0" }}>Aucun patient test configuré</p>
+            <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b", lineHeight: 1.6, maxWidth: 260 }}>Ajoutez un patient test pour simuler une conversation avec votre jumeau numérique.</p>
+            <button
+              onClick={() => { setShowAddTestPatientModal(true); setAddTestPatientStep(1); }}
+              style={{ background: emerald, border: "none", borderRadius: 10, padding: "11px 22px", color: "#000", fontSize: 13, fontWeight: 700, cursor: "pointer", letterSpacing: "-0.01em", transition: "opacity 0.15s" }}
+              onMouseEnter={e => { e.currentTarget.style.opacity = "0.85"; }}
+              onMouseLeave={e => { e.currentTarget.style.opacity = "1"; }}
+            >
+              + Ajouter un patient test
+            </button>
+          </div>
+        ) : (
+          <iframe
+            src="/chat?test=true"
+            style={{ flex: 1, border: "none", width: "100%" }}
+            key={testIframeKey}
+          />
+        )}
       </div>
     )}
 
@@ -5496,70 +5526,109 @@ export default function DashboardPage() {
 
           {/* ── Étape 3 : Profil & Préférences ── */}
           {addTestPatientStep === 3 && (() => {
-            const chipBtn = (active: boolean): React.CSSProperties => ({
-              padding: "7px 12px", borderRadius: 8, border: `1.5px solid ${active ? emerald : "rgba(255,255,255,0.08)"}`,
-              background: active ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)", color: active ? emerald : "#94a3b8",
-              cursor: "pointer", fontSize: 12, fontWeight: active ? 600 : 400, transition: "all 0.15s", whiteSpace: "nowrap" as const,
+            const ALIMENTS_LIST = [
+              "Poisson", "Viande rouge", "Poulet", "Dinde", "Œufs", "Tofu", "Légumineuses", "Fruits de mer",
+              "Brocoli", "Épinards", "Courgette", "Tomate", "Avocat", "Champignons", "Carottes", "Chou",
+              "Pâtes", "Riz", "Pain", "Quinoa", "Pomme de terre", "Patate douce",
+              "Fromage", "Yaourt", "Lait", "Chocolat", "Noix", "Fruits",
+            ];
+            const sel: React.CSSProperties = {
+              width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)",
+              background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none",
+              boxSizing: "border-box", cursor: "pointer",
+            };
+            const chipD = (active: boolean): React.CSSProperties => ({
+              padding: "5px 10px", borderRadius: 20,
+              border: `1px solid ${active ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.08)"}`,
+              background: active ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)",
+              color: active ? emerald : "#64748b",
+              cursor: "pointer", fontSize: 11, fontWeight: active ? 600 : 400, transition: "all 0.15s",
             });
-            const toggleDigestif = (val: string) => {
-              setAddTestPatientDigestif(prev =>
-                prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val]
-              );
+            const toggleAliment = (a: string) => setAddTestPatientAlimentsDetestes(prev =>
+              prev.includes(a) ? prev.filter(x => x !== a) : [...prev, a]
+            );
+            const addCustomAliment = () => {
+              const val = addTestPatientForm.alimentsDetestes.trim();
+              if (!val) return;
+              if (!ALIMENTS_LIST.includes(val) && !addTestPatientCustomAliments.includes(val))
+                setAddTestPatientCustomAliments(prev => [...prev, val]);
+              setAddTestPatientAlimentsDetestes(prev => prev.includes(val) ? prev : [...prev, val]);
+              setAddTestPatientForm(f => ({ ...f, alimentsDetestes: "" }));
             };
             return (
               <>
                 <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Ces données configurent la fidélité du jumeau — il adaptera ses réponses à ce profil.</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                  {/* Objectif patient */}
+
+                {/* 3 sélecteurs + inconforts digestifs en 2 colonnes */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                  {([
+                    { label: "Objectif du patient", key: "objectifPatient", options: ["Perdre du poids", "Avoir plus d'énergie", "Améliorer ma digestion", "Prendre du muscle", "Gérer une pathologie", "Manger plus équilibré"] },
+                    { label: "État d'esprit", key: "humeur", options: ["Très motivé(e)", "Optimiste", "Un peu anxieux(se)", "Complètement perdu(e)", "Volontaire mais fatigué(e)"] },
+                    { label: "Défi principal", key: "defiPrincipal", options: ["Manque de temps", "Pulsions sucrées", "Repas au restaurant", "Manque de motivation", "Organisation en cuisine", "Manger sous le stress"] },
+                  ] as { label: string; key: keyof typeof addTestPatientForm; options: string[] }[]).map(({ label, key, options }) => (
+                    <div key={key}>
+                      <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
+                      <select value={addTestPatientForm[key] as string}
+                        onChange={e => setAddTestPatientForm(f => ({ ...f, [key]: e.target.value }))}
+                        style={sel}>
+                        <option value="">Choisir</option>
+                        {options.map(o => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                  {/* Inconforts digestifs — multi-select compact chips */}
                   <div>
-                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Objectif du patient</p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {["Perdre du poids", "Avoir plus d'énergie", "Améliorer ma digestion", "Prendre du muscle", "Gérer une pathologie", "Manger plus équilibré"].map(o => (
-                        <button key={o} onClick={() => setAddTestPatientForm(f => ({ ...f, objectifPatient: f.objectifPatient === o ? "" : o }))}
-                          style={chipBtn(addTestPatientForm.objectifPatient === o)}>{o}</button>
+                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Inconforts digestifs</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {["Ballonnements", "Transit lent", "Transit rapide", "Reflux", "Aucun"].map(o => (
+                        <button key={o} onClick={() => setAddTestPatientDigestif(prev => prev.includes(o) ? prev.filter(x => x !== o) : [...prev, o])}
+                          style={chipD(addTestPatientDigestif.includes(o))}>{o}</button>
                       ))}
                     </div>
-                  </div>
-                  {/* Humeur de départ */}
-                  <div>
-                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>État d&apos;esprit au départ</p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {["Très motivé(e)", "Optimiste", "Un peu anxieux(se)", "Complètement perdu(e)", "Volontaire, mais fatigué(e)"].map(o => (
-                        <button key={o} onClick={() => setAddTestPatientForm(f => ({ ...f, humeur: f.humeur === o ? "" : o }))}
-                          style={chipBtn(addTestPatientForm.humeur === o)}>{o}</button>
-                      ))}
-                    </div>
-                  </div>
-                  {/* Défi principal */}
-                  <div>
-                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Défi principal</p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {["Manque de temps", "Pulsions sucrées", "Repas au restaurant", "Manque de motivation", "Manque d'organisation en cuisine", "Manger sous le stress"].map(o => (
-                        <button key={o} onClick={() => setAddTestPatientForm(f => ({ ...f, defiPrincipal: f.defiPrincipal === o ? "" : o }))}
-                          style={chipBtn(addTestPatientForm.defiPrincipal === o)}>{o}</button>
-                      ))}
-                    </div>
-                  </div>
-                  {/* Inconforts digestifs */}
-                  <div>
-                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Inconforts digestifs <span style={{ fontWeight: 400, color: "#4b5563" }}>(multi)</span></p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {["Ballonnements fréquents", "Transit lent", "Transit rapide", "Reflux / brûlures", "Aucun inconfort"].map(o => (
-                        <button key={o} onClick={() => toggleDigestif(o)}
-                          style={chipBtn(addTestPatientDigestif.includes(o))}>{o}</button>
-                      ))}
-                    </div>
-                  </div>
-                  {/* Aliments détestés */}
-                  <div>
-                    <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Aliments à éviter <span style={{ fontWeight: 400, color: "#4b5563" }}>(optionnel)</span></p>
-                    <input type="text" value={addTestPatientForm.alimentsDetestes}
-                      onChange={e => setAddTestPatientForm(f => ({ ...f, alimentsDetestes: e.target.value }))}
-                      placeholder="Ex : Poisson, fromage, viande rouge…"
-                      style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 14px", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-                      onFocus={e => { e.target.style.borderColor = emerald; }} onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }} />
                   </div>
                 </div>
+
+                {/* Section aliments à éviter */}
+                <div>
+                  <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>
+                    Aliments à éviter
+                    <span style={{ fontWeight: 400, color: "#4b5563", marginLeft: 6 }}>cliquer pour marquer ❌</span>
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 10 }}>
+                    {[...ALIMENTS_LIST, ...addTestPatientCustomAliments].map(a => {
+                      const on = addTestPatientAlimentsDetestes.includes(a);
+                      return (
+                        <button key={a} onClick={() => toggleAliment(a)}
+                          style={{ borderRadius: 20, padding: "5px 12px", fontSize: 12, fontWeight: 500, cursor: "pointer",
+                            border: `1px solid ${on ? "rgba(239,68,68,0.4)" : "rgba(255,255,255,0.08)"}`,
+                            background: on ? "rgba(239,68,68,0.1)" : "rgba(255,255,255,0.03)",
+                            color: on ? "#f87171" : "#64748b", transition: "all 0.15s" }}>
+                          {on ? "❌ " : ""}{a}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input type="text" value={addTestPatientForm.alimentsDetestes}
+                      onChange={e => setAddTestPatientForm(f => ({ ...f, alimentsDetestes: e.target.value }))}
+                      onKeyDown={e => { if (e.key === "Enter") addCustomAliment(); }}
+                      placeholder="Ajouter un aliment personnalisé..."
+                      style={{ flex: 1, height: 38, borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 12px", fontSize: 12, outline: "none", boxSizing: "border-box" }}
+                      onFocus={e => { e.target.style.borderColor = emerald; }}
+                      onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.08)"; }} />
+                    <button onClick={addCustomAliment}
+                      style={{ height: 38, padding: "0 14px", borderRadius: 10, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: emerald, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      + Ajouter
+                    </button>
+                  </div>
+                  {addTestPatientAlimentsDetestes.length > 0 && (
+                    <div style={{ marginTop: 10, padding: "8px 12px", borderRadius: 10, background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.12)" }}>
+                      <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 600, color: "#f87171" }}>À éviter ❌</p>
+                      <p style={{ margin: 0, fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>{addTestPatientAlimentsDetestes.join(", ")}</p>
+                    </div>
+                  )}
+                </div>
+
                 <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
                   <button onClick={() => setAddTestPatientStep(2)}
                     style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
@@ -5593,7 +5662,7 @@ export default function DashboardPage() {
                             humeur: addTestPatientForm.humeur || null,
                             defiPrincipal: addTestPatientForm.defiPrincipal || null,
                             digestif: digestifStr,
-                            alimentsDetestes: addTestPatientForm.alimentsDetestes || null,
+                            alimentsDetestes: addTestPatientAlimentsDetestes.length > 0 ? addTestPatientAlimentsDetestes.join(", ") : null,
                           }),
                         });
                         const data = await res.json() as { testPatientUserId?: string };
@@ -5606,10 +5675,19 @@ export default function DashboardPage() {
                       setAddTestPatientStep(1);
                       setAddTestPatientForm({ firstName: "", lastName: "", age: "", taille: "", poids: "", sexe: "", pathologies: "", allergies: "", traitements: "", objectifClinique: "", activite: "", regime: "", objectifPatient: "", humeur: "", defiPrincipal: "", alimentsDetestes: "" });
                       setAddTestPatientDigestif([]);
+                      setAddTestPatientAlimentsDetestes([]);
+                      setAddTestPatientCustomAliments([]);
                     }}
-                    style={{ flex: 2, height: 44, borderRadius: 10, background: addTestPatientSaving ? "rgba(16,185,129,0.08)" : emerald, border: "none", color: addTestPatientSaving ? emerald : "black", cursor: addTestPatientSaving ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 700, opacity: addTestPatientSaving ? 0.7 : 1, transition: "all 0.2s" }}
+                    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: addTestPatientSaving ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s", opacity: addTestPatientSaving ? 0.6 : 1 }}
+                    onMouseEnter={e => { if (!addTestPatientSaving) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}
                   >
-                    {addTestPatientSaving ? "Création…" : "Créer le patient test"}
+                    {addTestPatientSaving ? (
+                      <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                        <span style={{ width: 15, height: 15, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.25)", borderTopColor: emerald, display: "inline-block", animation: "spin 0.7s linear infinite", flexShrink: 0 }} />
+                        Création
+                      </span>
+                    ) : "Créer le patient test"}
                   </button>
                 </div>
               </>

@@ -840,6 +840,13 @@ export default function ChatPage() {
             { auth: { storageKey: "sb-test-auth-token" } }
           );
           await testSupabase.auth.setSession({ access_token: d.access_token, refresh_token: d.refresh_token! });
+          // Charger le vrai prénom du patient test (remplace le placeholder "Patient" ci-dessus)
+          const { data: testPat } = await testSupabase.from("patients").select("first_name, last_name").eq("user_id", pid).single();
+          const tp = testPat as { first_name?: string | null; last_name?: string | null } | null;
+          if (tp?.first_name) {
+            setPatientFirstName(tp.first_name);
+            setPatientInitials(`${tp.first_name[0]}${tp.last_name?.[0] ?? "T"}`.toUpperCase());
+          }
           // Charger les infos praticien (avec Bearer token)
           const practInfoRes = await fetch("/api/patient/practitioner-info", {
             headers: { Authorization: `Bearer ${d.access_token}` },
