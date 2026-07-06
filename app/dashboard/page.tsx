@@ -590,6 +590,7 @@ export default function DashboardPage() {
   );
   const testDrag = useRef({ active: false, startX: 0, startW: 0 });
   const [testDragHover, setTestDragHover] = useState(false);
+  const [testDragging, setTestDragging] = useState(false);
   // realPatientsRef : sauvegarde des vrais patients quand on entre en mode test
   const realPatientsRef = useRef<RealPatient[]>([]);
   const realSelectedIdRef = useRef<string | null>(null);
@@ -601,7 +602,7 @@ export default function DashboardPage() {
   const [addTestPatientForm, setAddTestPatientForm] = useState({
     firstName: "", lastName: "", age: "", taille: "", poids: "", sexe: "",
     pathologies: "", allergies: "", traitements: "", objectifClinique: "", activite: "", regime: "",
-    objectifPatient: "", humeur: "", defiPrincipal: "", alimentsDetestes: "",
+    sommeil: "", humeur: "", defiPrincipal: "", alimentsDetestes: "",
   });
   const [addTestPatientDigestif, setAddTestPatientDigestif] = useState<string[]>([]);
   const [addTestPatientAlimentsDetestes, setAddTestPatientAlimentsDetestes] = useState<string[]>([]);
@@ -617,6 +618,7 @@ export default function DashboardPage() {
         testDrag.current.active = false;
         document.body.style.cursor = "";
         document.body.style.userSelect = "";
+        setTestDragging(false);
         return;
       }
       // Glisser gauche = chat plus large, glisser droite = chat plus étroit
@@ -629,6 +631,7 @@ export default function DashboardPage() {
       testDrag.current.active = false;
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
+      setTestDragging(false);
     };
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
@@ -5313,6 +5316,7 @@ export default function DashboardPage() {
           testDrag.current.startW = chatPanelWidth;
           document.body.style.cursor = "ew-resize";
           document.body.style.userSelect = "none";
+          setTestDragging(true);
           e.preventDefault();
         }}
         title="Maintenir clic + glisser pour redimensionner"
@@ -5375,7 +5379,7 @@ export default function DashboardPage() {
         ) : (
           <iframe
             src="/chat?test=true"
-            style={{ flex: 1, border: "none", width: "100%" }}
+            style={{ flex: 1, border: "none", width: "100%", pointerEvents: testDragging ? "none" : undefined }}
             key={testIframeKey}
           />
         )}
@@ -5559,9 +5563,9 @@ export default function DashboardPage() {
                 {/* 3 sélecteurs + inconforts digestifs en 2 colonnes */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
                   {([
-                    { label: "Objectif du patient", key: "objectifPatient", options: ["Perdre du poids", "Avoir plus d'énergie", "Améliorer ma digestion", "Prendre du muscle", "Gérer une pathologie", "Manger plus équilibré"] },
-                    { label: "État d'esprit", key: "humeur", options: ["Très motivé(e)", "Optimiste", "Un peu anxieux(se)", "Complètement perdu(e)", "Volontaire mais fatigué(e)"] },
-                    { label: "Défi principal", key: "defiPrincipal", options: ["Manque de temps", "Pulsions sucrées", "Repas au restaurant", "Manque de motivation", "Organisation en cuisine", "Manger sous le stress"] },
+                    { label: "Sommeil", key: "sommeil", options: ["Moins de 6h", "6 à 7h", "7 à 8h", "Plus de 8h"] },
+                    { label: "État d'esprit", key: "humeur", options: ["Très motivé(e)", "Optimiste", "Un peu anxieux(se)", "Complètement perdu(e)", "Volontaire mais fatigué(e)", "Aucun", "Autre"] },
+                    { label: "Défi principal", key: "defiPrincipal", options: ["Manque de temps", "Pulsions sucrées", "Repas au restaurant", "Manque de motivation", "Organisation en cuisine", "Manger sous le stress", "Aucun", "Autre"] },
                   ] as { label: string; key: keyof typeof addTestPatientForm; options: string[] }[]).map(({ label, key, options }) => (
                     <div key={key}>
                       <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
@@ -5580,7 +5584,7 @@ export default function DashboardPage() {
                       onChange={e => setAddTestPatientDigestif(e.target.value ? [e.target.value] : [])}
                       style={sel}>
                       <option value="">Choisir</option>
-                      {["Ballonnements fréquents", "Transit lent", "Transit rapide", "Reflux / brûlures", "Aucun inconfort"].map(o => (
+                      {["Ballonnements fréquents", "Transit lent", "Transit rapide", "Reflux / brûlures", "Aucun inconfort", "Autre"].map(o => (
                         <option key={o} value={o}>{o}</option>
                       ))}
                     </select>
@@ -5657,7 +5661,7 @@ export default function DashboardPage() {
                             objectifClinique: addTestPatientForm.objectifClinique || null,
                             activite: addTestPatientForm.activite || null,
                             regime: addTestPatientForm.regime || null,
-                            objectifPatient: addTestPatientForm.objectifPatient || null,
+                            sommeil: addTestPatientForm.sommeil || null,
                             humeur: addTestPatientForm.humeur || null,
                             defiPrincipal: addTestPatientForm.defiPrincipal || null,
                             digestif: digestifStr,
@@ -5672,7 +5676,7 @@ export default function DashboardPage() {
                       setAddTestPatientSaving(false);
                       setShowAddTestPatientModal(false);
                       setAddTestPatientStep(1);
-                      setAddTestPatientForm({ firstName: "", lastName: "", age: "", taille: "", poids: "", sexe: "", pathologies: "", allergies: "", traitements: "", objectifClinique: "", activite: "", regime: "", objectifPatient: "", humeur: "", defiPrincipal: "", alimentsDetestes: "" });
+                      setAddTestPatientForm({ firstName: "", lastName: "", age: "", taille: "", poids: "", sexe: "", pathologies: "", allergies: "", traitements: "", objectifClinique: "", activite: "", regime: "", sommeil: "", humeur: "", defiPrincipal: "", alimentsDetestes: "" });
                       setAddTestPatientDigestif([]);
                       setAddTestPatientAlimentsDetestes([]);
                       setAddTestPatientCustomAliments([]);

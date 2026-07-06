@@ -438,7 +438,7 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
     const supabase = createSupabaseClient();
     const { data } = await supabase
       .from("patients")
-      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, practitioner_instruction, motivation, defi, aliments_aimes, aliments_detestes, niveau_activite, regime_specifique")
+      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, practitioner_instruction, motivation, defi, aliments_aimes, aliments_detestes, niveau_activite, regime_specifique, notes")
       .eq("user_id", patientId)
       .single();
 
@@ -448,7 +448,7 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
       allergies?: string; traitements?: string; objectif_clinique?: string;
       motivation?: string; defi?: string;
       aliments_aimes?: string; aliments_detestes?: string; niveau_activite?: string;
-      regime_specifique?: string; practitioner_instruction?: unknown;
+      regime_specifique?: string; notes?: string; practitioner_instruction?: unknown;
     } | null;
 
     if (!patient) return { context: "" };
@@ -488,6 +488,7 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
     if (patient.defi) parts.push(`Plus gros défi déclaré : ${patient.defi}`);
     if (patient.aliments_aimes) parts.push(`Aliments aimés : ${patient.aliments_aimes}`);
     if (patient.aliments_detestes) parts.push(`Aliments détestés : ${patient.aliments_detestes}`);
+    if (patient.notes) parts.push(`Données complémentaires : ${patient.notes}`);
 
     // Murmures / consignes praticien (tuyau systématique)
     const instructionDate = (patient as { instruction_updated_at?: string }).instruction_updated_at

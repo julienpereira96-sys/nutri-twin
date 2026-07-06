@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { Redis } from "@upstash/redis";
 import { getSessionUser, unauthorized } from "@/lib/api-auth";
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 /**
  * POST /api/test-mode/setup
@@ -33,7 +39,7 @@ export async function POST(request: Request) {
     activite?: string | null;
     regime?: string | null;
     // Champs profil patient (étape 3 — fidélité du jumeau)
-    objectifPatient?: string | null;
+    sommeil?: string | null;
     humeur?: string | null;
     defiPrincipal?: string | null;
     digestif?: string | null;
@@ -72,8 +78,11 @@ export async function POST(request: Request) {
 
   const practitionerId = (practData as { id: string } | null)?.id;
 
-  // Construire la colonne notes à partir des inconforts digestifs
-  const notesStr = body.digestif ? `Digestif: ${body.digestif}` : null;
+  // Construire la colonne notes à partir des inconforts digestifs et du sommeil
+  const notesParts: string[] = [];
+  if (body.digestif) notesParts.push(`Digestif: ${body.digestif}`);
+  if (body.sommeil) notesParts.push(`Sommeil: ${body.sommeil}`);
+  const notesStr = notesParts.length > 0 ? notesParts.join("; ") : null;
 
   // Créer le patient test dans la table patients avec le profil complet
   // Note : la relation praticien↔patient passe par patient_practitioner, pas par une
@@ -94,7 +103,7 @@ export async function POST(request: Request) {
     niveau_activite: body.activite ?? null,
     regime_specifique: body.regime ?? null,
     // Profil patient (étape 3) — mêmes colonnes que patient-onboarding/page.tsx
-    objective: body.objectifPatient ?? body.objective ?? null,
+    objective: body.objective ?? null,
     motivation: body.humeur ?? null,
     defi: body.defiPrincipal ?? null,
     aliments_detestes: body.alimentsDetestes ?? null,
@@ -168,6 +177,9 @@ export async function PATCH(request: Request) {
   if (body.pathologies !== undefined) updates.pathologies = body.pathologies;
 
   await supabase.from("patients").update(updates).eq("user_id", testUserId);
+
+  // Invalider le cache profil patient pour que le jumeau voit les nouvelles données immédiatement
+  await redis.del(`patient_profile_v2:${testUserId}`);
 
   return NextResponse.json({ ok: true });
 }

@@ -821,51 +821,56 @@ export default function ChatPage() {
     if (patientId) void completeOnboarding(patientId);
   }, [patientId, completeOnboarding]);
 
+  // ── Effect 1 : test mode — s'exécute UNE seule fois au montage ──────────────
   useEffect(() => {
-    // ── Mode test : authentification via Bearer token (praticien qui simule le patient) ──
-    if (isTestMode) {
-      fetch("/api/test-mode/session")
-        .then(r => r.json())
-        .then(async (d: { access_token?: string; refresh_token?: string; patient_user_id?: string; error?: string }) => {
-          if (!d.access_token || !d.patient_user_id) { setSessionLoading(false); return; }
-          setTestToken(d.access_token);
-          const pid = d.patient_user_id;
-          setPatientId(pid);
+    if (!isTestMode) return;
+    fetch("/api/test-mode/session")
+      .then(r => r.json())
+      .then(async (d: { access_token?: string; refresh_token?: string; patient_user_id?: string; error?: string }) => {
+        if (!d.access_token || !d.patient_user_id) { setSessionLoading(false); return; }
+        setTestToken(d.access_token);
+        const pid = d.patient_user_id;
+        setPatientId(pid);
+        // Créer un client Supabase avec une clé de stockage séparée pour ne pas écraser la session praticien
+        const testSupabase = createBrowserClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          { auth: { storageKey: "sb-test-auth-token" } }
+        );
+        await testSupabase.auth.setSession({ access_token: d.access_token, refresh_token: d.refresh_token! });
+        // Charger le vrai prénom du patient test
+        const { data: testPat } = await testSupabase.from("patients").select("first_name, last_name").eq("user_id", pid).single();
+        const tp = testPat as { first_name?: string | null; last_name?: string | null } | null;
+        if (tp?.first_name) {
+          setPatientFirstName(tp.first_name);
+          setPatientInitials(`${tp.first_name[0]}${tp.last_name?.[0] ?? "T"}`.toUpperCase());
+        } else {
           setPatientFirstName("Patient");
           setPatientInitials("PT");
-          // Créer un client Supabase avec une clé de stockage séparée pour ne pas écraser la session praticien
-          const testSupabase = createBrowserClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            { auth: { storageKey: "sb-test-auth-token" } }
-          );
-          await testSupabase.auth.setSession({ access_token: d.access_token, refresh_token: d.refresh_token! });
-          // Charger le vrai prénom du patient test (remplace le placeholder "Patient" ci-dessus)
-          const { data: testPat } = await testSupabase.from("patients").select("first_name, last_name").eq("user_id", pid).single();
-          const tp = testPat as { first_name?: string | null; last_name?: string | null } | null;
-          if (tp?.first_name) {
-            setPatientFirstName(tp.first_name);
-            setPatientInitials(`${tp.first_name[0]}${tp.last_name?.[0] ?? "T"}`.toUpperCase());
-          }
-          // Charger les infos praticien (avec Bearer token)
-          const practInfoRes = await fetch("/api/patient/practitioner-info", {
-            headers: { Authorization: `Bearer ${d.access_token}` },
-          });
-          if (practInfoRes.ok) {
-            const practInfo = await practInfoRes.json() as { practitionerId: string; plan: string };
-            const practId = practInfo.practitionerId;
-            setPractitionerIdFromDb(practId);
-            setPractitionerPlan(practInfo.plan || "essentiel");
-            // Charger l'historique de conversation test
-            const { data: hist } = await testSupabase.from("conversations").select("role, content, created_at").eq("patient_id", pid).eq("practitioner_id", practId).is("session_id", null).eq("practitioner_only", false).order("created_at", { ascending: true });
-            if (hist?.length) setMessages(hist as ChatMessage[]);
-          }
-          await loadSessions(pid);
-          setSessionLoading(false);
-        })
-        .catch(() => setSessionLoading(false));
-      return; // pas de subscription onAuthStateChange en mode test
-    }
+        }
+        // Charger les infos praticien (avec Bearer token)
+        const practInfoRes = await fetch("/api/patient/practitioner-info", {
+          headers: { Authorization: `Bearer ${d.access_token}` },
+        });
+        if (practInfoRes.ok) {
+          const practInfo = await practInfoRes.json() as { practitionerId: string; plan: string };
+          const practId = practInfo.practitionerId;
+          setPractitionerIdFromDb(practId);
+          setPractitionerPlan(practInfo.plan || "essentiel");
+          // Charger l'historique de conversation test
+          const { data: hist } = await testSupabase.from("conversations").select("role, content, created_at").eq("patient_id", pid).eq("practitioner_id", practId).is("session_id", null).eq("practitioner_only", false).order("created_at", { ascending: true });
+          if (hist?.length) setMessages(hist as ChatMessage[]);
+        }
+        await loadSessions(pid);
+        setSessionLoading(false);
+      })
+      .catch(() => setSessionLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionnellement vide — le setup test ne s'exécute qu'une fois au montage
+
+  // ── Effect 2 : authentification normale par cookie (skippé en mode test) ───
+  useEffect(() => {
+    if (isTestMode) return;
 
     // ── Mode normal : authentification par cookie ────────────────────────────
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
