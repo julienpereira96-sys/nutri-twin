@@ -584,6 +584,39 @@ export default function DashboardPage() {
   // ═══ MODE TEST ═══
   const [testMode, setTestMode] = useState(false);
   const [testPatientSetup, setTestPatientSetup] = useState(false);
+  // dashboardWidth : largeur du panneau dashboard en mode test (0 = chat plein écran)
+  const [dashboardWidth, setDashboardWidth] = useState(0);
+  const testDrag = useRef({ active: false, startX: 0, startW: 0 });
+
+  // Quand le mode test s'active : chat plein écran par défaut
+  useEffect(() => {
+    if (testMode) setDashboardWidth(0);
+  }, [testMode]);
+
+  // Drag global mouse events
+  useEffect(() => {
+    if (!testMode) return;
+    const onMove = (e: MouseEvent) => {
+      if (!testDrag.current.active) return;
+      const dx = e.clientX - testDrag.current.startX;
+      const raw = testDrag.current.startW + dx;
+      setDashboardWidth(Math.max(0, Math.min(raw, window.innerWidth - 340)));
+    };
+    const onUp = () => {
+      if (!testDrag.current.active) return;
+      testDrag.current.active = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      // Snap : < 80px → fermer le dashboard, entre 80-380px → ouvrir à 380px
+      setDashboardWidth(w => w < 80 ? 0 : w < 380 ? 380 : w);
+    };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+  }, [testMode]);
 
   // ═══ ÉTATS PRINCIPAUX ═══
   const [activeTab, setActiveTab] = useState<ActiveTab>("patients");
@@ -2117,7 +2150,19 @@ export default function DashboardPage() {
   return (
     <div style={{ display: "flex", height: "100dvh", background: "#070B09", overflow: "hidden" }}>
     {/* ═══ Dashboard (gauche) ═══ */}
-    <div style={{ flex: 1, minWidth: 0, overflowY: "auto", minHeight: "100dvh", background: "#070B09", color: "white", fontFamily: "Inter, sans-serif" }}>
+    <div style={{
+      flex: testMode ? undefined : 1,
+      width: testMode ? dashboardWidth : undefined,
+      minWidth: 0,
+      flexShrink: 0,
+      overflow: "hidden",
+      overflowY: testMode && dashboardWidth > 0 ? "auto" : "hidden",
+      minHeight: "100dvh",
+      background: "#070B09",
+      color: "white",
+      fontFamily: "Inter, sans-serif",
+      visibility: testMode && dashboardWidth === 0 ? "hidden" : "visible",
+    }}>
 
       {showOnboarding && (
         <OnboardingTour practitionerName={practitionerName} onSkip={handleOnboardingSkip} />
@@ -5121,13 +5166,49 @@ export default function DashboardPage() {
       `}</style>
     </div>
 
+    {/* ═══ Drag handle (entre dashboard et chat) ═══ */}
+    {testMode && (
+      <div
+        onMouseDown={(e) => {
+          testDrag.current.active = true;
+          testDrag.current.startX = e.clientX;
+          testDrag.current.startW = dashboardWidth;
+          document.body.style.cursor = "ew-resize";
+          document.body.style.userSelect = "none";
+          e.preventDefault();
+        }}
+        title={dashboardWidth === 0 ? "Glisser pour révéler le dashboard" : "Glisser pour redimensionner"}
+        style={{
+          width: dashboardWidth === 0 ? 16 : 10,
+          flexShrink: 0,
+          cursor: "ew-resize",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: dashboardWidth === 0 ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)",
+          borderRight: "1px solid rgba(255,255,255,0.07)",
+          borderLeft: dashboardWidth === 0 ? "none" : "1px solid rgba(255,255,255,0.05)",
+          zIndex: 20,
+          userSelect: "none",
+          transition: "background 0.15s, width 0.1s",
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.18)"; }}
+        onMouseLeave={e => { if (!testDrag.current.active) e.currentTarget.style.background = dashboardWidth === 0 ? "rgba(16,185,129,0.08)" : "rgba(255,255,255,0.02)"; }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, pointerEvents: "none" }}>
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} style={{ width: 2, height: 2, borderRadius: "50%", background: dashboardWidth === 0 ? "rgba(16,185,129,0.6)" : "rgba(255,255,255,0.2)" }} />
+          ))}
+        </div>
+      </div>
+    )}
+
     {/* ═══ Panneau test : chat iframe (droite) ═══ */}
     {testMode && (
-      <div style={{ width: 420, flexShrink: 0, borderLeft: "1px solid rgba(255,255,255,0.08)", display: "flex", flexDirection: "column", background: "#070B09" }}>
-        <div style={{ height: 40, display: "flex", alignItems: "center", gap: 8, padding: "0 14px", borderBottom: "1px solid rgba(255,255,255,0.08)", background: "rgba(16,185,129,0.06)", flexShrink: 0 }}>
-          <div style={{ width: 7, height: 7, borderRadius: "50%", background: emerald, boxShadow: `0 0 6px ${emerald}` }} />
-          <span style={{ fontSize: 11, fontWeight: 700, color: emerald, letterSpacing: "0.06em", textTransform: "uppercase" }}>Mode test actif</span>
-          <span style={{ fontSize: 11, color: "#64748b", marginLeft: 4 }}>— vue patient</span>
+      <div style={{ flex: 1, minWidth: 340, display: "flex", flexDirection: "column", background: "#070B09" }}>
+        <div style={{ height: 36, display: "flex", alignItems: "center", gap: 7, padding: "0 14px", borderBottom: "1px solid rgba(255,255,255,0.07)", background: "rgba(16,185,129,0.05)", flexShrink: 0 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: emerald, display: "inline-block", flexShrink: 0 }} />
+          <span style={{ fontSize: 10, fontWeight: 600, color: "#6ee7b7", letterSpacing: "0.1em", textTransform: "uppercase" }}>Mode test - vue patient simulée</span>
           <button onClick={() => setTestMode(false)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "0 2px" }} title="Quitter le mode test">×</button>
         </div>
         <iframe
