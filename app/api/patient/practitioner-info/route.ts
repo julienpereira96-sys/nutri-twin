@@ -60,19 +60,28 @@ export async function GET() {
 
   if (!rel) return NextResponse.json({ error: "Relation patient/praticien introuvable" }, { status: 404 });
 
-  const { data: pract } = await admin
+  // Compte praticien — first_name, last_name, plan sont dans la table `practitioners`
+  const { data: practAccount } = await admin
     .from("practitioners")
-    .select("first_name, last_name, plan, tutoiement")
+    .select("first_name, last_name, plan")
     .eq("user_id", rel.practitioner_id)
     .single();
 
-  if (!pract) return NextResponse.json({ error: "Profil praticien introuvable" }, { status: 404 });
+  if (!practAccount) return NextResponse.json({ error: "Compte praticien introuvable" }, { status: 404 });
+
+  // Profil onboarding — tutoiement est dans `practitioner_profiles` (questionnaire onboarding)
+  // Optionnel : pas de 404 si le praticien n'a pas encore terminé l'onboarding
+  const { data: practProfile } = await admin
+    .from("practitioner_profiles")
+    .select("tutoiement")
+    .eq("user_id", rel.practitioner_id)
+    .single();
 
   return NextResponse.json({
     practitionerId: rel.practitioner_id as string,
-    plan: (pract.plan as string) ?? "essentiel",
-    firstName: (pract.first_name as string) ?? "",
-    lastName: (pract.last_name as string) ?? "",
-    tutoiement: (pract.tutoiement as string) ?? "",
+    plan: (practAccount.plan as string) ?? "essentiel",
+    firstName: (practAccount.first_name as string) ?? "",
+    lastName: (practAccount.last_name as string) ?? "",
+    tutoiement: (practProfile?.tutoiement as string) ?? "",
   });
 }
