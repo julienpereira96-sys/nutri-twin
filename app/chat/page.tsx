@@ -2834,8 +2834,13 @@ export default function ChatPage() {
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: isMobile ? "96px 16px 100px" : "96px 24px 100px" }}>
               <div style={{ maxWidth: 580, width: "100%", textAlign: "center" }}>
                 {/* NutriTwin logo */}
-                <div style={{ margin: "0 auto 28px", display: "inline-block" }}>
-                  <img src="/logo-new.svg" alt="NutriTwin" style={{ width: 36, height: 36, display: "block" }} />
+                <div style={{ position: "relative", margin: "0 auto 28px", display: "inline-block" }}>
+                  <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(16px)" }} />
+                  <div style={{ position: "relative", width: 75, height: 75 }}>
+                    <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center", animation: "pulse-ring 2s ease-in-out infinite" }}>
+                      <img src="/logo-new.svg" alt="NutriTwin" style={{ width: 36, height: 36 }} />
+                    </div>
+                  </div>
                 </div>
                 <h1 style={{ margin: "0 0 8px", fontSize: isMobile ? 26 : 30, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.5px" }}>
                   {patientFirstName ? `Bonjour ${patientFirstName}` : "Bonjour"}
@@ -2870,7 +2875,7 @@ export default function ChatPage() {
           )}
 
           {hasMessages && (
-            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? `108px 16px ${pendingImage ? 180 : 100}px` : "108px 36px 80px" }}>
+            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? `${pendingImage ? 180 : 100}px 16px ${pendingImage ? 180 : 100}px` : "24px 36px 24px" }}>
               <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28, touchAction: "auto" }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
