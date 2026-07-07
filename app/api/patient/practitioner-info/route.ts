@@ -43,7 +43,7 @@ export async function GET() {
 
   const { data: pract } = await admin
     .from("practitioners")
-    .select("first_name, last_name, plan")
+    .select("first_name, last_name, plan, tutoiement")
     .eq("user_id", rel.practitioner_id)
     .single();
 
@@ -54,5 +54,6 @@ export async function GET() {
     plan: (pract.plan as string) ?? "essentiel",
     firstName: (pract.first_name as string) ?? "",
     lastName: (pract.last_name as string) ?? "",
+    tutoiement: (pract.tutoiement as string) ?? "",
   });
 }

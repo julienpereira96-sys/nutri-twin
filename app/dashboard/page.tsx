@@ -1164,6 +1164,20 @@ export default function DashboardPage() {
       return;
     }
 
+    // Charger le dernier message pour chaque patient test
+    const testPatientIds = testPatients.map(p => p.user_id as string);
+    const { data: lastConvs } = await supabase
+      .from("conversations")
+      .select("patient_id, role, content, created_at")
+      .in("patient_id", testPatientIds)
+      .eq("practitioner_id", pid)
+      .order("created_at", { ascending: false });
+    const lastConvByTestPatient = new Map<string, { role: string; content: string; created_at: string }>();
+    for (const conv of (lastConvs ?? [])) {
+      const patId = conv.patient_id as string;
+      if (!lastConvByTestPatient.has(patId)) lastConvByTestPatient.set(patId, conv as { role: string; content: string; created_at: string });
+    }
+
     const mapped: RealPatient[] = testPatients.map(p => ({
       id: p.user_id as string,
       firstName: (p.first_name as string) ?? "Patient",
@@ -1191,9 +1205,11 @@ export default function DashboardPage() {
       last_patient_message_at: (p.last_patient_message_at as string) ?? null,
       latest_victory: (p.latest_victory as string) ?? "",
       victory_detected_at: (p.victory_detected_at as string) ?? null,
-      lastMessage: "",
-      lastMessageTime: "",
-      lastMessageRole: "",
+      lastMessage: lastConvByTestPatient.get(p.user_id as string)?.content ?? "",
+      lastMessageTime: lastConvByTestPatient.get(p.user_id as string)?.created_at
+        ? new Date(lastConvByTestPatient.get(p.user_id as string)!.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+        : "",
+      lastMessageRole: lastConvByTestPatient.get(p.user_id as string)?.role ?? "",
       totalMessages: 0,
       streak: 0,
       sosResolved: 0,
@@ -1966,8 +1982,12 @@ export default function DashboardPage() {
       // Construire les champs de base
       const isTestPatient = patients.find(p => p.id === selectedPatientId)?.is_test === true;
       // Pour les patients test : reconstruire notes depuis sommeil + digestif
+      // Sanitize "__autre__" sentinel (user selected Autre but didn't type yet)
+      const cleanDigestif = editDigestif === "__autre__" ? "" : editDigestif;
+      const cleanHumeur = editHumeur === "__autre__" ? "" : editHumeur;
+      const cleanDefi = editDefiPrincipal === "__autre__" ? "" : editDefiPrincipal;
       const notesParts: string[] = [];
-      if (editDigestif) notesParts.push(`Digestif: ${editDigestif}`);
+      if (cleanDigestif) notesParts.push(`Digestif: ${cleanDigestif}`);
       if (editSommeil) notesParts.push(`Sommeil: ${editSommeil}`);
       const notesForSave = isTestPatient
         ? (notesParts.length > 0 ? notesParts.join("; ") : null)
@@ -1995,8 +2015,8 @@ export default function DashboardPage() {
             regime_specifique: editRegime || null,
             notes: notesForSave,
             ...(isTestPatient && {
-              motivation: editHumeur || null,
-              defi: editDefiPrincipal || null,
+              motivation: cleanHumeur || null,
+              defi: cleanDefi || null,
             }),
           },
           clearIdentityAlert: true,
@@ -2861,12 +2881,7 @@ export default function DashboardPage() {
                       };
                       return (
                         <>
-                          {isTest ? (
-                            <div style={{ marginBottom: 8, padding: "6px 10px", borderRadius: 8, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", display: "flex", alignItems: "center", gap: 6 }}>
-                              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#6ee7b7", display: "inline-block", flexShrink: 0 }} />
-                              <span style={{ fontSize: 11, color: "#6ee7b7" }}>Connexion et assiduité non suivies en mode test</span>
-                            </div>
-                          ) : [
+                          {!isTest && [
                             { label: "Dernière connexion", value: lastActiveStr },
                             { label: "Assiduité", value: streak > 0 ? `${streak} jours actifs` : "Aucune activité" },
                           ].map((item) => (
@@ -4670,7 +4685,12 @@ export default function DashboardPage() {
           <div style={{ background: "#0d0d0d", borderRadius: 24, padding: 28, width: "100%", maxWidth: 760, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", maxHeight: "90vh", overflowY: "auto" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
               <div>
-                <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em" }}>Modifier le profil</p>
+                <p style={{ margin: "0 0 2px", fontSize: 11, fontWeight: 700, color: emerald, textTransform: "uppercase", letterSpacing: "0.1em", display: "flex", alignItems: "center", gap: 8 }}>
+                  Modifier le profil
+                  {selectedPatient?.is_test && (
+                    <span style={{ fontSize: 10, fontWeight: 600, color: emerald, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 4, padding: "2px 7px", letterSpacing: "0.08em", textTransform: "uppercase" }}>Test</span>
+                  )}
+                </p>
                 <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>{selectedPatient?.firstName} {selectedPatient?.lastName}</h2>
               </div>
               <button onClick={() => setShowProfileModal(false)}
@@ -4700,7 +4720,11 @@ export default function DashboardPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <div>
                     <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Email</p>
-                    <input type="email" value={(selectedPatient as RealPatient)?.email ?? ""} disabled
+                    <input type="email" value={
+                      selectedPatient?.is_test
+                        ? `test_${(selectedPatient.firstName ?? "").toLowerCase().replace(/\s+/g, "")}${(selectedPatient.lastName ?? "").toLowerCase().replace(/\s+/g, "")}@nutritwin.fr`
+                        : ((selectedPatient as RealPatient)?.email ?? "")
+                    } disabled
                       style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)", color: "#64748b", padding: "0 14px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "not-allowed" }} />
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -4771,7 +4795,7 @@ export default function DashboardPage() {
                           <option value="">Choisir</option>
                           <option value="Aucune">{["Pathologies", "Allergies", "Activité"].includes(label) ? "Aucune" : "Aucun"}</option>
                           {options.map(o => <option key={o} value={o}>{o}</option>)}
-                          <option value="Autre">Autre...</option>
+                          <option value="Autre">Autre</option>
                         </select>
                         {(value === "__autre__" || isAutre) && (
                           <input type="text" value={value === "__autre__" ? "" : value} onChange={e => setter(e.target.value)} placeholder="Précisez..." autoFocus
@@ -4792,24 +4816,32 @@ export default function DashboardPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
                     <p style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>Profil patient</p>
                     <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.05)" }} />
-                    <span style={{ fontSize: 10, fontWeight: 600, color: emerald, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 4, padding: "2px 7px", letterSpacing: "0.08em", textTransform: "uppercase" }}>Test</span>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     {([
-                      { label: "Sommeil", key: "sommeil" as const, value: editSommeil, setter: setEditSommeil, options: ["Moins de 6h", "6 à 7h", "7 à 8h", "Plus de 8h"] },
-                      { label: "État d'esprit", key: "humeur" as const, value: editHumeur, setter: setEditHumeur, options: ["Très motivé(e)", "Optimiste", "Un peu anxieux(se)", "Complètement perdu(e)", "Volontaire mais fatigué(e)", "Aucun", "Autre"] },
-                      { label: "Défi principal", key: "defi" as const, value: editDefiPrincipal, setter: setEditDefiPrincipal, options: ["Manque de temps", "Pulsions sucrées", "Repas au restaurant", "Manque de motivation", "Organisation en cuisine", "Manger sous le stress", "Aucun", "Autre"] },
-                      { label: "Inconforts digestifs", key: "digestif" as const, value: editDigestif, setter: setEditDigestif, options: ["Ballonnements fréquents", "Transit lent", "Transit rapide", "Reflux / brûlures", "Aucun inconfort", "Autre"] },
-                    ] as { label: string; key: string; value: string; setter: (v: string) => void; options: string[] }[]).map(({ label, key, value, setter, options }) => (
-                      <div key={key}>
-                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
-                        <select value={value} onChange={e => setter(e.target.value)}
-                          style={{ width: "100%", height: 42, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}>
-                          <option value="">Choisir</option>
-                          {options.map(o => <option key={o} value={o}>{o}</option>)}
-                        </select>
-                      </div>
-                    ))}
+                      { label: "Sommeil", key: "sommeil" as const, value: editSommeil, setter: setEditSommeil, options: ["Moins de 6h", "6 à 7h", "7 à 8h", "Plus de 8h"], hasAutre: false },
+                      { label: "État d'esprit", key: "humeur" as const, value: editHumeur, setter: setEditHumeur, options: ["Très motivé(e)", "Optimiste", "Un peu anxieux(se)", "Complètement perdu(e)", "Volontaire mais fatigué(e)", "Aucun"], hasAutre: true },
+                      { label: "Défi principal", key: "defi" as const, value: editDefiPrincipal, setter: setEditDefiPrincipal, options: ["Manque de temps", "Pulsions sucrées", "Repas au restaurant", "Manque de motivation", "Organisation en cuisine", "Manger sous le stress", "Aucun"], hasAutre: true },
+                      { label: "Inconforts digestifs", key: "digestif" as const, value: editDigestif, setter: setEditDigestif, options: ["Ballonnements fréquents", "Transit lent", "Transit rapide", "Reflux / brûlures", "Aucun inconfort"], hasAutre: true },
+                    ] as { label: string; key: string; value: string; setter: (v: string) => void; options: string[]; hasAutre: boolean }[]).map(({ label, key, value, setter, options, hasAutre }) => {
+                      const isAutre = hasAutre && value !== "" && value !== "__autre__" && !options.includes(value);
+                      return (
+                        <div key={key}>
+                          <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
+                          <select value={isAutre ? "Autre" : value} onChange={e => { if (e.target.value === "Autre") setter("__autre__"); else setter(e.target.value); }}
+                            style={{ width: "100%", height: 42, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}>
+                            <option value="">Choisir</option>
+                            {options.map(o => <option key={o} value={o}>{o}</option>)}
+                            {hasAutre && <option value="Autre">Autre</option>}
+                          </select>
+                          {hasAutre && (value === "__autre__" || isAutre) && (
+                            <input type="text" value={value === "__autre__" ? "" : value} onChange={e => setter(e.target.value)} placeholder="Précisez..." autoFocus
+                              style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", marginTop: 6 }}
+                              onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.3)"} />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </>
@@ -5166,7 +5198,7 @@ export default function DashboardPage() {
                           <option value="">Choisir</option>
                           <option value="Aucune">{["Pathologies", "Allergies", "Activité"].includes(label) ? "Aucune" : "Aucun"}</option>
                           {options.map(o => <option key={o} value={o}>{o}</option>)}
-                          <option value="Autre">Autre...</option>
+                          <option value="Autre">Autre</option>
                         </select>
                         {(value === "__autre__" || isAutre) && (
                           <input type="text" value={value === "__autre__" ? "" : value} onChange={e => setter(e.target.value)} placeholder="Précisez..." autoFocus
@@ -5576,7 +5608,7 @@ export default function DashboardPage() {
                         <option value="">Choisir</option>
                         <option value="Aucune">{["Pathologies", "Allergies", "Activité"].includes(label) ? "Aucune" : "Aucun"}</option>
                         {options.map(o => <option key={o} value={o}>{o}</option>)}
-                        <option value="Autre">Autre...</option>
+                        <option value="Autre">Autre</option>
                       </select>
                       {(val === "__autre__" || isAutre) && (
                         <input type="text" value={val === "__autre__" ? "" : val}

@@ -523,6 +523,7 @@ export default function ChatPage() {
   const [patientInitials, setPatientInitials] = useState("?");
   const [practitionerIdFromDb, setPractitionerIdFromDb] = useState<string | null>(null);
   const [practitionerPlan, setPractitionerPlan] = useState("essentiel");
+  const [practitionerTutoiement, setPractitionerTutoiement] = useState("");
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth < 768 : false
   );
@@ -853,13 +854,28 @@ export default function ChatPage() {
           headers: { Authorization: `Bearer ${d.access_token}` },
         });
         if (practInfoRes.ok) {
-          const practInfo = await practInfoRes.json() as { practitionerId: string; plan: string };
+          const practInfo = await practInfoRes.json() as { practitionerId: string; plan: string; tutoiement?: string };
           const practId = practInfo.practitionerId;
           setPractitionerIdFromDb(practId);
           setPractitionerPlan(practInfo.plan || "essentiel");
-          // Charger l'historique de conversation test
-          const { data: hist } = await testSupabase.from("conversations").select("role, content, created_at").eq("patient_id", pid).eq("practitioner_id", practId).is("session_id", null).eq("practitioner_only", false).order("created_at", { ascending: true });
-          if (hist?.length) setMessages(hist as ChatMessage[]);
+          if (practInfo.tutoiement) setPractitionerTutoiement(practInfo.tutoiement);
+          // Charger l'historique de conversation test (avec restauration de session)
+          const restoredSessionId = sessionStorage.getItem("nt_session_id");
+          let testHistData: { role: string; content: string; created_at: string }[] | null = null;
+          if (restoredSessionId) {
+            const { data: sessionHist } = await testSupabase.from("conversations").select("role, content, created_at").eq("patient_id", pid).eq("practitioner_id", practId).eq("session_id", restoredSessionId).order("created_at", { ascending: true });
+            if (sessionHist?.length) {
+              testHistData = sessionHist;
+              setCurrentSessionId(restoredSessionId);
+            } else {
+              sessionStorage.removeItem("nt_session_id");
+            }
+          }
+          if (!testHistData) {
+            const { data: defaultHist } = await testSupabase.from("conversations").select("role, content, created_at").eq("patient_id", pid).eq("practitioner_id", practId).is("session_id", null).eq("practitioner_only", false).order("created_at", { ascending: true });
+            testHistData = defaultHist;
+          }
+          if (testHistData?.length) setMessages(testHistData as ChatMessage[]);
         }
         await loadSessions(pid);
         setSessionLoading(false);
@@ -896,14 +912,31 @@ export default function ChatPage() {
       // Charger les infos praticien via API sécurisée (service role, bypass RLS)
       const practInfoRes = await tFetch("/api/patient/practitioner-info");
       if (practInfoRes.ok) {
-        const practInfo = await practInfoRes.json() as { practitionerId: string; plan: string; firstName: string; lastName: string };
+        const practInfo = await practInfoRes.json() as { practitionerId: string; plan: string; firstName: string; lastName: string; tutoiement?: string };
         const practId = practInfo.practitionerId;
         setPractitionerIdFromDb(practId);
         setPractitionerPlan(practInfo.plan || "essentiel");
-        const { data: hist } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", data.user.id).eq("practitioner_id", practId).is("session_id", null).eq("practitioner_only", false).order("created_at", { ascending: true });
-        if (hist?.length) {
-          setMessages(hist as ChatMessage[]);
-          void hydrateSosClosures(data.user.id, practId, hist as { role: "user" | "assistant"; content: string; created_at: string }[]);
+        if (practInfo.tutoiement) setPractitionerTutoiement(practInfo.tutoiement);
+        // Restaurer la session précédente après un refresh si l'utilisateur était dans une session
+        const restoredSessionId = sessionStorage.getItem("nt_session_id");
+        let histData: { role: string; content: string; created_at: string }[] | null = null;
+        if (restoredSessionId) {
+          const { data: sessionHist } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", data.user.id).eq("practitioner_id", practId).eq("session_id", restoredSessionId).order("created_at", { ascending: true });
+          if (sessionHist?.length) {
+            histData = sessionHist;
+            setCurrentSessionId(restoredSessionId);
+          } else {
+            // Session invalide ou vide — retour au mode sans session
+            sessionStorage.removeItem("nt_session_id");
+          }
+        }
+        if (!histData) {
+          const { data: defaultHist } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", data.user.id).eq("practitioner_id", practId).is("session_id", null).eq("practitioner_only", false).order("created_at", { ascending: true });
+          histData = defaultHist;
+        }
+        if (histData?.length) {
+          setMessages(histData as ChatMessage[]);
+          void hydrateSosClosures(data.user.id, practId, histData as { role: "user" | "assistant"; content: string; created_at: string }[]);
         }
       }
       const { data: pat } = await supabase.from("patients").select("first_name, last_name, onboarding_done, emotional_status, practitioner_pinned_message").eq("user_id", data.user.id).single();
@@ -1360,6 +1393,8 @@ export default function ChatPage() {
     if (data) {
       setMessages(data as ChatMessage[]);
       setCurrentSessionId(sessionId);
+      // Persiste la session courante pour la restaurer après un refresh
+      sessionStorage.setItem("nt_session_id", sessionId);
       if (isMobile) setSidebarOpen(false);
       void hydrateSosClosures(patientId, practitionerIdFromDb, data as { role: "user" | "assistant"; content: string; created_at: string }[]);
     }
@@ -1368,7 +1403,11 @@ export default function ChatPage() {
   const deleteSession = async (sessionId: string) => {
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     await supabase.from("conversations_sessions").delete().eq("id", sessionId);
-    if (currentSessionId === sessionId) { setMessages([]); setCurrentSessionId(null); }
+    if (currentSessionId === sessionId) {
+      setMessages([]);
+      setCurrentSessionId(null);
+      sessionStorage.removeItem("nt_session_id");
+    }
     if (patientId) await loadSessions(patientId);
   };
 
@@ -1424,10 +1463,22 @@ export default function ChatPage() {
     streamDoneRef.current = false;
 
     try {
-      const body: Record<string, string | undefined> = { message: trimmed || "Analyse cette photo", patientId: patientId ?? undefined, practitionerId: practitionerIdFromDb ?? undefined };
+      const body: Record<string, string | undefined> = { message: trimmed || "Analyse cette photo", patientId: patientId ?? undefined, practitionerId: practitionerIdFromDb ?? undefined, sessionId: currentSessionId ?? undefined };
       if (img) { body.imageBase64 = img.base64; body.imageMimeType = img.mimeType; }
       const res = await tFetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: abortControllerRef.current.signal });
-      if (!res.ok || !res.body) throw new Error("Erreur");
+      if (!res.ok) {
+        // Erreur plan vision — afficher un message explicite au lieu de "Impossible de contacter le serveur"
+        if (res.status === 403 && img) {
+          const errData = await res.json().catch(() => ({})) as { error?: string };
+          if (errData.error === "vision_plan_required") {
+            setShowUpsellModal(true);
+            setMessages(prev => prev.slice(0, -2)); // annuler le message utilisateur + placeholder assistant
+            setLoading(false); return;
+          }
+        }
+        throw new Error("Erreur");
+      }
+      if (!res.body) throw new Error("Erreur");
 
       // ─── Stream : chaque chunk est affiché immédiatement, sans RAF ───
       const reader = res.body.getReader(); const decoder = new TextDecoder(); let fullText = "";
@@ -1445,6 +1496,16 @@ export default function ChatPage() {
         });
       }
       streamDoneRef.current = true;
+
+      // ─── Stream vide = erreur silencieuse côté Vertex AI ───
+      if (!fullText.trim()) {
+        setMessages(prev => {
+          const u = [...prev];
+          if (u[assistantIndex]) u[assistantIndex] = { role: "assistant", content: "Une erreur s'est produite lors de l'analyse. Veuillez réessayer." };
+          return u;
+        });
+        setLoading(false); return;
+      }
 
       // ─── Signaux post-stream ───
       if (fullText.includes("|||SAS|||")) { setShowSasButtons(true); }
@@ -2772,19 +2833,20 @@ export default function ChatPage() {
           {!hasMessages && !sessionLoading && (
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: isMobile ? "24px 16px 100px" : "32px 24px 100px" }}>
               <div style={{ maxWidth: 580, width: "100%", textAlign: "center" }}>
-                <div style={{ position: "relative", width: 64, height: 64, margin: "0 auto 24px" }}>
-                  {/* Halo cyan externe — léger, décalé de phase */}
-                  <div style={{ position: "absolute", inset: -24, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.07), transparent 62%)", animation: "glow-idle 4s ease-in-out infinite", animationDelay: "1.4s", pointerEvents: "none" }} />
-                  {/* Halo vert interne — existant */}
-                  <div style={{ position: "absolute", inset: -12, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.18), transparent 70%)", animation: "glow-idle 3s ease-in-out infinite" }} />
-                  {/* Cercle principal avec bordure dégradée vert→cyan */}
-                  <div style={{ width: 64, height: 64, borderRadius: "50%", border: "1.5px solid transparent", background: "linear-gradient(#080e0b, #080e0b) padding-box, linear-gradient(135deg, rgba(16,185,129,0.65), rgba(52,211,153,0.45)) border-box", boxShadow: "0 0 20px rgba(16,185,129,0.12), 0 0 36px rgba(16,185,129,0.06)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}><LeafIcon size={28} /></div>
+                {/* NutriTwin logo */}
+                <div style={{ margin: "0 auto 28px", display: "inline-block" }}>
+                  <p style={{ margin: 0, fontSize: isMobile ? 24 : 28, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.5px", lineHeight: 1 }}>
+                    Nutri<strong style={{ fontWeight: 900, color: ACCENT }}>Twin</strong>
+                  </p>
                 </div>
                 <h1 style={{ margin: "0 0 8px", fontSize: isMobile ? 26 : 30, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.5px" }}>
                   {patientFirstName ? `Bonjour ${patientFirstName}` : "Bonjour"}
                 </h1>
-                <p style={{ margin: "0 0 28px", fontSize: isMobile ? 15 : 16, color: TEXT_SECONDARY, lineHeight: 1.7 }}>
+                <p style={{ margin: "0 0 4px", fontSize: isMobile ? 15 : 16, color: TEXT_SECONDARY, lineHeight: 1.7 }}>
                   Je suis votre compagnon de suivi, créé à partir de l'expertise de votre praticien.
+                </p>
+                <p style={{ margin: "0 0 28px", fontSize: isMobile ? 15 : 16, color: TEXT_SECONDARY, lineHeight: 1.7 }}>
+                  {practitionerTutoiement?.toLowerCase().includes("tutoiement") ? "Comment puis-je t'aider aujourd'hui ?" : "Comment puis-je vous aider aujourd'hui ?"}
                 </p>
                 <div style={{ marginBottom: 40 }}>
                   <InputBar isCenter={true} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} isMobile={isMobile} />
@@ -2810,7 +2872,7 @@ export default function ChatPage() {
           )}
 
           {hasMessages && (
-            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? `16px 16px ${pendingImage ? 180 : 100}px` : "24px 36px 24px" }}>
+            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? `80px 16px ${pendingImage ? 180 : 100}px` : "80px 36px 24px" }}>
               <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28, touchAction: "auto" }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";

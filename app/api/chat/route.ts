@@ -1500,7 +1500,15 @@ Max 150 mots. Sans markdown.`;
             controller.enqueue(encoder.encode(chunkText));
             await new Promise(resolve => setTimeout(resolve, 5));
           }
-        } catch {
+        } catch (err) {
+          // Propager une erreur lisible via le stream plutôt que silencieusement fermer
+          const errMsg = err instanceof Error ? err.message : "Erreur inconnue";
+          const isVisionError = errMsg.includes("400") || errMsg.includes("INVALID_ARGUMENT");
+          const userMsg = isVisionError
+            ? "L'analyse de cette image n'a pas abouti. Vérifiez que l'image est lisible et réessayez."
+            : "Le service est temporairement indisponible. Réessayez dans un instant.";
+          controller.enqueue(encoder.encode(userMsg));
+          fullText = userMsg;
           controller.close();
           return;
         }
