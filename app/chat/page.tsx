@@ -867,12 +867,18 @@ export default function ChatPage() {
           // Restaurer le currentSessionId pour continuer la session en cours après refresh
           const restoredSessionId = sessionStorage.getItem("nt_session_id");
           if (restoredSessionId) setCurrentSessionId(restoredSessionId);
-          // Charger TOUS les messages (sans filtre session_id) — évite toute perte d'historique
-          // (nécessaire car certains messages peuvent avoir session_id=null et d'autres un UUID)
-          const { data: testHistData } = await testSupabase.from("conversations").select("role, content, created_at").eq("patient_id", pid).eq("practitioner_id", practId).eq("practitioner_only", false).order("created_at", { ascending: true }).limit(100);
-          if (testHistData?.length) {
-            setMessages(testHistData as ChatMessage[]);
-            void hydrateSosClosures(pid, practId, testHistData as { role: "user" | "assistant"; content: string; created_at: string }[]);
+          // Charger l'historique via API serveur (service_role, bypass RLS, gère practitioner_id=null)
+          const histRes = await fetch(`/api/conversations?practitionerId=${practId}`, {
+            headers: { Authorization: `Bearer ${d.access_token}` },
+          });
+          if (histRes.ok) {
+            const { messages: testHistData } = await histRes.json() as { messages: { role: "user" | "assistant"; content: string; created_at: string }[] };
+            if (testHistData?.length) {
+              setMessages(testHistData as ChatMessage[]);
+              void hydrateSosClosures(pid, practId, testHistData);
+            }
+          } else {
+            console.error("[NutriTwin] /api/conversations (test) FAILED", histRes.status, await histRes.text().catch(() => ""));
           }
         }
         await loadSessions(pid);
@@ -922,12 +928,16 @@ export default function ChatPage() {
         // Restaurer le currentSessionId pour continuer la session en cours après refresh
         const restoredSessionId = sessionStorage.getItem("nt_session_id");
         if (restoredSessionId) setCurrentSessionId(restoredSessionId);
-        // Charger TOUS les messages (sans filtre session_id) — évite toute perte d'historique
-        // (nécessaire car certains messages peuvent avoir session_id=null et d'autres un UUID)
-        const { data: allHist } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", data.user.id).eq("practitioner_id", practId).eq("practitioner_only", false).order("created_at", { ascending: true }).limit(100);
-        if (allHist?.length) {
-          setMessages(allHist as ChatMessage[]);
-          void hydrateSosClosures(data.user.id, practId, allHist as { role: "user" | "assistant"; content: string; created_at: string }[]);
+        // Charger l'historique via API serveur (service_role, bypass RLS, gère practitioner_id=null)
+        const histRes = await tFetch(`/api/conversations?practitionerId=${practId}`);
+        if (histRes.ok) {
+          const { messages: allHist } = await histRes.json() as { messages: { role: "user" | "assistant"; content: string; created_at: string }[] };
+          if (allHist?.length) {
+            setMessages(allHist as ChatMessage[]);
+            void hydrateSosClosures(data.user.id, practId, allHist);
+          }
+        } else {
+          console.error("[NutriTwin] /api/conversations FAILED", histRes.status, await histRes.text().catch(() => ""));
         }
       }
       const { data: pat } = await supabase.from("patients").select("first_name, last_name, onboarding_done, emotional_status, practitioner_pinned_message").eq("user_id", data.user.id).single();
