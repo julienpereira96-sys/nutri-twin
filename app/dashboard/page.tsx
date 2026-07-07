@@ -1008,12 +1008,12 @@ export default function DashboardPage() {
       supabase.from("conversations")
         .select("patient_id, role, content, created_at")
         .in("patient_id", patientIds)
-        .eq("practitioner_id", pid)
+        .or(`practitioner_id.eq.${pid},practitioner_id.is.null`)
         .order("created_at", { ascending: false }),
       supabase.from("conversations")
         .select("patient_id, created_at")
         .in("patient_id", patientIds)
-        .eq("practitioner_id", pid)
+        .or(`practitioner_id.eq.${pid},practitioner_id.is.null`)
         .eq("role", "user")
         .gte("created_at", thirtyDaysAgo),
       supabase.from("sos_events")
@@ -1068,14 +1068,33 @@ export default function DashboardPage() {
         lastMessage: lastConv?.content ?? "Aucun message pour l'instant",
         lastMessageTime: lastConv?.created_at ? new Date(lastConv.created_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "",
         lastMessageRole: lastConv?.role ?? "", totalMessages: totalCountByPatient.get(p.user_id) ?? 0,
-        // "Dernière connexion" : on retient la plus récente entre le dernier message
-        // envoyé et le dernier heartbeat de présence (last_seen_at), qui couvre
-        // les visites sans envoi de message (lecture seule, exercices, etc.)
-        lastActive: [lastConv?.created_at, (p as { last_seen_at?: string | null }).last_seen_at]
-          .filter((d): d is string => !!d)
-          .sort()
-          .pop() ?? null,
-        streak: streakDaysByPatient.get(p.user_id)?.size ?? 0,
+        // "Dernière connexion" : max entre dernier message chat, heartbeat de présence
+        // (last_seen_at) et horodatage du dernier message patient (last_patient_message_at).
+        // Les trois sources doivent être incluses pour éviter le jitter lors des reloads.
+        lastActive: [
+          lastConv?.created_at,
+          (p as { last_seen_at?: string | null }).last_seen_at,
+          (p as { last_patient_message_at?: string | null }).last_patient_message_at,
+        ].filter((d): d is string => !!d).sort().pop() ?? null,
+        // Série de jours consécutifs : on part d'aujourd'hui (ou hier si pas encore
+        // actif aujourd'hui) et on compte en arrière tant qu'il y a une activité
+        // chaque jour. Dès qu'il y a un trou, la série est brisée → 0.
+        streak: (() => {
+          const daySet = streakDaysByPatient.get(p.user_id);
+          if (!daySet || daySet.size === 0) return 0;
+          const today = new Date().toISOString().split("T")[0];
+          const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+          // La série est encore "vivante" si le patient était là aujourd'hui ou hier
+          const anchor = daySet.has(today) ? today : daySet.has(yesterday) ? yesterday : null;
+          if (!anchor) return 0;
+          let count = 0;
+          let d = new Date(anchor + "T12:00:00Z");
+          while (daySet.has(d.toISOString().split("T")[0])) {
+            count++;
+            d = new Date(d.getTime() - 86400000);
+          }
+          return count;
+        })(),
         sosResolved: (sosEventsByPatient.get(p.user_id) ?? []).filter(e => e.status === "success" && e.origin === "crise").length,
         sosEvents: sosEventsByPatient.get(p.user_id) ?? [],
         red_behavioral_until: (p as { red_behavioral_until?: string | null }).red_behavioral_until ?? null,
@@ -2891,6 +2910,7 @@ export default function DashboardPage() {
                           const mins = Math.floor(diff / 60000);
                           const hours = Math.floor(diff / 3600000);
                           const days = Math.floor(diff / 86400000);
+                          if (mins < 1) return "À l'instant";
                           if (mins < 60) return `Il y a ${mins}min`;
                           if (hours < 24) return `Il y a ${hours}h`;
                           return `Il y a ${days}j`;

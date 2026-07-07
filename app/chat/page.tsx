@@ -1492,8 +1492,31 @@ export default function ChatPage() {
       }
       if (!res.body) throw new Error("Erreur");
 
-      // ─── Stream : chaque chunk est affiché immédiatement, sans RAF ───
+      // ─── Stream : RAF typewriter — découple réception et affichage ───
       const reader = res.body.getReader(); const decoder = new TextDecoder(); let fullText = "";
+
+      // Tick RAF : avance l'affichage de N chars/frame (≈3 en live, 6 en rattrapage)
+      const tick = () => {
+        const target = targetTextRef.current;
+        const cur = displayedLenRef.current;
+        if (cur < target.length) {
+          const speed = streamDoneRef.current ? 6 : 3;
+          const next = Math.min(cur + speed, target.length);
+          displayedLenRef.current = next;
+          setMessages(prev => {
+            const u = [...prev];
+            if (u[assistantIndex]) u[assistantIndex] = { ...u[assistantIndex], content: target.slice(0, next) };
+            return u;
+          });
+        }
+        if (!streamDoneRef.current || displayedLenRef.current < targetTextRef.current.length) {
+          typewriterRafRef.current = requestAnimationFrame(tick);
+        } else {
+          typewriterRafRef.current = null;
+        }
+      };
+      typewriterRafRef.current = requestAnimationFrame(tick);
+
       while (true) {
         const { done, value } = await reader.read(); if (done) break;
         fullText += decoder.decode(value, { stream: true });
@@ -1501,16 +1524,13 @@ export default function ChatPage() {
           .replace(/\|\|\|[\s\S]*?\|\|\|/g, "")
           .replace(/\[TRIGGER_SOS:[^\]]*\]/g, "")
           .trim();
-        setMessages(prev => {
-          const u = [...prev];
-          if (u[assistantIndex]) u[assistantIndex] = { ...u[assistantIndex], content: visible };
-          return u;
-        });
+        targetTextRef.current = visible;
       }
       streamDoneRef.current = true;
 
       // ─── Stream vide = erreur silencieuse côté Vertex AI ───
       if (!fullText.trim()) {
+        if (typewriterRafRef.current !== null) { cancelAnimationFrame(typewriterRafRef.current); typewriterRafRef.current = null; }
         setMessages(prev => {
           const u = [...prev];
           if (u[assistantIndex]) u[assistantIndex] = { role: "assistant", content: "Une erreur s'est produite lors de l'analyse. Veuillez réessayer." };
@@ -2906,15 +2926,11 @@ export default function ChatPage() {
                   if (msg.role === "assistant" && !msg.content && isLastAssistant) {
                     return (
                       <div key={index} ref={el => { messageRefs.current[index] = el; }}
-                        style={{ display: "flex", alignItems: "flex-start", animation: "fadeUp 0.3s ease", paddingLeft: 38 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 2 }}>
-                          <div style={{ position: "relative", width: 20, height: 20, flexShrink: 0 }}>
-                            <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", animation: "spin 1.8s linear infinite" }} viewBox="0 0 20 20" fill="none">
-                              <circle cx="10" cy="10" r="8" stroke="rgba(16,185,129,0.08)" strokeWidth="1.5"/>
-                              <circle cx="10" cy="10" r="8" stroke="#10b981" strokeWidth="1.5" strokeDasharray="16 35" strokeLinecap="round"/>
-                            </svg>
-                          </div>
-                          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", animation: "nt-analyse 1.8s ease-in-out infinite" }}>Analyse en cours</span>
+                        style={{ display: "flex", alignItems: "flex-start", animation: "fadeUp 0.3s ease", paddingLeft: 38, paddingTop: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <div style={{ width: 5, height: 5, borderRadius: "50%", animation: "nt-dot 1.4s ease-in-out infinite", animationDelay: "0s" }} />
+                          <div style={{ width: 5, height: 5, borderRadius: "50%", animation: "nt-dot 1.4s ease-in-out infinite", animationDelay: "0.2s" }} />
+                          <div style={{ width: 5, height: 5, borderRadius: "50%", animation: "nt-dot 1.4s ease-in-out infinite", animationDelay: "0.4s" }} />
                         </div>
                       </div>
                     );
@@ -2974,15 +2990,6 @@ export default function ChatPage() {
                     </div>
                   );
                 })}
-                {loading && (
-                  <button onClick={stopGeneration}
-                    style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 10, background: "transparent", border: `1px solid rgba(255,255,255,0.08)`, cursor: "pointer", color: TEXT_MUTED, fontSize: 11, transition: "all 0.2s", marginTop: -4 }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(244,63,94,0.3)"; e.currentTarget.style.color = "#f87171"; e.currentTarget.style.background = "rgba(244,63,94,0.04)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = TEXT_MUTED; e.currentTarget.style.background = "transparent"; }}>
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
-                    Arrêter
-                  </button>
-                )}
                 <div ref={messagesEndRef} />
               </div>
             </div>
@@ -3103,7 +3110,7 @@ export default function ChatPage() {
         @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .nt-inputbar:focus-within { border-color: rgba(16,185,129,0.45) !important; box-shadow: 0 0 0 3px rgba(16,185,129,0.06), 0 0 16px rgba(16,185,129,0.06) !important; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes nt-analyse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.65; } }
+        @keyframes nt-dot { 0%, 60%, 100% { transform: translateY(0); background: rgba(255,255,255,0.18); box-shadow: none; } 30% { transform: translateY(-7px); background: rgba(255,255,255,0.88); box-shadow: 0 0 6px rgba(255,255,255,0.5); } }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }
