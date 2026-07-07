@@ -637,7 +637,11 @@ function buildSystemPrompt(
   documentsContext: string,
   forceAncrage = false
 ): string {
-  if (!profile) return getDefaultPrompt();
+  // Sans profil praticien, on reste simple mais on inclut quand même le contexte patient
+  // (prénom, objectif, etc.) pour que Gemini connaisse la personne à qui il parle.
+  if (!profile) {
+    return `Tu es un assistant nutritionniste bienveillant. Réponds sans markdown, en phrases simples, max 150 mots.${patientContext ? `\n\n${patientContext}` : ""}${documentsContext ? `\n${documentsContext}` : ""}`;
+  }
 
   const ancrageBlock = forceAncrage ? `
 ⚠️ MODE ANCRAGE BIENVEILLANT ACTIF ⚠️

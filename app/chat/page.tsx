@@ -854,43 +854,26 @@ export default function ChatPage() {
         const practInfoRes = await fetch("/api/patient/practitioner-info", {
           headers: { Authorization: `Bearer ${d.access_token}` },
         });
+        if (!practInfoRes.ok) {
+          const errText = await practInfoRes.text().catch(() => "");
+          console.error("[NutriTwin] practitioner-info (test mode) FAILED", practInfoRes.status, errText);
+        }
         if (practInfoRes.ok) {
           const practInfo = await practInfoRes.json() as { practitionerId: string; plan: string; tutoiement?: string };
           const practId = practInfo.practitionerId;
           setPractitionerIdFromDb(practId);
           setPractitionerPlan(practInfo.plan || "essentiel");
           if (practInfo.tutoiement) setPractitionerTutoiement(practInfo.tutoiement);
-          // Charger l'historique de conversation test (avec restauration de session)
+          // Restaurer le currentSessionId pour continuer la session en cours après refresh
           const restoredSessionId = sessionStorage.getItem("nt_session_id");
-          let testHistData: { role: string; content: string; created_at: string }[] | null = null;
-          if (restoredSessionId) {
-            const { data: sessionHist } = await testSupabase.from("conversations").select("role, content, created_at").eq("patient_id", pid).eq("practitioner_id", practId).eq("session_id", restoredSessionId).order("created_at", { ascending: true });
-            if (sessionHist?.length) {
-              testHistData = sessionHist;
-              setCurrentSessionId(restoredSessionId);
-            } else {
-              sessionStorage.removeItem("nt_session_id");
-            }
+          if (restoredSessionId) setCurrentSessionId(restoredSessionId);
+          // Charger TOUS les messages (sans filtre session_id) — évite toute perte d'historique
+          // (nécessaire car certains messages peuvent avoir session_id=null et d'autres un UUID)
+          const { data: testHistData } = await testSupabase.from("conversations").select("role, content, created_at").eq("patient_id", pid).eq("practitioner_id", practId).eq("practitioner_only", false).order("created_at", { ascending: true }).limit(100);
+          if (testHistData?.length) {
+            setMessages(testHistData as ChatMessage[]);
+            void hydrateSosClosures(pid, practId, testHistData as { role: "user" | "assistant"; content: string; created_at: string }[]);
           }
-          if (!testHistData) {
-            const { data: defaultHist } = await testSupabase.from("conversations").select("role, content, created_at").eq("patient_id", pid).eq("practitioner_id", practId).is("session_id", null).eq("practitioner_only", false).order("created_at", { ascending: true });
-            testHistData = defaultHist;
-
-            // Fallback : si aucune conversation sans session_id, charger la session la plus récente
-            if (!testHistData?.length) {
-              const { data: lastSession } = await testSupabase.from("conversations_sessions").select("id").eq("patient_id", pid).eq("practitioner_id", practId).order("last_message_at", { ascending: false }).limit(1).single();
-              const lastSessionId = (lastSession as { id?: string } | null)?.id;
-              if (lastSessionId) {
-                const { data: sessionHist } = await testSupabase.from("conversations").select("role, content, created_at").eq("patient_id", pid).eq("practitioner_id", practId).eq("session_id", lastSessionId).order("created_at", { ascending: true });
-                if (sessionHist?.length) {
-                  testHistData = sessionHist;
-                  setCurrentSessionId(lastSessionId);
-                  sessionStorage.setItem("nt_session_id", lastSessionId);
-                }
-              }
-            }
-          }
-          if (testHistData?.length) setMessages(testHistData as ChatMessage[]);
         }
         await loadSessions(pid);
         setSessionLoading(false);
@@ -926,46 +909,25 @@ export default function ChatPage() {
       void supabase.from("patients").update({ last_seen_at: new Date().toISOString() }).eq("user_id", data.user.id);
       // Charger les infos praticien via API sécurisée (service role, bypass RLS)
       const practInfoRes = await tFetch("/api/patient/practitioner-info");
+      if (!practInfoRes.ok) {
+        const errText = await practInfoRes.text().catch(() => "");
+        console.error("[NutriTwin] practitioner-info FAILED", practInfoRes.status, errText);
+      }
       if (practInfoRes.ok) {
         const practInfo = await practInfoRes.json() as { practitionerId: string; plan: string; firstName: string; lastName: string; tutoiement?: string };
         const practId = practInfo.practitionerId;
         setPractitionerIdFromDb(practId);
         setPractitionerPlan(practInfo.plan || "essentiel");
         if (practInfo.tutoiement) setPractitionerTutoiement(practInfo.tutoiement);
-        // Restaurer la session précédente après un refresh si l'utilisateur était dans une session
+        // Restaurer le currentSessionId pour continuer la session en cours après refresh
         const restoredSessionId = sessionStorage.getItem("nt_session_id");
-        let histData: { role: string; content: string; created_at: string }[] | null = null;
-        if (restoredSessionId) {
-          const { data: sessionHist } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", data.user.id).eq("practitioner_id", practId).eq("session_id", restoredSessionId).order("created_at", { ascending: true });
-          if (sessionHist?.length) {
-            histData = sessionHist;
-            setCurrentSessionId(restoredSessionId);
-          } else {
-            // Session invalide ou vide — retour au mode sans session
-            sessionStorage.removeItem("nt_session_id");
-          }
-        }
-        if (!histData) {
-          const { data: defaultHist } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", data.user.id).eq("practitioner_id", practId).is("session_id", null).eq("practitioner_only", false).order("created_at", { ascending: true });
-          histData = defaultHist;
-
-          // Fallback : si aucune conversation sans session_id, charger la session la plus récente
-          if (!histData?.length) {
-            const { data: lastSession } = await supabase.from("conversations_sessions").select("id").eq("patient_id", data.user.id).eq("practitioner_id", practId).order("last_message_at", { ascending: false }).limit(1).single();
-            const lastSessionId = (lastSession as { id?: string } | null)?.id;
-            if (lastSessionId) {
-              const { data: sessionHist } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", data.user.id).eq("practitioner_id", practId).eq("session_id", lastSessionId).order("created_at", { ascending: true });
-              if (sessionHist?.length) {
-                histData = sessionHist;
-                setCurrentSessionId(lastSessionId);
-                sessionStorage.setItem("nt_session_id", lastSessionId);
-              }
-            }
-          }
-        }
-        if (histData?.length) {
-          setMessages(histData as ChatMessage[]);
-          void hydrateSosClosures(data.user.id, practId, histData as { role: "user" | "assistant"; content: string; created_at: string }[]);
+        if (restoredSessionId) setCurrentSessionId(restoredSessionId);
+        // Charger TOUS les messages (sans filtre session_id) — évite toute perte d'historique
+        // (nécessaire car certains messages peuvent avoir session_id=null et d'autres un UUID)
+        const { data: allHist } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", data.user.id).eq("practitioner_id", practId).eq("practitioner_only", false).order("created_at", { ascending: true }).limit(100);
+        if (allHist?.length) {
+          setMessages(allHist as ChatMessage[]);
+          void hydrateSosClosures(data.user.id, practId, allHist as { role: "user" | "assistant"; content: string; created_at: string }[]);
         }
       }
       const { data: pat } = await supabase.from("patients").select("first_name, last_name, onboarding_done, emotional_status, practitioner_pinned_message").eq("user_id", data.user.id).single();
