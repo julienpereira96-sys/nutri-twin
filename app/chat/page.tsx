@@ -2835,9 +2835,7 @@ export default function ChatPage() {
               <div style={{ maxWidth: 580, width: "100%", textAlign: "center" }}>
                 {/* NutriTwin logo */}
                 <div style={{ margin: "0 auto 28px", display: "inline-block" }}>
-                  <p style={{ margin: 0, fontSize: isMobile ? 24 : 28, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.5px", lineHeight: 1 }}>
-                    Nutri<strong style={{ fontWeight: 900, color: ACCENT }}>Twin</strong>
-                  </p>
+                  <img src="/logo-new.svg" alt="NutriTwin" style={{ width: isMobile ? 52 : 60, height: isMobile ? 52 : 60, display: "block" }} />
                 </div>
                 <h1 style={{ margin: "0 0 8px", fontSize: isMobile ? 26 : 30, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.5px" }}>
                   {patientFirstName ? `Bonjour ${patientFirstName}` : "Bonjour"}
