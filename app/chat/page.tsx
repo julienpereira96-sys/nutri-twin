@@ -251,14 +251,14 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
 
   return (
     <div className="nt-inputbar" style={{
-      display: "flex", alignItems: "center",
+      display: "flex",
+      alignItems: isCenter ? "flex-end" : "center",
       background: "rgba(20,30,24,0.96)",
       backdropFilter: "blur(24px)",
       WebkitBackdropFilter: "blur(24px)",
       borderRadius: 26,
       border: "none",
       padding: isCenter ? "12px 12px 12px 18px" : "10px 10px 10px 18px",
-      alignItems: isCenter ? "flex-end" : "center",
       transition: "box-shadow 0.25s",
       boxShadow: focused
         ? "0 6px 36px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08)"
