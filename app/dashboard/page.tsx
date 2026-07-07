@@ -1759,6 +1759,36 @@ export default function DashboardPage() {
     setShowInterventionBubble(false);
   };
 
+  const dismissVictory = async (patientId: string) => {
+    setPatients(prev => prev.map(p => p.id === patientId ? { ...p, latest_victory: undefined, victory_detected_at: undefined } : p));
+    setDemoPatients(prev => prev.map(p => p.id === patientId ? { ...p, latest_victory: "", victory_detected_at: null } : p));
+    if (!onboardingDemoMode) {
+      await supabase.from("patients").update({ latest_victory: null, victory_detected_at: null }).eq("user_id", patientId);
+    }
+  };
+
+  const scrollToVictoryMessage = (date?: string) => {
+    const conversations = displayedConversations;
+    if (!conversations.length) return;
+    const targetDate = date ? new Date(date).getTime() : Date.now();
+    let closestMsg = conversations[conversations.length - 1];
+    let closestDiff = Infinity;
+    for (const msg of conversations) {
+      if (msg.role === "user") {
+        const diff = Math.abs(new Date(msg.created_at).getTime() - targetDate);
+        if (diff < closestDiff) { closestDiff = diff; closestMsg = msg; }
+      }
+    }
+    if (closestMsg) {
+      setTimeout(() => {
+        const el = document.querySelector(`[data-message-id="${closestMsg.id}"]`);
+        if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); }
+        setHighlightedMessageId(closestMsg.id);
+        setTimeout(() => setHighlightedMessageId(null), 2000);
+      }, 50);
+    }
+  };
+
   const scrollToAlertMessage = (alert: { date?: string }) => {
     const conversations = displayedConversations;
     if (!conversations.length) return;
@@ -2692,16 +2722,22 @@ export default function DashboardPage() {
                       const victoryFreshBanner = !!(selectedPatient.latest_victory && selectedPatient.victory_detected_at && (Date.now() - new Date(selectedPatient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
                       if (!victoryFreshBanner || hasActiveAlert) return null;
                       return (
-                        <div style={{ background: "rgba(16,185,129,0.06)", borderTop: "1px solid rgba(16,185,129,0.22)", padding: "10px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: emerald, flex: 1 }}>
-                            🏆 {selectedPatient.firstName} a validé une victoire : {selectedPatient.latest_victory}
+                        <div style={{ background: "rgba(16,185,129,0.06)", borderTop: "1px solid rgba(16,185,129,0.22)", padding: "8px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: emerald, flex: 1, minWidth: 0 }}>
+                            🏆 {selectedPatient.firstName} · {selectedPatient.latest_victory}
                           </span>
                           <button
-                            onClick={() => scrollToAlertMessage({ date: selectedPatient.victory_detected_at ?? undefined })}
-                            style={{ fontSize: 11, fontWeight: 500, color: "#64748b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, whiteSpace: "nowrap", transition: "color 0.15s" }}
+                            onClick={() => scrollToVictoryMessage(selectedPatient.victory_detected_at ?? undefined)}
+                            style={{ fontSize: 11, fontWeight: 600, color: emerald, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, whiteSpace: "nowrap" }}>
+                            Aller au message
+                          </button>
+                          <span style={{ color: "#4b5563", fontSize: 11 }}>·</span>
+                          <button
+                            onClick={() => void dismissVictory(selectedPatient.id)}
+                            style={{ fontSize: 11, color: "#64748b", background: "none", border: "none", cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}
                             onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
                             onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                            Aller au message
+                            Marquer comme vu
                           </button>
                         </div>
                       );
@@ -2785,59 +2821,55 @@ export default function DashboardPage() {
                           style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", background: actionBtnSolidBg, border: `1px solid ${actionBtnBorder}`, color: actionColor, transition: "all 0.2s", whiteSpace: "nowrap" }}
                           onMouseEnter={e => { e.currentTarget.style.background = actionBtnHover; }}
                           onMouseLeave={e => { e.currentTarget.style.background = actionBtnSolidBg; }}>
-                          Écrire un message de soutien ➔
-                        </button>
-                        <button onClick={() => setShowInterventionBubble(false)}
-                          style={{ height: 30, padding: "0 8px", background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#4b5563", lineHeight: 1 }}
-                          onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
-                          onMouseLeave={e => e.currentTarget.style.color = "#4b5563"}>
-                          ×
+                          Écrire un message de soutien
                         </button>
                       </div>
                     );
                   })()}
 
-                  {/* Bandeau victoire BAS — "Envoyer un Bravo ✦" au-dessus de la saisie */}
-                  {!showInterventionBubble && !replyMode && (() => {
-                    const hasActiveAlert = (selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical" || selectedPatient.emotional_status === "orange" || selectedPatient.emotional_status === "red_behavioral") && !alertBannerDismissed[selectedPatient.id];
+                  {/* Bloc Action — zone bravo victoire (bas Suivi) */}
+                  {(() => {
+                    const hasActiveAlert = (selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical" || selectedPatient.emotional_status === "red_behavioral") && !alertBannerDismissed[selectedPatient.id];
                     const victoryFreshBottom = !!(selectedPatient.latest_victory && selectedPatient.victory_detected_at && (Date.now() - new Date(selectedPatient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
-                    if (!victoryFreshBottom || hasActiveAlert) return null;
+                    if (!victoryFreshBottom || hasActiveAlert || replyMode) return null;
                     const bState = bravoState[selectedPatient.id];
                     return (
-                      <div style={{ borderTop: "1px solid rgba(16,185,129,0.22)", background: "rgba(8,14,11,0.98)", backdropFilter: "blur(12px)", padding: "12px 20px" }}>
+                      <div style={{ borderTop: "1px solid rgba(16,185,129,0.22)", background: "rgba(10,10,12,0.97)", backdropFilter: "blur(12px)", padding: "12px 20px" }}>
                         {bState?.sent ? (
-                          <div style={{ display: "flex", justifyContent: "center" }}><CheckCircleSent /></div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <CheckCircleSent />
+                            <span style={{ fontSize: 12, color: emerald }}>Bravo envoyé à {selectedPatient.firstName} ✓</span>
+                          </div>
                         ) : bState?.expanded ? (
-                          /* Zone bravo expandée */
-                          <div>
+                          <>
                             {bState.editing ? (
                               <textarea
                                 value={bState.text}
                                 onChange={e => setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], text: e.target.value } }))}
                                 rows={3}
                                 autoFocus
-                                style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "white", padding: "8px 10px", fontSize: 12, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", lineHeight: 1.5, marginBottom: 6 }}
+                                style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)", color: "white", padding: "10px 14px", fontSize: 13, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", lineHeight: 1.6, marginBottom: 8 }}
                               />
                             ) : (
                               <p
-                                style={{ margin: "0 0 8px", fontSize: 12, color: "#d4d4d8", lineHeight: 1.6, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", transition: "background 0.15s", cursor: "default" }}
+                                style={{ margin: "0 0 8px", fontSize: 13, color: "#d4d4d8", lineHeight: 1.6, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 14px", cursor: "default", transition: "background 0.15s" }}
                                 onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.07)"}
                                 onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.04)"}
                               >{bState.text}</p>
                             )}
-                            <div style={{ display: "flex", gap: 6 }}>
+                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                               <button
                                 onClick={() => bState.editing
                                   ? setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], editing: false } }))
                                   : setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], expanded: false } }))}
-                                style={{ flex: 1, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "background 0.15s" }}
+                                style={{ height: 34, borderRadius: 10, padding: "0 14px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "background 0.15s" }}
                                 onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
                                 onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
                                 Retour
                               </button>
                               {!bState.editing && !bState.sending && (
                                 <button onClick={() => setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], editing: true } }))}
-                                  style={{ flex: 1, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 11, cursor: "pointer", transition: "background 0.15s" }}
+                                  style={{ height: 34, borderRadius: 10, padding: "0 14px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 11, cursor: "pointer", transition: "background 0.15s" }}
                                   onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
                                   onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
                                   Modifier
@@ -2846,21 +2878,22 @@ export default function DashboardPage() {
                               <button
                                 onClick={() => { if (!bState.sending) void sendBravoMessage(selectedPatient.id, bState.text); }}
                                 disabled={bState.sending}
-                                style={{ flex: 2, height: 34, borderRadius: 10, background: bState.sending ? "rgba(16,185,129,0.5)" : emerald, border: "none", color: "black", fontSize: 11, fontWeight: 700, cursor: bState.sending ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "background 0.15s" }}>
+                                style={{ height: 34, borderRadius: 10, padding: "0 16px", background: bState.sending ? "rgba(16,185,129,0.5)" : emerald, border: "none", color: "black", fontSize: 11, fontWeight: 700, cursor: bState.sending ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, transition: "background 0.15s" }}>
                                 {bState.sending ? (
                                   <><span className="h-3 w-3 animate-spin rounded-full border-2 border-black/20 border-t-black/60" style={{ flexShrink: 0 }} />Envoi</>
                                 ) : "Envoyer"}
                               </button>
                             </div>
-                          </div>
+                          </>
                         ) : (
-                          /* Bouton initial */
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <span style={{ fontSize: 12, color: "#64748b", flex: 1 }}>Féliciter {selectedPatient.firstName} pour cette victoire</span>
+                            <span style={{ fontSize: 12, color: "#64748b", flex: 1 }}>
+                              Féliciter {selectedPatient.firstName} pour cette victoire
+                            </span>
                             <button
                               onClick={() => void generateBravo(selectedPatient.id, selectedPatient.latest_victory ?? "")}
                               disabled={bState?.loading}
-                              style={{ height: 34, borderRadius: 10, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: bState?.loading ? "not-allowed" : "pointer", border: "1px solid rgba(16,185,129,0.35)", background: bState?.loading ? "rgba(16,185,129,0.06)" : "rgba(16,185,129,0.1)", color: bState?.loading ? "#64748b" : emerald, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
+                              style={{ height: 34, borderRadius: 10, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: bState?.loading ? "not-allowed" : "pointer", border: "1px solid rgba(16,185,129,0.35)", background: bState?.loading ? "rgba(16,185,129,0.06)" : "rgba(16,185,129,0.1)", color: bState?.loading ? "#64748b" : emerald, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s", whiteSpace: "nowrap" }}
                               onMouseEnter={e => { if (!bState?.loading) e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
                               onMouseLeave={e => { if (!bState?.loading) e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}>
                               {bState?.loading ? (
