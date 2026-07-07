@@ -1454,6 +1454,7 @@ export default function ChatPage() {
   const send = async (text?: string, opts?: { hidden?: boolean }) => {
     const trimmed = (text ?? message).trim();
     if ((!trimmed && !pendingImage) || loading) return;
+    console.log("[NutriTwin] send() — patientId:", patientId, "practitionerIdFromDb:", practitionerIdFromDb);
     const img = pendingImage;
     const userMsg: ChatMessage = { role: "user", content: trimmed || "📷 Photo", imageUrl: img?.previewUrl, ...(opts?.hidden ? { hidden: true } : {}) };
     const newMessages: ChatMessage[] = [...messages, userMsg];
