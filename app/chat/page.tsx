@@ -2831,11 +2831,11 @@ export default function ChatPage() {
             </div>
           )}
           {!hasMessages && !sessionLoading && (
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: isMobile ? "24px 16px 100px" : "32px 24px 100px" }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: isMobile ? "96px 16px 100px" : "96px 24px 100px" }}>
               <div style={{ maxWidth: 580, width: "100%", textAlign: "center" }}>
                 {/* NutriTwin logo */}
                 <div style={{ margin: "0 auto 28px", display: "inline-block" }}>
-                  <img src="/logo-new.svg" alt="NutriTwin" style={{ width: isMobile ? 52 : 60, height: isMobile ? 52 : 60, display: "block" }} />
+                  <img src="/logo-new.svg" alt="NutriTwin" style={{ width: 36, height: 36, display: "block" }} />
                 </div>
                 <h1 style={{ margin: "0 0 8px", fontSize: isMobile ? 26 : 30, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.5px" }}>
                   {patientFirstName ? `Bonjour ${patientFirstName}` : "Bonjour"}
@@ -2870,7 +2870,7 @@ export default function ChatPage() {
           )}
 
           {hasMessages && (
-            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? `80px 16px ${pendingImage ? 180 : 100}px` : "80px 36px 24px" }}>
+            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? `108px 16px ${pendingImage ? 180 : 100}px` : "108px 36px 80px" }}>
               <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28, touchAction: "auto" }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
