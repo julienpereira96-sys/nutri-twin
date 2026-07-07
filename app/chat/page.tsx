@@ -525,9 +525,13 @@ export default function ChatPage() {
   const [practitionerIdFromDb, setPractitionerIdFromDb] = useState<string | null>(null);
   const [practitionerPlan, setPractitionerPlan] = useState("essentiel");
   const [practitionerTutoiement, setPractitionerTutoiement] = useState("");
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth < 768 : false
-  );
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    // En mode test l'iframe est intégrée dans le dashboard desktop —
+    // on force toujours le layout desktop quelle que soit la largeur du panneau.
+    if (new URLSearchParams(window.location.search).get("test") === "true") return false;
+    return window.innerWidth < 768;
+  });
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileScreen, setProfileScreen] = useState<"main" | "victoires" | "voix" | "password" | "legal" | "erreur" | "preferences">("main");
@@ -710,6 +714,8 @@ export default function ChatPage() {
   useEffect(() => { if (!loading) messagesEndRef.current?.scrollIntoView({ behavior: "instant" }); }, [messages, loading]);
 
   useEffect(() => {
+    // En mode test (iframe dans le dashboard) → toujours desktop, pas de recalcul au resize.
+    if (new URLSearchParams(window.location.search).get("test") === "true") return;
     const check = () => { const m = window.innerWidth < 768; setIsMobile(m); if (m) setSidebarOpen(false); };
     check();
     window.addEventListener("resize", check);
