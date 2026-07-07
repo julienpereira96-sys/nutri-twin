@@ -2879,7 +2879,7 @@ export default function ChatPage() {
           )}
 
           {hasMessages && (
-            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? `${pendingImage ? 180 : 100}px 16px ${pendingImage ? 180 : 100}px` : "24px 36px 24px" }}>
+            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? `${pendingImage ? 180 : 100}px 16px ${pendingImage ? 180 : 100}px` : "80px 36px 24px" }}>
               <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28, touchAction: "auto" }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
