@@ -2805,7 +2805,7 @@ export default function ChatPage() {
         <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
 
           {/* Fade haut */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 40, background: "linear-gradient(to bottom, #0b0f0d 0%, transparent 100%)", pointerEvents: "none", zIndex: 5 }} />
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 20, background: "linear-gradient(to bottom, #0b0f0d 0%, transparent 100%)", pointerEvents: "none", zIndex: 5 }} />
 
           <main ref={scrollContainerRef} style={{ height: "100%", overflowY: "auto", overscrollBehaviorX: "none", display: "flex", flexDirection: "column" }}
           onScroll={e => {
@@ -2879,7 +2879,7 @@ export default function ChatPage() {
           )}
 
           {hasMessages && (
-            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? `${pendingImage ? 180 : 100}px 16px ${pendingImage ? 180 : 100}px` : "48px 36px 24px" }}>
+            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? `${pendingImage ? 180 : 100}px 16px ${pendingImage ? 180 : 100}px` : "28px 36px 24px" }}>
               <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28, touchAction: "auto" }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
@@ -3008,11 +3008,11 @@ export default function ChatPage() {
             bottom: 0, left: 0, right: 0,
             zIndex: isMobile ? 25 : 10,
             background: isMobile
-              ? `linear-gradient(to bottom, transparent 0%, #0b0f0d 40px, #0b0f0d 100%)`
-              : `linear-gradient(to bottom, transparent 0%, rgba(11,15,13,0.97) 40px, rgba(11,15,13,0.97) 100%)`,
+              ? `linear-gradient(to bottom, transparent 0%, #0b0f0d 20px, #0b0f0d 100%)`
+              : `linear-gradient(to bottom, transparent 0%, rgba(11,15,13,0.97) 20px, rgba(11,15,13,0.97) 100%)`,
             backdropFilter: isMobile ? undefined : "blur(12px)",
             WebkitBackdropFilter: isMobile ? undefined : "blur(12px)",
-            padding: isMobile ? "16px 12px 12px" : "48px 20px 16px",
+            padding: isMobile ? "16px 12px 12px" : "28px 20px 16px",
             paddingBottom: isMobile ? `max(12px, env(safe-area-inset-bottom, 0px))` : "20px",
             paddingLeft: isMobile ? `max(12px, env(safe-area-inset-left, 0px))` : undefined,
             paddingRight: isMobile ? `max(12px, env(safe-area-inset-right, 0px))` : undefined,
