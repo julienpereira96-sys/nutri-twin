@@ -1028,7 +1028,7 @@ export default function DashboardPage() {
     const totalCountByPatient = new Map<string, number>();
     for (const conv of (allConvs ?? [])) {
       const p = conv.patient_id as string;
-      if (!lastConvByPatient.has(p)) lastConvByPatient.set(p, conv as { role: string; content: string; created_at: string });
+      if (!lastConvByPatient.has(p) && (conv.role as string) === "user") lastConvByPatient.set(p, conv as { role: string; content: string; created_at: string });
       totalCountByPatient.set(p, (totalCountByPatient.get(p) ?? 0) + 1);
     }
 
@@ -1213,7 +1213,7 @@ export default function DashboardPage() {
     const lastConvByTestPatient = new Map<string, { role: string; content: string; created_at: string }>();
     for (const conv of (lastConvs ?? [])) {
       const patId = conv.patient_id as string;
-      if (!lastConvByTestPatient.has(patId)) lastConvByTestPatient.set(patId, conv as { role: string; content: string; created_at: string });
+      if (!lastConvByTestPatient.has(patId) && (conv.role as string) === "user") lastConvByTestPatient.set(patId, conv as { role: string; content: string; created_at: string });
     }
 
     const mapped: RealPatient[] = testPatients.map(p => ({
@@ -2589,7 +2589,7 @@ export default function DashboardPage() {
                                 🏆
                               </span>
                             )}
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{subText}</span>
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontStyle: "italic" }}>{subText}</span>
                           </p>
                         </div>
                         {activeAlert && <div style={{ width: 7, height: 7, borderRadius: "50%", background: alertColor2, flexShrink: 0 }} />}
@@ -3471,7 +3471,6 @@ export default function DashboardPage() {
                                 else if (patient.victory_detected_at) setPendingScrollMessageId(patient.victory_detected_at);
                               }}
                               style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, cursor: "pointer" }}>
-                              <TrophyIcon size={12} color={emerald} />
                               <p style={{ margin: 0, fontSize: 12, color: emerald, lineHeight: 1.5, filter: discretMode ? "blur(4px)" : "none", textDecoration: "underline dotted" }}>{patient.latest_victory}</p>
                             </div>
 
@@ -3498,23 +3497,23 @@ export default function DashboardPage() {
                                 )}
                                 {!bState.loading && (
                                   <div style={{ display: "flex", gap: 6 }}>
-                                    <button onClick={() => void sendBravoMessage(patient.id, bState.text)}
-                                      style={{ flex: 2, height: 28, borderRadius: 8, background: emerald, border: "none", color: "black", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                                      Valider et envoyer
+                                    <button
+                                      onClick={() => bState.editing
+                                        ? setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], editing: false } }))
+                                        : setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], expanded: false } }))}
+                                      style={{ flex: 1, height: 28, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                                      Retour
                                     </button>
-                                    {!bState.editing ? (
+                                    {!bState.editing && (
                                       <button onClick={() => setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], editing: true } }))}
-                                        style={{ flex: 1, height: 28, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 11, cursor: "pointer" }}>
+                                        style={{ flex: 1, height: 28, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", fontSize: 11, cursor: "pointer" }}>
                                         Modifier
                                       </button>
-                                    ) : (
-                                      <button onClick={() => setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], editing: false } }))}
-                                        style={{ flex: 1, height: 28, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 11, cursor: "pointer" }}>
-                                        OK
-                                      </button>
                                     )}
-                                    <button onClick={() => setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], expanded: false } }))}
-                                      style={{ width: 28, height: 28, borderRadius: 8, background: "transparent", border: "none", color: "#4b5563", fontSize: 13, cursor: "pointer" }}>✕</button>
+                                    <button onClick={() => void sendBravoMessage(patient.id, bState.text)}
+                                      style={{ flex: 2, height: 28, borderRadius: 8, background: emerald, border: "none", color: "black", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                                      Envoyer
+                                    </button>
                                   </div>
                                 )}
                               </div>

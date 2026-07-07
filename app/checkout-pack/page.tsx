@@ -125,7 +125,9 @@ function PackPaymentForm({ packInfo }: { packInfo: PackInfo }) {
           return;
         }
 
-        router.push("/dashboard?pack=success");
+        const pack = packInfo.pack;
+        if (!pack) { router.push("/dashboard"); return; }
+        router.push(`/pack-success?size=${pack.size}&plan=${packInfo.plan}&amount=${pack.amount}`);
       }
     } catch {
       setError("Une erreur est survenue.");

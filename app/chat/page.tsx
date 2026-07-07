@@ -990,8 +990,9 @@ export default function ChatPage() {
             // Erreur réseau — on garde le cache local
           }
         }
-        // Charger victoires
-        const victories = (p as { victories_history?: string[] }).victories_history ?? [];
+        // Charger victoires (latest_victory retourné par get-patient-profile)
+        const latestVictory = (p as { latest_victory?: string }).latest_victory;
+        const victories: string[] = latestVictory ? [latestVictory] : [];
         setPatientVictories(victories);
         const ppm = (p as { practitioner_pinned_message?: { text: string; sent_at: string; practitioner_id: string } | null }).practitioner_pinned_message;
         if (ppm) setPinnedMessage(ppm);
@@ -2449,7 +2450,9 @@ export default function ChatPage() {
 {showLogoutPatientModal && (
   <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", zIndex: 110, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
     <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 340, border: `1px solid ${BORDER}`, textAlign: "center" }}>
-      <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}><IconCheckRing size={36} color={TEXT_MUTED} strokeWidth={1.3} /></div>
+      <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round"/><polyline points="16,17 21,12 16,7" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><line x1="21" y1="12" x2="9" y2="12" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round"/></svg>
+      </div>
       <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 600, color: TEXT_PRIMARY }}>Se déconnecter ?</h3>
       <p style={{ margin: "0 0 24px", fontSize: 13, color: TEXT_SECONDARY }}>Vous devrez vous reconnecter pour accéder à votre espace.</p>
       <div style={{ display: "flex", gap: 10 }}>
@@ -2745,8 +2748,8 @@ export default function ChatPage() {
           })()}
           </div>
 
-          {/* ═══ SIDEBAR BOTTOM — Profil ═══ */}
-          <div style={{ paddingBottom: isMobile ? "max(44px, env(safe-area-inset-bottom, 44px))" : 32, flexShrink: 0 }}>
+          {/* ═══ SIDEBAR BOTTOM — Profil (masqué en mode test) ═══ */}
+          {!isTestMode && <div style={{ paddingBottom: isMobile ? "max(44px, env(safe-area-inset-bottom, 44px))" : 32, flexShrink: 0 }}>
           <button
             onClick={() => setShowProfileModal(true)}
             style={{ padding: "10px 8px", display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left", borderRadius: 12, transition: "background 0.15s" }}
@@ -2776,7 +2779,7 @@ export default function ChatPage() {
               <SettingsIcon size={15} color="currentColor" />
             </div>
           </button>
-          </div>{/* /padding-bottom wrapper */}
+          </div>}{/* /padding-bottom wrapper + isTestMode guard */}
         </div>
       </aside>
 

@@ -197,7 +197,7 @@ function StaticDashboard() {
                     </div>
                     <p style={{ margin: 0, fontSize: 10, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 35, display: "flex", alignItems: "center", gap: 3 }}>
                       {p.trophy && <span style={{ fontSize: 9 }}>🏆</span>}
-                      {p.insight}
+                      <span style={{ fontStyle: "italic" }}>{p.insight}</span>
                     </p>
                   </div>
                 ))}
