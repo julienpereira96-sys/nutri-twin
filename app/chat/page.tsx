@@ -3008,12 +3008,12 @@ export default function ChatPage() {
             bottom: 0, left: 0, right: 0,
             zIndex: isMobile ? 25 : 10,
             background: isMobile
-              ? `linear-gradient(to bottom, transparent 0%, #0b0f0d 38%)`
-              : `linear-gradient(to bottom, transparent 0%, rgba(11,15,13,0.97) 32%)`,
+              ? `linear-gradient(to bottom, transparent 0%, #0b0f0d 40px, #0b0f0d 100%)`
+              : `linear-gradient(to bottom, transparent 0%, rgba(11,15,13,0.97) 40px, rgba(11,15,13,0.97) 100%)`,
             backdropFilter: isMobile ? undefined : "blur(12px)",
             WebkitBackdropFilter: isMobile ? undefined : "blur(12px)",
-            padding: isMobile ? "16px 12px 12px" : "28px 20px 20px",
-            paddingBottom: isMobile ? `max(12px, env(safe-area-inset-bottom, 0px))` : "24px",
+            padding: isMobile ? "16px 12px 12px" : "48px 20px 16px",
+            paddingBottom: isMobile ? `max(12px, env(safe-area-inset-bottom, 0px))` : "20px",
             paddingLeft: isMobile ? `max(12px, env(safe-area-inset-left, 0px))` : undefined,
             paddingRight: isMobile ? `max(12px, env(safe-area-inset-right, 0px))` : undefined,
             opacity: sidebarOpen && isMobile ? 0.4 : 1,
