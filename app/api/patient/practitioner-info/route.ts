@@ -1,17 +1,50 @@
+import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
+import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/api-auth";
 
 /**
  * GET /api/patient/practitioner-info
  * Retourne le plan et le nom du praticien lié au patient authentifié.
- * Supporte l'auth par cookie ET par Bearer token (mode test).
+ * Supporte l'auth par Bearer token (mode test) ET par cookie SSR (mode normal).
  * Utilise la service role key pour bypasser les RLS sur la table practitioners.
  */
 export async function GET() {
-  // Auth patient — supporte cookie SSR ET Bearer token (mode test)
-  const user = await getSessionUser();
-  if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  let userId: string | null = null;
+
+  // ─── 1. Bearer token (mode test) ────────────────────────────────────────────
+  const headersList = await headers();
+  const authHeader = headersList.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    const anonClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    const { data: { user } } = await anonClient.auth.getUser(token);
+    if (user) userId = user.id;
+  }
+
+  // ─── 2. Cookie SSR (mode normal) — avec setAll pour le refresh de token ────
+  if (!userId) {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll(); },
+          setAll(list) {
+            list.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+          },
+        },
+      }
+    );
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) userId = user.id;
+  }
+
+  if (!userId) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
   // Service role — bypass RLS pour lire practitioners
   const admin = createClient(
@@ -22,7 +55,7 @@ export async function GET() {
   const { data: rel } = await admin
     .from("patient_practitioner")
     .select("practitioner_id")
-    .eq("patient_id", user.id)
+    .eq("patient_id", userId)
     .single();
 
   if (!rel) return NextResponse.json({ error: "Relation patient/praticien introuvable" }, { status: 404 });

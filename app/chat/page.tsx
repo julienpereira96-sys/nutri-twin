@@ -1496,14 +1496,8 @@ export default function ChatPage() {
     displayedLenRef.current = 0;
     streamDoneRef.current = false;
 
-    // ─── Créer une session au premier message (mode normal uniquement) ───
-    let effectiveSessionId = currentSessionId;
-    if (!effectiveSessionId && !isTestMode && patientId && practitionerIdFromDb) {
-      effectiveSessionId = await createSession(trimmed || "Photo");
-    }
-
     try {
-      const body: Record<string, string | undefined> = { message: trimmed || "Analyse cette photo", patientId: patientId ?? undefined, practitionerId: practitionerIdFromDb ?? undefined, sessionId: effectiveSessionId ?? undefined };
+      const body: Record<string, string | undefined> = { message: trimmed || "Analyse cette photo", patientId: patientId ?? undefined, practitionerId: practitionerIdFromDb ?? undefined, sessionId: currentSessionId ?? undefined };
       if (img) { body.imageBase64 = img.base64; body.imageMimeType = img.mimeType; }
       const res = await tFetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: abortControllerRef.current.signal });
       if (!res.ok) {
