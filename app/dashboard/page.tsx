@@ -2928,7 +2928,7 @@ export default function DashboardPage() {
                         <>
                           {!isTest && [
                             { label: "Dernière connexion", value: lastActiveStr },
-                            { label: "Assiduité", value: streak > 0 ? `${streak} jours actifs` : "Aucune activité" },
+                            { label: "Assiduité", value: streak > 0 ? `${streak} jour${streak > 1 ? "s" : ""} actif${streak > 1 ? "s" : ""}` : "Aucune activité" },
                           ].map((item) => (
                             <div key={item.label} style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                               <span style={{ fontSize: 11, color: "#64748b" }}>{item.label}</span>

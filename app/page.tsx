@@ -78,12 +78,11 @@ function AnimatedChat() {
             );
           })}
           {isTyping && (
-            <div style={{ display: "flex", justifyContent: "flex-start" }}>
-              <div style={{ position: "relative", width: 16, height: 16, flexShrink: 0, marginTop: 2 }}>
-                <svg style={{ position: "absolute", inset: 0, width: "100%", height: "100%", animation: "spin 1.8s linear infinite" }} viewBox="0 0 20 20" fill="none">
-                  <circle cx="10" cy="10" r="8" stroke="rgba(16,185,129,0.08)" strokeWidth="1.5"/>
-                  <circle cx="10" cy="10" r="8" stroke="#10b981" strokeWidth="1.5" strokeDasharray="16 35" strokeLinecap="round"/>
-                </svg>
+            <div style={{ display: "flex", justifyContent: "flex-start", paddingTop: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <div style={{ width: 5, height: 5, borderRadius: "50%", animation: "ntDot 1.4s ease-in-out infinite", animationDelay: "0s" }} />
+                <div style={{ width: 5, height: 5, borderRadius: "50%", animation: "ntDot 1.4s ease-in-out infinite", animationDelay: "0.2s" }} />
+                <div style={{ width: 5, height: 5, borderRadius: "50%", animation: "ntDot 1.4s ease-in-out infinite", animationDelay: "0.4s" }} />
               </div>
             </div>
           )}
@@ -103,7 +102,7 @@ function AnimatedChat() {
       </div>
       <style>{`
         @keyframes chatFadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes ntDot { 0%, 60%, 100% { transform: translateY(0); background: rgba(255,255,255,0.18); box-shadow: none; } 30% { transform: translateY(-7px); background: rgba(255,255,255,0.88); box-shadow: 0 0 6px rgba(255,255,255,0.5); } }
       `}</style>
     </div>
   );
@@ -232,9 +231,9 @@ function StaticDashboard() {
                       padding: msg.role === "patient" ? "8px 12px" : "2px 4px",
                       fontSize: 11,
                       lineHeight: 1.65,
-                      background: msg.role === "patient" ? "rgba(16,185,129,0.03)" : "transparent",
-                      border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.2)" : "none",
-                      color: msg.role === "patient" ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)",
+                      background: msg.role === "patient" ? "rgba(16,185,129,0.12)" : "transparent",
+                      border: "none",
+                      color: "rgba(255,255,255,0.95)",
                     }}>
                       {msg.text}
                     </div>
@@ -355,9 +354,9 @@ function StaticDashboard() {
                     padding: msg.role === "patient" ? "8px 12px" : "2px 0",
                     fontSize: 12,
                     lineHeight: 1.65,
-                    background: msg.role === "patient" ? "rgba(16,185,129,0.03)" : "transparent",
-                    border: msg.role === "patient" ? "1px solid rgba(16,185,129,0.2)" : "none",
-                    color: msg.role === "patient" ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.92)",
+                    background: msg.role === "patient" ? "rgba(16,185,129,0.12)" : "transparent",
+                    border: "none",
+                    color: "rgba(255,255,255,0.95)",
                   }}>
                     {msg.text}
                   </div>

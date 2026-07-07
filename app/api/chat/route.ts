@@ -734,8 +734,9 @@ Si le message commence par [ADMIN:identity_correction] :
 JSON TECHNIQUE OBLIGATOIRE - À ajouter en toute fin de réponse, après le texte visible :
 |||{"status":"green","reason":"météo émotionnelle en 4-8 mots","notable":false,"victory":"","apaisement":"non"}|||
 - status : "red_critical" si urgence vitale implicite détectée, "red_behavioral" si détresse comportementale/TCA/psychologique sévère, "green" si tout va bien
-- reason : TOUJOURS rempli — météo émotionnelle du patient en 4-8 mots, dynamique et précise.
-  Exemples green : "En confiance", "Motivé(e) malgré la fatigue", "Serein(e) et régulier(e)", "Curieux(se) de progresser", "Anxieux(se) mais motivé(e)", "Frustré(e) face aux écarts"
+- reason : TOUJOURS rempli — météo émotionnelle du patient en 4-8 mots, dynamique et précise. Accorde les adjectifs au genre du patient (voir "Sexe" dans le profil) — jamais de forme neutre entre parenthèses comme "Anxieux(se)".
+  Exemples (homme) : "En confiance", "Motivé malgré la fatigue", "Serein et régulier", "Curieux de progresser", "Anxieux mais motivé", "Frustré face aux écarts"
+  Exemples (femme) : "En confiance", "Motivée malgré la fatigue", "Sereine et régulière", "Curieuse de progresser", "Anxieuse mais motivée", "Frustrée face aux écarts"
   Exemples red_behavioral : "Détresse émotionnelle active", "Perte de contrôle alimentaire", "Dégoût de soi exprimé"
   Exemples red_critical : "Urgence vitale exprimée", "Pensées de passage à l'acte"
   Ne jamais laisser vide. Ne jamais écrire "patient va bien" ou "aucune alerte".
