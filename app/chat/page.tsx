@@ -252,7 +252,7 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
   return (
     <div className="nt-inputbar" style={{
       display: "flex",
-      alignItems: isCenter ? "flex-end" : "center",
+      alignItems: "center",
       background: "rgba(20,30,24,0.96)",
       backdropFilter: "blur(24px)",
       WebkitBackdropFilter: "blur(24px)",
@@ -283,7 +283,7 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
         />
       </div>
       {/* Actions — alignés en bas pour suivre la hauteur du textarea */}
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 6, flexShrink: 0, paddingBottom: 1 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, paddingBottom: 1 }}>
         {/* Camera */}
         <div style={{ display: "flex", alignItems: "center", gap: 4, overflow: "hidden" }}
           onMouseEnter={() => setPhotoHovered(true)}
