@@ -19,18 +19,14 @@ export async function POST(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Insérer le message dans les conversations (rôle "assistant" = du côté Jumeau/praticien)
-  await supabase.from("conversations").insert({
-    patient_id: patientId,
-    practitioner_id: practitionerId,
-    role: "assistant",
-    content: messageText,
-  });
-
-  // Effacer la victoire après envoi
+  // Épingler le bravo comme message praticien (bandeau côté patient, pas dans le chat)
   await supabase
     .from("patients")
-    .update({ latest_victory: null, victory_detected_at: null })
+    .update({
+      practitioner_pinned_message: { text: messageText, sent_at: new Date().toISOString(), practitioner_id: practitionerId },
+      latest_victory: null,
+      victory_detected_at: null,
+    })
     .eq("user_id", patientId);
 
   return NextResponse.json({ success: true });

@@ -798,7 +798,7 @@ export default function DashboardPage() {
   const [vueEnsembleFilter, setVueEnsembleFilter] = useState<"tous" | "alertes" | "victoires" | "ras" | "partages">("tous");
   const [practitionerCabinetId, setPractitionerCabinetId] = useState<string | null>(null);
   const [cabinetSharedPatients, setCabinetSharedPatients] = useState<RealPatient[]>([]);
-  const [bravoState, setBravoState] = useState<Record<string, { expanded: boolean; text: string; editing: boolean; loading: boolean; sent: boolean }>>({});
+  const [bravoState, setBravoState] = useState<Record<string, { expanded: boolean; text: string; editing: boolean; loading: boolean; sending: boolean; sent: boolean }>>({});
   const conversationContainerRef = useRef<HTMLDivElement>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
@@ -1783,7 +1783,7 @@ export default function DashboardPage() {
   };
 
   const generateBravo = async (patientId: string, victoryText: string) => {
-    setBravoState(prev => ({ ...prev, [patientId]: { expanded: true, text: "", editing: false, loading: true, sent: false } }));
+    setBravoState(prev => ({ ...prev, [patientId]: { expanded: false, text: "", editing: false, loading: true, sending: false, sent: false } }));
     try {
       const res = await fetch("/api/generate-bravo", {
         method: "POST",
@@ -1791,27 +1791,27 @@ export default function DashboardPage() {
         body: JSON.stringify({ patientId, practitionerId, victoryText }),
       });
       const data = await res.json() as { message?: string };
-      setBravoState(prev => ({ ...prev, [patientId]: { expanded: true, text: data.message ?? "", editing: false, loading: false, sent: false } }));
+      setBravoState(prev => ({ ...prev, [patientId]: { expanded: true, text: data.message ?? "", editing: false, loading: false, sending: false, sent: false } }));
     } catch {
-      setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], loading: false } }));
+      setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], loading: false, sending: false } }));
     }
   };
 
   const sendBravoMessage = async (patientId: string, text: string) => {
     if (onboardingDemoMode) {
-      setBravoState(prev => ({ ...prev, [patientId]: { expanded: false, text: "", editing: false, loading: false, sent: true } }));
+      setBravoState(prev => ({ ...prev, [patientId]: { expanded: false, text: "", editing: false, loading: false, sending: false, sent: true } }));
       setDemoPatients(prev => prev.map(p => p.id === patientId ? { ...p, latest_victory: "" } : p));
       setTimeout(() => setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], sent: false } })), 3000);
       return;
     }
-    setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], loading: true } }));
+    setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], sending: true } }));
     try {
       await fetch("/api/send-bravo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId, practitionerId, messageText: text }) });
-      setBravoState(prev => ({ ...prev, [patientId]: { expanded: false, text: "", editing: false, loading: false, sent: true } }));
+      setBravoState(prev => ({ ...prev, [patientId]: { expanded: false, text: "", editing: false, loading: false, sending: false, sent: true } }));
       setPatients(prev => prev.map(p => p.id === patientId ? { ...p, latest_victory: undefined } : p));
       setTimeout(() => setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], sent: false } })), 3000);
     } catch {
-      setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], loading: false } }));
+      setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], sending: false } }));
     }
   };
 
@@ -2697,8 +2697,10 @@ export default function DashboardPage() {
                             🏆 {selectedPatient.firstName} a validé une victoire : {selectedPatient.latest_victory}
                           </span>
                           <button
-                            onClick={() => { if (selectedPatient.victory_message_id) setPendingScrollMessageId(selectedPatient.victory_message_id); else if (selectedPatient.victory_detected_at) setPendingScrollMessageId(selectedPatient.victory_detected_at); }}
-                            style={{ fontSize: 11, fontWeight: 600, color: emerald, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, whiteSpace: "nowrap" }}>
+                            onClick={() => scrollToAlertMessage({ date: selectedPatient.victory_detected_at ?? undefined })}
+                            style={{ fontSize: 11, fontWeight: 500, color: "#64748b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, whiteSpace: "nowrap", transition: "color 0.15s" }}
+                            onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+                            onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
                             Aller au message
                           </button>
                         </div>
@@ -2808,53 +2810,62 @@ export default function DashboardPage() {
                         ) : bState?.expanded ? (
                           /* Zone bravo expandée */
                           <div>
-                            {bState.loading ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", color: "#64748b", fontSize: 12 }}>
-                                <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400" style={{ flexShrink: 0 }} />
-                                Génération en cours
-                              </div>
-                            ) : bState.editing ? (
+                            {bState.editing ? (
                               <textarea
                                 value={bState.text}
                                 onChange={e => setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], text: e.target.value } }))}
                                 rows={3}
                                 autoFocus
-                                style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.05)", color: "white", padding: "8px 10px", fontSize: 12, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", lineHeight: 1.5, marginBottom: 6 }}
+                                style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "white", padding: "8px 10px", fontSize: 12, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", lineHeight: 1.5, marginBottom: 6 }}
                               />
                             ) : (
-                              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#d4d4d8", lineHeight: 1.6, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 8, padding: "8px 10px" }}>{bState.text}</p>
+                              <p
+                                style={{ margin: "0 0 8px", fontSize: 12, color: "#d4d4d8", lineHeight: 1.6, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", transition: "background 0.15s", cursor: "default" }}
+                                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.07)"}
+                                onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.04)"}
+                              >{bState.text}</p>
                             )}
-                            {!bState.loading && (
-                              <div style={{ display: "flex", gap: 6 }}>
-                                <button
-                                  onClick={() => bState.editing
-                                    ? setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], editing: false } }))
-                                    : setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], expanded: false } }))}
-                                  style={{ flex: 1, height: 30, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                                  Retour
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button
+                                onClick={() => bState.editing
+                                  ? setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], editing: false } }))
+                                  : setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], expanded: false } }))}
+                                style={{ flex: 1, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "background 0.15s" }}
+                                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+                                onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
+                                Retour
+                              </button>
+                              {!bState.editing && !bState.sending && (
+                                <button onClick={() => setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], editing: true } }))}
+                                  style={{ flex: 1, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 11, cursor: "pointer", transition: "background 0.15s" }}
+                                  onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+                                  onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
+                                  Modifier
                                 </button>
-                                {!bState.editing && (
-                                  <button onClick={() => setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], editing: true } }))}
-                                    style={{ flex: 1, height: 30, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", fontSize: 11, cursor: "pointer" }}>
-                                    Modifier
-                                  </button>
-                                )}
-                                <button onClick={() => void sendBravoMessage(selectedPatient.id, bState.text)}
-                                  style={{ flex: 2, height: 30, borderRadius: 8, background: emerald, border: "none", color: "black", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                                  Envoyer
-                                </button>
-                              </div>
-                            )}
+                              )}
+                              <button
+                                onClick={() => { if (!bState.sending) void sendBravoMessage(selectedPatient.id, bState.text); }}
+                                disabled={bState.sending}
+                                style={{ flex: 2, height: 34, borderRadius: 10, background: bState.sending ? "rgba(16,185,129,0.5)" : emerald, border: "none", color: "black", fontSize: 11, fontWeight: 700, cursor: bState.sending ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "background 0.15s" }}>
+                                {bState.sending ? (
+                                  <><span className="h-3 w-3 animate-spin rounded-full border-2 border-black/20 border-t-black/60" style={{ flexShrink: 0 }} />Envoi</>
+                                ) : "Envoyer"}
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           /* Bouton initial */
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <span style={{ fontSize: 12, color: "#64748b", flex: 1 }}>Féliciter {selectedPatient.firstName} pour cette victoire</span>
-                            <button onClick={() => void generateBravo(selectedPatient.id, selectedPatient.latest_victory ?? "")}
-                              style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: "1px solid rgba(16,185,129,0.35)", background: "rgba(16,185,129,0.1)", color: emerald, whiteSpace: "nowrap", transition: "all 0.2s" }}
-                              onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
-                              onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}>
-                              Envoyer un Bravo ✦
+                            <button
+                              onClick={() => void generateBravo(selectedPatient.id, selectedPatient.latest_victory ?? "")}
+                              disabled={bState?.loading}
+                              style={{ height: 34, borderRadius: 10, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: bState?.loading ? "not-allowed" : "pointer", border: "1px solid rgba(16,185,129,0.35)", background: bState?.loading ? "rgba(16,185,129,0.06)" : "rgba(16,185,129,0.1)", color: bState?.loading ? "#64748b" : emerald, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
+                              onMouseEnter={e => { if (!bState?.loading) e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
+                              onMouseLeave={e => { if (!bState?.loading) e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}>
+                              {bState?.loading ? (
+                                <><span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400" style={{ flexShrink: 0 }} />Génération</>
+                              ) : "Générer un Bravo ✦"}
                             </button>
                           </div>
                         )}
@@ -2905,7 +2916,7 @@ export default function DashboardPage() {
                               style={{ height: 30, borderRadius: 8, padding: "0 16px", fontSize: 11, fontWeight: 700, cursor: replyText.trim() && !replySending && !onboardingDemoMode ? "pointer" : "not-allowed", background: replyText.trim() && !replySending && !onboardingDemoMode ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.03)", border: `1px solid ${replyText.trim() && !replySending && !onboardingDemoMode ? "rgba(16,185,129,0.4)" : "rgba(255,255,255,0.06)"}`, color: replyText.trim() && !replySending && !onboardingDemoMode ? emerald : "#374151", transition: "all 0.2s" }}
                               onMouseEnter={e => { if (replyText.trim() && !replySending && !onboardingDemoMode) e.currentTarget.style.background = "rgba(16,185,129,0.25)"; }}
                               onMouseLeave={e => { if (replyText.trim() && !replySending && !onboardingDemoMode) e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}>
-                              {onboardingDemoMode ? "Indisponible en démo" : replySending ? "Envoi…" : "Envoyer →"}
+                              {onboardingDemoMode ? "Indisponible en démo" : replySending ? "Envoi" : "Envoyer →"}
                             </button>
                           </div>
                         )}
@@ -3526,50 +3537,59 @@ export default function DashboardPage() {
                             ) : bState?.expanded ? (
                               /* Zone bravo inline */
                               <div onClick={e => e.stopPropagation()} style={{ marginTop: 8 }}>
-                                {bState.loading ? (
-                                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", color: "#64748b", fontSize: 12 }}>
-                                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400" style={{ flexShrink: 0 }} />
-                                    Génération en cours
-                                  </div>
-                                ) : bState.editing ? (
+                                {bState.editing ? (
                                   <textarea
                                     value={bState.text}
                                     onChange={e => setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], text: e.target.value } }))}
                                     rows={3}
                                     autoFocus
-                                    style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.05)", color: "white", padding: "8px 10px", fontSize: 12, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", lineHeight: 1.5, marginBottom: 6 }}
+                                    style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "white", padding: "8px 10px", fontSize: 12, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", lineHeight: 1.5, marginBottom: 6 }}
                                   />
                                 ) : (
-                                  <p style={{ margin: "0 0 8px", fontSize: 12, color: "#d4d4d8", lineHeight: 1.6, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 8, padding: "8px 10px" }}>{bState.text}</p>
+                                  <p
+                                    style={{ margin: "0 0 8px", fontSize: 12, color: "#d4d4d8", lineHeight: 1.6, background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px", transition: "background 0.15s", cursor: "default" }}
+                                    onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.07)"}
+                                    onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.04)"}
+                                  >{bState.text}</p>
                                 )}
-                                {!bState.loading && (
-                                  <div style={{ display: "flex", gap: 6 }}>
-                                    <button
-                                      onClick={() => bState.editing
-                                        ? setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], editing: false } }))
-                                        : setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], expanded: false } }))}
-                                      style={{ flex: 1, height: 28, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                                      Retour
+                                <div style={{ display: "flex", gap: 6 }}>
+                                  <button
+                                    onClick={() => bState.editing
+                                      ? setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], editing: false } }))
+                                      : setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], expanded: false } }))}
+                                    style={{ flex: 1, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 11, fontWeight: 600, cursor: "pointer", transition: "background 0.15s" }}
+                                    onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+                                    onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
+                                    Retour
+                                  </button>
+                                  {!bState.editing && !bState.sending && (
+                                    <button onClick={() => setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], editing: true } }))}
+                                      style={{ flex: 1, height: 34, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", fontSize: 11, cursor: "pointer", transition: "background 0.15s" }}
+                                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+                                      onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
+                                      Modifier
                                     </button>
-                                    {!bState.editing && (
-                                      <button onClick={() => setBravoState(prev => ({ ...prev, [patient.id]: { ...prev[patient.id], editing: true } }))}
-                                        style={{ flex: 1, height: 28, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", fontSize: 11, cursor: "pointer" }}>
-                                        Modifier
-                                      </button>
-                                    )}
-                                    <button onClick={() => void sendBravoMessage(patient.id, bState.text)}
-                                      style={{ flex: 2, height: 28, borderRadius: 8, background: emerald, border: "none", color: "black", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
-                                      Envoyer
-                                    </button>
-                                  </div>
-                                )}
+                                  )}
+                                  <button
+                                    onClick={() => { if (!bState.sending) void sendBravoMessage(patient.id, bState.text); }}
+                                    disabled={bState.sending}
+                                    style={{ flex: 2, height: 34, borderRadius: 10, background: bState.sending ? "rgba(16,185,129,0.5)" : emerald, border: "none", color: "black", fontSize: 11, fontWeight: 700, cursor: bState.sending ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "background 0.15s" }}>
+                                    {bState.sending ? (
+                                      <><span className="h-3 w-3 animate-spin rounded-full border-2 border-black/20 border-t-black/60" style={{ flexShrink: 0 }} />Envoi</>
+                                    ) : "Envoyer"}
+                                  </button>
+                                </div>
                               </div>
                             ) : (
-                              <button onClick={(e) => { e.stopPropagation(); void generateBravo(patient.id, patient.latest_victory ?? ""); }}
-                                style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: "1px solid rgba(16,185,129,0.35)", background: "rgba(16,185,129,0.1)", color: emerald, transition: "all 0.2s" }}
-                                onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
-                                onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}>
-                                Envoyer un bravo ✦
+                              <button
+                                onClick={(e) => { e.stopPropagation(); void generateBravo(patient.id, patient.latest_victory ?? ""); }}
+                                disabled={bState?.loading}
+                                style={{ height: 34, borderRadius: 10, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: bState?.loading ? "not-allowed" : "pointer", border: "1px solid rgba(16,185,129,0.35)", background: bState?.loading ? "rgba(16,185,129,0.06)" : "rgba(16,185,129,0.1)", color: bState?.loading ? "#64748b" : emerald, display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
+                                onMouseEnter={e => { if (!bState?.loading) e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
+                                onMouseLeave={e => { if (!bState?.loading) e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}>
+                                {bState?.loading ? (
+                                  <><span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400" style={{ flexShrink: 0 }} />Génération</>
+                                ) : "Générer un Bravo ✦"}
                               </button>
                             )}
                           </>
@@ -3993,7 +4013,7 @@ export default function DashboardPage() {
                         setTimeout(() => setPasswordResetSent(false), 5000);
                       }} disabled={passwordResetLoading} style={{ background: "none", border: "none", cursor: passwordResetLoading ? "not-allowed" : "pointer", fontSize: 12, color: "#64748b", textDecoration: "underline", padding: 0, display: "inline-flex", alignItems: "center", gap: 5 }}>
                         {passwordResetLoading && <span style={{ width: 10, height: 10, border: "1.5px solid rgba(100,116,139,0.3)", borderTopColor: "#64748b", borderRadius: "50%", display: "inline-block", animation: "spin 0.7s linear infinite" }} />}
-                        {passwordResetLoading ? "Envoi…" : "Mot de passe oublié ?"}
+                        {passwordResetLoading ? "Envoi" : "Mot de passe oublié ?"}
                       </button>
                     </div>
                     {passwordResetSent && <p style={{ margin: 0, fontSize: 12, color: emerald, textAlign: "center" }}>Lien envoyé à {practitionerEmail}</p>}
