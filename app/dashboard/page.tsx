@@ -2552,11 +2552,15 @@ export default function DashboardPage() {
                   } else if (hasIdentityAlert) {
                     cardBg = "rgba(96,165,250,0.03)"; cardBorder = "rgba(96,165,250,0.18)"; cardShadow = "none";
                   }
-                  // Sous-texte : alerte > victoire > dernier message
+                  // Sous-texte : alerte > victoire (cause, en vert) > dernier message
                   const subText = (activeAlert && patient.emotional_insight)
                     ? patient.emotional_insight
+                    : (victoryFresh && patient.latest_victory)
+                    ? patient.latest_victory
                     : (patient.lastMessage || "Aucun message");
-                  const subColor = activeAlert ? (isRed ? "rgba(244,63,94,0.9)" : "rgba(245,158,11,0.9)") : "#475569";
+                  const subColor = activeAlert
+                    ? (isRed ? "rgba(244,63,94,0.9)" : "rgba(245,158,11,0.9)")
+                    : (victoryFresh && patient.latest_victory ? emerald : "#475569");
                   return (
                     <button key={patient.id} onClick={() => {
                       setSelectedPatientId(patient.id);
@@ -2688,8 +2692,7 @@ export default function DashboardPage() {
                       const victoryFreshBanner = !!(selectedPatient.latest_victory && selectedPatient.victory_detected_at && (Date.now() - new Date(selectedPatient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
                       if (!victoryFreshBanner || hasActiveAlert) return null;
                       return (
-                        <div style={{ background: "rgba(16,185,129,0.05)", borderTop: "1px solid rgba(16,185,129,0.18)", padding: "8px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                          <TrophyIcon size={13} color={emerald} />
+                        <div style={{ background: "rgba(16,185,129,0.06)", borderTop: "1px solid rgba(16,185,129,0.22)", padding: "10px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                           <span style={{ fontSize: 12, fontWeight: 600, color: emerald, flex: 1 }}>
                             🏆 {selectedPatient.firstName} a validé une victoire : {selectedPatient.latest_victory}
                           </span>
@@ -2799,17 +2802,61 @@ export default function DashboardPage() {
                     if (!victoryFreshBottom || hasActiveAlert) return null;
                     const bState = bravoState[selectedPatient.id];
                     return (
-                      <div style={{ borderTop: "1px solid rgba(16,185,129,0.18)", background: "rgba(10,10,12,0.97)", backdropFilter: "blur(12px)", padding: "10px 20px", display: "flex", alignItems: "center", gap: 10 }}>
-                        <span style={{ fontSize: 12, color: "#64748b", flex: 1 }}>Féliciter {selectedPatient.firstName} pour cette victoire</span>
+                      <div style={{ borderTop: "1px solid rgba(16,185,129,0.22)", background: "rgba(8,14,11,0.98)", backdropFilter: "blur(12px)", padding: "12px 20px" }}>
                         {bState?.sent ? (
-                          <CheckCircleSent />
+                          <div style={{ display: "flex", justifyContent: "center" }}><CheckCircleSent /></div>
+                        ) : bState?.expanded ? (
+                          /* Zone bravo expandée */
+                          <div>
+                            {bState.loading ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", color: "#64748b", fontSize: 12 }}>
+                                <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400" style={{ flexShrink: 0 }} />
+                                Génération en cours
+                              </div>
+                            ) : bState.editing ? (
+                              <textarea
+                                value={bState.text}
+                                onChange={e => setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], text: e.target.value } }))}
+                                rows={3}
+                                autoFocus
+                                style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.05)", color: "white", padding: "8px 10px", fontSize: 12, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", lineHeight: 1.5, marginBottom: 6 }}
+                              />
+                            ) : (
+                              <p style={{ margin: "0 0 8px", fontSize: 12, color: "#d4d4d8", lineHeight: 1.6, background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 8, padding: "8px 10px" }}>{bState.text}</p>
+                            )}
+                            {!bState.loading && (
+                              <div style={{ display: "flex", gap: 6 }}>
+                                <button
+                                  onClick={() => bState.editing
+                                    ? setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], editing: false } }))
+                                    : setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], expanded: false } }))}
+                                  style={{ flex: 1, height: 30, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                                  Retour
+                                </button>
+                                {!bState.editing && (
+                                  <button onClick={() => setBravoState(prev => ({ ...prev, [selectedPatient.id]: { ...prev[selectedPatient.id], editing: true } }))}
+                                    style={{ flex: 1, height: 30, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.12)", color: "#94a3b8", fontSize: 11, cursor: "pointer" }}>
+                                    Modifier
+                                  </button>
+                                )}
+                                <button onClick={() => void sendBravoMessage(selectedPatient.id, bState.text)}
+                                  style={{ flex: 2, height: 30, borderRadius: 8, background: emerald, border: "none", color: "black", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>
+                                  Envoyer
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         ) : (
-                          <button onClick={() => void generateBravo(selectedPatient.id, selectedPatient.latest_victory ?? "")}
-                            style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: "1px solid rgba(16,185,129,0.35)", background: "rgba(16,185,129,0.1)", color: emerald, whiteSpace: "nowrap", transition: "all 0.2s" }}
-                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}>
-                            Envoyer un Bravo ✦
-                          </button>
+                          /* Bouton initial */
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ fontSize: 12, color: "#64748b", flex: 1 }}>Féliciter {selectedPatient.firstName} pour cette victoire</span>
+                            <button onClick={() => void generateBravo(selectedPatient.id, selectedPatient.latest_victory ?? "")}
+                              style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: "1px solid rgba(16,185,129,0.35)", background: "rgba(16,185,129,0.1)", color: emerald, whiteSpace: "nowrap", transition: "all 0.2s" }}
+                              onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}>
+                              Envoyer un Bravo ✦
+                            </button>
+                          </div>
                         )}
                       </div>
                     );
@@ -3424,7 +3471,7 @@ export default function DashboardPage() {
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "white", filter: discretMode ? "blur(4px)" : "none" }}>{patient.firstName} {patient.lastName}</p>
                             {patient.emotional_insight && (
-                              <p style={{ margin: "2px 0 0", fontSize: 11, color: hasAlert ? alertColor : (hasVictory ? emerald : "#94a3b8"), fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", filter: discretMode ? "blur(4px)" : "none" }}>
+                              <p style={{ margin: "2px 0 0", fontSize: 11, color: hasAlert ? alertColor : "#94a3b8", fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", filter: discretMode ? "blur(4px)" : "none" }}>
                                 {patient.emotional_insight}
                               </p>
                             )}

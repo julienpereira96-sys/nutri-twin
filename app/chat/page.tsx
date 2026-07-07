@@ -616,6 +616,8 @@ export default function ChatPage() {
   const displayedLenRef = useRef<number>(0);
   const streamDoneRef = useRef<boolean>(false);
   const typewriterRafRef = useRef<number | null>(null);
+  // Supprime l'écho realtime du message assistant qu'on vient de streamer
+  const blockRealtimeAssistantRef = useRef<boolean>(false);
   const hasMessages = messages.filter(m => !m.hidden).length > 0;
   const sidebarWidth = 305;
   const [showToast, setShowToast] = useState(false);
@@ -1109,6 +1111,11 @@ export default function ChatPage() {
           // Ignorer si pas le bon praticien ou pas la session affichée
           if (row.practitioner_id !== practitionerIdFromDb) return;
           if (row.session_id !== currentSessionIdRef.current) return;
+          // Bloquer l'écho realtime pendant et juste après le stream assistant
+          if (row.role === "assistant" && blockRealtimeAssistantRef.current) {
+            blockRealtimeAssistantRef.current = false;
+            return;
+          }
           // Ignorer si déjà présent (envoyé depuis cet appareil)
           setMessages(prev => {
             if (prev.some(m => m.role === row.role && m.content === row.content)) return prev;
@@ -1465,6 +1472,7 @@ export default function ChatPage() {
     const userMsg: ChatMessage = { role: "user", content: trimmed || "📷 Photo", imageUrl: img?.previewUrl, ...(opts?.hidden ? { hidden: true } : {}) };
     const newMessages: ChatMessage[] = [...messages, userMsg];
     const assistantIndex = newMessages.length;
+    blockRealtimeAssistantRef.current = true; // bloquer l'écho realtime pendant le stream
     setMessages([...newMessages, { role: "assistant", content: "" }]);
     setMessage(""); setPendingImage(null); setLoading(true);
     abortControllerRef.current = new AbortController();
@@ -1582,7 +1590,7 @@ export default function ChatPage() {
       if ((err as Error).name !== "AbortError") {
         setMessages(prev => { const u = [...prev]; u[assistantIndex] = { role: "assistant", content: "Impossible de contacter le serveur." }; return u; });
       }
-    } finally { setLoading(false); }
+    } finally { setLoading(false); setTimeout(() => { blockRealtimeAssistantRef.current = false; }, 5000); }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement> | KeyboardEvent<HTMLInputElement>) => {
@@ -2537,7 +2545,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      {sidebarOpen && isMobile && <div
+      {!isTestMode && sidebarOpen && isMobile && <div
         onClick={() => setSidebarOpen(false)}
         onTouchStart={e => { touchStartXRef.current = e.touches[0].clientX; touchStartYRef.current = e.touches[0].clientY; swipeIntentRef.current = null; }}
         onTouchEnd={e => {
@@ -2553,8 +2561,8 @@ export default function ChatPage() {
           zIndex: 20,
         }} />}
 
-      {/* ═══ SIDEBAR ═══ */}
-      <aside style={{
+      {/* ═══ SIDEBAR (masquée en mode test) ═══ */}
+      {!isTestMode && <aside style={{
         // Desktop : width anime 0 ↔ sidebarWidth (dans le flux flex)
         // Mobile  : position fixed, width fixe 80vw, translateX pour ouvrir/fermer
         //           → jamais d'impact sur le layout, le contenu NE BOUGE PAS
@@ -2781,10 +2789,10 @@ export default function ChatPage() {
           </button>
           </div>}{/* /padding-bottom wrapper + isTestMode guard */}
         </div>
-      </aside>
+      </aside>}{/* /isTestMode guard on aside */}
 
       {/* ─── Garde de bord gauche (mobile, sidebar fermée) ─── */}
-      {isMobile && !sidebarOpen && (
+      {!isTestMode && isMobile && !sidebarOpen && (
         <div
           ref={edgeGuardRef}
           style={{
@@ -2824,18 +2832,20 @@ export default function ChatPage() {
 
         <header style={{ background: "rgba(8,14,11,0.75)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", height: 60, display: "flex", alignItems: "center", flexShrink: 0, position: "sticky", top: 0, zIndex: 10 }}>
           <div style={{ flex: 1, padding: isMobile ? "0 16px" : "0 24px", display: "flex", alignItems: "center" }}>
-            {(!sidebarOpen || isMobile) && (
+            {(isTestMode || !sidebarOpen || isMobile) && (
               <>
-                <button onClick={() => setSidebarOpen(v => !v)} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "scale(1)"; }}
-                  onMouseDown={e => { e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
-                  onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
-                  onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.28)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; }}
-                  onTouchEnd={() => {}}>
-                  <MenuIcon size={isMobile ? 16 : 15} />
-                </button>
-                <span style={{ fontSize: 20, fontWeight: 400, fontFamily: "var(--font-jakarta), sans-serif", color: "rgba(255,255,255,0.92)", letterSpacing: "-0.025em", marginLeft: 18, userSelect: "none" }}>
+                {!isTestMode && (
+                  <button onClick={() => setSidebarOpen(v => !v)} style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "scale(1)"; }}
+                    onMouseDown={e => { e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.2)"; }}
+                    onMouseUp={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+                    onTouchStart={e => { navigator.vibrate?.(8); e.currentTarget.style.transform = "scale(0.88)"; e.currentTarget.style.background = "rgba(255,255,255,0.28)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)"; }}
+                    onTouchEnd={() => {}}>
+                    <MenuIcon size={isMobile ? 16 : 15} />
+                  </button>
+                )}
+                <span style={{ fontSize: 20, fontWeight: 400, fontFamily: "var(--font-jakarta), sans-serif", color: "rgba(255,255,255,0.92)", letterSpacing: "-0.025em", marginLeft: isTestMode ? 0 : 18, userSelect: "none" }}>
                   Nutri<strong style={{ fontWeight: 900, color: "#10b981" }}>Twin</strong>
                 </span>
               </>
