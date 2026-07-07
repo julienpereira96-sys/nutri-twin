@@ -2750,8 +2750,9 @@ export default function DashboardPage() {
                       const isPatient = message.role === "user";
                       const isHighlighted = message.id === highlightedMessageId;
                       const selIsRed = selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical";
-                      const highlightColor = selIsRed ? "rgba(244,63,94,0.22)" : "rgba(245,158,11,0.18)";
-                      const highlightOutline = selIsRed ? "rgba(244,63,94,0.5)" : "rgba(245,158,11,0.4)";
+                      const selIsVictory = !selIsRed && !!(selectedPatient.latest_victory && selectedPatient.victory_detected_at && (Date.now() - new Date(selectedPatient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
+                      const highlightColor = selIsRed ? "rgba(244,63,94,0.22)" : selIsVictory ? "rgba(16,185,129,0.22)" : "rgba(245,158,11,0.18)";
+                      const highlightOutline = selIsRed ? "rgba(244,63,94,0.5)" : selIsVictory ? "rgba(16,185,129,0.5)" : "rgba(245,158,11,0.4)";
                       const d = new Date(message.created_at);
                       const now = new Date();
                       const msgDay = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
@@ -2878,9 +2879,11 @@ export default function DashboardPage() {
                               <button
                                 onClick={() => { if (!bState.sending) void sendBravoMessage(selectedPatient.id, bState.text); }}
                                 disabled={bState.sending}
-                                style={{ height: 34, borderRadius: 10, padding: "0 16px", background: bState.sending ? "rgba(16,185,129,0.5)" : emerald, border: "none", color: "black", fontSize: 11, fontWeight: 700, cursor: bState.sending ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, transition: "background 0.15s" }}>
+                                style={{ height: 34, borderRadius: 10, padding: "0 16px", background: bState.sending ? "rgba(16,185,129,0.08)" : "rgba(16,185,129,0.15)", border: `1px solid ${bState.sending ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.4)"}`, color: bState.sending ? "#64748b" : emerald, fontSize: 11, fontWeight: 700, cursor: bState.sending ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
+                                onMouseEnter={e => { if (!bState.sending) e.currentTarget.style.background = "rgba(16,185,129,0.25)"; }}
+                                onMouseLeave={e => { if (!bState.sending) e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}>
                                 {bState.sending ? (
-                                  <><span className="h-3 w-3 animate-spin rounded-full border-2 border-black/20 border-t-black/60" style={{ flexShrink: 0 }} />Envoi</>
+                                  <><span className="h-3 w-3 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400" style={{ flexShrink: 0 }} />Envoi</>
                                 ) : "Envoyer"}
                               </button>
                             </div>
