@@ -257,12 +257,13 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
       WebkitBackdropFilter: "blur(24px)",
       borderRadius: 26,
       border: "none",
-      padding: isCenter ? "18px 16px" : "10px 10px 10px 18px",
+      padding: isCenter ? "12px 12px 12px 18px" : "10px 10px 10px 18px",
+      alignItems: isCenter ? "flex-end" : "center",
       transition: "box-shadow 0.25s",
       boxShadow: focused
         ? "0 6px 36px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08)"
         : "0 4px 24px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.06)",
-      minHeight: isCenter ? 120 : 70,
+      minHeight: isCenter ? 80 : 70,
       gap: 8,
     }}>
       {/* Textarea */}
@@ -275,14 +276,14 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder={pendingImage ? "Votre question…" : "Écrire un message…"}
-          rows={isCenter ? 3 : 1}
+          rows={1}
           spellCheck={false}
           className="chat-input"
           style={{ width: "100%", border: "none", background: "transparent", color: TEXT_PRIMARY, fontSize: 16, outline: "none", caretColor: ACCENT, lineHeight: 1.55, resize: "none", fontFamily: "inherit", display: "block", maxHeight: 160, overflowY: "hidden", padding: 0, touchAction: "auto" }}
         />
       </div>
       {/* Actions — alignés en bas pour suivre la hauteur du textarea */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, paddingBottom: 1 }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 6, flexShrink: 0, paddingBottom: 1 }}>
         {/* Camera */}
         <div style={{ display: "flex", alignItems: "center", gap: 4, overflow: "hidden" }}
           onMouseEnter={() => setPhotoHovered(true)}
@@ -2837,7 +2838,7 @@ export default function ChatPage() {
                 <div style={{ position: "relative", margin: "0 auto 28px", display: "inline-block" }}>
                   <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(16px)" }} />
                   <div style={{ position: "relative", width: 75, height: 75 }}>
-                    <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center", animation: "pulse-ring 2s ease-in-out infinite" }}>
+                    <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <img src="/logo-new.svg" alt="NutriTwin" style={{ width: 36, height: 36 }} />
                     </div>
                   </div>
@@ -2845,26 +2846,23 @@ export default function ChatPage() {
                 <h1 style={{ margin: "0 0 8px", fontSize: isMobile ? 26 : 30, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.5px" }}>
                   {patientFirstName ? `Bonjour ${patientFirstName}` : "Bonjour"}
                 </h1>
-                <p style={{ margin: "0 0 4px", fontSize: isMobile ? 15 : 16, color: TEXT_SECONDARY, lineHeight: 1.7 }}>
-                  Je suis votre compagnon de suivi, créé à partir de l'expertise de votre praticien.
-                </p>
                 <p style={{ margin: "0 0 28px", fontSize: isMobile ? 15 : 16, color: TEXT_SECONDARY, lineHeight: 1.7 }}>
                   {practitionerTutoiement?.toLowerCase().includes("tutoiement") ? "Comment puis-je t'aider aujourd'hui ?" : "Comment puis-je vous aider aujourd'hui ?"}
                 </p>
                 <div style={{ marginBottom: 40 }}>
                   <InputBar isCenter={true} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} isMobile={isMobile} />
                 </div>
-                <p style={{ margin: "0 0 16px", fontSize: 11, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.1em", textTransform: "uppercase" }}>Questions fréquentes</p>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
+                {!isMobile && <p style={{ margin: "0 0 16px", fontSize: 11, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.1em", textTransform: "uppercase" }}>Questions fréquentes</p>}
+                {!isMobile && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
                   {quickActions.map(action => (
                     <button key={action} onClick={() => void send(action)}
-                      style={{ background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, borderRadius: 28, padding: "9px 18px", fontSize: isMobile ? 13 : 14, color: TEXT_SECONDARY, cursor: "pointer", transition: "all 0.25s" }}
+                      style={{ background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, borderRadius: 28, padding: "9px 18px", fontSize: 14, color: TEXT_SECONDARY, cursor: "pointer", transition: "all 0.25s" }}
                       onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.14)"; e.currentTarget.style.color = ACCENT; e.currentTarget.style.borderColor = "rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 6px 16px rgba(16,185,129,0.12)"; }}
                       onMouseLeave={e => { e.currentTarget.style.background = ACCENT_DIM; e.currentTarget.style.color = TEXT_SECONDARY; e.currentTarget.style.borderColor = ACCENT_BORDER; e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = ""; }}>
                       {action}
                     </button>
                   ))}
-                </div>
+                </div>}
 
                 {/* ── Carte PWA — intégrée dans l'écran d'accueil, pas de popup ── */}
                 <div style={{ display: "flex", justifyContent: "center" }}>
