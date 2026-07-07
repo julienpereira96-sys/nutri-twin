@@ -643,6 +643,23 @@ export default function DashboardPage() {
     };
   }, [testMode]);
 
+  // ─── Test mode : mise à jour du dernier message dans la sidebar ──────────
+  // Quand l'iframe /chat?test=true envoie un postMessage après chaque réponse
+  // IA, on met à jour lastMessage du patient concerné en state local, sans
+  // aucun appel API ni refresh complet.
+  useEffect(() => {
+    if (!testMode) return;
+    const handleTestMessage = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if (!e.data || (e.data as { type?: string }).type !== "nutri-twin:new-message") return;
+      const { patientId: pid, content } = e.data as { patientId: string; content: string };
+      if (!pid || !content) return;
+      setPatients(prev => prev.map(p => p.id === pid ? { ...p, lastMessage: content } : p));
+    };
+    window.addEventListener("message", handleTestMessage);
+    return () => window.removeEventListener("message", handleTestMessage);
+  }, [testMode]);
+
   // ═══ ÉTATS PRINCIPAUX ═══
   const [activeTab, setActiveTab] = useState<ActiveTab>("patients");
   const [searchQuery, setSearchQuery] = useState("");

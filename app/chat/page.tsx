@@ -1454,7 +1454,6 @@ export default function ChatPage() {
   const send = async (text?: string, opts?: { hidden?: boolean }) => {
     const trimmed = (text ?? message).trim();
     if ((!trimmed && !pendingImage) || loading) return;
-    console.log("[NutriTwin] send() — patientId:", patientId, "practitionerIdFromDb:", practitionerIdFromDb);
     const img = pendingImage;
     const userMsg: ChatMessage = { role: "user", content: trimmed || "📷 Photo", imageUrl: img?.previewUrl, ...(opts?.hidden ? { hidden: true } : {}) };
     const newMessages: ChatMessage[] = [...messages, userMsg];
@@ -1535,6 +1534,20 @@ export default function ChatPage() {
           u[assistantIndex] = { ...u[assistantIndex], sosTrigger: [exo1, exo2] as [string, string] };
           return u;
         });
+      }
+
+      // ─── Test mode : notifier le dashboard parent du nouveau message IA ───
+      if (isTestMode && typeof window !== "undefined" && window.parent !== window && patientId) {
+        const visibleReply = fullText
+          .replace(/\|\|\|[\s\S]*?\|\|\|/g, "")
+          .replace(/\[TRIGGER_SOS:[^\]]*\]/g, "")
+          .trim();
+        if (visibleReply) {
+          window.parent.postMessage(
+            { type: "nutri-twin:new-message", patientId, content: visibleReply },
+            window.location.origin
+          );
+        }
       }
     } catch (err) {
       // ─── Abort ou erreur réseau : stopper le typewriter ───
