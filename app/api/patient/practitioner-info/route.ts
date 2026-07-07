@@ -1,30 +1,16 @@
-import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { getSessionUser } from "@/lib/api-auth";
 
 /**
  * GET /api/patient/practitioner-info
  * Retourne le plan et le nom du praticien lié au patient authentifié.
+ * Supporte l'auth par cookie ET par Bearer token (mode test).
  * Utilise la service role key pour bypasser les RLS sur la table practitioners.
  */
 export async function GET() {
-  // Auth patient via session cookie (clé anon)
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll(); },
-        setAll(list) {
-          list.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
-        },
-      },
-    }
-  );
-
-  const { data: { user } } = await supabase.auth.getUser();
+  // Auth patient — supporte cookie SSR ET Bearer token (mode test)
+  const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
   // Service role — bypass RLS pour lire practitioners

@@ -875,6 +875,20 @@ export default function ChatPage() {
           if (!testHistData) {
             const { data: defaultHist } = await testSupabase.from("conversations").select("role, content, created_at").eq("patient_id", pid).eq("practitioner_id", practId).is("session_id", null).eq("practitioner_only", false).order("created_at", { ascending: true });
             testHistData = defaultHist;
+
+            // Fallback : si aucune conversation sans session_id, charger la session la plus récente
+            if (!testHistData?.length) {
+              const { data: lastSession } = await testSupabase.from("conversations_sessions").select("id").eq("patient_id", pid).eq("practitioner_id", practId).order("last_message_at", { ascending: false }).limit(1).single();
+              const lastSessionId = (lastSession as { id?: string } | null)?.id;
+              if (lastSessionId) {
+                const { data: sessionHist } = await testSupabase.from("conversations").select("role, content, created_at").eq("patient_id", pid).eq("practitioner_id", practId).eq("session_id", lastSessionId).order("created_at", { ascending: true });
+                if (sessionHist?.length) {
+                  testHistData = sessionHist;
+                  setCurrentSessionId(lastSessionId);
+                  sessionStorage.setItem("nt_session_id", lastSessionId);
+                }
+              }
+            }
           }
           if (testHistData?.length) setMessages(testHistData as ChatMessage[]);
         }
@@ -934,6 +948,20 @@ export default function ChatPage() {
         if (!histData) {
           const { data: defaultHist } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", data.user.id).eq("practitioner_id", practId).is("session_id", null).eq("practitioner_only", false).order("created_at", { ascending: true });
           histData = defaultHist;
+
+          // Fallback : si aucune conversation sans session_id, charger la session la plus récente
+          if (!histData?.length) {
+            const { data: lastSession } = await supabase.from("conversations_sessions").select("id").eq("patient_id", data.user.id).eq("practitioner_id", practId).order("last_message_at", { ascending: false }).limit(1).single();
+            const lastSessionId = (lastSession as { id?: string } | null)?.id;
+            if (lastSessionId) {
+              const { data: sessionHist } = await supabase.from("conversations").select("role, content, created_at").eq("patient_id", data.user.id).eq("practitioner_id", practId).eq("session_id", lastSessionId).order("created_at", { ascending: true });
+              if (sessionHist?.length) {
+                histData = sessionHist;
+                setCurrentSessionId(lastSessionId);
+                sessionStorage.setItem("nt_session_id", lastSessionId);
+              }
+            }
+          }
         }
         if (histData?.length) {
           setMessages(histData as ChatMessage[]);
@@ -1384,7 +1412,12 @@ export default function ChatPage() {
     if (!patientId || !practitionerIdFromDb) return null;
     const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     const { data } = await supabase.from("conversations_sessions").insert({ patient_id: patientId, practitioner_id: practitionerIdFromDb, title: firstMessage.slice(0, 40) + (firstMessage.length > 40 ? "..." : ""), last_message: firstMessage, last_message_at: new Date().toISOString() }).select().single();
-    return (data as { id: string } | null)?.id ?? null;
+    const id = (data as { id: string } | null)?.id ?? null;
+    if (id) {
+      setCurrentSessionId(id);
+      sessionStorage.setItem("nt_session_id", id);
+    }
+    return id;
   };
 
   const loadSession = async (sessionId: string) => {
@@ -1463,8 +1496,14 @@ export default function ChatPage() {
     displayedLenRef.current = 0;
     streamDoneRef.current = false;
 
+    // ─── Créer une session au premier message (mode normal uniquement) ───
+    let effectiveSessionId = currentSessionId;
+    if (!effectiveSessionId && !isTestMode && patientId && practitionerIdFromDb) {
+      effectiveSessionId = await createSession(trimmed || "Photo");
+    }
+
     try {
-      const body: Record<string, string | undefined> = { message: trimmed || "Analyse cette photo", patientId: patientId ?? undefined, practitionerId: practitionerIdFromDb ?? undefined, sessionId: currentSessionId ?? undefined };
+      const body: Record<string, string | undefined> = { message: trimmed || "Analyse cette photo", patientId: patientId ?? undefined, practitionerId: practitionerIdFromDb ?? undefined, sessionId: effectiveSessionId ?? undefined };
       if (img) { body.imageBase64 = img.base64; body.imageMimeType = img.mimeType; }
       const res = await tFetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: abortControllerRef.current.signal });
       if (!res.ok) {

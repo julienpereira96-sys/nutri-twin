@@ -596,6 +596,7 @@ export default function DashboardPage() {
   const realPatientsRef = useRef<RealPatient[]>([]);
   const realSelectedIdRef = useRef<string | null>(null);
   const [testIframeKey, setTestIframeKey] = useState("test-chat-0");
+  const [testPatientsLoading, setTestPatientsLoading] = useState(false);
   // Modal ajout patient test (3 étapes)
   const [showAddTestPatientModal, setShowAddTestPatientModal] = useState(false);
   const [addTestPatientStep, setAddTestPatientStep] = useState(1);
@@ -1142,7 +1143,7 @@ export default function DashboardPage() {
       .select("patient_id")
       .eq("practitioner_id", pid);
 
-    if (!relations || relations.length === 0) { setPatients([]); setSelectedPatientId(null); return; }
+    if (!relations || relations.length === 0) { setPatients([]); setSelectedPatientId(null); setTestPatientsLoading(false); return; }
     const patientIds = relations.map(r => r.patient_id as string);
 
     const baseSelect = "user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, is_test, motivation, defi, notes, aliments_detestes";
@@ -1161,6 +1162,7 @@ export default function DashboardPage() {
     if (!testPatients || testPatients.length === 0) {
       setPatients([]);
       setSelectedPatientId(null);
+      setTestPatientsLoading(false);
       return;
     }
 
@@ -1228,6 +1230,7 @@ export default function DashboardPage() {
     const activeId = activeTestUserId ?? mapped[0]?.id ?? null;
     setSelectedPatientId(activeId);
     if (activeId) setTestIframeKey(`test-chat-${activeId}`);
+    setTestPatientsLoading(false);
   }, [supabase]);
 
   // Swap patients quand testMode change
@@ -1236,9 +1239,14 @@ export default function DashboardPage() {
     if (testMode) {
       realPatientsRef.current = patients;
       realSelectedIdRef.current = selectedPatientId;
+      // Effacer immédiatement les vrais patients pour un retour visuel instantané
+      setPatients([]);
+      setSelectedPatientId(null);
+      setTestPatientsLoading(true);
       void loadTestPatients(practitionerId);
     } else {
       // Restaurer les vrais patients
+      setTestPatientsLoading(false);
       setPatients(realPatientsRef.current);
       setSelectedPatientId(realSelectedIdRef.current ?? (realPatientsRef.current[0]?.id ?? null));
     }
@@ -5461,7 +5469,14 @@ export default function DashboardPage() {
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
-        {patients.length === 0 ? (
+        {testPatientsLoading ? (
+          // Chargement en cours — afficher l'iframe immédiatement en parallèle
+          <iframe
+            src="/chat?test=true"
+            style={{ flex: 1, border: "none", width: "100%" }}
+            key="test-chat-loading"
+          />
+        ) : patients.length === 0 ? (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 32, textAlign: "center" }}>
             <div style={{ width: 60, height: 60, borderRadius: "50%", background: "rgba(16,185,129,0.10)", border: "1px solid rgba(16,185,129,0.20)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, flexShrink: 0 }}>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
