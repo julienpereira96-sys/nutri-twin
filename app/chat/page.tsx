@@ -2805,7 +2805,7 @@ export default function ChatPage() {
         <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
 
           {/* Fade haut */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 72, background: "linear-gradient(to bottom, #0b0f0d 0%, transparent 100%)", pointerEvents: "none", zIndex: 5 }} />
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 40, background: "linear-gradient(to bottom, #0b0f0d 0%, transparent 100%)", pointerEvents: "none", zIndex: 5 }} />
 
           <main ref={scrollContainerRef} style={{ height: "100%", overflowY: "auto", overscrollBehaviorX: "none", display: "flex", flexDirection: "column" }}
           onScroll={e => {
@@ -2879,7 +2879,7 @@ export default function ChatPage() {
           )}
 
           {hasMessages && (
-            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? `${pendingImage ? 180 : 100}px 16px ${pendingImage ? 180 : 100}px` : "80px 36px 24px" }}>
+            <div style={{ flex: isMobile ? 1 : undefined, padding: isMobile ? `${pendingImage ? 180 : 100}px 16px ${pendingImage ? 180 : 100}px` : "48px 36px 24px" }}>
               <div style={{ maxWidth: 680, margin: "0 auto", display: "flex", flexDirection: "column", gap: 28, touchAction: "auto" }}>
                 {visibleMessages.map((msg, index) => {
                   const isUser = msg.role === "user";
