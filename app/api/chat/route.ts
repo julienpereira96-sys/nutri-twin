@@ -801,14 +801,7 @@ JSON TECHNIQUE OBLIGATOIRE - À ajouter en toute fin de réponse, après le text
 - notable : true si ce message révèle quelque chose cliniquement utile à signaler au praticien (émotion significative, tension, progression, régression, victoire, changement de dynamique). false si échange de routine (question nutritionnelle banale, logistique, rappel de règles). En cas de doute, préfère false.
 - victory : UNE phrase courte UNIQUEMENT si le patient rapporte une réussite TCC concrète (ex: résister à une fringale, écouter sa satiété, gérer une envie de crise sans craquer, reprendre après un écart sans culpabilité). Exemples : "A écouté sa satiété ce soir", "A résisté à la fringale du soir", "A repris sans culpabilité après l'écart". Vide "" sinon.
   IMPORTANT : le simple fait d'avoir terminé un exercice de relaxation/respiration/marche/ancrage en routine ou en prévention n'est PAS une victoire, même si le patient se dit content ou apaisé. Ne remplis "victory" que si l'exercice (ou l'échange) a permis d'éviter, d'interrompre ou de traverser une crise réelle (alimentaire, anxieuse, compulsive) qui était en cours ou imminente. Engagement/régularité ≠ victoire clinique.
-- apaisement : "oui" UNIQUEMENT si le patient exprime un retour au calme réel après une détresse exprimée dans cette même conversation (ex : "je me sens mieux", "ça va mieux", "j'ai soufflé", "je suis plus calme", "ça m'a aidé"). Ne jamais mettre "oui" si aucune détresse n'a été exprimée avant dans la conversation, ni sur un simple "ça va" sans contexte de crise, ni si l'amélioration reste incertaine ou partielle. "non" par défaut.
-
-RÈGLE TRIGGER_SOS (post-chat uniquement) :
-Si et seulement si le patient exprime une détresse aiguë (compulsion alimentaire en cours et incontrôlable, crise d'anxiété sévère, pensées intrusives incontrôlables, sentiment de perte de contrôle imminente), ajoute à la toute fin de ta réponse, après le JSON technique, ce tag EXACTEMENT :
-[TRIGGER_SOS: exo_1, exo_2]
-Remplace exo_1 et exo_2 par les deux exercices les plus adaptés à la situation parmi : breathing, ancrage, manger, ecriture, defusion
-N'utilise ce tag QUE pour une détresse aiguë réelle — JAMAIS pour une simple pensée négative, une frustration passagère, un écart alimentaire sans crise, ou une difficulté ordinaire.
-Le tag ne doit jamais apparaître dans le texte visible de ta réponse — place-le uniquement après le bloc |||json|||.`;
+- apaisement : "oui" UNIQUEMENT si le patient exprime un retour au calme réel après une détresse exprimée dans cette même conversation (ex : "je me sens mieux", "ça va mieux", "j'ai soufflé", "je suis plus calme", "ça m'a aidé"). Ne jamais mettre "oui" si aucune détresse n'a été exprimée avant dans la conversation, ni sur un simple "ça va" sans contexte de crise, ni si l'amélioration reste incertaine ou partielle. "non" par défaut.`;
 }
 
 function getDefaultPrompt(): string {

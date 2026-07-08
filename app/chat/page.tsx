@@ -26,8 +26,6 @@ type ChatMessage = {
   content: string;
   imageUrl?: string;
   hidden?: boolean;
-  /** Set when Gemini detected acute distress — two exercise IDs to offer */
-  sosTrigger?: [string, string];
   /** role "widget" — carte de notification "Exercice SOS terminé" */
   sosSummary?: SosSummary;
 };
@@ -442,15 +440,6 @@ const OnboardingTour = ({ step, firstName, onNext, onSkip, isMobile }: Onboardin
       </div>
     </div>
   );
-};
-
-// Labels courts pour les boutons [TRIGGER_SOS] dans le chat
-const SOS_EXERCISE_META: Record<string, { label: string; icon: string }> = {
-  breathing:        { label: "Calmer mon souffle",         icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" },
-  ancrage:          { label: "Ancrer mes 5 sens",          icon: "M12 2a10 10 0 100 20A10 10 0 0012 2zm0 2a8 8 0 110 16A8 8 0 0112 4zm0 3a5 5 0 100 10A5 5 0 0012 7zm0 2a3 3 0 110 6A3 3 0 0112 9z" },
-  manger:           { label: "Manger en pleine conscience", icon: "M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z" },
-  defusion:         { label: "Prendre de la distance",     icon: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" },
-  ecriture:         { label: "Écrire pour me libérer",     icon: "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" },
 };
 
 // ═══ BIBLIOTHÈQUE D'EXERCICES — accès direct, hors situation de crise ═══
@@ -1326,21 +1315,6 @@ export default function ChatPage() {
     // devenu mort depuis que les 5 exercices ont leur propre écran immersif).
   }, [patientId, practitionerIdFromDb]);
 
-  // ─── Parcours Post-Chat (Cas A) ─────────────────────────────────────────────
-  // Déclenché quand le patient clique sur un bouton [TRIGGER_SOS] dans le chat.
-  // Extrait les 6 derniers échanges comme contexte personnalisé → ouvre l'exercice.
-  const handleChatSosTrigger = useCallback((toolId: string) => {
-    // Build a context string from the last 6 visible messages
-    const visible = messages.filter(m => !m.hidden && m.role !== "widget");
-    const recentMessages = visible.slice(-6);
-    const contextLines = recentMessages.map(m => {
-      const roleLabel = m.role === "user" ? "Patient" : "Jumeau";
-      return `${roleLabel}: ${m.content.slice(0, 300)}`;
-    });
-    const sosContext = `[contexte chat récent]\n${contextLines.join("\n")}`;
-    void handleToolSelect(toolId, sosContext);
-  }, [messages, handleToolSelect]);
-
   const sendHidden = async (msg: string) => {
     if (!patientId || !practitionerIdFromDb) return;
     try { await tFetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: msg, patientId, practitionerId: practitionerIdFromDb, sessionId: currentSessionId ?? undefined }) }); }
@@ -1531,7 +1505,6 @@ export default function ChatPage() {
         fullText += decoder.decode(value, { stream: true });
         const visible = fullText
           .replace(/\|\|\|[\s\S]*?\|\|\|/g, "")
-          .replace(/\[TRIGGER_SOS:[^\]]*\]/g, "")
           .trim();
         targetTextRef.current = visible;
       }
@@ -1559,23 +1532,10 @@ export default function ChatPage() {
         } catch { /* silencieux */ }
       }
 
-      // ─── TRIGGER_SOS : détresse aiguë détectée par Gemini ───
-      const sosTriggerMatch = fullText.match(/\[TRIGGER_SOS:\s*(\w+),\s*(\w+)\]/);
-      if (sosTriggerMatch && !activeTool) {
-        const exo1 = sosTriggerMatch[1].trim();
-        const exo2 = sosTriggerMatch[2].trim();
-        setMessages(prev => {
-          const u = [...prev];
-          u[assistantIndex] = { ...u[assistantIndex], sosTrigger: [exo1, exo2] as [string, string] };
-          return u;
-        });
-      }
-
       // ─── Test mode : notifier le dashboard parent du nouveau message IA ───
       if (isTestMode && typeof window !== "undefined" && window.parent !== window && patientId) {
         const visibleReply = fullText
           .replace(/\|\|\|[\s\S]*?\|\|\|/g, "")
-          .replace(/\[TRIGGER_SOS:[^\]]*\]/g, "")
           .trim();
         if (visibleReply) {
           window.parent.postMessage(
@@ -2973,30 +2933,6 @@ export default function ChatPage() {
                             <div style={{ padding: isMobile ? "4px 2px" : "4px 0", background: "transparent", border: isActiveMatch ? `1px solid rgba(16,185,129,0.25)` : "none", borderRadius: isActiveMatch ? 14 : 0, paddingLeft: isActiveMatch ? 14 : 0, color: "rgba(255,255,255,0.95)", fontSize: 15, lineHeight: 1.8, transition: "all 0.3s" }}>
                               {msg.content}
                             </div>
-                            {msg.sosTrigger && (
-                              <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
-                                <p style={{ margin: "0 0 6px", fontSize: 12, color: "rgba(255,255,255,0.38)", letterSpacing: "0.04em", textTransform: "uppercase", fontWeight: 600 }}>
-                                  Un exercice pourrait t&apos;aider maintenant
-                                </p>
-                                {msg.sosTrigger.map(toolId => {
-                                  const meta = SOS_EXERCISE_META[toolId];
-                                  if (!meta) return null;
-                                  return (
-                                    <button key={toolId}
-                                      onClick={() => handleChatSosTrigger(toolId)}
-                                      style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 14, background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.15)", cursor: "pointer", textAlign: "left", transition: "all 0.2s", width: "100%" }}
-                                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.09)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-                                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.04)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.15)"; e.currentTarget.style.transform = "translateY(0)"; }}>
-                                      <div style={{ width: 32, height: 32, borderRadius: 10, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="rgba(16,185,129,0.9)"><path d={meta.icon}/></svg>
-                                      </div>
-                                      <span style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.85)" }}>{meta.label}</span>
-                                      <svg style={{ marginLeft: "auto", flexShrink: 0, opacity: 0.4 }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
                           </>
                         )}
                       </div>

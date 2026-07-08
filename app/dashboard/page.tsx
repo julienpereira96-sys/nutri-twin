@@ -234,58 +234,13 @@ const DEMO_RAPPORT_BY_PATIENT: Record<string, { synthese: string; patterns: stri
   },
 };
 
-const ONBOARDING_STEPS = [
-  { id: "welcome", title: "Bienvenue sur votre dashboard", text: "Votre jumeau numérique est désormais prêt à prendre le relais entre vos séances. Découvrez les différentes fonctionnalités disponibles au sein de votre cabinet numérique.", highlight: null, tooltipSide: null as null },
-  { id: "patients", title: "Vos patients", text: "Ici s'affichent vos patients triés par niveau d'urgence émotionnelle. Cliquez sur l'un d'eux pour voir sa conversation en temps réel.", highlight: "patients", tooltipSide: "right" as const },
-  { id: "radar", title: "Le Radar de Résilience", text: "Le Radar trie vos patients par niveau d'urgence émotionnelle. Ne consacrez votre énergie qu'à ceux qui en ont réellement besoin, l'IA s'occupe du reste.", highlight: "radar", tooltipSide: "bottom" as const },
-  { id: "murmure", title: "Le Murmure", text: "C'est votre ligne directe avec votre jumeau. Une instruction, et il adapte immédiatement son approche avec ce patient.", highlight: "murmure", tooltipSide: "left" as const },
-  { id: "rapport", title: "Le Rapport mensuel", text: "Chaque mois, votre jumeau génère un rapport complet pour préparer vos consultations. Un gain de temps considérable.", highlight: "rapport", tooltipSide: "left" as const },
-  { id: "invite", title: "Inviter un patient", text: "Tout est prêt. Envoyez le lien à votre premier patient et votre jumeau prend le relais immédiatement.", highlight: "invite", tooltipSide: "right" as const },
-];
-
-const TOUR_ACCENT: Record<string, string> = { patients: "#10b981", radar: "#f43f5e", murmure: "#10b981", rapport: "#818cf8", invite: "#10b981" };
-const TOUR_ACCENT_RGB: Record<string, string> = { patients: "16,185,129", radar: "244,63,94", murmure: "16,185,129", rapport: "129,140,248", invite: "16,185,129" };
-
-const TourUsersIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-  </svg>
-);
-const TourRadarIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="#f43f5e" fillOpacity="0.4"/>
-  </svg>
-);
-const TourMicIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-  </svg>
-);
-const TourChartIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
-    <line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/>
-  </svg>
-);
-const TourAddUserIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/>
-    <line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
-  </svg>
-);
-const TOUR_ICONS: Record<string, React.ReactNode> = {
-  patients: <TourUsersIcon />, radar: <TourRadarIcon />, murmure: <TourMicIcon />,
-  rapport: <TourChartIcon />, invite: <TourAddUserIcon />,
-};
-
 type OnboardingProps = {
   practitionerName: string;
   onSkip: () => void;
+  onTestMode: () => void;
 };
 
-const OnboardingTour = ({ practitionerName, onSkip }: Omit<OnboardingProps, "step" | "onNext" | "onBack">) => {
+const OnboardingTour = ({ practitionerName, onSkip, onTestMode }: OnboardingProps) => {
   const [visible, setVisible] = useState(false);
   const firstName = (practitionerName.split(" ")[0] || practitionerName).trim();
 
@@ -298,41 +253,71 @@ const OnboardingTour = ({ practitionerName, onSkip }: Omit<OnboardingProps, "ste
     <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(4px)" }} />
       <div style={{
-        position: "relative", zIndex: 1, width: "100%", maxWidth: 480, margin: "0 24px",
-        background: "#0d0d0d", borderRadius: 24, padding: "44px 40px",
+        position: "relative", zIndex: 1, width: "100%", maxWidth: 448, margin: "0 24px",
+        background: "#0b0f0d", borderRadius: 22, padding: "44px 40px 40px",
         border: "1px solid rgba(16,185,129,0.18)",
-        boxShadow: "0 40px 120px rgba(0,0,0,0.9), 0 0 80px rgba(16,185,129,0.12), 0 0 200px rgba(16,185,129,0.06)",
         opacity: visible ? 1 : 0, transform: visible ? "scale(1) translateY(0)" : "scale(0.97) translateY(8px)",
         transition: "opacity 0.35s ease, transform 0.35s ease",
-        fontFamily: "Inter, sans-serif",
+        fontFamily: "Inter, sans-serif", overflow: "hidden",
       }}>
-        {/* Green glow top accent */}
-        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 200, height: 2, background: "linear-gradient(90deg, transparent, rgba(16,185,129,0.6), transparent)", borderRadius: 2 }} />
-        <div style={{ textAlign: "center", fontSize: 40, marginBottom: 16, lineHeight: 1 }}>🌿</div>
-        <h1 style={{ margin: "0 0 16px", fontSize: 28, fontWeight: 800, color: "white", textAlign: "center", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
+        {/* Accent vert haut */}
+        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 110, height: 2, background: "#10b981", borderRadius: "0 0 3px 3px", opacity: 0.85 }} />
+
+        {/* Logo mark */}
+        <div style={{ width: 54, height: 54, borderRadius: 15, background: "rgba(16,185,129,0.09)", border: "1px solid rgba(16,185,129,0.18)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/>
+            <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+          </svg>
+        </div>
+
+        {/* Titre */}
+        <h1 style={{ margin: "0 0 16px", fontSize: 23, fontWeight: 700, color: "white", textAlign: "center", lineHeight: 1.25, letterSpacing: "-0.025em" }}>
           Bienvenue sur votre<br />Dashboard, {firstName}&nbsp;!
         </h1>
-        <p style={{ margin: "0 0 10px", fontSize: 14, color: "#a1a1aa", textAlign: "center", lineHeight: 1.7 }}>
-          Votre cabinet numérique est prêt. Avant d'inviter vos premiers patients, découvrez l'expérience depuis leur perspective grâce au <strong style={{ color: "#d4d4d8" }}>mode test</strong>.
+
+        {/* Sous-titre */}
+        <p style={{ margin: "0 0 36px", fontSize: 14, fontWeight: 500, color: "#10b981", textAlign: "center", letterSpacing: "0.01em" }}>
+          Votre cabinet numérique est prêt
         </p>
-        <div style={{ margin: "0 0 28px", padding: "14px 16px", borderRadius: 12, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", textAlign: "left" }}>
-          <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>Comment ça marche ?</p>
-          <p style={{ margin: 0, fontSize: 12, color: "#71717a", lineHeight: 1.6 }}>
-            Le mode test ouvre le chat côte à côte avec votre dashboard. Écrivez comme si vous étiez un patient — vous verrez en temps réel comment l'IA répond et comment votre dashboard se met à jour.
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: 12 }}>
-          <button onClick={onSkip}
-            style={{ flex: 1, height: 48, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#71717a", fontSize: 14, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "#a1a1aa"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#71717a"; }}>
-            Plus tard
+
+        {/* Séparateur */}
+        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 0 24px" }} />
+
+        {/* Corps */}
+        <p style={{ margin: "0 0 32px", fontSize: 13.5, color: "rgba(255,255,255,0.46)", lineHeight: 1.8, textAlign: "center" }}>
+          Avant d&apos;inviter vos premiers patients, découvrez l&apos;expérience depuis leur perspective grâce au{" "}
+          <strong style={{ color: "rgba(255,255,255,0.82)", fontWeight: 500 }}>mode test</strong>.{" "}
+          Écrivez comme si vous étiez un patient. Vous verrez en temps réel les réponses de votre{" "}
+          <strong style={{ color: "rgba(255,255,255,0.82)", fontWeight: 500 }}>Jumeau Numérique</strong>{" "}
+          ainsi que l&apos;actualisation en direct de votre dashboard.
+        </p>
+
+        {/* Boutons */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          <button
+            onClick={onTestMode}
+            style={{ width: "100%", height: 52, borderRadius: 13, background: "#10b981", border: "none", color: "white", fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: "0.01em", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "background 0.2s" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#0ea472"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "#10b981"; }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="3" width="20" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/>
+            </svg>
+            Accéder au mode test
           </button>
-          <button onClick={onSkip}
-            style={{ flex: 2, height: 48, borderRadius: 12, background: "linear-gradient(135deg, #10b981, #059669)", border: "none", color: "white", fontSize: 14, fontWeight: 700, cursor: "pointer", transition: "all 0.2s", fontFamily: "Inter, sans-serif", boxShadow: "0 4px 20px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.15)", letterSpacing: "0.01em" }}
-            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.5), inset 0 1px 0 rgba(255,255,255,0.15)"; }}
-            onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(16,185,129,0.3), inset 0 1px 0 rgba(255,255,255,0.15)"; }}>
-            Accéder au dashboard →
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "12px 0" }}>
+            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
+            <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 12, letterSpacing: "0.04em", fontFamily: "Inter, sans-serif" }}>ou</span>
+            <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
+          </div>
+
+          <button
+            onClick={onSkip}
+            style={{ width: "100%", height: 45, borderRadius: 13, background: "transparent", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.36)", fontSize: 13.5, cursor: "pointer", fontFamily: "Inter, sans-serif", transition: "all 0.2s" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.16)"; e.currentTarget.style.color = "rgba(255,255,255,0.55)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; e.currentTarget.style.color = "rgba(255,255,255,0.36)"; }}>
+            Accéder au dashboard
           </button>
         </div>
       </div>
@@ -2405,7 +2390,11 @@ export default function DashboardPage() {
     }}>
 
       {showOnboarding && (
-        <OnboardingTour practitionerName={practitionerName} onSkip={handleOnboardingSkip} />
+        <OnboardingTour
+          practitionerName={practitionerName}
+          onSkip={handleOnboardingSkip}
+          onTestMode={() => { handleOnboardingSkip(); setTestMode(true); }}
+        />
       )}
 
       {/* ═══ HEADER ═══ */}
@@ -2583,8 +2572,8 @@ export default function DashboardPage() {
                     cardBg = "rgba(96,165,250,0.03)"; cardBorder = "rgba(96,165,250,0.18)"; cardShadow = "none";
                   }
                   // Sous-texte : alerte > victoire (cause, en vert) > dernier message
-                  const subText = (activeAlert && patient.emotional_insight)
-                    ? patient.emotional_insight
+                  const subText = activeAlert
+                    ? (patient.emotional_insight || "Alerte en cours…")
                     : (victoryFresh && patient.latest_victory)
                     ? patient.latest_victory
                     : (patient.lastMessage || "Aucun message");
