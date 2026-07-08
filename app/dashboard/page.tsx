@@ -287,10 +287,9 @@ const OnboardingTour = ({ practitionerName, onSkip, onTestMode }: OnboardingProp
 
         {/* Corps */}
         <p style={{ margin: "0 0 28px", fontSize: 13.5, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, textAlign: "center" }}>
-          Écrivez comme si vous étiez un patient.<br />
-          Voyez en temps réel les réponses de votre{" "}
+          Avant d&apos;inviter vos premiers patients, découvrez l&apos;expérience de leur point de vue grâce au mode test. Échangez avec votre{" "}
           <strong style={{ color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>Jumeau Numérique</strong>{" "}
-          ainsi que l&apos;actualisation en direct de votre dashboard.
+          comme si vous étiez un patient : vous verrez ses réponses et l&apos;actualisation de votre tableau de bord se synchroniser en temps réel.
         </p>
 
         {/* Boutons */}
@@ -298,7 +297,7 @@ const OnboardingTour = ({ practitionerName, onSkip, onTestMode }: OnboardingProp
           {/* Bouton mode test — style carte dashboard */}
           <button
             onClick={onTestMode}
-            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 14, padding: "13px 16px", borderRadius: 14, background: "linear-gradient(135deg, rgba(16,185,129,0.14), rgba(16,185,129,0.05))", border: "1px solid rgba(16,185,129,0.22)", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 12px rgba(0,0,0,0.3)", fontFamily: "Inter, sans-serif" }}
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", borderRadius: 14, background: "linear-gradient(135deg, rgba(16,185,129,0.14), rgba(16,185,129,0.05))", border: "1px solid rgba(16,185,129,0.22)", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 12px rgba(0,0,0,0.3)", fontFamily: "Inter, sans-serif" }}
             onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.24), rgba(16,185,129,0.10))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.14), rgba(16,185,129,0.05))"; e.currentTarget.style.transform = "translateY(0)"; }}>
             <div style={{ width: 40, height: 40, borderRadius: 11, background: "transparent", border: "1.5px solid rgba(16,185,129,0.55)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -324,7 +323,7 @@ const OnboardingTour = ({ practitionerName, onSkip, onTestMode }: OnboardingProp
           {/* Bouton dashboard — ghost */}
           <button
             onClick={onSkip}
-            style={{ width: "100%", height: 46, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.38)", fontSize: 14, cursor: "pointer", fontFamily: "Inter, sans-serif", transition: "all 0.2s" }}
+            style={{ width: "100%", height: 46, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.38)", fontSize: 14, cursor: "pointer", fontFamily: "Inter, sans-serif", transition: "all 0.2s", textAlign: "left", paddingLeft: 70 }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.16)"; e.currentTarget.style.color = "rgba(255,255,255,0.6)"; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; e.currentTarget.style.color = "rgba(255,255,255,0.38)"; }}>
             Accéder au dashboard
