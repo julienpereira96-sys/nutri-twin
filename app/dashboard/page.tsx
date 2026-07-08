@@ -299,19 +299,19 @@ const OnboardingTour = ({ practitionerName, onSkip, onTestMode }: OnboardingProp
           {/* Bouton mode test — style carte dashboard */}
           <button
             onClick={onTestMode}
-            style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", borderRadius: 14, background: "linear-gradient(135deg, rgba(16,185,129,0.14), rgba(16,185,129,0.05))", border: "1px solid rgba(16,185,129,0.22)", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 12px rgba(0,0,0,0.3)", fontFamily: "Inter, sans-serif" }}
+            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 14, padding: "13px 16px", borderRadius: 14, background: "linear-gradient(135deg, rgba(16,185,129,0.14), rgba(16,185,129,0.05))", border: "1px solid rgba(16,185,129,0.22)", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 12px rgba(0,0,0,0.3)", fontFamily: "Inter, sans-serif" }}
             onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.24), rgba(16,185,129,0.10))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.14), rgba(16,185,129,0.05))"; e.currentTarget.style.transform = "translateY(0)"; }}>
-            <div style={{ width: 40, height: 40, borderRadius: 11, background: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 11, background: "transparent", border: "1.5px solid rgba(16,185,129,0.55)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               {/* Fiole / beaker — évoque le test */}
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 3h6"/><path d="M10 3v7l-5 8.5A1 1 0 0 0 6 20h12a1 1 0 0 0 .9-1.5L14 10V3"/>
                 <path d="M8.5 16h7"/>
               </svg>
             </div>
             <div style={{ textAlign: "left" }}>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#10b981" }}>Accéder au mode test</p>
-              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#475569" }}>Découvrir l&apos;expérience patient</p>
+              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#475569" }}>Écrivez comme si vous étiez un patient et voyez en temps réel…</p>
             </div>
           </button>
 
