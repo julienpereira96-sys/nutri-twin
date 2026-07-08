@@ -287,9 +287,8 @@ const OnboardingTour = ({ practitionerName, onSkip, onTestMode }: OnboardingProp
 
         {/* Corps */}
         <p style={{ margin: "0 0 28px", fontSize: 13.5, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, textAlign: "center" }}>
-          Avant d&apos;inviter vos premiers patients, découvrez l&apos;expérience depuis leur perspective grâce au{" "}
-          <strong style={{ color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>mode test</strong>.{" "}
-          Écrivez comme si vous étiez un patient. Vous verrez en temps réel les réponses de votre{" "}
+          Écrivez comme si vous étiez un patient.<br />
+          Voyez en temps réel les réponses de votre{" "}
           <strong style={{ color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>Jumeau Numérique</strong>{" "}
           ainsi que l&apos;actualisation en direct de votre dashboard.
         </p>
@@ -311,7 +310,7 @@ const OnboardingTour = ({ practitionerName, onSkip, onTestMode }: OnboardingProp
             </div>
             <div style={{ textAlign: "left" }}>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#10b981" }}>Accéder au mode test</p>
-              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#475569" }}>Écrivez comme si vous étiez un patient et voyez en temps réel…</p>
+              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#475569" }}>Découvrir l&apos;expérience patient</p>
             </div>
           </button>
 
