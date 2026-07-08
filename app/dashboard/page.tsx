@@ -253,26 +253,27 @@ const OnboardingTour = ({ practitionerName, onSkip, onTestMode }: OnboardingProp
     <div style={{ position: "fixed", inset: 0, zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(4px)" }} />
       <div style={{
-        position: "relative", zIndex: 1, width: "100%", maxWidth: 448, margin: "0 24px",
-        background: "#0b0f0d", borderRadius: 22, padding: "44px 40px 40px",
+        position: "relative", zIndex: 1, width: "100%", maxWidth: 480, margin: "0 24px",
+        background: "#0d0d0d", borderRadius: 24, padding: "44px 40px",
         border: "1px solid rgba(16,185,129,0.18)",
+        boxShadow: "0 40px 120px rgba(0,0,0,0.9), 0 0 80px rgba(16,185,129,0.12), 0 0 200px rgba(16,185,129,0.06)",
         opacity: visible ? 1 : 0, transform: visible ? "scale(1) translateY(0)" : "scale(0.97) translateY(8px)",
         transition: "opacity 0.35s ease, transform 0.35s ease",
-        fontFamily: "Inter, sans-serif", overflow: "hidden",
+        fontFamily: "Inter, sans-serif",
       }}>
-        {/* Accent vert haut */}
-        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 110, height: 2, background: "#10b981", borderRadius: "0 0 3px 3px", opacity: 0.85 }} />
+        {/* Ligne verte haut */}
+        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 200, height: 2, background: "linear-gradient(90deg, transparent, rgba(16,185,129,0.6), transparent)", borderRadius: 2 }} />
 
-        {/* Logo mark */}
-        <div style={{ width: 54, height: 54, borderRadius: 15, background: "rgba(16,185,129,0.09)", border: "1px solid rgba(16,185,129,0.18)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/>
-            <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
-          </svg>
+        {/* Logo — cercle lumineux identique à la page login */}
+        <div style={{ position: "relative", width: 75, height: 75, margin: "0 auto 20px" }}>
+          <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(16px)" }} />
+          <div style={{ position: "relative", width: 75, height: 75, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <img src="/logo-new.svg" alt="" style={{ width: 36, height: 36 }} />
+          </div>
         </div>
 
         {/* Titre */}
-        <h1 style={{ margin: "0 0 16px", fontSize: 23, fontWeight: 700, color: "white", textAlign: "center", lineHeight: 1.25, letterSpacing: "-0.025em" }}>
+        <h1 style={{ margin: "0 0 16px", fontSize: 28, fontWeight: 800, color: "white", textAlign: "center", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
           Bienvenue sur votre<br />Dashboard, {firstName}&nbsp;!
         </h1>
 
@@ -282,41 +283,51 @@ const OnboardingTour = ({ practitionerName, onSkip, onTestMode }: OnboardingProp
         </p>
 
         {/* Séparateur */}
-        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 0 24px" }} />
+        <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 0 22px" }} />
 
         {/* Corps */}
-        <p style={{ margin: "0 0 32px", fontSize: 13.5, color: "rgba(255,255,255,0.46)", lineHeight: 1.8, textAlign: "center" }}>
+        <p style={{ margin: "0 0 28px", fontSize: 13.5, color: "rgba(255,255,255,0.5)", lineHeight: 1.8, textAlign: "center" }}>
           Avant d&apos;inviter vos premiers patients, découvrez l&apos;expérience depuis leur perspective grâce au{" "}
-          <strong style={{ color: "rgba(255,255,255,0.82)", fontWeight: 500 }}>mode test</strong>.{" "}
+          <strong style={{ color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>mode test</strong>.{" "}
           Écrivez comme si vous étiez un patient. Vous verrez en temps réel les réponses de votre{" "}
-          <strong style={{ color: "rgba(255,255,255,0.82)", fontWeight: 500 }}>Jumeau Numérique</strong>{" "}
+          <strong style={{ color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>Jumeau Numérique</strong>{" "}
           ainsi que l&apos;actualisation en direct de votre dashboard.
         </p>
 
         {/* Boutons */}
         <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          {/* Bouton mode test — style carte dashboard */}
           <button
             onClick={onTestMode}
-            style={{ width: "100%", height: 52, borderRadius: 13, background: "#10b981", border: "none", color: "white", fontSize: 14, fontWeight: 700, cursor: "pointer", letterSpacing: "0.01em", fontFamily: "Inter, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "background 0.2s" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#0ea472"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "#10b981"; }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="2" y="3" width="20" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/>
-            </svg>
-            Accéder au mode test
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", borderRadius: 14, background: "linear-gradient(135deg, rgba(16,185,129,0.14), rgba(16,185,129,0.05))", border: "1px solid rgba(16,185,129,0.22)", cursor: "pointer", transition: "all 0.2s", boxShadow: "0 2px 12px rgba(0,0,0,0.3)", fontFamily: "Inter, sans-serif" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.24), rgba(16,185,129,0.10))"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.14), rgba(16,185,129,0.05))"; e.currentTarget.style.transform = "translateY(0)"; }}>
+            <div style={{ width: 40, height: 40, borderRadius: 11, background: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {/* Fiole / beaker — évoque le test */}
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 3h6"/><path d="M10 3v7l-5 8.5A1 1 0 0 0 6 20h12a1 1 0 0 0 .9-1.5L14 10V3"/>
+                <path d="M8.5 16h7"/>
+              </svg>
+            </div>
+            <div style={{ textAlign: "left" }}>
+              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#10b981" }}>Accéder au mode test</p>
+              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#475569" }}>Découvrir l&apos;expérience patient</p>
+            </div>
           </button>
 
+          {/* ou */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "12px 0" }}>
             <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
-            <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 12, letterSpacing: "0.04em", fontFamily: "Inter, sans-serif" }}>ou</span>
+            <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 12, letterSpacing: "0.04em", fontFamily: "Inter, sans-serif" }}>ou</span>
             <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
           </div>
 
+          {/* Bouton dashboard — ghost */}
           <button
             onClick={onSkip}
-            style={{ width: "100%", height: 45, borderRadius: 13, background: "transparent", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.36)", fontSize: 13.5, cursor: "pointer", fontFamily: "Inter, sans-serif", transition: "all 0.2s" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.16)"; e.currentTarget.style.color = "rgba(255,255,255,0.55)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; e.currentTarget.style.color = "rgba(255,255,255,0.36)"; }}>
+            style={{ width: "100%", height: 46, borderRadius: 12, background: "transparent", border: "1px solid rgba(255,255,255,0.09)", color: "rgba(255,255,255,0.38)", fontSize: 14, cursor: "pointer", fontFamily: "Inter, sans-serif", transition: "all 0.2s" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.16)"; e.currentTarget.style.color = "rgba(255,255,255,0.6)"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)"; e.currentTarget.style.color = "rgba(255,255,255,0.38)"; }}>
             Accéder au dashboard
           </button>
         </div>
