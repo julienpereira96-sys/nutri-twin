@@ -179,24 +179,29 @@ function isCriticalKeyword(message: string): boolean {
 function hasBehavioralSignal(message: string): boolean {
   const lower = message.toLowerCase();
   return [
-    // Détresse émotionnelle active
-    "j'en peux plus", "je craque", "c'est trop dur", "à bout", "plus la force",
+    // Détresse émotionnelle active — racines courtes pour attraper toutes les variantes
+    "j'en peux plus", "je n'en peux plus", "je craque", "j'ai craqué", "craqué ce soir",
+    "c'est trop dur", "à bout", "plus la force", "trop difficile",
     "j'ai tout foiré", "j'ai échoué", "je me dégoûte", "honte de moi",
     "j'arrive plus", "je n'arrive plus", "déprimée", "déprimé",
-    "je pleure", "je n'en peux plus", "c'est trop difficile",
-    // TCA / perte de contrôle alimentaire
-    "crise de boulimie", "binge", "hyperphagie", "j'ai tout mangé",
-    "j'ai craqué", "je contrôle plus", "j'ai mangé en cachette",
-    "pu m'arrêter", "plus m'arrêter", "j'ai vomi", "j'ai tout vomi",
-    "laxatif", "je veux pas manger", "j'arrive pas à manger",
-    "je mange plus", "je mange rien", "je mange pas",
-    "je me purge",
+    "je pleure", "j'ai pleuré",
+    // TCA / perte de contrôle alimentaire — on capture la racine du verbe
+    "crise de boulimie", "binge", "hyperphagie",
+    "j'ai tout mangé", "j'ai mangé tout", "mangé tout ce que",
+    "dévalisé", "vidé le frigo", "tout le frigo", "le frigo entier",
+    "mangé sans m'arrêter", "pu m'arrêter", "plus m'arrêter", "pas pu résister",
+    "perte de contrôle", "je contrôle plus", "j'ai perdu le contrôle",
+    "j'ai mangé en cachette", "compulsion", "compulsif", "compulsive",
+    "j'ai vomi", "j'ai tout vomi", "je me purge", "laxatif",
+    "je veux pas manger", "j'arrive pas à manger",
+    "je mange plus", "je mange rien", "je mange pas", "je ne mange pas",
+    "grosse crise", "mauvaise soirée", "horrible soirée",
     // Automutilation / comportemental
     "je me fais du mal", "me couper", "me blesser",
     // Désespoir / abandon
     "à quoi ça sert", "rien ne sert", "aucun espoir",
     "tout abandonner", "j'abandonne", "je renonce",
-    "dégoût de moi", "je suis nulle", "je suis nul",
+    "dégoût de moi", "je suis nulle", "je suis nul", "nulle à rien",
   ].some(kw => lower.includes(kw));
 }
 
@@ -208,36 +213,89 @@ function getCriticalResponseType(message: string): string {
   return "suicide";
 }
 
-// ═══ ANALYSE CRISE LLM (garde-fou principal) ═══
-// Appelé en parallèle du build de prompt principal pour chaque message non-vital.
+// ═══ ANALYSE CRISE LLM (classificateur parallèle enrichi) ═══
+// Architecture : lancé en parallèle du stream principal (Promise.all), sans barrière
+// regex. Contexte enrichi : 5 derniers messages + état émotionnel patient + victoire
+// récente. Détecte aussi les victoires et les signaux d'apaisement pour réduire les
+// angles morts du JSON principal (ironie, double-victoire, apaisement de façade…).
+type PatientStateContext = {
+  emotional_status: string;
+  emotional_insight: string;
+  latest_victory: string | null;
+  victory_detected_at: string | null;
+};
+
 type CrisisAnalysis = {
   level: "red_critical" | "red_behavioral" | "none";
   murmure: string;
+  victory: string;
+  apaisement: boolean;
 };
 
-async function analyzeCrisisWithLLM(message: string, patientContext: string): Promise<CrisisAnalysis> {
+async function analyzeCrisisWithLLM(
+  message: string,
+  patientContext: string,
+  recentMessages: { role: string; content: string }[] = [],
+  patientState?: PatientStateContext
+): Promise<CrisisAnalysis> {
   try {
-    const prompt = `Tu es un détecteur de crise pour un suivi nutritionnel. Analyse ce message d'un patient.
+    const conversationContext = recentMessages.length > 0
+      ? recentMessages.map(m => `${m.role === "user" ? "Patient" : "Jumeau"}: ${m.content.slice(0, 200)}`).join("\n")
+      : "Aucun historique disponible.";
 
-CONTEXTE PATIENT :
-${patientContext.slice(0, 500)}
+    const minutesSinceLastVictory = patientState?.victory_detected_at
+      ? Math.round((Date.now() - new Date(patientState.victory_detected_at).getTime()) / 60000)
+      : null;
 
-MESSAGE : "${message}"
+    const stateBlock = patientState ? `
+ÉTAT ACTUEL DU PATIENT :
+- Statut émotionnel : ${patientState.emotional_status}
+- Note clinique : ${patientState.emotional_insight || "Aucune"}
+- Dernière victoire : ${patientState.latest_victory || "Aucune"}${minutesSinceLastVictory !== null ? ` (il y a ${minutesSinceLastVictory} min)` : ""}
+` : "";
 
-Réponds UNIQUEMENT en JSON sans markdown :
-- level :
-  "red_critical" si intention suicidaire/urgence vitale explicite ou fortement implicite (mots-clés : en finir, me tuer, suicide).
-  "red_behavioral" uniquement si le patient exprime une détresse émotionnelle active, une perte de contrôle alimentaire immédiate (crise d'hyperphagie, boulimie en cours/récente), ou un sentiment de dégoût profond de soi ("je me dégoûte", "j'ai tout foiré").
-  ATTENTION : renvoie "none" si le message est une question théorique, informative, ou l'utilisation d'une question prédéfinie de l'interface (ex: "Comment résister à une fringale ?").
-  "none" sinon.
-- murmure : phrase courte (max 15 mots) pour le praticien si level != none, "" sinon.
+    const prompt = `Tu es un classificateur médical dédié pour un suivi nutritionnel. Analyse le message du patient en tenant compte du contexte.
+${stateBlock}
+PROFIL PATIENT (extrait) :
+${patientContext.slice(0, 400)}
 
-{"level":"none","murmure":""}`;
+DERNIERS ÉCHANGES :
+${conversationContext}
 
-    const raw = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 100, temperature: 0 });
-    return JSON.parse(raw.replace(/```json|```/g, "").trim()) as CrisisAnalysis;
+NOUVEAU MESSAGE DU PATIENT : "${message}"
+
+Réponds UNIQUEMENT en JSON strict, sans markdown ni commentaire :
+{"level":"...","murmure":"...","victory":"...","apaisement":false}
+
+RÈGLES LEVEL :
+- "red_critical" : intention suicidaire ou urgence vitale EXPLICITE dans ce message.
+- "red_behavioral" : exprimé à la 1ère personne, temps présent ou très récent (ce soir, aujourd'hui, là maintenant) ; détresse émotionnelle active OU perte de contrôle alimentaire (crise TCA, frigo dévalisé, ingestion sans contrôle, compulsion) ; dégoût profond de soi en ce moment. JAMAIS pour : questions théoriques/éducatives, récit à la 3e personne, événements anciens, formulations au futur ou hypothétiques.
+- "none" : tout le reste.
+
+RÈGLES VICTORY (renseigner uniquement si TOUTES les conditions sont réunies) :
+- Réussite concrète et NOUVELLE dans CE message, absente des échanges précédents
+- Statut actuel différent de "red_behavioral"
+- Dernière victoire notée différente (pas le même sujet dans les 30 dernières minutes)
+- Formulation certaine (pas future ou hypothétique), non-ironique, non-sarcastique
+- 1 phrase courte décrivant la réussite (ex : "A tenu ses apports cibles toute la semaine")
+- Si une condition manque : chaîne vide ""
+
+RÈGLES APAISEMENT :
+- true : soulagement physiologique ou émotionnel EXPLICITE et personnel ("je me sens mieux", "ça va mieux", "je suis plus calme maintenant")
+- false : messages courts de fermeture ("ok", "merci", "à bientôt"), politesse sans contenu émotionnel, amélioration relative vague
+
+{"level":"none","murmure":"","victory":"","apaisement":false}`;
+
+    const raw = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 150, temperature: 0 });
+    const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as CrisisAnalysis;
+    return {
+      level: parsed.level ?? "none",
+      murmure: parsed.murmure ?? "",
+      victory: parsed.victory ?? "",
+      apaisement: !!parsed.apaisement,
+    };
   } catch {
-    return { level: "none", murmure: "" };
+    return { level: "none", murmure: "", victory: "", apaisement: false };
   }
 }
 
@@ -1166,7 +1224,7 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       // On conserve le résultat COMPLET (level + murmure) pour alimenter
       // emotional_insight avec un motif précis, comme le fait isPostExercise.
       const sosIntakeCrisisAnalysis: CrisisAnalysis = isCriticalKeyword(trimmedMessage)
-        ? { level: "red_critical", murmure: "" }
+        ? { level: "red_critical", murmure: "", victory: "", apaisement: false }
         : await analyzeCrisisWithLLM(trimmedMessage, "Patient en pleine séance SOS (exercice de respiration guidée), phrase prononcée pendant l'intake vocal.");
       const level = sosIntakeCrisisAnalysis.level;
 
@@ -1357,15 +1415,28 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     // Récupérer statut actuel du patient
     const supabaseMain = createSupabaseClient();
     let currentEmotionalStatus = "green";
+    let patientStateForClassifier: PatientStateContext = {
+      emotional_status: "green",
+      emotional_insight: "",
+      latest_victory: null,
+      victory_detected_at: null,
+    };
 
     if (patientId) {
       const { data: patientStatus } = await supabaseMain
         .from("patients")
-        .select("emotional_status")
+        .select("emotional_status, emotional_insight, latest_victory, victory_detected_at")
         .eq("user_id", patientId)
         .single();
       if (patientStatus) {
-        currentEmotionalStatus = (patientStatus as { emotional_status?: string }).emotional_status ?? "green";
+        const ps = patientStatus as { emotional_status?: string; emotional_insight?: string; latest_victory?: string; victory_detected_at?: string };
+        currentEmotionalStatus = ps.emotional_status ?? "green";
+        patientStateForClassifier = {
+          emotional_status: currentEmotionalStatus,
+          emotional_insight: ps.emotional_insight ?? "",
+          latest_victory: ps.latest_victory ?? null,
+          victory_detected_at: ps.victory_detected_at ?? null,
+        };
       }
     }
 
@@ -1374,12 +1445,32 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     // Flag pour éviter de créer deux admin_alerts comportementaux (détection précoce + Gemini JSON)
     let earlyBehavioralDetected = false;
 
-    // Paralléliser : profil patient + documents + analyse crise LLM
+    // Paralléliser : profil patient + 5 derniers messages pour le classificateur
     const profileResult = patientId ? getPatientProfile(patientId) : Promise.resolve({ context: "", pathologies: undefined });
-    // Pre-filtre regex : bypass analyzeCrisisWithLLM si aucun signal comportemental détecté
-    const crisisPromise = (message && patientId && hasBehavioralSignal(message))
-      ? profileResult.then(p => analyzeCrisisWithLLM(message, p.context))
-      : Promise.resolve<CrisisAnalysis>({ level: "none", murmure: "" });
+
+    // Derniers échanges pour enrichir le contexte du classificateur (léger, pas de résumé)
+    const recentForClassifierPromise: Promise<{ role: string; content: string }[]> = (patientId && practitionerId)
+      ? (async () => {
+        try {
+          const r = await supabaseMain
+            .from("conversations")
+            .select("role, content")
+            .eq("patient_id", patientId)
+            .eq("practitioner_id", practitionerId)
+            .order("created_at", { ascending: false })
+            .limit(5);
+          return ((r.data as { role: string; content: string }[] | null) ?? []).reverse();
+        } catch {
+          return [] as { role: string; content: string }[];
+        }
+      })()
+      : Promise.resolve([] as { role: string; content: string }[]);
+
+    // Classificateur — toujours lancé, sans barrière regex (contexte enrichi : messages + état patient)
+    const crisisPromise = (message && patientId)
+      ? Promise.all([profileResult, recentForClassifierPromise])
+        .then(([p, recent]) => analyzeCrisisWithLLM(message, p.context, recent, patientStateForClassifier))
+      : Promise.resolve<CrisisAnalysis>({ level: "none", murmure: "", victory: "", apaisement: false });
 
     const [{ context: patientContext, pathologies: patientPathologies }, crisisAnalysis] = await Promise.all([
       profileResult,
@@ -1533,11 +1624,30 @@ Max 150 mots. Sans markdown.`;
             if (parsed.notable === true || parsed.status !== "green") {
               emotionalInsight = parsed.reason;
             }
-            victoryText = parsed.victory ?? "";
-            apaisementConfirme = parsed.apaisement === "oui";
+            // Victoire : classificateur en priorité (contexte enrichi + règles précises),
+            // JSON Gemini principal en supplément si le classificateur n'a rien détecté
+            victoryText = crisisAnalysis.victory || (parsed.victory ?? "");
+            // Apaisement : l'un ou l'autre signal suffit
+            apaisementConfirme = crisisAnalysis.apaisement || parsed.apaisement === "oui";
             if (parsed.action) adminAlert = { action: parsed.action, alert_type: parsed.alert_type };
           } catch { /* silencieux */ }
           fullText = fullText.replace(/\|\|\|[\s\S]*?\|\|\|/, "").trim();
+        } else {
+          // Pas de bloc JSON Gemini (image, réponse courte, échec) → classificateur seul
+          victoryText = crisisAnalysis.victory;
+          apaisementConfirme = crisisAnalysis.apaisement;
+        }
+
+        // ── Gardes victoire ────────────────────────────────────────────────────────
+        // 1) Pas de victoire si le patient est en vulnérabilité comportementale
+        // 2) Dédup : pas de double-victoire si la précédente date de moins de 30 min
+        //    (le classificateur a déjà cette règle dans son prompt, mais le JSON Gemini
+        //    principal n'a pas ce contexte — la garde code-side est le filet de sécurité)
+        const lastVictoryAt = patientStateForClassifier.victory_detected_at;
+        const victoryTooRecent = !!lastVictoryAt
+          && (Date.now() - new Date(lastVictoryAt).getTime()) < 30 * 60 * 1000;
+        if (currentEmotionalStatus === "red_behavioral" || victoryTooRecent) {
+          victoryText = "";
         }
 
         // ═══ Résolution apaisement — uniquement piloté par Gemini ═══
