@@ -2568,7 +2568,7 @@ export default function ChatPage() {
                 if (isMobile) setSidebarOpen(false);
               }}
               disabled={sosLoading || emotionalStatus === "red_critical" || !patientId || !practitionerIdFromDb}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 11, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.28)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 20px", borderRadius: 11, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.28)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}
               onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(6,182,212,0.14)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.45)"; } }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(6,182,212,0.08)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.28)"; }}>
               {sosLoading
