@@ -2586,18 +2586,18 @@ export default function ChatPage() {
 
           {/* ═══ EXERCICES ═══ */}
           <p style={{ margin: "0 4px 8px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Exercices</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 14 }}>
             {LIBRARY_EXERCISES.map(ex => (
               <button key={ex.id}
                 onClick={() => { void handleToolSelect(ex.id, "Bibliothèque", emotionalStatus === "red_behavioral" ? undefined : "pratique"); if (isMobile) setSidebarOpen(false); }}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 12, background: "transparent", border: "1px solid transparent", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}
+                style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderRadius: 10, background: "transparent", border: "1px solid transparent", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}>
-                <div style={{ width: 30, height: 30, borderRadius: 8, background: ex.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {(LIBRARY_EXERCISE_ICONS[ex.id] ?? ((c: string) => <IconStar size={16} color={c} />))(ex.iconColor)}
+                <div style={{ width: 28, height: 28, borderRadius: 7, background: ex.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  {(LIBRARY_EXERCISE_ICONS[ex.id] ?? ((c: string) => <IconStar size={14} color={c} />))(ex.iconColor)}
                 </div>
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: TEXT_PRIMARY, flex: 1 }}>{ex.label}</p>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.25 }}><path d="M9 18l6-6-6-6" stroke={TEXT_MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.25 }}><path d="M9 18l6-6-6-6" stroke={TEXT_MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
             ))}
           </div>
