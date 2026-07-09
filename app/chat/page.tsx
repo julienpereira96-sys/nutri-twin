@@ -1884,7 +1884,7 @@ export default function ChatPage() {
                       const ia = new Uint8Array(ab);
                       for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
                       const blob = new Blob([ab], { type: "image/jpeg" });
-                      await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "no-store" });
+                      await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "3600" });
                       lastSelfUploadAtRef.current = Date.now();
                       const newAvatarVersion = new Date().toISOString();
                       localStorage.setItem(`avatar_upload_ts_${patientId}`, String(Date.now()));
