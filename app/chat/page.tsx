@@ -915,7 +915,7 @@ export default function ChatPage() {
           console.error("[NutriTwin] /api/conversations FAILED", histRes.status, await histRes.text().catch(() => ""));
         }
       }
-      const { data: pat } = await supabase.from("patients").select("first_name, last_name, onboarding_done, emotional_status, practitioner_pinned_message").eq("user_id", data.user.id).single();
+      const { data: pat } = await supabase.from("patients").select("first_name, last_name, onboarding_done, emotional_status, practitioner_pinned_message, avatar_updated_at").eq("user_id", data.user.id).single();
       if (pat) {
         const p = pat as { first_name?: string; last_name?: string; onboarding_done?: boolean };
         if (p.first_name) setPatientFirstName(p.first_name);
@@ -932,15 +932,18 @@ export default function ChatPage() {
         const userId = data.user.id;
         const cachedB64 = localStorage.getItem(`avatar_b64_${userId}`);
         if (cachedB64) setPatientPhoto(cachedB64);
-        // 2. Vérifier Supabase en arrière-plan pour sync cross-device
-        // Sauf si cet appareil vient d'uploader (CDN stale pendant ~30s)
-        const uploadTs = parseInt(localStorage.getItem(`avatar_upload_ts_${userId}`) ?? "0", 10);
-        const justUploaded = Date.now() - uploadTs < 30_000;
-        if (!justUploaded) {
+        // 2. Comparer la version DB (avatar_updated_at) avec la version locale
+        // Si elles correspondent → la b64 en cache est à jour, pas besoin de toucher le CDN
+        // Si elles divergent → autre appareil a uploadé, on re-fetch avec le timestamp DB comme cache-buster
+        const dbAvatarVersion = (p as { avatar_updated_at?: string | null }).avatar_updated_at ?? null;
+        const cachedVersion = localStorage.getItem(`avatar_version_${userId}`);
+        const versionMatch = dbAvatarVersion && cachedVersion === dbAvatarVersion;
+        if (!versionMatch) {
           try {
             const { data: photoData } = supabase.storage.from("Avatars").getPublicUrl(`${userId}/avatar.jpg`);
-            if (photoData) {
-              const freshUrl = photoData.publicUrl + "?t=" + Date.now();
+            if (photoData && dbAvatarVersion) {
+              // Utiliser avatar_updated_at comme cache-buster (stable, pas Date.now())
+              const freshUrl = photoData.publicUrl + "?t=" + encodeURIComponent(dbAvatarVersion);
               const res = await fetch(freshUrl);
               if (res.ok) {
                 const blob = await res.blob();
@@ -949,10 +952,14 @@ export default function ChatPage() {
                   const b64 = reader.result as string;
                   setPatientPhoto(b64);
                   localStorage.setItem(`avatar_b64_${userId}`, b64);
+                  localStorage.setItem(`avatar_version_${userId}`, dbAvatarVersion);
                 };
                 reader.readAsDataURL(blob);
-              } else if (!cachedB64) {
+              } else {
+                // Photo supprimée ou inexistante
                 setPatientPhoto(null);
+                localStorage.removeItem(`avatar_b64_${userId}`);
+                localStorage.removeItem(`avatar_version_${userId}`);
               }
             }
           } catch {
@@ -1879,8 +1886,10 @@ export default function ChatPage() {
                       const blob = new Blob([ab], { type: "image/jpeg" });
                       await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "no-store" });
                       lastSelfUploadAtRef.current = Date.now();
+                      const newAvatarVersion = new Date().toISOString();
                       localStorage.setItem(`avatar_upload_ts_${patientId}`, String(Date.now()));
-                      await supabase.from("patients").update({ avatar_updated_at: new Date().toISOString() }).eq("user_id", patientId);
+                      localStorage.setItem(`avatar_version_${patientId}`, newAvatarVersion);
+                      await supabase.from("patients").update({ avatar_updated_at: newAvatarVersion }).eq("user_id", patientId);
                     } catch { /* silencieux */ }
                     setUploadingPhoto(false);
                     if (patientAvatarRef.current) patientAvatarRef.current.value = "";
@@ -1897,6 +1906,7 @@ export default function ChatPage() {
                     localStorage.removeItem(`avatar_b64_${patientId}`);
                     lastSelfUploadAtRef.current = Date.now();
                     localStorage.setItem(`avatar_upload_ts_${patientId}`, String(Date.now()));
+                    localStorage.removeItem(`avatar_version_${patientId}`);
                     setPatientPhoto(null);
                     await supabase.from("patients").update({ avatar_updated_at: new Date().toISOString() }).eq("user_id", patientId);
                   }}

@@ -273,7 +273,7 @@ const OnboardingTour = ({ practitionerName, onSkip, onTestMode }: OnboardingProp
         </div>
 
         {/* Titre */}
-        <h1 style={{ margin: "0 0 16px", fontSize: 28, fontWeight: 800, color: "white", textAlign: "center", lineHeight: 1.2, letterSpacing: "-0.02em" }}>
+        <h1 style={{ margin: "0 0 16px", fontSize: 19, fontWeight: 800, color: "white", textAlign: "center", lineHeight: 1.35, letterSpacing: "0.04em", textTransform: "uppercase" }}>
           Bienvenue sur votre<br />Dashboard, {firstName}&nbsp;!
         </h1>
 
