@@ -364,7 +364,7 @@ const OnboardingTour = ({ firstName, onDone }: OnboardingProps) => {
 
         {/* Titre */}
         <h1 style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 800, color: "white", textAlign: "center", letterSpacing: "0.04em", lineHeight: 1.35, textTransform: "uppercase" }}>
-          Bienvenue dans votre espace,<br />{firstName}&nbsp;!
+          Bienvenue dans votre<br />espace, {firstName}&nbsp;!
         </h1>
 
         {/* Corps */}
