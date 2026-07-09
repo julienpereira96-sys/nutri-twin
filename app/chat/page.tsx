@@ -314,129 +314,132 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
   );
 };
 
-// ═══ ONBOARDING TOUR ═══
-const onboardingSteps: {
-  id: string;
-  highlight: string | null;
-  icon: React.ReactNode;
-  title: string;
-  text: string;
-  position: "center" | "sidebar" | "bottom";
-  glowColor?: string;
-}[] = [
-  {
-    id: "welcome",
-    highlight: null,
-    icon: <LeafIcon size={18} color={ACCENT} />,
-    title: "Bienvenue",
-    text: "Je suis votre compagnon de suivi, créé à partir de l'expertise de votre praticien. Laissez-moi vous montrer vos outils en quelques secondes.",
-    position: "center" as const,
-  },
-  {
-    id: "sos",
-    highlight: "sos",
-    icon: <IconActivity size={18} color={ACCENT} />,
-    title: "Mon Soutien",
-    text: "Ce bouton est votre ancre immédiate en cas de tempête. Fringale, stress, coup de mou — une aide guidée vous attend en un clic. Je ne vous laisserai jamais seul(e).",
-    position: "sidebar" as const,
-    glowColor: "rgba(16,185,129,0.4)",
-  },
-  {
-    id: "camera",
-    highlight: "camera",
-    icon: <CameraIcon size={18} color={ACCENT} />,
-    title: "Analyse visuelle",
-    text: "Partagez une photo — repas, étiquette, menu, produit. Accompagnez-la de votre question et je l'analyserai en tenant compte de votre profil.",
-    position: "bottom" as const,
-    glowColor: "rgba(16,185,129,0.4)",
-  },
-  {
-    id: "chat",
-    highlight: null,
-    icon: <IconThought size={18} color={ACCENT} />,
-    title: "La conversation",
-    text: "Ici, nous discutons de tout, comme si vous étiez au cabinet. Posez vos questions, partagez vos doutes. Je reste là, disponible pour vous.",
-    position: "center" as const,
-  },
-];
-
+// ═══ ONBOARDING TOUR PATIENT ═══
 type OnboardingProps = {
-  step: number;
   firstName: string;
-  onNext: () => void;
-  onSkip: () => void;
-  isMobile: boolean;
+  onDone: () => void;
 };
 
-const OnboardingTour = ({ step, firstName, onNext, onSkip, isMobile }: OnboardingProps) => {
-  const current = onboardingSteps[step];
-  const isLast = step === onboardingSteps.length - 1;
-  const isFirst = step === 0;
+const OnboardingTour = ({ firstName, onDone }: OnboardingProps) => {
+  const [visible, setVisible] = useState(false);
+  const [os, setOs] = useState<"ios" | "android">("ios");
 
-  const getBubblePosition = () => {
-    if (current.position === "center") return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
-    if (current.position === "sidebar") return isMobile
-      ? { bottom: 100, left: "50%", transform: "translateX(-50%)" }
-      : { top: 200, left: 325, transform: "none" };
-    if (current.position === "bottom") return isMobile
-      ? { bottom: 100, left: "50%", transform: "translateX(-50%)" }
-      : { bottom: 110, right: 80, transform: "none" };
-    return { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
-  };
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), 80);
+    const ua = navigator.userAgent;
+    if (/android/i.test(ua)) setOs("android");
+    return () => clearTimeout(t);
+  }, []);
+
+  const StepIcon = ({ children }: { children: React.ReactNode }) => (
+    <div style={{ width: 32, height: 32, borderRadius: 9, background: "rgba(16,185,129,0.10)", border: "1px solid rgba(16,185,129,0.22)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      {children}
+    </div>
+  );
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 200, pointerEvents: "none" }}>
-      {/* Overlay léger */}
-      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)", pointerEvents: "auto" }} onClick={onSkip} />
+    <div style={{ position: "fixed", inset: 0, zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(4px)" }} />
+      <div style={{
+        position: "relative", zIndex: 1, width: "calc(100% - 40px)", maxWidth: 400,
+        background: "#0d0d0d", borderRadius: 24, padding: "36px 28px 28px",
+        border: "1px solid rgba(16,185,129,0.18)",
+        boxShadow: "0 40px 120px rgba(0,0,0,0.9), 0 0 80px rgba(16,185,129,0.12), 0 0 200px rgba(16,185,129,0.06)",
+        opacity: visible ? 1 : 0, transform: visible ? "scale(1) translateY(0)" : "scale(0.97) translateY(8px)",
+        transition: "opacity 0.35s ease, transform 0.35s ease",
+        fontFamily: "Inter, sans-serif",
+      }}>
+        {/* Ligne accent haut */}
+        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 160, height: 2, background: "linear-gradient(90deg, transparent, rgba(16,185,129,0.6), transparent)", borderRadius: 2 }} />
 
-      {/* Lueur sur le bouton concerné */}
-      {current.highlight === "sos" && !isMobile && (
-        <div style={{ position: "absolute", top: 172, left: 12, width: 281, height: 80, borderRadius: 18, boxShadow: `0 0 0 2px ${current.glowColor}, 0 0 28px ${current.glowColor}`, pointerEvents: "none", animation: "breathe 2s ease-in-out infinite" }} />
-      )}
-
-      {/* Bulle principale */}
-      <div style={{ position: "absolute", ...getBubblePosition(), width: isMobile ? "calc(100% - 40px)" : 340, maxWidth: 340, background: "#0a0f0c", borderRadius: 20, padding: 24, border: `1px solid ${ACCENT_BORDER}`, boxShadow: "0 24px 80px rgba(0,0,0,0.7)", pointerEvents: "auto", animation: "fadeUp 0.35s cubic-bezier(0.16,1,0.3,1)" }}>
-
-        {/* Icône + titre */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: ACCENT_DIM, border: `1px solid ${ACCENT_BORDER}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            {current.icon}
-          </div>
-          <div>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: TEXT_PRIMARY }}>{current.title}</p>
-            {isFirst && firstName && (
-              <p style={{ margin: 0, fontSize: 11, color: ACCENT }}>Bonjour {firstName}</p>
-            )}
+        {/* Logo cercle lumineux */}
+        <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 20px" }}>
+          <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(16px)" }} />
+          <div style={{ position: "relative", width: 72, height: 72, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <img src="/logo-new.svg" alt="" style={{ width: 36, height: 36 }} />
           </div>
         </div>
 
-        {/* Texte */}
-        <p style={{ margin: "0 0 20px", fontSize: 14, color: TEXT_SECONDARY, lineHeight: 1.7 }}>
-          {current.text}
+        {/* Titre */}
+        <h1 style={{ margin: "0 0 16px", fontSize: 17, fontWeight: 800, color: "white", textAlign: "center", letterSpacing: "0.04em", lineHeight: 1.35, textTransform: "uppercase" }}>
+          Bienvenue dans votre espace<br />d&apos;accompagnement, {firstName}&nbsp;!
+        </h1>
+
+        {/* Corps */}
+        <p style={{ margin: "0 0 22px", fontSize: 13, color: "rgba(255,255,255,0.46)", lineHeight: 1.8, textAlign: "center" }}>
+          Ici, vous pouvez échanger à tout moment avec votre compagnon de suivi. Il est là pour vous écouter, vous accompagner au quotidien et vous aider à progresser entre vos consultations.
         </p>
 
-        {/* Progression */}
-        <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-          {onboardingSteps.map((_, i) => (
-            <div key={i} style={{ flex: 1, height: 2, borderRadius: 1, background: i <= step ? ACCENT : "rgba(255,255,255,0.1)", transition: "background 0.3s" }} />
-          ))}
+        {/* Section PWA */}
+        <div style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "14px 14px 12px", marginBottom: 20 }}>
+          <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>INSTALLER L&apos;APPLICATION</p>
+          <p style={{ margin: "0 0 12px", fontSize: 12, color: "rgba(255,255,255,0.36)", lineHeight: 1.6 }}>
+            Pour accéder à votre espace en un clic, installez l&apos;app sur votre écran d&apos;accueil. C&apos;est gratuit et se fait en{" "}
+            <strong style={{ color: "rgba(255,255,255,0.6)" }}>{os === "ios" ? "3" : "2"} clics</strong> :
+          </p>
+
+          {/* Étapes iOS */}
+          {os === "ios" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <StepIcon>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                </StepIcon>
+                <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Cliquer sur <strong style={{ color: "rgba(255,255,255,0.85)" }}>Partager</strong></span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <StepIcon>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </StepIcon>
+                <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Faites défiler vers le bas ou <strong style={{ color: "rgba(255,255,255,0.85)" }}>&quot;En voir plus&quot;</strong></span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <StepIcon>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                </StepIcon>
+                <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Appuyer sur <strong style={{ color: "rgba(255,255,255,0.85)" }}>&quot;Sur l&apos;écran d&apos;accueil&quot;</strong></span>
+              </div>
+            </div>
+          )}
+
+          {/* Étapes Android */}
+          {os === "android" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <StepIcon>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="5" r="1.3" fill="#10b981"/><circle cx="12" cy="12" r="1.3" fill="#10b981"/><circle cx="12" cy="19" r="1.3" fill="#10b981"/></svg>
+                </StepIcon>
+                <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Cliquer sur le menu <strong style={{ color: "rgba(255,255,255,0.85)" }}>⋮</strong> en haut à droite</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <StepIcon>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                </StepIcon>
+                <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Appuyer sur <strong style={{ color: "rgba(255,255,255,0.85)" }}>&quot;Ajouter à l&apos;écran d&apos;accueil&quot;</strong></span>
+              </div>
+            </div>
+          )}
+
+          {/* Toggle iPhone / Android */}
+          <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
+            <button onClick={() => setOs("ios")}
+              style={{ flex: 1, height: 27, borderRadius: 7, background: os === "ios" ? "rgba(16,185,129,0.15)" : "transparent", border: os === "ios" ? "1px solid rgba(16,185,129,0.35)" : "1px solid rgba(255,255,255,0.1)", color: os === "ios" ? "#10b981" : "rgba(255,255,255,0.32)", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif", transition: "all 0.2s" }}>
+              iPhone
+            </button>
+            <button onClick={() => setOs("android")}
+              style={{ flex: 1, height: 27, borderRadius: 7, background: os === "android" ? "rgba(16,185,129,0.15)" : "transparent", border: os === "android" ? "1px solid rgba(16,185,129,0.35)" : "1px solid rgba(255,255,255,0.1)", color: os === "android" ? "#10b981" : "rgba(255,255,255,0.32)", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif", transition: "all 0.2s" }}>
+              Android
+            </button>
+          </div>
         </div>
 
-        {/* Boutons */}
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={onSkip}
-            style={{ flex: 1, height: 38, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 13, cursor: "pointer", transition: "all 0.2s" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = TEXT_SECONDARY; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_MUTED; }}>
-            Passer
-          </button>
-          <button onClick={onNext}
-            style={{ flex: 2, height: 38, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: `1px solid ${ACCENT_BORDER}`, color: ACCENT, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.4)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = ACCENT_BORDER; }}>
-            {isLast ? "C'est parti →" : "Suivant →"}
-          </button>
-        </div>
+        {/* CTA */}
+        <button onClick={onDone}
+          style={{ width: "100%", height: 48, borderRadius: 13, background: "linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.07))", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif", transition: "all 0.2s" }}
+          onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.28), rgba(16,185,129,0.12))"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, rgba(16,185,129,0.18), rgba(16,185,129,0.07))"; }}>
+          Accéder au chat
+        </button>
       </div>
     </div>
   );
@@ -611,7 +614,6 @@ export default function ChatPage() {
   const sidebarWidth = 305;
   const [showToast, setShowToast] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingStep, setOnboardingStep] = useState(0);
   const [patientEmail, setPatientEmail] = useState("");
   const [patientPhoto, setPatientPhoto] = useState<string | null>(null);
   const [patientVictories, setPatientVictories] = useState<string[]>([]);
@@ -797,28 +799,12 @@ export default function ChatPage() {
     } catch { /* silencieux */ }
   }, [tFetch]);
 
-  const completeOnboarding = useCallback(async (pid: string) => {
-    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-    await supabase.from("patients").update({ onboarding_done: true }).eq("user_id", pid);
+  const handleOnboardingDone = useCallback(async () => {
     setShowOnboarding(false);
-    // Message de clôture dans le chat
-    setMessages([{
-      role: "assistant",
-      content: "Voilà, vous avez vos outils en main. Je reste ici, dans le chat, pour répondre à vos questions.",
-    }]);
-  }, []);
-
-  const handleOnboardingNext = useCallback(() => {
-    if (onboardingStep < onboardingSteps.length - 1) {
-      setOnboardingStep(s => s + 1);
-    } else {
-      if (patientId) void completeOnboarding(patientId);
-    }
-  }, [onboardingStep, patientId, completeOnboarding]);
-
-  const handleOnboardingSkip = useCallback(() => {
-    if (patientId) void completeOnboarding(patientId);
-  }, [patientId, completeOnboarding]);
+    if (!patientId) return;
+    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    await supabase.from("patients").update({ onboarding_done: true }).eq("user_id", patientId);
+  }, [patientId]);
 
   // ── Effect 1 : test mode — s'exécute UNE seule fois au montage ──────────────
   useEffect(() => {
@@ -1655,11 +1641,8 @@ export default function ChatPage() {
       {/* ═══ ONBOARDING ═══ */}
       {showOnboarding && (
         <OnboardingTour
-          step={onboardingStep}
           firstName={patientFirstName}
-          onNext={handleOnboardingNext}
-          onSkip={handleOnboardingSkip}
-          isMobile={isMobile}
+          onDone={handleOnboardingDone}
         />
       )}
 
