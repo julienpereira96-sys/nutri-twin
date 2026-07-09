@@ -2568,17 +2568,17 @@ export default function ChatPage() {
                 if (isMobile) setSidebarOpen(false);
               }}
               disabled={sosLoading || emotionalStatus === "red_critical" || !patientId || !practitionerIdFromDb}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "13px 16px", borderRadius: 14, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.28)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 11, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.28)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}
               onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(6,182,212,0.14)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.45)"; } }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(6,182,212,0.08)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.28)"; }}>
               {sosLoading
-                ? <div style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${CYAN_DIM}`, borderTop: `2px solid ${CYAN}`, animation: "spin 1s linear infinite", flexShrink: 0 }} />
-                : <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(6,182,212,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <IconActivity size={16} color={CYAN} />
+                ? <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${CYAN_DIM}`, borderTop: `2px solid ${CYAN}`, animation: "spin 1s linear infinite", flexShrink: 0 }} />
+                : <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(6,182,212,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <IconActivity size={14} color={CYAN} />
                   </div>
               }
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#cffafe", letterSpacing: "-0.2px" }}>{sosLoading ? "En route..." : "Mon Soutien"}</p>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.4, marginLeft: "auto" }}><path d="M9 18l6-6-6-6" stroke={CYAN} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#cffafe", letterSpacing: "-0.1px" }}>{sosLoading ? "En route..." : "Mon Soutien"}</p>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.4, marginLeft: "auto" }}><path d="M9 18l6-6-6-6" stroke={CYAN} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </div>
 
