@@ -941,9 +941,10 @@ export default function ChatPage() {
         if (!versionMatch) {
           try {
             const { data: photoData } = supabase.storage.from("Avatars").getPublicUrl(`${userId}/avatar.jpg`);
-            if (photoData && dbAvatarVersion) {
-              // Utiliser avatar_updated_at comme cache-buster (stable, pas Date.now())
-              const freshUrl = photoData.publicUrl + "?t=" + encodeURIComponent(dbAvatarVersion);
+            if (photoData) {
+              // Cache-bust : avatar_updated_at si dispo, sinon Date.now() (photo sans version DB)
+              const bust = dbAvatarVersion ? encodeURIComponent(dbAvatarVersion) : String(Date.now());
+              const freshUrl = photoData.publicUrl + "?t=" + bust;
               const res = await fetch(freshUrl);
               if (res.ok) {
                 const blob = await res.blob();
@@ -952,7 +953,12 @@ export default function ChatPage() {
                   const b64 = reader.result as string;
                   setPatientPhoto(b64);
                   localStorage.setItem(`avatar_b64_${userId}`, b64);
-                  localStorage.setItem(`avatar_version_${userId}`, dbAvatarVersion);
+                  if (dbAvatarVersion) {
+                    localStorage.setItem(`avatar_version_${userId}`, dbAvatarVersion);
+                  } else {
+                    // Pas de version DB → ne pas mémoriser pour forcer re-fetch au prochain load
+                    localStorage.removeItem(`avatar_version_${userId}`);
+                  }
                 };
                 reader.readAsDataURL(blob);
               } else {
