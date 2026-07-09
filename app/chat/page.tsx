@@ -322,12 +322,14 @@ type OnboardingProps = {
 
 const OnboardingTour = ({ firstName, onDone }: OnboardingProps) => {
   const [visible, setVisible] = useState(false);
-  const [os, setOs] = useState<"ios" | "android">("ios");
+  const [os, setOs] = useState<"ios" | "android" | "desktop">("desktop");
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 80);
     const ua = navigator.userAgent;
-    if (/android/i.test(ua)) setOs("android");
+    if (/iphone|ipad|ipod/i.test(ua)) setOs("ios");
+    else if (/android/i.test(ua)) setOs("android");
+    else setOs("desktop");
     return () => clearTimeout(t);
   }, []);
 
@@ -342,7 +344,7 @@ const OnboardingTour = ({ firstName, onDone }: OnboardingProps) => {
       <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.82)", backdropFilter: "blur(4px)" }} />
       <div style={{
         position: "relative", zIndex: 1, width: "calc(100% - 40px)", maxWidth: 400,
-        background: "#0d0d0d", borderRadius: 24, padding: "36px 28px 28px",
+        background: "#0d0d0d", borderRadius: 24, padding: "40px 30px 32px",
         border: "1px solid rgba(16,185,129,0.18)",
         boxShadow: "0 40px 120px rgba(0,0,0,0.9), 0 0 80px rgba(16,185,129,0.12), 0 0 200px rgba(16,185,129,0.06)",
         opacity: visible ? 1 : 0, transform: visible ? "scale(1) translateY(0)" : "scale(0.97) translateY(8px)",
@@ -353,7 +355,7 @@ const OnboardingTour = ({ firstName, onDone }: OnboardingProps) => {
         <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 160, height: 2, background: "linear-gradient(90deg, transparent, rgba(16,185,129,0.6), transparent)", borderRadius: 2 }} />
 
         {/* Logo cercle lumineux */}
-        <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 20px" }}>
+        <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 24px" }}>
           <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(16px)" }} />
           <div style={{ position: "relative", width: 72, height: 72, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <img src="/logo-new.svg" alt="" style={{ width: 36, height: 36 }} />
@@ -361,77 +363,67 @@ const OnboardingTour = ({ firstName, onDone }: OnboardingProps) => {
         </div>
 
         {/* Titre */}
-        <h1 style={{ margin: "0 0 16px", fontSize: 17, fontWeight: 800, color: "white", textAlign: "center", letterSpacing: "0.04em", lineHeight: 1.35, textTransform: "uppercase" }}>
-          Bienvenue dans votre espace<br />d&apos;accompagnement, {firstName}&nbsp;!
+        <h1 style={{ margin: "0 0 20px", fontSize: 17, fontWeight: 800, color: "white", textAlign: "center", letterSpacing: "0.04em", lineHeight: 1.35, textTransform: "uppercase" }}>
+          Bienvenue dans votre espace,<br />{firstName}&nbsp;!
         </h1>
 
         {/* Corps */}
-        <p style={{ margin: "0 0 22px", fontSize: 13, color: "rgba(255,255,255,0.46)", lineHeight: 1.8, textAlign: "center" }}>
+        <p style={{ margin: "0 0 28px", fontSize: 13, color: "rgba(255,255,255,0.46)", lineHeight: 1.85, textAlign: "center" }}>
           Ici, vous pouvez échanger à tout moment avec votre compagnon de suivi. Il est là pour vous écouter, vous accompagner au quotidien et vous aider à progresser entre vos consultations.
         </p>
 
-        {/* Section PWA */}
-        <div style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "14px 14px 12px", marginBottom: 20 }}>
-          <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>INSTALLER L&apos;APPLICATION</p>
-          <p style={{ margin: "0 0 12px", fontSize: 12, color: "rgba(255,255,255,0.36)", lineHeight: 1.6 }}>
-            Pour accéder à votre espace en un clic, installez l&apos;app sur votre écran d&apos;accueil. C&apos;est gratuit et se fait en{" "}
-            <strong style={{ color: "rgba(255,255,255,0.6)" }}>{os === "ios" ? "3" : "2"} clics</strong> :
-          </p>
+        {/* Section PWA — masquée sur desktop */}
+        {os !== "desktop" && (
+          <div style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "16px 14px 14px", marginBottom: 24 }}>
+            <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.5)", letterSpacing: "0.1em" }}>INSTALLER L&apos;APPLICATION</p>
+            <p style={{ margin: "0 0 14px", fontSize: 12, color: "rgba(255,255,255,0.36)", lineHeight: 1.6 }}>
+              Pour accéder à votre espace en un clic, installez l&apos;app sur votre écran d&apos;accueil. C&apos;est gratuit et se fait en{" "}
+              <strong style={{ color: "rgba(255,255,255,0.6)" }}>{os === "ios" ? "3" : "2"} clics</strong> :
+            </p>
 
-          {/* Étapes iOS */}
-          {os === "ios" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <StepIcon>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-                </StepIcon>
-                <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Cliquer sur <strong style={{ color: "rgba(255,255,255,0.85)" }}>Partager</strong></span>
+            {/* Étapes iOS */}
+            {os === "ios" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <StepIcon>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                  </StepIcon>
+                  <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Cliquer sur <strong style={{ color: "rgba(255,255,255,0.85)" }}>Partager</strong></span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <StepIcon>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                  </StepIcon>
+                  <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Faites défiler vers le bas</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <StepIcon>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                  </StepIcon>
+                  <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Appuyer sur <strong style={{ color: "rgba(255,255,255,0.85)" }}>Sur l&apos;écran d&apos;accueil</strong></span>
+                </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <StepIcon>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-                </StepIcon>
-                <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Faites défiler vers le bas ou <strong style={{ color: "rgba(255,255,255,0.85)" }}>&quot;En voir plus&quot;</strong></span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <StepIcon>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                </StepIcon>
-                <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Appuyer sur <strong style={{ color: "rgba(255,255,255,0.85)" }}>&quot;Sur l&apos;écran d&apos;accueil&quot;</strong></span>
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Étapes Android */}
-          {os === "android" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <StepIcon>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="5" r="1.3" fill="#10b981"/><circle cx="12" cy="12" r="1.3" fill="#10b981"/><circle cx="12" cy="19" r="1.3" fill="#10b981"/></svg>
-                </StepIcon>
-                <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Cliquer sur le menu <strong style={{ color: "rgba(255,255,255,0.85)" }}>⋮</strong> en haut à droite</span>
+            {/* Étapes Android */}
+            {os === "android" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <StepIcon>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="5" r="1.3" fill="#10b981"/><circle cx="12" cy="12" r="1.3" fill="#10b981"/><circle cx="12" cy="19" r="1.3" fill="#10b981"/></svg>
+                  </StepIcon>
+                  <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Cliquer sur le menu <strong style={{ color: "rgba(255,255,255,0.85)" }}>⋮</strong> en haut à droite</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <StepIcon>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                  </StepIcon>
+                  <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Appuyer sur <strong style={{ color: "rgba(255,255,255,0.85)" }}>Ajouter à l&apos;écran d&apos;accueil</strong></span>
+                </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <StepIcon>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                </StepIcon>
-                <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>Appuyer sur <strong style={{ color: "rgba(255,255,255,0.85)" }}>&quot;Ajouter à l&apos;écran d&apos;accueil&quot;</strong></span>
-              </div>
-            </div>
-          )}
-
-          {/* Toggle iPhone / Android */}
-          <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-            <button onClick={() => setOs("ios")}
-              style={{ flex: 1, height: 27, borderRadius: 7, background: os === "ios" ? "rgba(16,185,129,0.15)" : "transparent", border: os === "ios" ? "1px solid rgba(16,185,129,0.35)" : "1px solid rgba(255,255,255,0.1)", color: os === "ios" ? "#10b981" : "rgba(255,255,255,0.32)", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif", transition: "all 0.2s" }}>
-              iPhone
-            </button>
-            <button onClick={() => setOs("android")}
-              style={{ flex: 1, height: 27, borderRadius: 7, background: os === "android" ? "rgba(16,185,129,0.15)" : "transparent", border: os === "android" ? "1px solid rgba(16,185,129,0.35)" : "1px solid rgba(255,255,255,0.1)", color: os === "android" ? "#10b981" : "rgba(255,255,255,0.32)", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "Inter, sans-serif", transition: "all 0.2s" }}>
-              Android
-            </button>
+            )}
           </div>
-        </div>
+        )}
 
         {/* CTA */}
         <button onClick={onDone}
