@@ -1883,16 +1883,18 @@ export default function ChatPage() {
                       const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
                       const compressed = await compressImage(file);
                       const dataUrl = `data:image/jpeg;base64,${compressed.base64}`;
-                      setPatientPhoto(dataUrl);
-                      localStorage.setItem(`avatar_b64_${patientId}`, dataUrl);
+                      setPatientPhoto(dataUrl); // affichage optimiste immédiat
                       const byteString = atob(compressed.base64);
                       const ab = new ArrayBuffer(byteString.length);
                       const ia = new Uint8Array(ab);
                       for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
                       const blob = new Blob([ab], { type: "image/jpeg" });
+                      // Upload d'abord — si ça échoue, on ne touche PAS localStorage
                       await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "3600" });
+                      // Upload OK → persister localement et mettre à jour la version en DB
                       lastSelfUploadAtRef.current = Date.now();
                       const newAvatarVersion = new Date().toISOString();
+                      localStorage.setItem(`avatar_b64_${patientId}`, dataUrl);
                       localStorage.setItem(`avatar_upload_ts_${patientId}`, String(Date.now()));
                       localStorage.setItem(`avatar_version_${patientId}`, newAvatarVersion);
                       await supabase.from("patients").update({ avatar_updated_at: newAvatarVersion }).eq("user_id", patientId);
