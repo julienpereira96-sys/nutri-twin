@@ -608,7 +608,7 @@ export default function ChatPage() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [patientEmail, setPatientEmail] = useState("");
   const [patientPhoto, setPatientPhoto] = useState<string | null>(null);
-  const [patientVictories, setPatientVictories] = useState<string[]>([]);
+  const [patientVictories, setPatientVictories] = useState<{ text: string; created_at?: string }[]>([]);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [showLogoutPatientModal, setShowLogoutPatientModal] = useState(false);
@@ -976,9 +976,9 @@ export default function ChatPage() {
         // fallback sur latest_victory pour les patients n'ayant pas encore d'historique
         const victoriesHistory = (p as { victories_history?: { text: string; created_at: string }[] }).victories_history;
         const latestVictory = (p as { latest_victory?: string }).latest_victory;
-        const victories: string[] = victoriesHistory && victoriesHistory.length > 0
-          ? victoriesHistory.map(v => v.text)
-          : (latestVictory ? [latestVictory] : []);
+        const victories: { text: string; created_at?: string }[] = victoriesHistory && victoriesHistory.length > 0
+          ? victoriesHistory.map(v => ({ text: v.text, created_at: v.created_at }))
+          : (latestVictory ? [{ text: latestVictory }] : []);
         setPatientVictories(victories);
         const ppm = (p as { practitioner_pinned_message?: { text: string; sent_at: string; practitioner_id: string } | null }).practitioner_pinned_message;
         if (ppm) setPinnedMessage(ppm);
@@ -2006,12 +2006,20 @@ export default function ChatPage() {
                   <p style={{ margin: "6px 0 0", fontSize: 12, color: TEXT_MUTED, opacity: 0.7 }}>Elles apparaissent au fil de vos échanges et exercices.</p>
                 </div>
               ) : (
-                patientVictories.slice(-10).reverse().map((v, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                    <div style={{ flexShrink: 0, marginTop: 2 }}><IconAward size={15} color={ACCENT} strokeWidth={1.5} /></div>
-                    <p style={{ margin: 0, fontSize: 14, color: TEXT_SECONDARY, lineHeight: 1.55 }}>{v}</p>
-                  </div>
-                ))
+                patientVictories.slice(-10).reverse().map((v, i) => {
+                  const dateLabel = v.created_at
+                    ? new Date(v.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })
+                    : null;
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                      <div style={{ flexShrink: 0, marginTop: 2 }}><IconAward size={15} color={ACCENT} strokeWidth={1.5} /></div>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ margin: 0, fontSize: 14, color: TEXT_SECONDARY, lineHeight: 1.55 }}>{v.text}</p>
+                        {dateLabel && <p style={{ margin: "4px 0 0", fontSize: 11, color: TEXT_MUTED, opacity: 0.7 }}>{dateLabel}</p>}
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           </>
@@ -2576,7 +2584,7 @@ export default function ChatPage() {
                 if (isMobile) setSidebarOpen(false);
               }}
               disabled={sosLoading || emotionalStatus === "red_critical" || !patientId || !practitionerIdFromDb}
-              style={{ display: "flex", alignItems: "center", gap: 11, padding: "12px 22px", borderRadius: 12, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.28)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 11, padding: "12px 22px", borderRadius: 12, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.28)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}
               onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(6,182,212,0.14)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.45)"; } }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(6,182,212,0.08)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.28)"; }}>
               {sosLoading
