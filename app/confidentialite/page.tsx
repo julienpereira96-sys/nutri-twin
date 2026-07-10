@@ -25,7 +25,11 @@ export default function ConfidentialitePage() {
           <br /><br />
           NutriTwin et le Praticien sont co-responsables du traitement des données des patients,
           conformément à l'article 26 du RGPD. Les modalités de cette co-responsabilité sont définies
-          dans un accord disponible sur demande à contact@nutritwin.fr.
+          dans l'
+          <a href="/dpa" style={{ color: "#10b981", textDecoration: "underline" }}>
+            Accord de Traitement des Données (DPA)
+          </a>
+          , accepté par le Praticien lors de son inscription.
         </Section>
 
         <Section title="2. Données collectées">
@@ -56,6 +60,12 @@ export default function ConfidentialitePage() {
           transmises par le Patient sont traitées en temps réel par l'intelligence artificielle pour
           en extraire les informations nutritionnelles. NutriTwin ne procède à aucun stockage persistant
           de ces images — elles sont supprimées immédiatement après analyse.
+          <br /><br />
+          <strong style={{ color: "white" }}>Exercices vocaux (Gemini Live) :</strong> Certains
+          exercices de régulation émotionnelle utilisent la voix du Patient via un flux audio en
+          temps réel (WebSocket). Ces flux vocaux ne sont pas enregistrés ni stockés par NutriTwin.
+          Seul le texte transcrit de l'échange peut être conservé en base de données comme résumé
+          de l'exercice, dans les mêmes conditions que les autres données de conversation.
         </Section>
 
         <Section title="3. Base légale du traitement">
@@ -64,8 +74,10 @@ export default function ConfidentialitePage() {
             <li>L'exécution du contrat d'abonnement (données Praticien — article 6.1.b RGPD)</li>
             <li>Le consentement explicite du patient (données de santé — article 9.2.a RGPD), recueilli
               lors de la création du compte patient avec horodatage enregistré en base de données</li>
-            <li>L'intérêt légitime de l'Éditeur pour la sécurité et la continuité du service
-              (article 6.1.f RGPD)</li>
+            <li>L'intérêt légitime de l'Éditeur pour la sécurité et la continuité technique du service
+              (article 6.1.f RGPD) — limité aux logs de connexion et à la limitation du débit d'usage.
+              Les données de conversation ne sont jamais utilisées pour améliorer ou entraîner des
+              modèles d'intelligence artificielle.</li>
           </ul>
         </Section>
 
@@ -100,7 +112,8 @@ export default function ConfidentialitePage() {
             <li>
               <strong style={{ color: "white" }}>Upstash, Inc.</strong>
               {" "}— Cache Redis (limitation de débit, sessions temporaires).
-              Région EU disponible et activée. Aucune donnée personnelle persistante stockée.
+              Région EU disponible et activée. Seuls des identifiants techniques pseudonymisés
+              (UUID) sont stockés temporairement (24h maximum) à des fins de limitation du débit.
               Clauses contractuelles types applicables.
             </li>
             <li>
@@ -141,10 +154,12 @@ export default function ConfidentialitePage() {
           <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
             <li>Droit d'accès à vos données personnelles</li>
             <li>Droit de rectification</li>
-            <li>Droit à l'effacement ("droit à l'oubli") — exercice disponible directement depuis
-              l'application via le menu Paramètres → Supprimer mon compte</li>
-            <li>Droit à la portabilité — export de vos données disponible depuis le menu
-              Paramètres → Exporter mes données</li>
+            <li>Droit à l'effacement ("droit à l'oubli") — les patients peuvent l'exercer directement
+              depuis l'application via Paramètres → Supprimer mon compte. Les Praticiens peuvent
+              l'exercer en écrivant à contact@nutritwin.fr (traitement sous 30 jours).</li>
+            <li>Droit à la portabilité — les patients peuvent exporter leurs données directement
+              depuis Paramètres → Exporter mes données. Les Praticiens peuvent en faire la demande
+              à contact@nutritwin.fr.</li>
             <li>Droit d'opposition au traitement, y compris au profilage</li>
             <li>Droit de retirer votre consentement à tout moment sans que cela n'affecte la licéité
               du traitement antérieur</li>

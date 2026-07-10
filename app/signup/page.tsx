@@ -338,11 +338,15 @@ try {
                 <span className="text-xs leading-relaxed text-zinc-400">
                   J'accepte les{" "}
                   <a href="/cgu" target="_blank" className="text-[#10b981] hover:underline">
-                    Conditions Générales d'Utilisation
+                    CGU
                   </a>
-                  {" "}et la{" "}
+                  , la{" "}
                   <a href="/confidentialite" target="_blank" className="text-[#10b981] hover:underline">
                     Politique de Confidentialité
+                  </a>
+                  {" "}et l'
+                  <a href="/dpa" target="_blank" className="text-[#10b981] hover:underline">
+                    Accord de Traitement des Données (DPA)
                   </a>
                   {" "}*
                 </span>

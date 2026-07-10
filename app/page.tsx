@@ -899,6 +899,7 @@ export default function Home() {
   <nav className="flex items-center gap-4 sm:gap-8 ml-14">
     <Link href="/cgu" className="text-[13px] font-medium text-white transition-colors hover:text-zinc-300">CGU</Link>
     <Link href="/confidentialite" className="text-[13px] font-medium text-white transition-colors hover:text-zinc-300">Confidentialité</Link>
+    <Link href="/dpa" className="text-[13px] font-medium text-white transition-colors hover:text-zinc-300">DPA</Link>
     <Link href="/login" className="text-[13px] font-medium text-white transition-colors hover:text-zinc-300">Espace praticien</Link>
   </nav>
   <div className="hidden sm:flex flex-1 justify-end">
