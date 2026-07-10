@@ -1880,7 +1880,11 @@ export default function ChatPage() {
                       for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
                       const blob = new Blob([ab], { type: "image/jpeg" });
                       // Upload d'abord — si ça échoue, on ne touche PAS localStorage
-                      await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "0" });
+                      const { error: storageErr } = await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "0" });
+                      if (storageErr) {
+                        console.error("[NutriTwin] Photo upload error:", storageErr.message, storageErr);
+                        throw storageErr; // ← force le catch à s'exécuter = annule l'optimistic update
+                      }
                       // Upload OK → persister localement et mettre à jour la version en DB
                       lastSelfUploadAtRef.current = Date.now();
                       const newAvatarVersion = new Date().toISOString();
@@ -1888,7 +1892,12 @@ export default function ChatPage() {
                       localStorage.setItem(`avatar_upload_ts_${patientId}`, String(Date.now()));
                       localStorage.setItem(`avatar_version_${patientId}`, newAvatarVersion);
                       await supabase.from("patients").update({ avatar_updated_at: newAvatarVersion }).eq("user_id", patientId);
-                    } catch { /* silencieux */ }
+                    } catch (err) {
+                      // Upload raté → annuler l'affichage optimiste
+                      console.error("[NutriTwin] Photo upload failed:", err);
+                      const prevB64 = localStorage.getItem(`avatar_b64_${patientId}`);
+                      setPatientPhoto(prevB64 || null);
+                    }
                     setUploadingPhoto(false);
                     if (patientAvatarRef.current) patientAvatarRef.current.value = "";
                   }}
