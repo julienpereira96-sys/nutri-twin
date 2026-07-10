@@ -1047,7 +1047,7 @@ export default function ChatPage() {
           }
           // Victoires — mise à jour instantanée quand le serveur écrit victories_history
           if (row.victories_history && row.victories_history.length !== (oldRow.victories_history?.length ?? 0)) {
-            setPatientVictories(row.victories_history.map(v => v.text));
+            setPatientVictories(row.victories_history.map((v: { text: string; created_at: string }) => ({ text: v.text, created_at: v.created_at })));
           }
           // Photo — re-fetch si avatar_updated_at a changé (upload ou suppression depuis un autre appareil)
           // On ignore si cet appareil vient d'uploader (CDN stale pendant ~30s)
