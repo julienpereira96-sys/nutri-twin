@@ -31,11 +31,15 @@ export async function POST(request: Request) {
 
   if (!relation) return forbidden();
 
-  // Supprimer toutes les données liées en parallèle
+  // RGPD — droit à l'oubli : supprimer toutes les données liées en parallèle
   await Promise.all([
     supabase.from("conversations").delete().eq("patient_id", patientId).eq("practitioner_id", practitionerId),
     supabase.from("conversations_sessions").delete().eq("patient_id", patientId).eq("practitioner_id", practitionerId),
     supabase.from("sos_events").delete().eq("patient_id", patientId).eq("practitioner_id", practitionerId),
+    supabase.from("sos_closures").delete().eq("patient_id", patientId),
+    supabase.from("exercise_logs").delete().eq("patient_id", patientId),
+    supabase.from("crisis_events").delete().eq("patient_id", patientId),
+    supabase.from("documents").delete().eq("patient_id", patientId),
     supabase.from("journal_entries").delete().eq("patient_id", patientId),
   ]);
 

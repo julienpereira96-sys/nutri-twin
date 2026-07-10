@@ -15,19 +15,21 @@ export async function GET(request: NextRequest) {
 
   const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-  const [profile, conversations, journal, sos] = await Promise.all([
+  const [profile, conversations, sos, sosClosures, exerciseLogs] = await Promise.all([
     supabase.from("patients").select("*").eq("user_id", patientId).single(),
     supabase.from("conversations").select("role, content, created_at").eq("patient_id", patientId).order("created_at", { ascending: true }),
-    supabase.from("journal_entries").select("*").eq("patient_id", patientId).order("date", { ascending: true }),
-    supabase.from("sos_events").select("triggered_at, tool_id, stress_before, stress_after").eq("patient_id", patientId).order("triggered_at", { ascending: true }),
+    supabase.from("sos_events").select("triggered_at, tool_id, status, intake_message, crisis_level_detected").eq("patient_id", patientId).order("triggered_at", { ascending: true }),
+    supabase.from("sos_closures").select("created_at, closing_message, apaisement_detected").eq("patient_id", patientId).order("created_at", { ascending: true }),
+    supabase.from("exercise_logs").select("created_at, exercise_type, intake_message, status").eq("patient_id", patientId).order("created_at", { ascending: true }),
   ]);
 
   const data = {
     export_date: new Date().toISOString(),
     profil: profile.data,
     conversations: conversations.data ?? [],
-    journal: journal.data ?? [],
     sos_events: sos.data ?? [],
+    sos_closures: sosClosures.data ?? [],
+    exercise_logs: exerciseLogs.data ?? [],
   };
 
   return new Response(JSON.stringify(data, null, 2), {
