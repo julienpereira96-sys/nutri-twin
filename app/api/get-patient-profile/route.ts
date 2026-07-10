@@ -12,7 +12,7 @@ export async function GET() {
 
   const { data: patient } = await supabase
     .from("patients")
-    .select("age, sexe, taille, poids, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, objective, motivation, defi, aliments_aimes, aliments_detestes, latest_victory")
+    .select("age, sexe, taille, poids, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, objective, motivation, defi, aliments_aimes, aliments_detestes, latest_victory, victories_history")
     .eq("user_id", user.id)
     .single();
 

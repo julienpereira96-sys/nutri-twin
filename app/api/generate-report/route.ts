@@ -66,7 +66,6 @@ export async function POST(request: Request) {
     const [
       { data: chatMessages },
       { data: patient },
-      { data: sosEvents },
       { data: sosEventsRaw },
     ] = await Promise.all([
       supabase
@@ -95,14 +94,6 @@ export async function POST(request: Request) {
         `)
         .eq("user_id", patientId)
         .single(),
-      // SOS feedback (données historiques avec scores réels)
-      supabase
-        .from("sos_feedback")
-        .select("tool_id, stress_before, stress_after, created_at")
-        .eq("patient_id", patientId)
-        .gte("created_at", `${dateFrom}T00:00:00`)
-        .lte("created_at", `${dateTo}T23:59:59`)
-        .order("created_at", { ascending: true }),
       // SOS events (déclenchements avec contexte + exercice choisi + issue)
       supabase
         .from("sos_events")
@@ -162,7 +153,6 @@ export async function POST(request: Request) {
       : "";
 
     // ── Build SOS stats ──
-    const events = (sosEvents ?? []) as { tool_id: string; stress_before: number | null; stress_after: number | null }[];
     const toolNamesReport: Record<string, string> = {
       breathing: "Cohérence cardiaque", ancrage: "Ancrage sensoriel", marche: "Marche consciente",
       manger: "Pleine conscience alimentaire", body_scan: "Body scan", defusion: "Défusion cognitive",
@@ -252,18 +242,6 @@ ${crisisEps.length > 0 ? `- Contextes déclencheurs : ${topContexts || "non rens
 - Exercices utilisés : ${topTools || "non renseigné"}
 ${lines.join("\n")}`;
 
-    } else if (events.length > 0) {
-      // Fallback sur sos_feedback si pas d'events (données historiques avant migration)
-      const withFeedback = events.filter(e => e.stress_before != null && e.stress_after != null);
-      const apaises = withFeedback.filter(e => (e.stress_after ?? 0) >= 6).length;
-      const persistants = withFeedback.length - apaises;
-      const toolCounts: Record<string, number> = {};
-      events.forEach(e => { if (e.tool_id) toolCounts[e.tool_id] = (toolCounts[e.tool_id] ?? 0) + 1; });
-      const topTools = Object.entries(toolCounts).sort((a, b) => b[1] - a[1]).map(([t, c]) => `${toolNamesReport[t] ?? t} (${c}x)`).join(", ");
-      sosSection = `DONNÉES SOS / CRISES (période du ${dateFrom} au ${dateTo}) :
-- Volume : ${events.length} déclenchement${events.length > 1 ? "s" : ""}
-- Outils utilisés : ${topTools || "non renseigné"}
-${withFeedback.length > 0 ? `- Crises apaisées : ${apaises} / ${withFeedback.length} | Persistantes : ${persistants} / ${withFeedback.length}` : ""}`;
     }
 
     // ── Build chat section — dialogue complet avec dates, sans troncature ──

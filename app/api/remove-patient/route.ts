@@ -36,7 +36,6 @@ export async function POST(request: Request) {
     supabase.from("conversations").delete().eq("patient_id", patientId).eq("practitioner_id", practitionerId),
     supabase.from("conversations_sessions").delete().eq("patient_id", patientId).eq("practitioner_id", practitionerId),
     supabase.from("sos_events").delete().eq("patient_id", patientId).eq("practitioner_id", practitionerId),
-    supabase.from("sos_feedback").delete().eq("patient_id", patientId).eq("practitioner_id", practitionerId),
     supabase.from("journal_entries").delete().eq("patient_id", patientId),
   ]);
 

@@ -972,9 +972,13 @@ export default function ChatPage() {
             // Erreur réseau — on garde le cache local
           }
         }
-        // Charger victoires (latest_victory retourné par get-patient-profile)
+        // Charger victoires — victories_history (historique complet) en priorité,
+        // fallback sur latest_victory pour les patients n'ayant pas encore d'historique
+        const victoriesHistory = (p as { victories_history?: { text: string; created_at: string }[] }).victories_history;
         const latestVictory = (p as { latest_victory?: string }).latest_victory;
-        const victories: string[] = latestVictory ? [latestVictory] : [];
+        const victories: string[] = victoriesHistory && victoriesHistory.length > 0
+          ? victoriesHistory.map(v => v.text)
+          : (latestVictory ? [latestVictory] : []);
         setPatientVictories(victories);
         const ppm = (p as { practitioner_pinned_message?: { text: string; sent_at: string; practitioner_id: string } | null }).practitioner_pinned_message;
         if (ppm) setPinnedMessage(ppm);
@@ -1028,6 +1032,7 @@ export default function ChatPage() {
             emotional_status?: string;
             avatar_updated_at?: string | null;
             user_id?: string;
+            victories_history?: { text: string; created_at: string }[] | null;
           };
           const row = payload.new as PatientRow;
           const oldRow = payload.old as PatientRow;
@@ -1039,6 +1044,10 @@ export default function ChatPage() {
           } else if (row.emotional_status === "green") {
             setEmotionalStatus("green");
             setShowSasButtons(false);
+          }
+          // Victoires — mise à jour instantanée quand le serveur écrit victories_history
+          if (row.victories_history && row.victories_history.length !== (oldRow.victories_history?.length ?? 0)) {
+            setPatientVictories(row.victories_history.map(v => v.text));
           }
           // Photo — re-fetch si avatar_updated_at a changé (upload ou suppression depuis un autre appareil)
           // On ignore si cet appareil vient d'uploader (CDN stale pendant ~30s)
@@ -1205,14 +1214,6 @@ export default function ChatPage() {
     setPostExerciseStep(null);
     closeTool();
 
-    // Tracer l'événement SOS en arrière-plan (placeholder)
-    if (patientId && practitionerIdFromDb) {
-      tFetch("/api/sos-feedback", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId, practitionerId: practitionerIdFromDb, eventId: null, stressBeforeProxy: 5, scoreAfter: 5, isPlaceholder: true }),
-      }).catch(() => {});
-    }
-
     // Envoyer la réponse post-exercice à Gemini → récupérer le message de clôture → l'afficher dans le chat
     if (patientId && practitionerIdFromDb) {
       try {
@@ -1310,17 +1311,6 @@ export default function ChatPage() {
     if (!patientId || !practitionerIdFromDb) return;
     try { await tFetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: msg, patientId, practitionerId: practitionerIdFromDb, sessionId: currentSessionId ?? undefined }) }); }
     catch { /* silencieux */ }
-  };
-
-  const sendStressData = async (before: number, after: number, toolId: string) => {
-    if (!patientId || !practitionerIdFromDb) return;
-    try {
-      await tFetch("/api/sos-feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ patientId, practitionerId: practitionerIdFromDb, toolId, stressBefore: before, stressAfter: after }),
-      });
-    } catch { /* silencieux */ }
   };
 
   // handleSOSTransitionToChat : appelé quand SOSExercise termine normalement.

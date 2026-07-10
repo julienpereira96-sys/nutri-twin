@@ -1361,10 +1361,17 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
             victoryText = exerciseLabel ? `A surmonté ${crisisLabel} grâce à ${exerciseLabel}.` : `A surmonté ${crisisLabel} grâce à l'exercice SOS vocal.`;
           }
 
+          let historique1: { text: string; created_at: string }[] | undefined;
+          if (victoryText) {
+            const { data: curPat1 } = await supabase.from("patients").select("victories_history").eq("user_id", patientId).single();
+            const hist1 = (curPat1?.victories_history as { text: string; created_at: string }[] | null) ?? [];
+            historique1 = [...hist1, { text: victoryText, created_at: new Date().toISOString() }].slice(-50);
+          }
           await supabase.from("patients").update({
             emotional_status: "green",
             emotional_insight: apaisementResult.murmure || "Apaisement exprimé pendant l'exercice SOS",
             ...(victoryText ? { latest_victory: victoryText, victory_detected_at: new Date().toISOString(), victory_message_id: savedMessageId } : {}),
+            ...(historique1 ? { victories_history: historique1 } : {}),
             last_patient_message_at: new Date().toISOString(),
           }).eq("user_id", patientId);
 
@@ -1729,6 +1736,12 @@ Max 150 mots. Sans markdown.`;
             ...(emotionalInsight ? { emotional_insight: emotionalInsight } : {}),
             ...(finalVictoryText ? { latest_victory: finalVictoryText, victory_detected_at: new Date().toISOString(), victory_message_id: userMsgId } : {}),
           };
+          // Accumuler dans victories_history si nouvelle victoire détectée
+          if (finalVictoryText) {
+            const { data: curPat2 } = await supabase.from("patients").select("victories_history").eq("user_id", patientId).single();
+            const hist2 = (curPat2?.victories_history as { text: string; created_at: string }[] | null) ?? [];
+            patientStatusUpdate.victories_history = [...hist2, { text: finalVictoryText, created_at: new Date().toISOString() }].slice(-50);
+          }
           // emotional_status uniquement sur changements majeurs
           if (isSignificantStatusChange) {
             patientStatusUpdate.emotional_status = emotionalStatus;

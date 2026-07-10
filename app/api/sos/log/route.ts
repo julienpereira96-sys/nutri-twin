@@ -152,7 +152,7 @@ export async function POST(request: Request) {
     if (recent?.id) {
       // Résoudre le statut selon l'issue de l'exercice vocal —
       // uniquement si encore "pending" (ne pas écraser success/failed/expired
-      // déjà positionné par isSosIntakeCheck ou sos-feedback).
+      // déjà positionné par isSosIntakeCheck.
       //   "abandoned" → quitte prématurément (emergencyExit ou fermeture app)
       //   "completed"  → exercice terminé normalement avec réponse de clôture,
       //                  mais sans apaisement confirmé (neutre ou négatif)
@@ -226,6 +226,12 @@ export async function POST(request: Request) {
                 : `A surmonté ${crisisLabel} grâce à l'exercice SOS vocal.`;
             }
 
+            let historiqueSos: { text: string; created_at: string }[] | undefined;
+            if (victoryText) {
+              const { data: curPatSos } = await supabase.from("patients").select("victories_history").eq("user_id", patientId).single();
+              const histSos = (curPatSos?.victories_history as { text: string; created_at: string }[] | null) ?? [];
+              historiqueSos = [...histSos, { text: victoryText, created_at: new Date().toISOString() }].slice(-50);
+            }
             await Promise.all([
               supabase.from("patients").update({
                 emotional_status: "green",
@@ -235,6 +241,7 @@ export async function POST(request: Request) {
                   latest_victory: victoryText,
                   victory_detected_at: new Date().toISOString(),
                 } : {}),
+                ...(historiqueSos ? { victories_history: historiqueSos } : {}),
               }).eq("user_id", patientId),
               supabase.from("sos_events").update({ status: "success" }).eq("id", recent.id),
             ]);
