@@ -915,7 +915,7 @@ export default function ChatPage() {
           console.error("[NutriTwin] /api/conversations FAILED", histRes.status, await histRes.text().catch(() => ""));
         }
       }
-      const { data: pat } = await supabase.from("patients").select("first_name, last_name, onboarding_done, emotional_status, practitioner_pinned_message, avatar_updated_at").eq("user_id", data.user.id).single();
+      const { data: pat } = await supabase.from("patients").select("first_name, last_name, onboarding_done, emotional_status, practitioner_pinned_message, avatar_updated_at, latest_victory, victories_history").eq("user_id", data.user.id).single();
       if (pat) {
         const p = pat as { first_name?: string; last_name?: string; onboarding_done?: boolean };
         if (p.first_name) setPatientFirstName(p.first_name);
@@ -2584,7 +2584,7 @@ export default function ChatPage() {
                 if (isMobile) setSidebarOpen(false);
               }}
               disabled={sosLoading || emotionalStatus === "red_critical" || !patientId || !practitionerIdFromDb}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 11, padding: "12px 22px", borderRadius: 12, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.28)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}
+              style={{ width: "75%", display: "flex", alignItems: "center", gap: 11, padding: "12px 22px", borderRadius: 12, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.28)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}
               onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(6,182,212,0.14)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.45)"; } }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(6,182,212,0.08)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.28)"; }}>
               {sosLoading
