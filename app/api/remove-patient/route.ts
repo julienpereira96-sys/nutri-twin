@@ -31,32 +31,25 @@ export async function POST(request: Request) {
 
   if (!relation) return forbidden();
 
-  // RGPD — droit à l'oubli : supprimer toutes les données liées en parallèle
-  await Promise.all([
-    supabase.from("conversations").delete().eq("patient_id", patientId).eq("practitioner_id", practitionerId),
-    supabase.from("conversations_sessions").delete().eq("patient_id", patientId).eq("practitioner_id", practitionerId),
-    supabase.from("sos_events").delete().eq("patient_id", patientId).eq("practitioner_id", practitionerId),
-    supabase.from("sos_closures").delete().eq("patient_id", patientId),
-    supabase.from("exercise_logs").delete().eq("patient_id", patientId),
-    supabase.from("crisis_events").delete().eq("patient_id", patientId),
-    supabase.from("documents").delete().eq("patient_id", patientId),
-    supabase.from("journal_entries").delete().eq("patient_id", patientId),
-  ]);
+  // Fin de suivi — archivage : on conserve toutes les données (obligation RGPD)
+  // mais on coupe l'accès et on retire le patient du dashboard.
 
-  // Supprimer la relation praticien/patient
+  // 1. Bannir le compte Auth → le patient ne peut plus se connecter
+  const { error: banError } = await supabase.auth.admin.updateUserById(patientId, {
+    ban_duration: "876000h", // ~100 ans = banni indéfiniment
+  });
+  if (banError) {
+    console.error("Erreur ban Auth user:", banError.message);
+    // Non bloquant
+  }
+
+  // 2. Supprimer uniquement la relation praticien/patient → disparaît du dashboard
   await supabase.from("patient_practitioner").delete()
     .eq("patient_id", patientId)
     .eq("practitioner_id", practitionerId);
 
-  // Supprimer le profil patient
-  await supabase.from("patients").delete().eq("user_id", patientId);
-
-  // Supprimer le compte Auth → révoque définitivement l'accès au chat
-  const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(patientId);
-  if (deleteAuthError) {
-    console.error("Erreur suppression Auth user:", deleteAuthError.message);
-    // Non bloquant : les données sont supprimées, l'accès est de facto coupé
-  }
+  // Les données (conversations, SOS, documents, profil…) sont conservées.
+  // Pour un droit à l'oubli explicite du patient, utiliser le script SQL dédié.
 
   return Response.json({ success: true });
 }
