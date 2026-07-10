@@ -1053,7 +1053,7 @@ export default function ChatPage() {
           // On ignore si cet appareil vient d'uploader (CDN stale pendant ~30s)
           const realtimeUploadTs = parseInt(localStorage.getItem(`avatar_upload_ts_${row.user_id ?? patientId}`) ?? "0", 10);
           const realtimeJustUploaded = Date.now() - realtimeUploadTs < 30_000;
-          if (row.avatar_updated_at && row.avatar_updated_at !== oldRow?.avatar_updated_at && !realtimeJustUploaded) {
+          if (row.avatar_updated_at && oldRow?.avatar_updated_at && row.avatar_updated_at !== oldRow.avatar_updated_at && !realtimeJustUploaded) {
             const uid = row.user_id ?? patientId;
             const sup = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
             const { data: pd } = sup.storage.from("Avatars").getPublicUrl(`${uid}/avatar.jpg`);
@@ -1880,7 +1880,7 @@ export default function ChatPage() {
                       for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
                       const blob = new Blob([ab], { type: "image/jpeg" });
                       // Upload d'abord — si ça échoue, on ne touche PAS localStorage
-                      await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "3600" });
+                      await supabase.storage.from("Avatars").upload(`${patientId}/avatar.jpg`, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "0" });
                       // Upload OK → persister localement et mettre à jour la version en DB
                       lastSelfUploadAtRef.current = Date.now();
                       const newAvatarVersion = new Date().toISOString();
