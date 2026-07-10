@@ -19,9 +19,10 @@ export default function CGUPage() {
         </p>
 
         <Section title="1. Mentions légales et présentation du service">
-          NutriTwin est un service logiciel (SaaS) édité par Nutritwin, auto-entrepreneur (SIRET à
-          compléter), dont le siège est situé au 7 rue Franklin, 52000 Chaumont — ci-après
-          « l'Éditeur ». Directeur de la publication : Julien Pereira. Email : contact@nutritwin.fr.
+          NutriTwin est un service logiciel (SaaS) édité par Julien PEREIRA, exerçant sous
+          l'enseigne Nutritwin, auto-entrepreneur (SIRET à compléter), dont le siège est situé
+          au 7 rue Franklin, 52000 Chaumont — ci-après « l'Éditeur ».
+          Directeur de la publication : Julien PEREIRA. Email : contact@nutritwin.fr.
           <br /><br />
           Hébergement applicatif : Vercel Inc., 340 Pine Street Suite 1200, San Francisco, CA 94104, USA.
           Hébergement des données : Supabase, Inc. (région Europe West — Paris).
@@ -76,14 +77,14 @@ export default function CGUPage() {
 
         <Section title="6. Obligations du Praticien">
           En utilisant NutriTwin, le Praticien s'engage à :
-          <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
-            <li>Informer ses patients de l'utilisation d'un outil d'IA dans le cadre de leur suivi</li>
-            <li>Obtenir le consentement explicite de ses patients avant de les inviter sur la plateforme</li>
-            <li>Ne pas utiliser le service pour des pathologies nécessitant une prise en charge médicale urgente</li>
-            <li>Vérifier régulièrement les échanges entre ses patients et l'assistant IA</li>
-            <li>Ne pas fournir d'informations inexactes lors de la configuration de son jumeau numérique</li>
-            <li>S'assurer que ses patients ont bien pris connaissance de la Politique de Confidentialité</li>
-            <li>Respecter les réglementations applicables à sa profession (code de déontologie, secret professionnel, etc.)</li>
+          <ul style={{ marginTop: 12, paddingLeft: 24, lineHeight: 2, listStyleType: "disc" }}>
+            <li>Informer ses patients de l'utilisation d'un outil d'IA dans le cadre de leur suivi.</li>
+            <li>Obtenir le consentement explicite de ses patients avant de les inviter sur la plateforme.</li>
+            <li>Ne pas utiliser le service pour des pathologies nécessitant une prise en charge médicale urgente.</li>
+            <li>Vérifier régulièrement les échanges entre ses patients et l'assistant IA.</li>
+            <li>Ne pas fournir d'informations inexactes lors de la configuration de son jumeau numérique.</li>
+            <li>S'assurer que ses patients ont bien pris connaissance de la Politique de Confidentialité.</li>
+            <li>Respecter les réglementations applicables à sa profession (code de déontologie, secret professionnel, etc.).</li>
           </ul>
         </Section>
 
@@ -124,7 +125,7 @@ export default function CGUPage() {
           <a href="/confidentialite" style={{ color: "#10b981", textDecoration: "underline" }}>
             Politique de Confidentialité
           </a>{" "}
-          de NutriTwin, accessible depuis le bas de chaque page du site. En acceptant les présentes CGU,
+          de NutriTwin, accessible depuis le bas de la page d'accueil. En acceptant les présentes CGU,
           le Praticien reconnaît avoir pris connaissance de cette politique.
         </Section>
 

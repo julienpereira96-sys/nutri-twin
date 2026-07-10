@@ -22,10 +22,10 @@ export default function DPAPage() {
         </p>
 
         <Section title="Préambule">
-          Le présent Accord de Traitement des Données (ci-après « DPA ») est conclu entre Nutritwin,
-          auto-entrepreneur (SIRET à compléter), 7 rue Franklin, 52000 Chaumont (ci-après le
-          « Sous-traitant »), et tout Praticien utilisant la plateforme NutriTwin (ci-après le
-          « Responsable de traitement »).
+          Le présent Accord de Traitement des Données (ci-après « DPA ») est conclu entre Julien PEREIRA,
+          auto-entrepreneur exerçant sous l'enseigne Nutritwin (SIRET à compléter), 7 rue Franklin,
+          52000 Chaumont (ci-après le « Sous-traitant »), et tout Praticien utilisant la plateforme
+          NutriTwin (ci-après le « Responsable de traitement »).
           <br /><br />
           En acceptant les Conditions Générales d'Utilisation de NutriTwin, le Praticien accepte
           également les termes du présent DPA, lequel entre en vigueur à la date d'activation du compte.
@@ -60,26 +60,26 @@ export default function DPAPage() {
 
         <Section title="3. Nature et finalité du traitement">
           Le traitement réalisé par le Sous-traitant comprend :
-          <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
-            <li>Stockage des données d'onboarding et du profil nutritionnel des patients</li>
-            <li>Traitement des messages échangés entre le patient et l'assistant IA</li>
-            <li>Analyse du contenu des échanges pour la génération de réponses par l'IA</li>
-            <li>Évaluation automatisée du statut émotionnel à partir du contenu des échanges</li>
-            <li>Stockage des événements SOS et des journaux d'exercices de régulation</li>
-            <li>Génération de bilans et rapports à destination du Praticien</li>
-            <li>Envoi d'emails transactionnels aux patients (invitations, notifications)</li>
+          <ul style={{ marginTop: 12, paddingLeft: 24, lineHeight: 2, listStyleType: "disc" }}>
+            <li>Stockage des données d'onboarding et du profil nutritionnel des patients.</li>
+            <li>Traitement des messages échangés entre le patient et l'assistant IA.</li>
+            <li>Analyse du contenu des échanges pour la génération de réponses par l'IA.</li>
+            <li>Évaluation automatisée du statut émotionnel à partir du contenu des échanges.</li>
+            <li>Stockage des événements Mon Soutien et des journaux d'exercices de régulation.</li>
+            <li>Génération de bilans et rapports à destination du Praticien.</li>
+            <li>Envoi d'emails transactionnels aux patients (invitations, notifications).</li>
           </ul>
         </Section>
 
         <Section title="4. Catégories de données traitées">
           Les catégories de données traitées incluent :
-          <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
-            <li>Données d'identité : nom, prénom, email</li>
+          <ul style={{ marginTop: 12, paddingLeft: 24, lineHeight: 2, listStyleType: "disc" }}>
+            <li>Données d'identité : nom, prénom, email.</li>
             <li>Données de santé (article 9 RGPD) : pathologies, allergies, traitements, données
-              corporelles (poids, taille), habitudes alimentaires, statut émotionnel</li>
+              corporelles (poids, taille), habitudes alimentaires, statut émotionnel.</li>
             <li>Données comportementales : historique des conversations, fréquence d'utilisation,
-              réponses aux exercices de régulation émotionnelle</li>
-            <li>Données techniques : identifiants de session, logs de connexion</li>
+              réponses aux exercices de régulation émotionnelle.</li>
+            <li>Données techniques : identifiants de session, logs de connexion.</li>
           </ul>
         </Section>
 
@@ -91,41 +91,41 @@ export default function DPAPage() {
 
         <Section title="6. Obligations du Sous-traitant">
           Le Sous-traitant s'engage à :
-          <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
+          <ul style={{ marginTop: 12, paddingLeft: 24, lineHeight: 2, listStyleType: "disc" }}>
             <li>Ne traiter les données que sur instruction documentée du Responsable de traitement,
-              telle qu'exprimée dans les CGU et le présent DPA</li>
+              telle qu'exprimée dans les CGU et le présent DPA.</li>
             <li>Garantir la confidentialité des données : les personnes autorisées à traiter les
-              données s'engagent à la confidentialité</li>
+              données s'engagent à la confidentialité.</li>
             <li>Mettre en œuvre les mesures de sécurité appropriées décrites à l'article 8 de la
-              Politique de Confidentialité (chiffrement, contrôle d'accès, RLS, journalisation)</li>
+              Politique de Confidentialité (chiffrement, contrôle d'accès, RLS, journalisation).</li>
             <li>Ne pas recruter de nouveau sous-traitant ultérieur sans en informer le Responsable
               de traitement avec un préavis de 30 jours — la liste actuelle des sous-traitants
-              figure à l'article 5 de la Politique de Confidentialité</li>
+              figure à l'article 5 de la Politique de Confidentialité.</li>
             <li>Aider le Responsable de traitement à répondre aux demandes d'exercice de droits des
-              personnes concernées, dans la mesure du possible compte tenu de la nature du traitement</li>
+              personnes concernées.</li>
             <li>Notifier toute violation de données au Responsable de traitement dans un délai
-              de 48 heures après en avoir pris connaissance</li>
+              de 48 heures après en avoir pris connaissance.</li>
             <li>Supprimer ou restituer toutes les données personnelles à l'issue du contrat, selon
               le choix du Responsable de traitement, et détruire les copies existantes sauf obligation
-              légale de conservation</li>
+              légale de conservation.</li>
             <li>Mettre à la disposition du Responsable de traitement toutes les informations
-              nécessaires pour démontrer le respect du présent DPA</li>
+              nécessaires pour démontrer le respect du présent DPA.</li>
           </ul>
         </Section>
 
         <Section title="7. Obligations du Responsable de traitement">
           Le Responsable de traitement (Praticien) s'engage à :
-          <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
+          <ul style={{ marginTop: 12, paddingLeft: 24, lineHeight: 2, listStyleType: "disc" }}>
             <li>N'inviter sur la plateforme que des patients ayant donné leur consentement éclairé
-              à l'utilisation d'un outil d'IA dans leur suivi</li>
+              à l'utilisation d'un outil d'IA dans leur suivi.</li>
             <li>Informer ses patients de l'existence du présent DPA et de la Politique de
-              Confidentialité de NutriTwin</li>
+              Confidentialité de NutriTwin.</li>
             <li>Respecter les réglementations applicables à sa profession dans le cadre de
-              l'utilisation du service</li>
+              l'utilisation du service.</li>
             <li>Notifier NutriTwin de toute demande d'exercice de droits reçue d'un patient
-              qui nécessiterait une action technique de la part du Sous-traitant</li>
+              qui nécessiterait une action technique de la part du Sous-traitant.</li>
             <li>Ne pas demander au Sous-traitant de traiter les données à des fins incompatibles
-              avec les présentes</li>
+              avec les présentes.</li>
           </ul>
         </Section>
 
@@ -149,15 +149,15 @@ export default function DPAPage() {
 
         <Section title="10. Sécurité des données">
           Le Sous-traitant met en œuvre les mesures techniques et organisationnelles suivantes :
-          <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
-            <li>Chiffrement en transit (HTTPS/TLS 1.3)</li>
-            <li>Chiffrement au repos (AES-256 via Supabase)</li>
-            <li>Contrôle d'accès granulaire par ligne de base de données (Row Level Security)</li>
-            <li>Séparation des droits : accès client limité aux données propres à chaque utilisateur</li>
-            <li>Authentification sécurisée via Supabase Auth</li>
-            <li>Journalisation des accès</li>
-            <li>Sauvegardes quotidiennes automatisées</li>
-            <li>Anonymisation des documents avant indexation par l'IA</li>
+          <ul style={{ marginTop: 12, paddingLeft: 24, lineHeight: 2, listStyleType: "disc" }}>
+            <li>Chiffrement en transit (HTTPS/TLS 1.3).</li>
+            <li>Chiffrement au repos (AES-256 via Supabase).</li>
+            <li>Contrôle d'accès granulaire par ligne de base de données (Row Level Security).</li>
+            <li>Séparation des droits : accès client limité aux données propres à chaque utilisateur.</li>
+            <li>Authentification sécurisée via Supabase Auth.</li>
+            <li>Journalisation des accès.</li>
+            <li>Sauvegardes quotidiennes automatisées.</li>
+            <li>Anonymisation des documents avant indexation par l'IA.</li>
           </ul>
         </Section>
 

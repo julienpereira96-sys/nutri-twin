@@ -19,8 +19,9 @@ export default function ConfidentialitePage() {
         </p>
 
         <Section title="1. Responsable du traitement">
-          Nutritwin, auto-entrepreneur (SIRET à compléter), dont le siège est situé au 7 rue Franklin,
-          52000 Chaumont, est responsable du traitement des données personnelles collectées via NutriTwin.
+          Julien PEREIRA, auto-entrepreneur exerçant sous l'enseigne Nutritwin (SIRET à compléter),
+          dont le siège est situé au 7 rue Franklin, 52000 Chaumont, est responsable du traitement
+          des données personnelles collectées via NutriTwin.
           Contact : contact@nutritwin.fr
           <br /><br />
           NutriTwin et le Praticien sont co-responsables du traitement des données des patients,
@@ -34,22 +35,22 @@ export default function ConfidentialitePage() {
 
         <Section title="2. Données collectées">
           NutriTwin collecte les données suivantes :
-          <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
+          <ul style={{ marginTop: 12, paddingLeft: 24, lineHeight: 2, listStyleType: "disc" }}>
             <li>
               <strong style={{ color: "white" }}>Données Praticien :</strong> nom, prénom, email,
               spécialité, réponses de configuration du jumeau numérique (approche thérapeutique,
-              protocoles, documents chargés), date et heure de consentement RGPD
+              protocoles, documents chargés), date et heure de consentement RGPD.
             </li>
             <li>
               <strong style={{ color: "white" }}>Données Patient :</strong> nom, prénom, email, âge,
               sexe, taille, poids, objectif nutritionnel, pathologies, allergies, traitements en cours,
               aliments aimés et détestés, habitudes alimentaires et de vie, historique des conversations
-              avec l'assistant IA, événements SOS et exercices de régulation émotionnelle, statut
-              émotionnel évalué par l'IA, date et heure de consentement RGPD
+              avec l'assistant IA, événements Mon Soutien et exercices de régulation émotionnelle,
+              statut émotionnel évalué par l'IA, date et heure de consentement RGPD.
             </li>
             <li>
               <strong style={{ color: "white" }}>Données de navigation :</strong> logs de connexion,
-              adresse IP, dernière date de connexion
+              adresse IP, dernière date de connexion.
             </li>
           </ul>
           <br />
@@ -70,14 +71,20 @@ export default function ConfidentialitePage() {
 
         <Section title="3. Base légale du traitement">
           Le traitement des données est fondé sur :
-          <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
-            <li>L'exécution du contrat d'abonnement (données Praticien — article 6.1.b RGPD)</li>
-            <li>Le consentement explicite du patient (données de santé — article 9.2.a RGPD), recueilli
-              lors de la création du compte patient avec horodatage enregistré en base de données</li>
-            <li>L'intérêt légitime de l'Éditeur pour la sécurité et la continuité technique du service
+          <ul style={{ marginTop: 12, paddingLeft: 24, lineHeight: 2, listStyleType: "disc" }}>
+            <li>
+              L'exécution du contrat d'abonnement (données Praticien — article 6.1.b RGPD).
+            </li>
+            <li>
+              Le consentement explicite du patient (données de santé — article 9.2.a RGPD), recueilli
+              lors de la création du compte patient avec horodatage enregistré en base de données.
+            </li>
+            <li>
+              L'intérêt légitime de l'Éditeur pour la sécurité et la continuité technique du service
               (article 6.1.f RGPD) — limité aux logs de connexion et à la limitation du débit d'usage.
               Les données de conversation ne sont jamais utilisées pour améliorer ou entraîner des
-              modèles d'intelligence artificielle.</li>
+              modèles d'intelligence artificielle.
+            </li>
           </ul>
         </Section>
 
@@ -96,73 +103,79 @@ export default function ConfidentialitePage() {
           NutriTwin fait appel aux prestataires suivants. Certains sont situés en dehors de l'Union
           Européenne — des garanties appropriées sont en place dans chaque cas (clauses contractuelles
           types de la Commission européenne ou décision d'adéquation) :
-          <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
+          <ul style={{ marginTop: 12, paddingLeft: 24, lineHeight: 2, listStyleType: "disc" }}>
             <li>
-              <strong style={{ color: "white" }}>Google Cloud (Vertex AI & Gemini API) – Google Ireland Limited</strong>
-              {" "}— Traitement IA des messages, analyses nutritionnelles et exercices vocaux.
-              Région : europe-west9 (Paris). Certifié HDS v2.0 en France.
+              <strong style={{ color: "white" }}>Google Cloud (Vertex AI & Gemini API) – Google Ireland Limited :</strong>
+              {" "}traitement IA des messages, analyses nutritionnelles et exercices vocaux.
+              Les modèles utilisés s'appuient sur l'infrastructure européenne de Google ; certains
+              modèles multi-régions peuvent impliquer un traitement hors d'Europe.
               Garanties RGPD : clauses contractuelles types.
             </li>
             <li>
-              <strong style={{ color: "white" }}>Supabase, Inc.</strong>
-              {" "}— Hébergement de la base de données.
+              <strong style={{ color: "white" }}>Supabase, Inc. :</strong>
+              {" "}hébergement de la base de données.
               Région : EU West (Paris). Transfert hors UE limité au support technique ;
               clauses contractuelles types applicables.
             </li>
             <li>
-              <strong style={{ color: "white" }}>Upstash, Inc.</strong>
-              {" "}— Cache Redis (limitation de débit, sessions temporaires).
-              Région EU disponible et activée. Seuls des identifiants techniques pseudonymisés
-              (UUID) sont stockés temporairement (24h maximum) à des fins de limitation du débit.
+              <strong style={{ color: "white" }}>Upstash, Inc. :</strong>
+              {" "}cache Redis utilisé pour la limitation de débit (comptage du nombre de messages
+              envoyés par session). Région EU disponible et activée. Seuls des identifiants techniques
+              pseudonymisés (UUID) sont stockés temporairement (24h maximum).
               Clauses contractuelles types applicables.
             </li>
             <li>
-              <strong style={{ color: "white" }}>Vercel, Inc.</strong>
-              {" "}— Hébergement applicatif (serveurs edge).
-              Siège : San Francisco, USA. Le réseau edge de Vercel est mondial ; les requêtes sont
-              routées vers le point de présence le plus proche de l'utilisateur.
-              Clauses contractuelles types applicables.
+              <strong style={{ color: "white" }}>Vercel, Inc. :</strong>
+              {" "}hébergement applicatif (réseau edge mondial).
+              Siège : San Francisco, USA. Les requêtes sont routées vers le point de présence le plus
+              proche de l'utilisateur. Clauses contractuelles types applicables.
             </li>
             <li>
-              <strong style={{ color: "white" }}>Resend, Inc.</strong>
-              {" "}— Envoi d'emails transactionnels (invitations, notifications).
+              <strong style={{ color: "white" }}>Resend, Inc. :</strong>
+              {" "}envoi d'emails transactionnels (invitations, notifications).
               Siège : USA. Clauses contractuelles types applicables.
               Seuls l'email et le prénom du destinataire sont transmis.
             </li>
             <li>
-              <strong style={{ color: "white" }}>Stripe Payments Europe, Ltd.</strong>
-              {" "}— Traitement des paiements. Siège européen : Dublin, Irlande.
+              <strong style={{ color: "white" }}>Stripe Payments Europe, Ltd. :</strong>
+              {" "}traitement des paiements. Siège européen : Dublin, Irlande.
               Certifié PCI-DSS niveau 1. NutriTwin ne stocke aucune donnée de carte bancaire.
             </li>
           </ul>
         </Section>
 
         <Section title="6. Durée de conservation">
-          <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
-            <li>Données Praticien : durée de l'abonnement + 3 ans (obligations comptables)</li>
-            <li>Données Patient et conversations : durée du suivi + 2 ans</li>
-            <li>Logs de connexion : 12 mois</li>
-            <li>Photographies de repas : aucune conservation (suppression immédiate après analyse)</li>
-            <li>Données Redis (cache) : 24 heures maximum</li>
-            <li>Preuves de consentement RGPD : 5 ans</li>
+          <ul style={{ marginTop: 12, paddingLeft: 24, lineHeight: 2, listStyleType: "disc" }}>
+            <li>Données Praticien : durée de l'abonnement + 3 ans (obligations comptables).</li>
+            <li>Données Patient et conversations : durée du suivi + 2 ans.</li>
+            <li>Logs de connexion : 12 mois.</li>
+            <li>Photographies de repas : aucune conservation (suppression immédiate après analyse).</li>
+            <li>Données Redis (cache) : 24 heures maximum.</li>
+            <li>Preuves de consentement RGPD : 5 ans.</li>
           </ul>
           À l'expiration de ces délais, les données sont supprimées de manière sécurisée ou anonymisées.
         </Section>
 
         <Section title="7. Vos droits">
           Conformément au RGPD, vous disposez des droits suivants :
-          <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
-            <li>Droit d'accès à vos données personnelles</li>
-            <li>Droit de rectification</li>
-            <li>Droit à l'effacement ("droit à l'oubli") — les patients peuvent l'exercer directement
-              depuis l'application via Paramètres → Supprimer mon compte. Les Praticiens peuvent
-              l'exercer en écrivant à contact@nutritwin.fr (traitement sous 30 jours).</li>
-            <li>Droit à la portabilité — les patients peuvent exporter leurs données directement
+          <ul style={{ marginTop: 12, paddingLeft: 24, lineHeight: 2, listStyleType: "disc" }}>
+            <li>Droit d'accès à vos données personnelles.</li>
+            <li>Droit de rectification.</li>
+            <li>
+              Droit à l'effacement (« droit à l'oubli ») — les patients peuvent l'exercer directement
+              depuis l'application via Paramètres → Clôturer mon accompagnement. Les Praticiens peuvent
+              l'exercer en écrivant à contact@nutritwin.fr (traitement sous 30 jours).
+            </li>
+            <li>
+              Droit à la portabilité — les patients peuvent exporter leurs données directement
               depuis Paramètres → Exporter mes données. Les Praticiens peuvent en faire la demande
-              à contact@nutritwin.fr.</li>
-            <li>Droit d'opposition au traitement, y compris au profilage</li>
-            <li>Droit de retirer votre consentement à tout moment sans que cela n'affecte la licéité
-              du traitement antérieur</li>
+              à contact@nutritwin.fr.
+            </li>
+            <li>Droit d'opposition au traitement, y compris au profilage.</li>
+            <li>
+              Droit de retirer votre consentement à tout moment sans que cela n'affecte la licéité
+              du traitement antérieur.
+            </li>
           </ul>
           <br />
           Pour exercer ces droits, contactez-nous à contact@nutritwin.fr. Nous nous engageons à
@@ -180,8 +193,8 @@ export default function ConfidentialitePage() {
 
         <Section title="9. Cookies">
           NutriTwin utilise uniquement des cookies strictement nécessaires au fonctionnement du service :
-          <ul style={{ marginTop: 12, paddingLeft: 20, lineHeight: 2 }}>
-            <li>Cookie de session d'authentification (Supabase) — expire à la déconnexion ou après 7 jours</li>
+          <ul style={{ marginTop: 12, paddingLeft: 24, lineHeight: 2, listStyleType: "disc" }}>
+            <li>Cookie de session d'authentification (Supabase) — expire à la déconnexion ou après 7 jours.</li>
           </ul>
           Aucun cookie publicitaire, de tracking ou d'analyse comportementale n'est utilisé.
           Aucun bandeau de consentement cookie n'est affiché car seuls des cookies strictement
