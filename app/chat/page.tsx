@@ -1464,7 +1464,7 @@ export default function ChatPage() {
         const target = targetTextRef.current;
         const cur = displayedLenRef.current;
         if (cur < target.length) {
-          const speed = streamDoneRef.current ? 6 : 3;
+          const speed = streamDoneRef.current ? 2 : 1;
           const next = Math.min(cur + speed, target.length);
           displayedLenRef.current = next;
           setMessages(prev => {

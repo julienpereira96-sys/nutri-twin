@@ -15,7 +15,7 @@ export default function DPAPage() {
           Accord de Traitement des Données (DPA)
         </h1>
         <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 8 }}>
-          Data Processing Agreement — conformément à l'article 28 du RGPD
+          Data Processing Agreement - conformément à l'article 28 du RGPD
         </p>
         <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 48 }}>
           Dernière mise à jour : juillet 2026
