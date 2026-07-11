@@ -4426,10 +4426,11 @@ export default function DashboardPage() {
 
                       {isCancelling ? (
                         <>
-                          <p style={{ margin: "0 0 20px", fontSize: 13, color: amber, lineHeight: 1.6 }}>
-                            Résiliation programmée, votre accès reste néanmoins actif jusqu'au <strong>{periodEnd}</strong>
+                          <p style={{ margin: "0 0 16px", fontSize: 13, color: amber, lineHeight: 1.6 }}>
+                            Résiliation programmée. Votre accès reste néanmoins actif jusqu&apos;au {periodEnd}
                           </p>
-                          <p style={{ margin: "0 0 12px", fontSize: 17, fontWeight: 600, color: "white" }}>Vous avez changé d'avis ?</p>
+                          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginBottom: 14 }} />
+                          <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 500, color: "#64748b" }}>Vous avez changé d&apos;avis ?</p>
                           <button onClick={() => void handleResumeSubscription()}
                             style={{ height: 36, paddingInline: 16, borderRadius: 9, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
                             onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
