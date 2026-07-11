@@ -1,4 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
+import { buildEmailHtml } from "@/lib/email";
+
+// Couleur alerte comportementale — alignée avec ORANGE_BEHAVIORAL du dashboard
+const BEHAVIORAL_AMBER = "#f59e0b";
+const BEHAVIORAL_AMBER_DARK = "#d97706";
 
 export async function POST(request: Request) {
   // Auth : Bearer JWT (dashboard praticien connecté)
@@ -44,46 +49,53 @@ export async function POST(request: Request) {
   }
 
   const patientName = `${patient?.first_name ?? ""} ${patient?.last_name ?? ""}`.trim() || "Un patient";
+  const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`;
 
-  const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:Inter,sans-serif;color:#f1f5f9;">
-  <div style="max-width:560px;margin:0 auto;padding:40px 20px;">
+  const body = `
+    <p style="margin:0 0 20px;font-size:15px;color:#94a3b8;line-height:1.65;">
+      Votre patient <strong style="color:#f8fafc;">${patientName}</strong> est en alerte comportementale depuis plus de 12 heures sans retour au vert dans votre Jumeau Numérique.
+    </p>
 
-    <div style="margin-bottom:32px;">
-      <span style="font-size:20px;font-weight:800;color:#f1f5f9;">Nutri<span style="color:#10b981;">Twin</span></span>
-    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom:16px;">
+      <tr>
+        <td style="background:#0d0d0d;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:18px 20px;">
+          <p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;">Ce que cela signifie</p>
+          <p style="margin:0;font-size:13px;color:#e2e8f0;line-height:1.7;">Une détresse comportementale a été détectée. Votre patient n'a pas encore signalé de mieux-être. Un contact proactif peut faire la différence.</p>
+        </td>
+      </tr>
+    </table>
 
-    <div style="background:#1a1200;border:1px solid rgba(245,158,11,0.35);border-radius:16px;padding:28px;margin-bottom:24px;">
-      <p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#f59e0b;letter-spacing:0.1em;text-transform:uppercase;">Alerte comportementale — 12h sans retour au vert</p>
-      <h1 style="margin:0 0 12px;font-size:22px;font-weight:700;color:#f1f5f9;">Votre attention est requise</h1>
-      <p style="margin:0;font-size:15px;color:#94a3b8;line-height:1.6;">Votre patient <strong style="color:#f1f5f9;">${patientName}</strong> est en alerte comportementale depuis plus de 12 heures sans retour au vert dans votre Jumeau Numérique.</p>
-    </div>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom:28px;">
+      <tr>
+        <td style="background:#0d0d0d;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:18px 20px;">
+          <p style="margin:0 0 12px;font-size:13px;font-weight:600;color:#10b981;">Étapes suggérées</p>
+          <p style="margin:0 0 7px;font-size:13px;color:#94a3b8;">1. Consultez la fiche patient dans votre dashboard.</p>
+          <p style="margin:0 0 7px;font-size:13px;color:#94a3b8;">2. Pensez à reprendre contact avec ${patientName} lors de votre prochaine séance.</p>
+          <p style="margin:0;font-size:13px;color:#94a3b8;">3. Levez l'alerte depuis la fiche patient une fois la situation gérée.</p>
+        </td>
+      </tr>
+    </table>
 
-    <div style="background:#0d1512;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;margin-bottom:24px;">
-      <p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;">Ce que cela signifie</p>
-      <p style="margin:0;font-size:14px;color:#e2e8f0;line-height:1.7;">Une crise ou une détresse comportementale a été détectée (alerte orange). Votre patient n'a pas encore signalé de mieux-être. Un contact proactif peut faire la différence.</p>
-    </div>
-
-    <div style="background:#0d1512;border:1px solid rgba(16,185,129,0.2);border-radius:12px;padding:20px;margin-bottom:32px;">
-      <p style="margin:0 0 12px;font-size:13px;font-weight:600;color:#10b981;">Étapes suggérées</p>
-      <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;">1. Consultez la fiche patient dans votre dashboard.</p>
-      <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;">2. Pensez à reprendre contact avec ${patientName} lors de votre prochaine séance.</p>
-      <p style="margin:0;font-size:13px;color:#94a3b8;">3. Levez l'alerte depuis la fiche patient une fois la situation gérée.</p>
-    </div>
-
-    <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display:block;text-align:center;background:#10b981;color:black;font-size:14px;font-weight:700;padding:14px 24px;border-radius:12px;text-decoration:none;margin-bottom:32px;">Accéder au Dashboard →</a>
-
-    <p style="margin:0;font-size:11px;color:#374151;text-align:center;">NutriTwin · Cet email est confidentiel et destiné uniquement à ${practitioner.first_name ?? ""} ${practitioner.last_name ?? ""}</p>
-    <p style="margin:8px 0 0;font-size:11px;color:#374151;text-align:center;">Vous pouvez désactiver ces alertes dans vos Paramètres → Notifications.</p>
-  </div>
-</body>
-</html>`;
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+      <tr>
+        <td align="center">
+          <a href="${dashboardUrl}" style="display:inline-block;background:#10b981;color:#000000;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;">Accéder au Dashboard →</a>
+        </td>
+      </tr>
+    </table>`;
 
   const resendKey = process.env.RESEND_API_KEY;
   if (!resendKey) return Response.json({ error: "Resend non configuré" }, { status: 500 });
+
+  const emailHtml = buildEmailHtml({
+    preheader: `${patientName} est en alerte comportementale depuis plus de 12h sans retour au vert.`,
+    greeting: "Alerte comportementale — 12h sans retour au vert",
+    headline: "Votre attention est requise",
+    body,
+    footerNote: `Cet email est confidentiel et destiné uniquement à ${practitioner.first_name ?? ""} ${practitioner.last_name ?? ""}. Vous pouvez désactiver ces alertes dans Paramètres → Notifications.`,
+    accentColor: BEHAVIORAL_AMBER,
+    accentColorDark: BEHAVIORAL_AMBER_DARK,
+  });
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",

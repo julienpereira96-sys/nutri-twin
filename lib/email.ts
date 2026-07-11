@@ -22,6 +22,9 @@ interface EmailOptions {
   infoBox?: string;
   /** Note de bas de page (optionnel) — HTML */
   footerNote?: string;
+  /** Couleur d'accent de la barre supérieure (défaut: émeraude) */
+  accentColor?: string;
+  accentColorDark?: string;
 }
 
 interface AdminAlertOptions {
@@ -45,7 +48,11 @@ export function buildEmailHtml({
   body,
   infoBox,
   footerNote,
+  accentColor,
+  accentColorDark,
 }: EmailOptions): string {
+  const accent = accentColor ?? EMERALD;
+  const accentDark = accentColorDark ?? EMERALD_DARK;
   const greetingBlock = greeting
     ? `<p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#475569;text-transform:uppercase;letter-spacing:0.09em;">${greeting}</p>`
     : "";
@@ -96,10 +103,10 @@ export function buildEmailHtml({
           <tr>
             <td style="background:#0e0e0e;border:1px solid rgba(255,255,255,0.07);border-radius:20px;overflow:hidden;">
 
-              <!-- Barre accent verte -->
+              <!-- Barre accent -->
               <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
                 <tr>
-                  <td style="height:3px;background:linear-gradient(90deg,${EMERALD} 0%,${EMERALD_DARK} 100%);"></td>
+                  <td style="height:3px;background:linear-gradient(90deg,${accent} 0%,${accentDark} 100%);"></td>
                 </tr>
               </table>
 

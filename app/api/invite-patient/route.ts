@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
 import { buildMurmureExpiry } from "@/lib/murmure";
 import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
+import { buildEmailHtml, sendEmail } from "@/lib/email";
 
 const PLAN_LIMITS: Record<string, number> = {
   essentiel: 10,
@@ -111,12 +111,29 @@ export async function POST(request: Request) {
       return Response.json({ error: "Impossible de renvoyer l'invitation." }, { status: 500 });
     }
 
-    const resend = new Resend(process.env.RESEND_API_KEY!);
-    await resend.emails.send({
-      from: "NutriTwin <noreply@nutritwin.fr>",
+    const inviteHtml = buildEmailHtml({
+      preheader: "Votre praticien vous a envoyé une invitation pour accéder à votre espace NutriTwin.",
+      greeting: "Bonjour,",
+      headline: "Votre invitation NutriTwin",
+      body: `
+        <p style="margin:0 0 20px;font-size:15px;color:#94a3b8;line-height:1.65;">
+          Votre praticien vous a envoyé une nouvelle invitation pour accéder à votre espace NutriTwin.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+          <tr>
+            <td align="center">
+              <a href="${linkData.properties.action_link}" style="display:inline-block;background:#10b981;color:#000000;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;">Accéder à mon espace →</a>
+            </td>
+          </tr>
+        </table>
+      `,
+      infoBox: `Ce lien est à usage unique. Pour vous reconnecter à tout moment, rendez-vous sur&nbsp;: <a href="${process.env.NEXT_PUBLIC_APP_URL}/patient-login" style="color:#10b981;text-decoration:none;">${process.env.NEXT_PUBLIC_APP_URL}/patient-login</a>`,
+    });
+
+    await sendEmail({
       to: email,
       subject: "Votre invitation NutriTwin",
-      html: `<p>Bonjour,</p><p>Votre praticien vous a envoyé une nouvelle invitation pour accéder à votre espace NutriTwin.</p><p><a href="${linkData.properties.action_link}">Accéder à mon espace →</a></p><p style="color:#6b7280;font-size:13px;">Ce lien est à usage unique. Pour vous reconnecter à tout moment, rendez-vous sur : <a href="${process.env.NEXT_PUBLIC_APP_URL}/patient-login">${process.env.NEXT_PUBLIC_APP_URL}/patient-login</a></p><p>L'équipe NutriTwin</p>`,
+      html: inviteHtml,
     });
 
     if (!existingRelation) {
