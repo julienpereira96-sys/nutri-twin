@@ -736,6 +736,12 @@ export default function DashboardPage() {
     if (tab === "patients" || tab === "vue_ensemble") setActiveTab(tab);
   }, []);
 
+  // Pré-charger la photo depuis le cache local pour éviter le flash au refresh
+  useEffect(() => {
+    const cached = localStorage.getItem("nutri_practitioner_avatar");
+    if (cached) setPractitionerPhoto(cached);
+  }, []);
+
   // Helper : change le tab ET met à jour l'URL sans rechargement
   const navigateTab = useCallback((tab: ActiveTab) => {
     setActiveTab(tab);
@@ -1412,7 +1418,12 @@ export default function DashboardPage() {
         setPractitionerSpecialty(p.specialty ?? "");
         setSavedPin(p.discrete_pin ?? "");
         if (p.cabinet_id) setPractitionerCabinetId(p.cabinet_id);
-        if (p.avatar_url) setPractitionerPhoto(p.avatar_url);
+        if (p.avatar_url) {
+          setPractitionerPhoto(p.avatar_url);
+          localStorage.setItem("nutri_practitioner_avatar", p.avatar_url);
+        } else {
+          localStorage.removeItem("nutri_practitioner_avatar");
+        }
       } else {
         // Fallback email auth si la query practitioners échoue
         if (data.user.email) setPractitionerEmail(data.user.email);
@@ -4133,8 +4144,9 @@ export default function DashboardPage() {
                         if (!ctx) { setUploadingAvatar(false); return; }
                         ctx.drawImage(img, 0, 0, width, height);
                         const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
-                        // Aperçu immédiat
+                        // Aperçu immédiat + cache local
                         setPractitionerPhoto(dataUrl);
+                        localStorage.setItem("nutri_practitioner_avatar", dataUrl);
                         // Sauvegarde en DB (base64 → TEXT, pas de Storage)
                         try {
                           const res = await fetch("/api/practitioner/save-avatar", {
@@ -4164,6 +4176,7 @@ export default function DashboardPage() {
                   {practitionerPhoto && (
                     <button onClick={async () => {
                       setPractitionerPhoto(null);
+                      localStorage.removeItem("nutri_practitioner_avatar");
                       try {
                         await fetch("/api/practitioner/save-avatar", {
                           method: "POST",
