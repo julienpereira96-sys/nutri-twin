@@ -2266,7 +2266,6 @@ export default function DashboardPage() {
       const res = await fetch("/api/billing/delete-account-request", { method: "POST" });
       if (res.ok) {
         setDeleteRequestSent(true);
-        setShowDeleteConfirm(false);
       }
     } finally {
       setDeleteRequestLoading(false);
@@ -3849,11 +3848,12 @@ export default function DashboardPage() {
         <div onClick={() => setShowDeleteConfirm(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 65, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 360, border: "1px solid rgba(244,63,94,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", textAlign: "center" }}>
             <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             </div>
             <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Supprimer mon compte ?</h2>
-            <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
-              Cette action est <strong style={{ color: "white" }}>irréversible</strong>. Votre abonnement sera résilié et votre compte ainsi que vos données supprimés sous <strong style={{ color: "white" }}>30 jours</strong> (RGPD Art. 17). Un email de confirmation vous sera envoyé.
+            <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.7 }}>
+              Cette action est <strong style={{ color: "white" }}>irréversible</strong>.<br />
+              Votre abonnement sera résilié et votre compte ainsi que vos données supprimés sous <strong style={{ color: "white" }}>30 jours</strong> (RGPD Art. 17).
             </p>
             <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", marginBottom: 20, textAlign: "left" }}>
               <p style={{ margin: 0, fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
@@ -3861,7 +3861,19 @@ export default function DashboardPage() {
               </p>
             </div>
             {deleteRequestSent ? (
-              <p style={{ margin: "0 0 16px", fontSize: 13, color: "#10b981" }}>✓ Demande envoyée. Vous recevrez un email de confirmation.</p>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, marginBottom: 8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <p style={{ margin: 0, fontSize: 13, color: "#10b981", fontWeight: 600 }}>Demande envoyée</p>
+                </div>
+                <p style={{ margin: "0 0 18px", fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>Un email de confirmation vous a été envoyé. Votre compte sera supprimé sous 30 jours.</p>
+                <button onClick={() => setShowDeleteConfirm(false)}
+                  style={{ width: "100%", height: 42, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                  Fermer
+                </button>
+              </div>
             ) : (
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={() => setShowDeleteConfirm(false)}
@@ -4313,7 +4325,7 @@ export default function DashboardPage() {
                       </button>
                     </div>
                   )}
-                  {cancelSuccess && !isCancelling && (
+                  {cancelSuccess && (
                     <p style={{ margin: "10px 0 0", fontSize: 12, color: emerald }}>
                       ✓ Un email de confirmation vous a été envoyé.
                     </p>
