@@ -130,7 +130,7 @@ export function buildEmailHtml({
           <tr>
             <td style="padding-top:32px;text-align:center;">
               <p style="margin:0 0 4px;font-size:11px;color:#64748b;line-height:1.6;">
-                NutriTwin&nbsp;·&nbsp;<a href="mailto:contact@nutritwin.fr" style="color:#64748b;text-decoration:none;">contact@nutritwin.fr</a>
+                NutriTwin&nbsp;·&nbsp;<a href="mailto:contact@nutritwin.fr" style="color:#10b981;text-decoration:none;">contact@nutritwin.fr</a>
               </p>
               ${footerNoteBlock}
             </td>

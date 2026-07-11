@@ -2244,7 +2244,7 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json() as { current_period_end: number };
         setCancelSuccess(true);
-        setShowCancelConfirm(false);
+        // modal reste ouverte pour afficher l'état de succès
         setBillingSubscription(prev => prev ? { ...prev, cancel_at_period_end: true, cancel_at: data.current_period_end } : prev);
       }
     } finally {
@@ -4286,51 +4286,11 @@ export default function DashboardPage() {
               ? new Date(billingSubscription.current_period_end * 1000).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
               : null;
             const isCancelling = billingSubscription?.cancel_at_period_end === true;
+            const planLabel = practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Professionnel" : practitionerPlan === "cabinet" ? "Cabinet" : "–";
             return (
             <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
               <SubHeader title="Abonnement" />
               <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px 32px" }}>
-
-                {/* ── Plan actuel ── */}
-                <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", marginBottom: 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div>
-                      <p style={{ margin: "0 0 2px", fontSize: 15, fontWeight: 700, color: "white" }}>
-                        {practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Professionnel" : practitionerPlan === "cabinet" ? "Cabinet" : "–"}
-                      </p>
-                      <p style={{ margin: 0, fontSize: 12, color: subscriptionStatus === "active" && !isCancelling ? emerald : subscriptionStatus === "trialing" ? amber : isCancelling ? "#f97316" : "#64748b" }}>
-                        {isCancelling ? `Résiliation le ${periodEnd ?? "–"}` : subscriptionStatus === "active" ? "Actif" : subscriptionStatus === "trialing" ? "Période d'essai" : subscriptionStatus === "past_due" ? "Paiement en retard" : (subscriptionStatus === "canceled" || subscriptionStatus === "cancelled") ? "Résilié" : subscriptionStatus ?? "–"}
-                      </p>
-                    </div>
-                    {periodEnd && !isCancelling && (
-                      <p style={{ margin: 0, fontSize: 11, color: "#475569", textAlign: "right" }}>
-                        Renouvellement<br />
-                        <span style={{ color: "#94a3b8", fontWeight: 500 }}>{periodEnd}</span>
-                      </p>
-                    )}
-                  </div>
-                  {isCancelling && (
-                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(249,115,22,0.15)" }}>
-                      <p style={{ margin: "0 0 10px", fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
-                        Vous avez changé d'avis ? Votre accès reste actif jusqu'au <strong style={{ color: "white" }}>{periodEnd}</strong>.
-                      </p>
-                      <button onClick={() => void handleResumeSubscription()}
-                        style={{ fontSize: 12, fontWeight: 600, color: emerald, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                        Annuler la résiliation →
-                      </button>
-                    </div>
-                  )}
-                  {cancelSuccess && (
-                    <p style={{ margin: "10px 0 0", fontSize: 12, color: emerald }}>
-                      ✓ Un email de confirmation vous a été envoyé.
-                    </p>
-                  )}
-                  {deleteRequestSent && (
-                    <p style={{ margin: "10px 0 0", fontSize: 12, color: "#94a3b8" }}>
-                      ✓ Votre demande de suppression a été envoyée. Traitement sous 30 jours.
-                    </p>
-                  )}
-                </div>
 
                 {/* ── Tabs ── */}
                 <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4, marginBottom: 20 }}>
@@ -4339,7 +4299,7 @@ export default function DashboardPage() {
                       style={{ flex: 1, height: 32, borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
                         background: billingTab === tab ? "rgba(255,255,255,0.09)" : "transparent",
                         color: billingTab === tab ? "white" : "#64748b" }}>
-                      {tab === "facturation" ? "Facturation" : "Changer de plan"}
+                      {tab === "facturation" ? "Facturation" : "Plan actuel"}
                     </button>
                   ))}
                 </div>
@@ -4434,15 +4394,52 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                {/* ══ TAB PLAN ══ */}
+                {/* ══ TAB PLAN ACTUEL ══ */}
                 {billingTab === "plan" && (
                   <div>
-                    <button onClick={() => { setPlanUpdateError(""); setShowBillingModal(true); }}
-                      style={{ width: "100%", height: 42, borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", marginBottom: 12 }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}>
-                      Voir les plans disponibles
-                    </button>
+                    {/* Infos plan */}
+                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)", padding: "18px 18px", marginBottom: 14 }}>
+                      <p style={{ margin: "0 0 2px", fontSize: 18, fontWeight: 700, color: "white" }}>{planLabel}</p>
+                      <p style={{ margin: "0 0 12px", fontSize: 12, color: subscriptionStatus === "active" && !isCancelling ? emerald : subscriptionStatus === "trialing" ? amber : "#64748b" }}>
+                        {subscriptionStatus === "active" && !isCancelling ? "Actif" : subscriptionStatus === "trialing" ? "Période d'essai" : subscriptionStatus === "past_due" ? "Paiement en retard" : "–"}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
+                        {patients.length} patient{patients.length !== 1 ? "s" : ""}
+                        {periodEnd && !isCancelling && <span style={{ color: "#475569" }}> · Renouvellement le <span style={{ color: "#94a3b8" }}>{periodEnd}</span></span>}
+                      </p>
+
+                      {/* État résiliation */}
+                      {isCancelling && (
+                        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(245,158,11,0.12)" }}>
+                          <p style={{ margin: "0 0 4px", fontSize: 13, color: amber, fontWeight: 500 }}>
+                            Votre accès reste actif jusqu'au {periodEnd}
+                          </p>
+                          <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>Vous avez changé d'avis ?</p>
+                          <button onClick={() => void handleResumeSubscription()}
+                            style={{ height: 36, paddingInline: 16, borderRadius: 9, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}>
+                            Annuler la résiliation
+                          </button>
+                        </div>
+                      )}
+
+                      {deleteRequestSent && (
+                        <p style={{ margin: "12px 0 0", fontSize: 12, color: "#94a3b8" }}>
+                          ✓ Votre demande de suppression a été envoyée. Traitement sous 30 jours.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* CTA changer de plan */}
+                    {!isCancelling && (
+                      <button onClick={() => { setPlanUpdateError(""); setShowBillingModal(true); }}
+                        style={{ width: "100%", height: 42, borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", marginBottom: 12 }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}>
+                        Voir les plans disponibles
+                      </button>
+                    )}
                     {planUpdateSuccess && (
                       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 14px", background: "rgba(16,185,129,0.06)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.12)" }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -4455,29 +4452,66 @@ export default function DashboardPage() {
 
               {/* ── Modal confirmation résiliation ── */}
               {showCancelConfirm && (
-                <div onClick={() => setShowCancelConfirm(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-                  <div onClick={e => e.stopPropagation()} style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 360, border: "1px solid rgba(239,68,68,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", textAlign: "center" }}>
-                    <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                    </div>
-                    <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Résilier mon abonnement ?</h2>
-                    <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
-                      Votre accès restera actif jusqu'au <strong style={{ color: "white" }}>{periodEnd ?? "fin de la période"}</strong>. Aucun montant ne sera prélevé après cette date. Un email de confirmation vous sera envoyé.
-                    </p>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <button onClick={() => setShowCancelConfirm(false)}
-                        style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
-                        Annuler
-                      </button>
-                      <button onClick={() => void handleCancelSubscription()} disabled={cancelLoading}
-                        style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: cancelLoading ? "default" : "pointer", opacity: cancelLoading ? 0.7 : 1 }}
-                        onMouseEnter={e => { if (!cancelLoading) { e.currentTarget.style.background = "rgba(239,68,68,0.15)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.35)"; } }}
-                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.2)"; }}>
-                        {cancelLoading ? "Traitement…" : "Confirmer"}
-                      </button>
-                    </div>
+                <div onClick={() => { if (!cancelSuccess) setShowCancelConfirm(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+                  <div onClick={e => e.stopPropagation()} style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 360, border: `1px solid ${cancelSuccess ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.2)"}`, boxShadow: "0 20px 60px rgba(0,0,0,0.6)", textAlign: "center" }}>
+
+                    {cancelSuccess ? (
+                      /* ── État succès ── */
+                      <>
+                        <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={emerald} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </div>
+                        <h2 style={{ margin: "0 0 10px", fontSize: 17, fontWeight: 700, color: "white" }}>Résiliation confirmée</h2>
+                        <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b", lineHeight: 1.65 }}>
+                          Un email de confirmation vous a été envoyé.<br />
+                          Votre accès reste actif jusqu'au <strong style={{ color: "white" }}>{periodEnd ?? "fin de la période"}</strong>. Vous pouvez annuler votre résiliation à tout moment avant cette date.
+                        </p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          <button onClick={() => { void handleResumeSubscription(); setShowCancelConfirm(false); }}
+                            style={{ width: "100%", height: 42, borderRadius: 10, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}>
+                            Annuler la résiliation
+                          </button>
+                          <button onClick={() => { setShowCancelConfirm(false); }}
+                            style={{ width: "100%", height: 42, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                            Fermer
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      /* ── État confirmation ── */
+                      <>
+                        <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        </div>
+                        <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Résilier mon abonnement ?</h2>
+                        <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+                          Votre accès restera actif jusqu'au <strong style={{ color: "white" }}>{periodEnd ?? "fin de la période"}</strong>. Aucun montant ne sera prélevé après cette date. Un email de confirmation vous sera envoyé.
+                        </p>
+                        <div style={{ display: "flex", gap: 10 }}>
+                          <button onClick={() => setShowCancelConfirm(false)}
+                            style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}
+                            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                            Annuler
+                          </button>
+                          <button onClick={() => void handleCancelSubscription()} disabled={cancelLoading}
+                            style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: cancelLoading ? "default" : "pointer", opacity: cancelLoading ? 0.7 : 1 }}
+                            onMouseEnter={e => { if (!cancelLoading) { e.currentTarget.style.background = "rgba(239,68,68,0.15)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.35)"; } }}
+                            onMouseLeave={e => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.2)"; }}>
+                            {cancelLoading
+                              ? <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"/></path></svg>
+                                  Confirmation
+                                </span>
+                              : "Confirmer"}
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               )}

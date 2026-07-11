@@ -65,7 +65,7 @@ export async function POST() {
 
     await sendEmail({
       to: practitioner.email,
-      subject: `Résiliation confirmée — accès actif jusqu'au ${endDateStr}`,
+      subject: `Résiliation confirmée · accès actif jusqu'au ${endDateStr}`,
       html,
     });
   }
