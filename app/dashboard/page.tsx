@@ -772,7 +772,7 @@ export default function DashboardPage() {
   const [isPurchasingPack, setIsPurchasingPack] = useState(false);
   const [packError, setPackError] = useState("");
   // ─── Billing étendu ───────────────────────────────────────────────────────────
-  const [billingTab, setBillingTab] = useState<"facturation"|"plan">("facturation");
+  const [billingTab, setBillingTab] = useState<"facturation"|"plan">("plan");
   const [billingLoading, setBillingLoading] = useState(false);
   const [invoices, setInvoices] = useState<Array<{ id: string; number: string | null; amount_paid: number; currency: string; status: string | null; created: number; invoice_pdf: string | null; hosted_invoice_url: string | null }>>([]);
   const [billingSubscription, setBillingSubscription] = useState<{ id: string; status: string; cancel_at_period_end: boolean; current_period_end: number; cancel_at: number | null } | null>(null);
@@ -4294,7 +4294,7 @@ export default function DashboardPage() {
 
                 {/* ── Tabs ── */}
                 <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4, marginBottom: 20 }}>
-                  {(["facturation", "plan"] as const).map(tab => (
+                  {(["plan", "facturation"] as const).map(tab => (
                     <button key={tab} onClick={() => { setBillingTab(tab); if (tab === "facturation" && invoices.length === 0) void loadBillingData(); }}
                       style={{ flex: 1, height: 32, borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
                         background: billingTab === tab ? "rgba(255,255,255,0.09)" : "transparent",
@@ -4400,8 +4400,8 @@ export default function DashboardPage() {
                     {/* Infos plan */}
                     <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)", padding: "18px 18px", marginBottom: 14 }}>
                       <p style={{ margin: "0 0 2px", fontSize: 18, fontWeight: 700, color: "white" }}>{planLabel}</p>
-                      <p style={{ margin: "0 0 12px", fontSize: 12, color: subscriptionStatus === "active" && !isCancelling ? emerald : subscriptionStatus === "trialing" ? amber : "#64748b" }}>
-                        {subscriptionStatus === "active" && !isCancelling ? "Actif" : subscriptionStatus === "trialing" ? "Période d'essai" : subscriptionStatus === "past_due" ? "Paiement en retard" : "–"}
+                      <p style={{ margin: "0 0 12px", fontSize: 12, color: isCancelling ? amber : subscriptionStatus === "active" ? emerald : subscriptionStatus === "trialing" ? amber : "#64748b" }}>
+                        {isCancelling ? "Résiliation programmée" : subscriptionStatus === "active" ? "Actif" : subscriptionStatus === "trialing" ? "Période d'essai" : subscriptionStatus === "past_due" ? "Paiement en retard" : "–"}
                       </p>
                       <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
                         {patients.length} patient{patients.length !== 1 ? "s" : ""}
