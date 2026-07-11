@@ -18,7 +18,7 @@ const coral = "#f43f5e";
 const DEMO_PATIENTS_INITIAL = [
   {
     id: "demo-1", firstName: "Sophie", lastName: "M.", initials: "SM",
-    avatarColor: "#f43f5e", emotional_status: "orange", emotional_insight: "Rechute alimentaire ce soir",
+    avatarColor: "#f43f5e", emotional_status: "red_behavioral", emotional_insight: "Rechute alimentaire ce soir",
     admin_alerts: [{ type: "alert", date: "2026-05-16T21:03:00", seen: false, murmure: "Sois plus doux cette semaine, elle traverse une période difficile au travail." }],
     totalMessages: 34, latest_victory: "A résisté à la cantine le 13 mai",
     age: 32, sexe: "F", taille: 165, poids: 68,
