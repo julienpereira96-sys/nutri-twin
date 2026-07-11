@@ -2968,7 +2968,13 @@ export default function DashboardPage() {
                     })}
                   </div>
                   {/* Bloc Action — intervention bubble */}
-                  {showInterventionBubble && !replyMode && (() => {
+                  {(showInterventionBubble || (
+                    !alertBannerDismissed[selectedPatient.id] && (
+                      selectedPatient.emotional_status === "red" ||
+                      selectedPatient.emotional_status === "red_critical" ||
+                      selectedPatient.emotional_status === "red_behavioral"
+                    )
+                  )) && !replyMode && (() => {
                     const patIsRed = selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical";
                     const patIsBehavioral = selectedPatient.emotional_status === "red_behavioral";
                     // Behavioral → orange, critical/red → rouge, sinon amber
