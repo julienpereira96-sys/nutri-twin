@@ -586,7 +586,7 @@ export default function PatientOnboardingPage() {
           <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 16px" }}>
             <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.15)", filter: "blur(12px)" }} />
             <div style={{ position: "relative", width: 72, height: 72, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.5)", boxShadow: "0 0 20px rgba(16,185,129,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <img src="/logo-new.svg" alt="" style={{ width: 36, height: 36 }} />
+              <img src="/logo.png" alt="" style={{ width: 44, height: 44, objectFit: "contain" }} />
             </div>
           </div>
           <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 700, color: "white" }}>

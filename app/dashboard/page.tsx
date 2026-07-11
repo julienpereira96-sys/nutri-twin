@@ -272,7 +272,7 @@ const OnboardingTour = ({ practitionerName, onSkip, onTestMode }: OnboardingProp
         <div style={{ position: "relative", width: 75, height: 75, margin: "0 auto 20px" }}>
           <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(16px)" }} />
           <div style={{ position: "relative", width: 75, height: 75, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <img src="/logo-new.svg" alt="" style={{ width: 36, height: 36 }} />
+            <img src="/logo.png" alt="" style={{ width: 44, height: 44, objectFit: "contain" }} />
           </div>
         </div>
 
@@ -4399,29 +4399,32 @@ export default function DashboardPage() {
                   <div>
                     {/* Infos plan */}
                     <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)", padding: "18px 18px", marginBottom: 14 }}>
-                      <p style={{ margin: "0 0 2px", fontSize: 18, fontWeight: 700, color: "white" }}>{planLabel}</p>
-                      <p style={{ margin: "0 0 12px", fontSize: 12, color: isCancelling ? amber : subscriptionStatus === "active" ? emerald : subscriptionStatus === "trialing" ? amber : "#64748b" }}>
-                        {isCancelling ? "Résiliation programmée" : subscriptionStatus === "active" ? "Actif" : subscriptionStatus === "trialing" ? "Période d'essai" : subscriptionStatus === "past_due" ? "Paiement en retard" : "–"}
-                      </p>
-                      <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>
-                        {patients.length} patient{patients.length !== 1 ? "s" : ""}
-                        {periodEnd && !isCancelling && <span style={{ color: "#475569" }}> · Renouvellement le <span style={{ color: "#94a3b8" }}>{periodEnd}</span></span>}
-                      </p>
+                      <p style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: emerald }}>{planLabel}</p>
 
-                      {/* État résiliation */}
-                      {isCancelling && (
-                        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(245,158,11,0.12)" }}>
-                          <p style={{ margin: "0 0 4px", fontSize: 13, color: amber, fontWeight: 500 }}>
-                            Votre accès reste actif jusqu'au {periodEnd}
+                      {isCancelling ? (
+                        <>
+                          <p style={{ margin: "0 0 20px", fontSize: 13, color: amber, lineHeight: 1.6 }}>
+                            Résiliation programmée, votre accès reste néanmoins actif jusqu'au <strong>{periodEnd}</strong>
                           </p>
-                          <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b" }}>Vous avez changé d'avis ?</p>
+                          <p style={{ margin: "0 0 12px", fontSize: 17, fontWeight: 600, color: "white" }}>Vous avez changé d'avis ?</p>
                           <button onClick={() => void handleResumeSubscription()}
                             style={{ height: 36, paddingInline: 16, borderRadius: 9, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
                             onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
                             onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}>
                             Annuler la résiliation
                           </button>
-                        </div>
+                        </>
+                      ) : (
+                        <>
+                          <p style={{ margin: "0 0 4px", fontSize: 12, color: subscriptionStatus === "active" ? emerald : subscriptionStatus === "trialing" ? amber : "#64748b" }}>
+                            {subscriptionStatus === "active" ? "Actif" : subscriptionStatus === "trialing" ? "Période d'essai" : subscriptionStatus === "past_due" ? "Paiement en retard" : "–"}
+                          </p>
+                          {periodEnd && (
+                            <p style={{ margin: 0, fontSize: 12, color: "#475569" }}>
+                              Renouvellement le <span style={{ color: "#94a3b8" }}>{periodEnd}</span>
+                            </p>
+                          )}
+                        </>
                       )}
 
                       {deleteRequestSent && (

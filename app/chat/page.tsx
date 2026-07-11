@@ -358,7 +358,7 @@ const OnboardingTour = ({ firstName, onDone }: OnboardingProps) => {
         <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 24px" }}>
           <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(16px)" }} />
           <div style={{ position: "relative", width: 72, height: 72, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <img src="/logo-new.svg" alt="" style={{ width: 36, height: 36 }} />
+            <img src="/logo.png" alt="" style={{ width: 44, height: 44, objectFit: "contain" }} />
           </div>
         </div>
 
@@ -2857,7 +2857,7 @@ export default function ChatPage() {
                   <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(16px)" }} />
                   <div style={{ position: "relative", width: 75, height: 75 }}>
                     <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <img src="/logo-new.svg" alt="NutriTwin" style={{ width: 36, height: 36 }} />
+                      <img src="/logo.png" alt="NutriTwin" style={{ width: 44, height: 44, objectFit: "contain" }} />
                     </div>
                   </div>
                 </div>

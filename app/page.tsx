@@ -430,7 +430,7 @@ export default function Home() {
         <div style={{ position: "relative", flexShrink: 0, width: 34, height: 34 }}>
           <div style={{ position: "absolute", inset: -8, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.2), transparent 70%)", pointerEvents: "none" }} />
           <div style={{ width: 34, height: 34, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.6)", display: "flex", alignItems: "center", justifyContent: "center", background: "#070707", position: "relative" }}>
-            <img src="/logo-new.svg" alt="" style={{ width: 18, height: 18 }} />
+            <img src="/logo.png" alt="" style={{ width: 22, height: 22, objectFit: "contain" }} />
           </div>
         </div>
         <span className="text-[22px] tracking-tight" style={{ fontFamily: "var(--font-jakarta), sans-serif" }}>Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></span>
