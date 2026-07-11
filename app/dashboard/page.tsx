@@ -36,7 +36,7 @@ const DEMO_PATIENTS_INITIAL = [
   },
   {
     id: "demo-2", firstName: "Julie", lastName: "P.", initials: "JP",
-    avatarColor: "#8b5cf6", emotional_status: "orange", emotional_insight: "Anxieuse mais motivée",
+    avatarColor: "#8b5cf6", emotional_status: "green", emotional_insight: "Anxieuse mais motivée",
     admin_alerts: [{ type: "alert", date: "2026-05-17T12:30:00", seen: false, murmure: "Rappelle-lui de prendre soin d'elle malgré la charge de travail." }],
     totalMessages: 18, latest_victory: "A repris sans culpabilité après l'écart",
     age: 28, sexe: "F", taille: 162, poids: 58,
@@ -50,7 +50,7 @@ const DEMO_PATIENTS_INITIAL = [
     private_notes: [],
     lastActive: "Il y a 1j", streak: 3, sosResolved: 0, onboardingCompleted: true,
     lastMessage: "Le lien alimentation-sommeil est réel — continuez sur cette lancée.",
-    victory_detected_at: null, // en alerte orange — trophée masqué
+    victory_detected_at: null, // stable — pas de victoire récente
   },
   {
     id: "demo-3", firstName: "Thomas", lastName: "R.", initials: "TR",
@@ -163,6 +163,13 @@ const DEMO_CONVERSATIONS_THOMAS: { id: string; role: "user" | "assistant"; conte
   { id: "t16", role: "assistant", content: "Un anniversaire de mariage mérite d'être célébré pleinement. Ce n'est pas un écart alimentaire, c'est de la vie. Un week-end festif sur deux mois de progrès constants, ça ne change rien à la trajectoire.", created_at: "2026-04-22T10:01:00" },
   { id: "t17", role: "user", content: "Merci de le formuler ainsi. Je reprends normalement aujourd'hui.", created_at: "2026-04-22T10:02:00" },
   { id: "t18", role: "assistant", content: "C'est tout ce qu'il faut faire : reprendre sans drama. La flexibilité fait partie d'une alimentation saine.", created_at: "2026-04-22T10:03:00" },
+  // Fin avril — semaine de stress + SOS
+  { id: "t18b", role: "user", content: "Cette semaine c'était difficile. Réorganisation dans mon service, je dormais mal, j'ai sauté des repas et grignoté le soir.", created_at: "2026-04-26T21:10:00" },
+  { id: "t18c", role: "assistant", content: "Je vous entends, Thomas. Le stress professionnel est souvent le premier facteur à faire dérailler les bonnes habitudes. Là, maintenant — nuque, tension, tête — comment vous sentez-vous physiquement ?", created_at: "2026-04-26T21:11:00" },
+  { id: "t18d", role: "user", content: "Tendu. Nuque raide, j'ai l'impression que ma tension est remontée. Je me sens un peu submergé.", created_at: "2026-04-26T21:12:00" },
+  { id: "t18e", role: "assistant", content: "Ce que vous décrivez — tension physique, sentiment d'être submergé — c'est exactement le bon moment pour l'exercice SOS. Il prend quelques minutes et aide le système nerveux à redescendre. Essayez-le maintenant, je suis là quand vous revenez.", created_at: "2026-04-26T21:12:30" },
+  { id: "t18f", role: "user", content: "Je l'ai fait. C'est étrange… je me sens vraiment plus calme. La nuque s'est détendue.", created_at: "2026-04-26T21:25:00" },
+  { id: "t18g", role: "assistant", content: "Ce n'est pas étrange, c'est de la physiologie. Vous venez d'activer votre système parasympathique. Gardez ça en mémoire — c'est un outil que vous avez maintenant, pour la prochaine fois que le travail déborde. La semaine prochaine repart comme avant.", created_at: "2026-04-26T21:26:00" },
   // Mois 3 — alimentation intuitive
   { id: "t19", role: "user", content: "J'ai arrêté de compter les calories la semaine dernière. Je mange quand j'ai faim, je m'arrête quand je suis rassasié.", created_at: "2026-05-01T11:00:00" },
   { id: "t20", role: "assistant", content: "Thomas, c'est une étape majeure. L'alimentation intuitive, c'est l'objectif final, quand le corps reprend le pilotage naturel. Comment ça se passe concrètement ?", created_at: "2026-05-01T11:01:00" },
@@ -1913,6 +1920,11 @@ export default function DashboardPage() {
 
   const generateBravo = async (patientId: string, victoryText: string) => {
     setBravoState(prev => ({ ...prev, [patientId]: { expanded: false, text: "", editing: false, loading: true, sending: false, sent: false } }));
+    if (onboardingDemoMode) {
+      await new Promise(r => setTimeout(r, 900));
+      setBravoState(prev => ({ ...prev, [patientId]: { expanded: true, text: "Bravo pour cette belle victoire ! C'est exactement ce genre de progrès qui fait toute la différence. Continuez sur cette lancée 🌿", editing: false, loading: false, sending: false, sent: false } }));
+      return;
+    }
     try {
       const res = await fetch("/api/generate-bravo", {
         method: "POST",
@@ -2036,6 +2048,21 @@ export default function DashboardPage() {
     if (!pid) { const { data: { user } } = await supabase.auth.getUser(); pid = user?.id ?? null; }
     if (!pid) return;
     setAudioUploading(true); setUploadErrors([]);
+    if (onboardingDemoMode) {
+      await new Promise(r => setTimeout(r, 1800));
+      const fakeName = existingDoc ? existingDoc.file_name : `memo_vocal_demo_${Date.now()}.mp3`;
+      const fakeAudio: Document = { id: `demo-audio-${Date.now()}`, file_name: fakeName, file_type: "mp3", created_at: new Date().toISOString() };
+      setHasDocuments(true);
+      setAudioBlob(null); setEditingAudioDoc(null); setContinueFromSecs(0);
+      // Injecter le faux doc dans la liste locale sans appel API
+      if (existingDoc) {
+        setDocuments(prev => prev.map(d => d.id === existingDoc.id ? fakeAudio : d));
+      } else {
+        setDocuments(prev => [fakeAudio, ...prev]);
+      }
+      setAudioUploading(false);
+      return;
+    }
     try {
       // Supprimer l'ancien document si on est en mode remplacement
       if (existingDoc) {
@@ -2986,7 +3013,7 @@ export default function DashboardPage() {
                     return (
                       <div style={{ borderTop: `1px solid ${actionBorder}`, background: "rgba(10,10,12,0.97)", backdropFilter: "blur(12px)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 12, color: "#64748b", flex: 1, minWidth: 140 }}>
-                          {"Écrire un message de soutien au patient"}
+                          {`Accompagner ${selectedPatient.firstName} dans ce moment`}
                         </span>
                         {/* Soutien en crise : réponse humaine uniquement — pas de génération IA */}
                         <button onClick={() => { setShowInterventionBubble(false); setReplyMode(true); setReplyText(""); setReplyIsFromJumeau(false); setTimeout(() => replyInputRef.current?.focus(), 50); }}
