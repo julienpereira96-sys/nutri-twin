@@ -24,6 +24,12 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
+        // Le chat est chargé dans une iframe same-origin pour le mode test praticien
+        // → on surcharge X-Frame-Options pour autoriser uniquement la même origine
+        source: "/chat(.*)",
+        headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }],
+      },
+      {
         // Le Service Worker doit être servi sans cache et avec la bonne scope
         source: "/sw.js",
         headers: [

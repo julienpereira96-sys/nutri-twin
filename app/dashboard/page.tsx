@@ -17,7 +17,7 @@ const coral = "#f43f5e";
 const DEMO_PATIENTS_INITIAL = [
   {
     id: "demo-1", firstName: "Sophie", lastName: "M.", initials: "SM",
-    avatarColor: "#f43f5e", emotional_status: "red", emotional_insight: "Rechute alimentaire ce soir",
+    avatarColor: "#f43f5e", emotional_status: "orange", emotional_insight: "Rechute alimentaire ce soir",
     admin_alerts: [{ type: "alert", date: "2026-05-16T21:03:00", seen: false, murmure: "Sois plus doux cette semaine, elle traverse une période difficile au travail." }],
     totalMessages: 34, latest_victory: "A résisté à la cantine le 13 mai",
     age: 32, sexe: "F", taille: 165, poids: 68,
@@ -53,8 +53,8 @@ const DEMO_PATIENTS_INITIAL = [
   },
   {
     id: "demo-3", firstName: "Thomas", lastName: "R.", initials: "TR",
-    avatarColor: "#3b82f6", emotional_status: "green", emotional_insight: "En confiance, régulier",
-    totalMessages: 40, latest_victory: "A écouté sa satiété au dîner",
+    avatarColor: "#3b82f6", emotional_status: "green", emotional_insight: "Poids stable depuis 3 semaines sans restriction",
+    totalMessages: 40, latest_victory: "Poids stable depuis 3 semaines sans restriction",
     age: 41, sexe: "M", taille: 178, poids: 82,
     objective: "Maintenir le poids atteint et développer une alimentation intuitive.",
     pathologies: "Hypertension",
@@ -75,31 +75,31 @@ const DEMO_CONVERSATIONS: { id: string; role: "user" | "assistant"; content: str
   { id: "d1", role: "user", content: "Bonjour ! Je viens de commencer le programme. Je voulais vous dire que j'ai réussi à petit-déjeuner ce matin 🙂", created_at: "2026-05-02T08:14:00" },
   { id: "d2", role: "assistant", content: "Bonjour Sophie ! C'est un très bon départ. Un petit-déjeuner complet le matin, c'est la base d'une journée sans fringale. Qu'est-ce que vous avez mangé ?", created_at: "2026-05-02T08:15:10" },
   { id: "d3", role: "user", content: "Des œufs brouillés et une tranche de pain complet avec du café. Pas d'autres sucres.", created_at: "2026-05-02T08:16:30" },
-  { id: "d4", role: "assistant", content: "Parfait — des protéines, des glucides complexes, pas de pic glycémique. Continuez sur cette lancée cette semaine.", created_at: "2026-05-02T08:17:00" },
+  { id: "d4", role: "assistant", content: "Parfait : des protéines, des glucides complexes, pas de pic glycémique. Continuez sur cette lancée cette semaine.", created_at: "2026-05-02T08:17:00" },
   // Semaine 1 — fin de journée difficile
   { id: "d5", role: "user", content: "Ce soir c'était dur. Réunion jusqu'à 20h, je n'ai pas déjeuné et j'ai craqué sur des chips en rentrant.", created_at: "2026-05-05T20:42:00" },
   { id: "d6", role: "assistant", content: "Je comprends, Sophie. Une réunion aussi longue sans repas, c'est une situation impossible à tenir. Ce n'est pas de la faiblesse, c'est de la biologie. Qu'est-ce que vous avez pu faire après ?", created_at: "2026-05-05T20:43:20" },
   { id: "d7", role: "user", content: "J'ai fini par manger une omelette. Mais je me sens coupable quand même.", created_at: "2026-05-05T20:44:10" },
-  { id: "d8", role: "assistant", content: "Vous avez bien fait de manger quelque chose de nourrissant après. La culpabilité n'aide pas — ce qui compte, c'est que vous ayez rattrapé la situation. Demain, essayons d'anticiper : est-ce qu'il y a une plage pour déjeuner dans votre agenda ?", created_at: "2026-05-05T20:45:00" },
+  { id: "d8", role: "assistant", content: "Vous avez bien fait de manger quelque chose de nourrissant après. La culpabilité n'aide pas, ce qui compte, c'est que vous ayez rattrapé la situation. Demain, essayons d'anticiper : est-ce qu'il y a une plage pour déjeuner dans votre agenda ?", created_at: "2026-05-05T20:45:00" },
   { id: "d9", role: "user", content: "Oui, demain j'ai une heure libre à 12h30. Je vais en profiter.", created_at: "2026-05-05T20:45:40" },
-  { id: "d10", role: "assistant", content: "Parfait. Bloquez ce créneau comme un rendez-vous médical — on ne l'annule pas. Bonne nuit Sophie 🌙", created_at: "2026-05-05T20:46:00" },
+  { id: "d10", role: "assistant", content: "Parfait. Bloquez ce créneau comme un rendez-vous médical, on ne l'annule pas. Bonne nuit Sophie 🌙", created_at: "2026-05-05T20:46:00" },
   // Semaine 2 — progrès
   { id: "d11", role: "user", content: "J'ai réussi à déjeuner deux jours de suite ! Avec une vraie pause, assise, sans téléphone.", created_at: "2026-05-08T13:02:00" },
-  { id: "d12", role: "assistant", content: "C'est exactement ça l'objectif, Sophie. Deux pauses repas en pleine conscience cette semaine — vous avez ancré une habitude. Comment vous êtes-vous sentie après ?", created_at: "2026-05-08T13:03:00" },
+  { id: "d12", role: "assistant", content: "C'est exactement ça l'objectif, Sophie. Deux pauses repas en pleine conscience cette semaine : vous avez ancré une habitude. Comment vous êtes-vous sentie après ?", created_at: "2026-05-08T13:03:00" },
   { id: "d13", role: "user", content: "Moins de fringale le soir. C'est étonnant comme c'est efficace.", created_at: "2026-05-08T13:03:45" },
-  { id: "d14", role: "assistant", content: "Ce n'est pas étonnant — c'est de la physiologie. Un déjeuner complet évite le pic de cortisol et la faim émotionnelle du soir. Continuez, vous êtes sur la bonne voie.", created_at: "2026-05-08T13:04:30" },
+  { id: "d14", role: "assistant", content: "Ce n'est pas étonnant, c'est de la physiologie. Un déjeuner complet évite le pic de cortisol et la faim émotionnelle du soir. Continuez, vous êtes sur la bonne voie.", created_at: "2026-05-08T13:04:30" },
   // Semaine 2 — situation sociale difficile
   { id: "d15", role: "user", content: "Repas d'entreprise demain midi. Je stresse un peu, c'est souvent un buffet avec beaucoup de tentations.", created_at: "2026-05-12T19:15:00" },
-  { id: "d16", role: "assistant", content: "Anticipons ensemble. Dans un buffet, commencez par le tour complet avant de prendre quoi que ce soit — ça permet de faire un choix conscient plutôt que réactif. Que savez-vous du menu ?", created_at: "2026-05-12T19:16:10" },
+  { id: "d16", role: "assistant", content: "Anticipons ensemble. Dans un buffet, commencez par le tour complet avant de prendre quoi que ce soit, ça permet de faire un choix conscient plutôt que réactif. Que savez-vous du menu ?", created_at: "2026-05-12T19:16:10" },
   { id: "d17", role: "user", content: "Des charcuteries, des salades, des quiches, des desserts. Et du vin bien sûr.", created_at: "2026-05-12T19:16:50" },
   { id: "d18", role: "assistant", content: "Stratégie : commencez par une salade et des protéines (quiche, charcuterie en petite quantité). Laissez la place pour les desserts si vous en avez vraiment envie, mais décidez-le au moment, pas par automatisme. Pour l'alcool, alternez avec de l'eau.", created_at: "2026-05-12T19:17:45" },
   { id: "d19", role: "user", content: "J'ai suivi votre conseil ce midi ! Je n'ai pris qu'une assiette, j'ai résisté au plateau de fromages.", created_at: "2026-05-13T14:22:00" },
-  { id: "d20", role: "assistant", content: "Sophie, c'est une vraie victoire. Résister en contexte social, c'est la compétence la plus difficile. Vous avez fait un choix conscient sous pression sociale — c'est exactement ce qu'on travaille. 🌟", created_at: "2026-05-13T14:23:00" },
+  { id: "d20", role: "assistant", content: "Sophie, c'est une vraie victoire. Résister en contexte social, c'est la compétence la plus difficile. Vous avez fait un choix conscient sous pression sociale. C'est exactement ce qu'on travaille. 🌟", created_at: "2026-05-13T14:23:00" },
   // Semaine 3 — rechute
   { id: "d21", role: "user", content: "Mauvaise semaine. Conflit avec mon manager, j'ai mangé n'importe quoi pendant 3 jours.", created_at: "2026-05-16T18:30:00" },
-  { id: "d22", role: "assistant", content: "Je suis désolé d'entendre ça, Sophie. Le stress professionnel est un déclencheur puissant. Vous avez quand même pris la peine de m'écrire — c'est déjà bien. Qu'est-ce qui s'est passé exactement ?", created_at: "2026-05-16T18:31:00" },
+  { id: "d22", role: "assistant", content: "Je suis désolé d'entendre ça, Sophie. Le stress professionnel est un déclencheur puissant. Vous avez quand même pris la peine de m'écrire, c'est déjà bien. Qu'est-ce qui s'est passé exactement ?", created_at: "2026-05-16T18:31:00" },
   { id: "d23", role: "user", content: "Il a remis en cause mon travail devant toute l'équipe. J'étais tellement mal que je n'arrivais plus à penser à manger sainement.", created_at: "2026-05-16T18:32:20" },
-  { id: "d24", role: "assistant", content: "Ce que vous décrivez est une réaction émotionnelle tout à fait normale. La nourriture devient un régulateur quand on est blessé. Ce n'est pas de la faiblesse — c'est un mécanisme ancien. L'important, c'est d'identifier ce schéma pour mieux y répondre.", created_at: "2026-05-16T18:33:15" },
+  { id: "d24", role: "assistant", content: "Ce que vous décrivez est une réaction émotionnelle tout à fait normale. La nourriture devient un régulateur quand on est blessé. Ce n'est pas de la faiblesse, c'est un mécanisme ancien. L'important, c'est d'identifier ce schéma pour mieux y répondre.", created_at: "2026-05-16T18:33:15" },
   { id: "d25", role: "user", content: "Je comprends mais ça me frustre de régresser après avoir si bien avancé.", created_at: "2026-05-16T18:34:00" },
   { id: "d26", role: "assistant", content: "Le parcours n'est jamais linéaire. Trois semaines de progrès suivies d'une semaine difficile, c'est encore largement positif. La semaine prochaine est une nouvelle page.", created_at: "2026-05-16T18:34:50" },
   // Soir — fringale critique
@@ -110,33 +110,33 @@ const DEMO_CONVERSATIONS: { id: string; role: "user" | "assistant"; content: str
   { id: "d31", role: "user", content: "Oui. Merci, ça me soulage d'avoir quelqu'un à qui écrire 💚", created_at: "2026-05-16T21:05:20" },
   // Lendemain — rebond
   { id: "d32", role: "user", content: "J'ai fait ce qu'on avait dit : vrai déjeuner, assis, 30 minutes. Et ce soir pas de fringale.", created_at: "2026-05-17T20:10:00" },
-  { id: "d33", role: "assistant", content: "Sophie ! Voilà — preuve par neuf. Un vrai déjeuner = une soirée apaisée. Vous venez de relier cause et effet. Gardez ça en mémoire pour la prochaine fois que le stress vous fait sauter un repas.", created_at: "2026-05-17T20:11:00" },
+  { id: "d33", role: "assistant", content: "Sophie ! Voilà, preuve par neuf. Un vrai déjeuner = une soirée apaisée. Vous venez de relier cause et effet. Gardez ça en mémoire pour la prochaine fois que le stress vous fait sauter un repas.", created_at: "2026-05-17T20:11:00" },
   { id: "d34", role: "user", content: "Oui, c'est clair maintenant. Merci. On continue !", created_at: "2026-05-17T20:11:45" },
 ];
 
 const DEMO_CONVERSATIONS_JULIE: { id: string; role: "user" | "assistant"; content: string; created_at: string }[] = [
   // Semaine 1
   { id: "j1", role: "user", content: "Bonjour ! Mon nutritionniste m'a dit de commencer à noter ce que je mange. Je ne sais pas trop par où commencer.", created_at: "2026-05-05T09:10:00" },
-  { id: "j2", role: "assistant", content: "Bonjour Julie ! Pas besoin de tout noter en détail — commencez juste par noter les repas principaux et votre niveau d'énergie à midi et en fin de journée. C'est suffisant pour identifier des tendances.", created_at: "2026-05-05T09:11:00" },
+  { id: "j2", role: "assistant", content: "Bonjour Julie ! Pas besoin de tout noter en détail : commencez juste par noter les repas principaux et votre niveau d'énergie à midi et en fin de journée. C'est suffisant pour identifier des tendances.", created_at: "2026-05-05T09:11:00" },
   { id: "j3", role: "user", content: "D'accord, je vais essayer. Hier j'ai mangé une salade à midi et une pizza le soir. Pas idéal je sais.", created_at: "2026-05-05T09:12:00" },
-  { id: "j4", role: "assistant", content: "Ce n'est pas si mal — la salade couvre le midi, la pizza le soir apporte des calories et des glucides. Ce qui manque : des protéines et des légumes le soir. Vous ajouteriez quoi à cette pizza pour l'équilibrer ?", created_at: "2026-05-05T09:13:00" },
+  { id: "j4", role: "assistant", content: "Ce n'est pas si mal, la salade couvre le midi, la pizza le soir apporte des calories et des glucides. Ce qui manque : des protéines et des légumes le soir. Vous ajouteriez quoi à cette pizza pour l'équilibrer ?", created_at: "2026-05-05T09:13:00" },
   // Semaine 2 — période difficile
   { id: "j5", role: "user", content: "Je suis épuisée. Cette semaine c'était trop, pas le temps de manger correctement.", created_at: "2026-05-12T12:30:00" },
   { id: "j6", role: "assistant", content: "Je vous entends Julie. Quand la charge est forte, l'alimentation est souvent la première sacrifiée. Qu'est-ce que vous avez pu manger aujourd'hui ?", created_at: "2026-05-12T12:30:30" },
   { id: "j7", role: "user", content: "Un café le matin et un croissant... et une salade à 15h.", created_at: "2026-05-12T12:31:00" },
-  { id: "j8", role: "assistant", content: "C'est insuffisant pour une journée intense. Ce soir, visez quelque chose de nourrissant mais simple — des œufs, du pain complet, des légumes. Pas besoin de faire de grands efforts.", created_at: "2026-05-12T12:31:40" },
+  { id: "j8", role: "assistant", content: "C'est insuffisant pour une journée intense. Ce soir, visez quelque chose de nourrissant mais simple : des œufs, du pain complet, des légumes. Pas besoin de faire de grands efforts.", created_at: "2026-05-12T12:31:40" },
   { id: "j9", role: "user", content: "D'accord, je vais essayer. Merci d'être là.", created_at: "2026-05-12T12:32:10" },
   // Semaine 2 suite — retour positif
   { id: "j10", role: "assistant", content: "Comment s'est passée votre soirée hier ? Avez-vous pu manger quelque chose ?", created_at: "2026-05-13T09:00:00" },
   { id: "j11", role: "user", content: "Oui ! J'ai fait des œufs avec des épinards. Simple mais ça m'a bien recentrée.", created_at: "2026-05-13T09:05:00" },
-  { id: "j12", role: "assistant", content: "Excellent — œufs + épinards, c'est fer, protéines, vitamines. Vous avez fait le bon choix sans y penser longtemps. C'est ça l'alimentation intuitive.", created_at: "2026-05-13T09:06:00" },
+  { id: "j12", role: "assistant", content: "Excellent ! Œufs + épinards, c'est fer, protéines, vitamines. Vous avez fait le bon choix sans y penser longtemps. C'est ça l'alimentation intuitive.", created_at: "2026-05-13T09:06:00" },
   // Semaine 3 — victoire
   { id: "j13", role: "user", content: "Bonne semaine ! J'ai fait 3 repas complets par jour. J'ai même pris le temps de cuisiner samedi.", created_at: "2026-05-17T10:15:00" },
-  { id: "j14", role: "assistant", content: "Julie, c'est une vraie victoire — 3 repas complets toute la semaine et du temps dédié à la cuisine le week-end. Vous commencez à vous mettre en priorité.", created_at: "2026-05-17T10:16:00" },
+  { id: "j14", role: "assistant", content: "Julie, c'est une vraie victoire : 3 repas complets toute la semaine et du temps dédié à la cuisine le week-end. Vous commencez à vous mettre en priorité.", created_at: "2026-05-17T10:16:00" },
   { id: "j15", role: "user", content: "Oui, j'ai fait un batch cooking : des lentilles, du riz, des légumes rôtis. J'ai mangé des trucs bons toute la semaine.", created_at: "2026-05-17T10:17:00" },
   { id: "j16", role: "assistant", content: "Le batch cooking, c'est exactement la solution pour quelqu'un avec votre rythme. Vous avez trouvé votre format. Est-ce que vous avez ressenti une différence d'énergie ?", created_at: "2026-05-17T10:17:45" },
   { id: "j17", role: "user", content: "Oui, clairement. Moins de coups de pompe à 15h. Et je dors mieux aussi.", created_at: "2026-05-17T10:18:30" },
-  { id: "j18", role: "assistant", content: "Le lien alimentation-sommeil est réel — les glucides complexes et le magnésium dans les légumes jouent un rôle. Continuez sur cette lancée, Julie. Vous avez trouvé un rythme qui vous correspond.", created_at: "2026-05-17T10:19:00" },
+  { id: "j18", role: "assistant", content: "Le lien alimentation-sommeil est réel : les glucides complexes et le magnésium dans les légumes jouent un rôle. Continuez sur cette lancée, Julie. Vous avez trouvé un rythme qui vous correspond.", created_at: "2026-05-17T10:19:00" },
 ];
 
 const DEMO_CONVERSATIONS_THOMAS: { id: string; role: "user" | "assistant"; content: string; created_at: string }[] = [
@@ -144,29 +144,29 @@ const DEMO_CONVERSATIONS_THOMAS: { id: string; role: "user" | "assistant"; conte
   { id: "t1", role: "user", content: "Bonjour ! Mon médecin m'a recommandé de suivre un programme nutritionnel pour mon hypertension.", created_at: "2026-04-01T08:00:00" },
   { id: "t2", role: "assistant", content: "Bonjour Thomas ! Vous êtes au bon endroit. L'alimentation a un impact direct sur la tension artérielle, notamment la réduction du sel et l'augmentation des potassium. On va travailler ça ensemble progressivement.", created_at: "2026-04-01T08:01:00" },
   { id: "t3", role: "user", content: "J'avoue que je mange beaucoup de plats préparés le midi. Et du fromage le soir.", created_at: "2026-04-01T08:02:00" },
-  { id: "t4", role: "assistant", content: "Ce sont deux sources importantes de sel caché. Pas besoin de tout supprimer — commençons par réduire d'un côté : midi ou soir, pas les deux en même temps. Lequel vous semble le plus facile à changer ?", created_at: "2026-04-01T08:03:00" },
+  { id: "t4", role: "assistant", content: "Ce sont deux sources importantes de sel caché. Pas besoin de tout supprimer : commençons par réduire d'un côté : midi ou soir, pas les deux en même temps. Lequel vous semble le plus facile à changer ?", created_at: "2026-04-01T08:03:00" },
   { id: "t5", role: "user", content: "Le midi peut-être. Je pourrais apporter ma gamelle.", created_at: "2026-04-01T08:04:00" },
   { id: "t6", role: "assistant", content: "Parfait. On vise 3 midis par semaine avec un repas fait maison. C'est déjà un changement significatif sur le sel et les calories.", created_at: "2026-04-01T08:05:00" },
   // Mois 1 suite
   { id: "t7", role: "user", content: "J'ai apporté ma gamelle lundi et mercredi. Mardi j'ai craqué sur un kebab.", created_at: "2026-04-07T12:00:00" },
   { id: "t8", role: "assistant", content: "Deux sur trois, c'est une réussite Thomas. Le kebab de mardi n'efface pas les deux autres jours. Comment vous sentiez-vous après le kebab vs après votre gamelle ?", created_at: "2026-04-07T12:01:00" },
   { id: "t9", role: "user", content: "Lourd après le kebab. La gamelle c'était plus léger et j'avais plus d'énergie l'après-midi.", created_at: "2026-04-07T12:02:00" },
-  { id: "t10", role: "assistant", content: "Voilà — votre corps vous donne un signal clair. Gardez cette observation en mémoire, elle sera plus efficace que n'importe quelle règle que je pourrais vous donner.", created_at: "2026-04-07T12:03:00" },
+  { id: "t10", role: "assistant", content: "Voilà, votre corps vous donne un signal clair. Gardez cette observation en mémoire, elle sera plus efficace que n'importe quelle règle que je pourrais vous donner.", created_at: "2026-04-07T12:03:00" },
   // Mois 2 — progrès poids
   { id: "t11", role: "user", content: "Je me suis pesé : moins 2 kg en un mois. Sans me restreindre vraiment.", created_at: "2026-04-14T07:30:00" },
-  { id: "t12", role: "assistant", content: "Thomas, c'est excellent. 2 kg en un mois sans restriction, c'est le signe qu'on a changé de qualité et non de quantité — c'est ce qui tient sur le long terme.", created_at: "2026-04-14T07:31:00" },
+  { id: "t12", role: "assistant", content: "Thomas, c'est excellent. 2 kg en un mois sans restriction, c'est le signe qu'on a changé de qualité et non de quantité, c'est ce qui tient sur le long terme.", created_at: "2026-04-14T07:31:00" },
   { id: "t13", role: "user", content: "Et ma tension a un peu baissé selon mon médecin. 140/90 contre 148/95 avant.", created_at: "2026-04-14T07:32:00" },
-  { id: "t14", role: "assistant", content: "C'est significatif en un mois. La réduction du sel y contribue beaucoup. Continuez — l'objectif de votre médecin est probablement 130/80. On est sur la bonne trajectoire.", created_at: "2026-04-14T07:33:00" },
+  { id: "t14", role: "assistant", content: "C'est significatif en un mois. La réduction du sel y contribue beaucoup. Continuez, l'objectif de votre médecin est probablement 130/80. On est sur la bonne trajectoire.", created_at: "2026-04-14T07:33:00" },
   // Mois 2 — week-end difficile
   { id: "t15", role: "user", content: "Week-end compliqué. Anniversaire de mariage, beaucoup de vin et de nourriture grasse. Je me sens coupable.", created_at: "2026-04-22T10:00:00" },
   { id: "t16", role: "assistant", content: "Un anniversaire de mariage mérite d'être célébré pleinement. Ce n'est pas un écart alimentaire, c'est de la vie. Un week-end festif sur deux mois de progrès constants, ça ne change rien à la trajectoire.", created_at: "2026-04-22T10:01:00" },
   { id: "t17", role: "user", content: "Merci de le formuler ainsi. Je reprends normalement aujourd'hui.", created_at: "2026-04-22T10:02:00" },
-  { id: "t18", role: "assistant", content: "C'est tout ce qu'il faut faire — reprendre sans drama. La flexibilité fait partie d'une alimentation saine.", created_at: "2026-04-22T10:03:00" },
+  { id: "t18", role: "assistant", content: "C'est tout ce qu'il faut faire : reprendre sans drama. La flexibilité fait partie d'une alimentation saine.", created_at: "2026-04-22T10:03:00" },
   // Mois 3 — alimentation intuitive
   { id: "t19", role: "user", content: "J'ai arrêté de compter les calories la semaine dernière. Je mange quand j'ai faim, je m'arrête quand je suis rassasié.", created_at: "2026-05-01T11:00:00" },
-  { id: "t20", role: "assistant", content: "Thomas, c'est une étape majeure. L'alimentation intuitive, c'est l'objectif final — quand le corps reprend le pilotage naturel. Comment ça se passe concrètement ?", created_at: "2026-05-01T11:01:00" },
+  { id: "t20", role: "assistant", content: "Thomas, c'est une étape majeure. L'alimentation intuitive, c'est l'objectif final, quand le corps reprend le pilotage naturel. Comment ça se passe concrètement ?", created_at: "2026-05-01T11:01:00" },
   { id: "t21", role: "user", content: "Bien. Je mange plus lentement. Je reconnais mieux quand je suis vraiment rassasié.", created_at: "2026-05-01T11:02:00" },
-  { id: "t22", role: "assistant", content: "Manger lentement est l'une des interventions les plus efficaces — le signal de satiété met 20 minutes à arriver. Vous avez trouvé la clé tout seul. C'est votre victoire.", created_at: "2026-05-01T11:03:00" },
+  { id: "t22", role: "assistant", content: "Manger lentement est l'une des interventions les plus efficaces : le signal de satiété met 20 minutes à arriver. Vous avez trouvé la clé tout seul. C'est votre victoire.", created_at: "2026-05-01T11:03:00" },
   // Mois 3 — activité physique
   { id: "t23", role: "user", content: "J'ai commencé à marcher 30 minutes chaque matin avant le travail. Ça me change vraiment.", created_at: "2026-05-06T07:45:00" },
   { id: "t24", role: "assistant", content: "Excellent ajout Thomas. La marche matinale régule la glycémie, réduit le cortisol et améliore l'humeur pour toute la journée. En combien de temps avez-vous pris cette habitude ?", created_at: "2026-05-06T07:46:00" },
@@ -176,12 +176,12 @@ const DEMO_CONVERSATIONS_THOMAS: { id: string; role: "user" | "assistant"; conte
   { id: "t27", role: "user", content: "Deuxième semaine stable. Poids identique à lundi dernier à 200g près.", created_at: "2026-05-10T08:20:00" },
   { id: "t28", role: "assistant", content: "La stabilité, c'est exactement l'objectif en phase de maintien. Pas de yo-yo, pas de fluctuation. Votre corps est en équilibre.", created_at: "2026-05-10T08:21:00" },
   { id: "t29", role: "user", content: "J'ai mangé au restaurant deux fois cette semaine et le poids n'a pas bougé. Avant, ça m'aurait fait prendre 1 kg facilement.", created_at: "2026-05-10T08:22:00" },
-  { id: "t30", role: "assistant", content: "Ce que vous décrivez, c'est de la flexibilité métabolique — votre corps sait désormais absorber les variations sans s'emballer. Vous avez développé une vraie résilience alimentaire.", created_at: "2026-05-10T08:23:00" },
+  { id: "t30", role: "assistant", content: "Ce que vous décrivez, c'est de la flexibilité métabolique : votre corps sait désormais absorber les variations sans s'emballer. Vous avez développé une vraie résilience alimentaire.", created_at: "2026-05-10T08:23:00" },
   // Semaine récente — résultats
   { id: "t31", role: "user", content: "Consultation avec mon médecin hier : tension à 128/82. Il est très content.", created_at: "2026-05-15T09:00:00" },
-  { id: "t32", role: "assistant", content: "Thomas, c'est fantastique. 128/82 depuis 148/95 en deux mois et demi — sans médicament supplémentaire, juste par l'alimentation et l'activité physique. Vous pouvez en être fier.", created_at: "2026-05-15T09:01:00" },
+  { id: "t32", role: "assistant", content: "Thomas, c'est fantastique. 128/82 depuis 148/95 en deux mois et demi, sans médicament supplémentaire, juste par l'alimentation et l'activité physique. Vous pouvez en être fier.", created_at: "2026-05-15T09:01:00" },
   { id: "t33", role: "user", content: "Il a dit qu'on peut envisager de réduire le Ramipril si ça continue. Ça m'aurait semblé impossible il y a 3 mois.", created_at: "2026-05-15T09:02:00" },
-  { id: "t34", role: "assistant", content: "C'est la preuve que les changements d'hygiène de vie ont un impact réel, mesurable, clinique. Vous avez fait ce travail — je n'ai fait que vous accompagner.", created_at: "2026-05-15T09:03:00" },
+  { id: "t34", role: "assistant", content: "C'est la preuve que les changements d'hygiène de vie ont un impact réel, mesurable, clinique. Vous avez fait ce travail, je n'ai fait que vous accompagner.", created_at: "2026-05-15T09:03:00" },
   // Victoire finale
   { id: "t35", role: "user", content: "Bonne nouvelle : je me suis pesé ce matin, stable depuis 3 semaines !", created_at: "2026-05-18T08:15:00" },
   { id: "t36", role: "assistant", content: "Excellent Thomas ! La stabilité est souvent plus difficile à maintenir que la perte initiale. C'est une vraie victoire.", created_at: "2026-05-18T08:15:30" },
@@ -1347,9 +1347,10 @@ export default function DashboardPage() {
     if (testMode) {
       realPatientsRef.current = patients;
       realSelectedIdRef.current = selectedPatientId;
-      // Effacer immédiatement les vrais patients pour un retour visuel instantané
+      // Effacer immédiatement les vrais patients + sortir du mode démo
       setPatients([]);
       setSelectedPatientId(null);
+      setOnboardingDemoMode(false);
       setTestPatientsLoading(true);
       void loadTestPatients(practitionerId);
     } else {
@@ -1357,6 +1358,8 @@ export default function DashboardPage() {
       setTestPatientsLoading(false);
       setPatients(realPatientsRef.current);
       setSelectedPatientId(realSelectedIdRef.current ?? (realPatientsRef.current[0]?.id ?? null));
+      // Remettre le mode démo si aucun vrai patient n'existait avant
+      if (realPatientsRef.current.length === 0) setOnboardingDemoMode(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [testMode]);
@@ -2678,9 +2681,18 @@ export default function DashboardPage() {
 
       <main style={{ maxWidth: 1600, margin: "0 auto", padding: "24px" }}>
 
+        {/* ═══ Bannière mode démo ═══ */}
+        {activeTab === "patients" && onboardingDemoMode && !testMode && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, height: 38, marginBottom: 12, borderRadius: 10, background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", padding: "0 16px" }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#8b5cf6", flexShrink: 0 }} />
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#a78bfa", letterSpacing: "0.08em", textTransform: "uppercase" }}>Mode démo</span>
+            <span style={{ fontSize: 11, color: "#64748b" }}>Aperçu simulé de l&apos;expérience praticien — invitez votre premier patient pour commencer</span>
+          </div>
+        )}
+
         {/* ═══ VUE SUIVI ═══ */}
         {activeTab === "patients" && (
-          <div style={{ display: "grid", gridTemplateColumns: testMode ? "300px minmax(0,1fr)" : "300px minmax(0,1fr) 330px", gap: 16, height: "calc(100vh - 113px)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: testMode ? "300px minmax(0,1fr)" : "300px minmax(0,1fr) 330px", gap: 16, height: onboardingDemoMode && !testMode ? "calc(100vh - 165px)" : "calc(100vh - 113px)" }}>
 
             {/* Sidebar patients */}
             <div data-tour="patients" style={{ display: "flex", flexDirection: "column", background: "#060908", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, overflow: "hidden" }}>
@@ -2907,7 +2919,7 @@ export default function DashboardPage() {
                       const yesterdayDay = `${yest.getFullYear()}-${yest.getMonth()}-${yest.getDate()}`;
                       const sameYear = d.getFullYear() === now.getFullYear();
                       const dateSepLabel = msgDay === todayDay ? "Aujourd'hui" : msgDay === yesterdayDay ? "Hier" : d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", ...(!sameYear ? { year: "numeric" } : {}) });
-                      const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+                      const msgDateLabel = d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
                       const dateSep = showDateSep && (
                         <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "4px 0" }}>
                           <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.06)" }} />
@@ -2936,7 +2948,7 @@ export default function DashboardPage() {
                                 {message.content}
                               </div>
                               <p style={{ margin: "4px 0 0", fontSize: 10, color: "#4b5563", textAlign: isPatient ? "right" : "left" }}>
-                                {time}
+                                {msgDateLabel}
                               </p>
                             </div>
                           </div>
