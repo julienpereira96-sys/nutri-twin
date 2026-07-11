@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from "react";
+import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { buildMurmureExpiry } from "@/lib/murmure";
 import { findClosuresInWindow, closureFeeling, type SosClosureEvent, type SosSummary } from "@/lib/sosClosures";
@@ -716,8 +717,23 @@ export default function DashboardPage() {
     return () => window.removeEventListener("message", handleTestMessage);
   }, [testMode]);
 
+  const router = useRouter();
+
   // ═══ ÉTATS PRINCIPAUX ═══
   const [activeTab, setActiveTab] = useState<ActiveTab>("patients");
+
+  // Lire le tab depuis l'URL au montage (client-only, sans useSearchParams)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab") as ActiveTab | null;
+    if (tab === "patients" || tab === "vue_ensemble") setActiveTab(tab);
+  }, []);
+
+  // Helper : change le tab ET met à jour l'URL sans rechargement
+  const navigateTab = useCallback((tab: ActiveTab) => {
+    setActiveTab(tab);
+    router.replace(`/dashboard?tab=${tab}`, { scroll: false });
+  }, [router]);
   const [searchQuery, setSearchQuery] = useState("");
   const [discretMode, setDiscretMode] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -2646,7 +2662,7 @@ export default function DashboardPage() {
               const labels: Record<ActiveTab, string> = { patients: "Suivi", vue_ensemble: "Vue d'ensemble" };
               const isActive = activeTab === tab;
               return (
-                <button key={tab} onClick={() => setActiveTab(tab)}
+                <button key={tab} onClick={() => navigateTab(tab)}
                   style={{ height: 36, borderRadius: 8, padding: "0 16px", fontSize: 13, fontWeight: 600, cursor: "pointer", border: isActive ? "1px solid rgba(16,185,129,0.18)" : "1px solid transparent", background: isActive ? "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))" : "transparent", color: isActive ? emerald : "#64748b", transition: "all 0.2s", boxShadow: isActive ? "0 2px 12px rgba(0,0,0,0.3)" : "none" }}
                   onMouseEnter={e => { if (!isActive) { e.currentTarget.style.color = "#94a3b8"; e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; } }}
                   onMouseLeave={e => { if (!isActive) { e.currentTarget.style.color = "#64748b"; e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; } }}>
@@ -3659,7 +3675,7 @@ export default function DashboardPage() {
                         onClick={(e) => {
                           // Clic sur la carte → aller au patient dans Suivi (sauf si clic sur un bouton enfant)
                           if ((e.target as HTMLElement).closest("button") || (e.target as HTMLElement).closest("textarea")) return;
-                          setSelectedPatientId(patient.id); setActiveTab("patients"); setShowInterventionBubble(false);
+                          setSelectedPatientId(patient.id); navigateTab("patients"); setShowInterventionBubble(false);
                         }}>
                         {/* Header carte */}
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: hasAlert || hasVictory ? 12 : 0 }}>
@@ -3685,7 +3701,7 @@ export default function DashboardPage() {
                                 e.stopPropagation();
                                 const alert = patient.admin_alerts?.[0];
                                 setSelectedPatientId(patient.id);
-                                setActiveTab("patients");
+                                navigateTab("patients");
                                 setShowInterventionBubble(false);
                                 if (alert?.trigger_message_id) setPendingScrollMessageId(alert.trigger_message_id);
                                 else if (alert?.date) setPendingScrollMessageId(alert.date);
@@ -3693,7 +3709,7 @@ export default function DashboardPage() {
                               style={{ margin: "0 0 10px", fontSize: 12, color: alertColor, lineHeight: 1.5, filter: discretMode ? "blur(4px)" : "none", cursor: isBehavioral ? "pointer" : "default", textDecoration: isBehavioral ? "underline dotted" : "none" }}>
                               {patient.emotional_insight || (isCritical ? "Intervention immédiate requise" : "Point de vigilance détecté")}
                             </p>
-                            <button onClick={(e) => { e.stopPropagation(); setSelectedPatientId(patient.id); setActiveTab("patients"); setShowInterventionBubble(false); }}
+                            <button onClick={(e) => { e.stopPropagation(); setSelectedPatientId(patient.id); navigateTab("patients"); setShowInterventionBubble(false); }}
                               style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: `1px solid ${isRed ? "rgba(244,63,94,0.4)" : "rgba(245,158,11,0.4)"}`, background: isRed ? "rgba(244,63,94,0.12)" : "rgba(245,158,11,0.1)", color: alertColor, transition: "all 0.2s" }}
                               onMouseEnter={e => { e.currentTarget.style.background = isRed ? "rgba(244,63,94,0.22)" : "rgba(245,158,11,0.2)"; }}
                               onMouseLeave={e => { e.currentTarget.style.background = isRed ? "rgba(244,63,94,0.12)" : "rgba(245,158,11,0.1)"; }}>
@@ -3709,7 +3725,7 @@ export default function DashboardPage() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedPatientId(patient.id);
-                                setActiveTab("patients");
+                                navigateTab("patients");
                                 if (patient.victory_message_id) setPendingScrollMessageId(patient.victory_message_id);
                                 else if (patient.victory_detected_at) setPendingScrollMessageId(patient.victory_detected_at);
                               }}
@@ -4406,7 +4422,7 @@ export default function DashboardPage() {
                   <div>
                     {/* Infos plan */}
                     <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)", padding: "18px 18px", marginBottom: 14 }}>
-                      <p style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: emerald }}>{planLabel}</p>
+                      <p style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 700, color: "white" }}>{planLabel}</p>
 
                       {isCancelling ? (
                         <>
