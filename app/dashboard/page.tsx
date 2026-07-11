@@ -2676,7 +2676,7 @@ export default function DashboardPage() {
 
         {/* ═══ Bannière mode démo ═══ */}
         {activeTab === "patients" && onboardingDemoMode && !testMode && (
-          <div style={{ marginLeft: "calc(300px + 16px)", marginRight: "calc(330px + 16px)", marginBottom: 12 }}>
+          <div style={{ marginBottom: 12 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, height: 38, borderRadius: 10, background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.3)", padding: "0 20px" }}>
               <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#8b5cf6", flexShrink: 0 }} />
               <span style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.06em", textTransform: "uppercase" }}>Mode démo</span>
@@ -4817,7 +4817,7 @@ export default function DashboardPage() {
 
             {/* Notes légales */}
             <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 6 }}>
-              <p style={{ margin: 0, fontSize: 11, color: "#475569", textAlign: "center", lineHeight: 1.5 }}>
+              <p style={{ margin: 0, fontSize: 11, color: "#94a3b8", textAlign: "center", lineHeight: 1.5 }}>
                 Sans engagement · Résiliable à tout moment · Le changement est effectif immédiatement.
                 {onboardingDemoMode && <span style={{ display: "block", color: amber, marginTop: 4 }}>Mode démo · aucun paiement réel.</span>}
               </p>
@@ -4827,7 +4827,7 @@ export default function DashboardPage() {
                   "(2) 80 patients inclus pour les 3 praticiens du plan Cabinet ; chaque praticien supplémentaire bénéficie de 25 patients additionnels.",
                   "(3) L'enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel et élargie à 100 messages/jour sur les plans Professionnel et Cabinet. Conformément à la réglementation, toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais utilisées pour entraîner des modèles d'IA publics.",
                 ].map((note, i) => (
-                  <p key={i} style={{ margin: 0, fontSize: 10, color: "#374151", lineHeight: 1.6 }}>{note}</p>
+                  <p key={i} style={{ margin: 0, fontSize: 10, color: "#64748b", lineHeight: 1.6 }}>{note}</p>
                 ))}
               </div>
             </div>
