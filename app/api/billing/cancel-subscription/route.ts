@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { getSessionUser, unauthorized } from "@/lib/api-auth";
 import { createClient } from "@supabase/supabase-js";
+import { buildEmailHtml, sendEmail } from "@/lib/email";
 
 export async function POST() {
   const user = await getSessionUser();
@@ -44,45 +45,28 @@ export async function POST() {
   const endDateStr = endDate.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
   // Email de confirmation au praticien
-  const resendKey = process.env.RESEND_API_KEY;
-  if (resendKey && practitioner.email) {
-    const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#f1f5f9;">
-  <div style="max-width:560px;margin:0 auto;padding:40px 20px;">
-    <div style="margin-bottom:32px;">
-      <span style="font-size:20px;font-weight:800;color:#f1f5f9;">Nutri<span style="color:#10b981;">Twin</span></span>
-    </div>
-    <div style="background:#111111;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:32px;margin-bottom:24px;">
-      <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#f1f5f9;">Résiliation confirmée</p>
-      <p style="margin:0 0 24px;font-size:14px;color:#94a3b8;line-height:1.6;">
-        Bonjour ${practitioner.first_name ?? ""},<br><br>
-        Votre demande de résiliation a bien été prise en compte. Votre accès à NutriTwin reste actif jusqu'au <strong style="color:#f1f5f9;">${endDateStr}</strong>, date à laquelle votre abonnement prendra fin.
-      </p>
-      <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:12px;padding:16px 20px;margin-bottom:24px;">
-        <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">
-          Vous avez changé d'avis ? Vous pouvez annuler votre résiliation à tout moment avant le <strong style="color:#f1f5f9;">${endDateStr}</strong> depuis <strong style="color:#f1f5f9;">Paramètres → Abonnement</strong>.
+  if (practitioner.email) {
+    const html = buildEmailHtml({
+      preheader: `Votre accès NutriTwin reste actif jusqu'au ${endDateStr}.`,
+      greeting: `Bonjour ${practitioner.first_name ?? ""},`,
+      headline: "Résiliation confirmée",
+      body: `
+        <p style="margin:0 0 16px;font-size:15px;color:#94a3b8;line-height:1.75;">
+          Votre demande de résiliation a bien été prise en compte.
         </p>
-      </div>
-      <p style="margin:0;font-size:13px;color:#64748b;line-height:1.6;">
-        Vos données patients restent conservées conformément à nos obligations RGPD. Si vous souhaitez les supprimer, contactez-nous à <a href="mailto:contact@nutritwin.fr" style="color:#10b981;">contact@nutritwin.fr</a>.
-      </p>
-    </div>
-    <p style="margin:0;font-size:11px;color:#374151;text-align:center;">NutriTwin · Cet email vous a été envoyé suite à votre demande de résiliation</p>
-  </div>
-</body>
-</html>`;
+        <p style="margin:0;font-size:15px;color:#94a3b8;line-height:1.75;">
+          Votre accès à NutriTwin reste actif jusqu'au&nbsp;<strong style="color:#f8fafc;">${endDateStr}</strong>,
+          date à laquelle votre abonnement prendra fin automatiquement.
+        </p>
+      `,
+      infoBox: `Vous avez changé d'avis&nbsp;? Vous pouvez annuler votre résiliation à tout moment avant le <strong style="color:#f8fafc;">${endDateStr}</strong> depuis <strong style="color:#f8fafc;">Paramètres&nbsp;→&nbsp;Abonnement</strong>.`,
+      footerNote: `Cet email vous a été envoyé suite à votre demande de résiliation. Vos données patients restent conservées conformément à nos obligations légales. Pour toute question&nbsp;: <a href="mailto:contact@nutritwin.fr" style="color:#374151;">contact@nutritwin.fr</a>`,
+    });
 
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${resendKey}` },
-      body: JSON.stringify({
-        from: "NutriTwin <contact@nutritwin.fr>",
-        to: practitioner.email,
-        subject: "Résiliation confirmée — accès actif jusqu'au " + endDateStr,
-        html: emailHtml,
-      }),
+    await sendEmail({
+      to: practitioner.email,
+      subject: `Résiliation confirmée — accès actif jusqu'au ${endDateStr}`,
+      html,
     });
   }
 
