@@ -3844,6 +3844,44 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* ── Modale suppression compte (globale) ── */}
+      {showDeleteConfirm && (
+        <div onClick={() => setShowDeleteConfirm(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 65, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 360, border: "1px solid rgba(244,63,94,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", textAlign: "center" }}>
+            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            </div>
+            <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Supprimer mon compte ?</h2>
+            <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+              Votre compte sera supprimé dans un délai de <strong style={{ color: "white" }}>30 jours</strong> (RGPD Art. 17). Vous recevrez un email de confirmation.
+            </p>
+            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", marginBottom: 20, textAlign: "left" }}>
+              <p style={{ margin: 0, fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
+                Les dossiers patients soumis à des obligations légales de conservation ne seront pas supprimés sans votre accord.
+              </p>
+            </div>
+            {deleteRequestSent ? (
+              <p style={{ margin: "0 0 16px", fontSize: 13, color: "#10b981" }}>✓ Demande envoyée. Vous recevrez un email de confirmation.</p>
+            ) : (
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => setShowDeleteConfirm(false)}
+                  style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                  Annuler
+                </button>
+                <button onClick={() => void handleDeleteAccountRequest()} disabled={deleteRequestLoading}
+                  style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: deleteRequestLoading ? "default" : "pointer", opacity: deleteRequestLoading ? 0.7 : 1 }}
+                  onMouseEnter={e => { if (!deleteRequestLoading) { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.35)"; } }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; }}>
+                  {deleteRequestLoading ? "Envoi…" : "Envoyer la demande"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {showEmailConfirmModal && (
         <div onClick={e => { if (e.target === e.currentTarget) setShowEmailConfirmModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 70, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 360, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", textAlign: "center" }}>
@@ -4112,6 +4150,15 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   </div>
+                  {/* Supprimer mon compte */}
+                  <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.05)", textAlign: "center" }}>
+                    <button onClick={() => setShowDeleteConfirm(true)}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#374151", textDecoration: "underline", padding: "4px 0" }}
+                      onMouseEnter={e => { e.currentTarget.style.color = "#64748b"; }}
+                      onMouseLeave={e => { e.currentTarget.style.color = "#374151"; }}>
+                      Supprimer mon compte
+                    </button>
+                  </div>
               </div>
             </div>
           )}
@@ -4245,7 +4292,7 @@ export default function DashboardPage() {
                         {practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Professionnel" : practitionerPlan === "cabinet" ? "Cabinet" : "–"}
                       </p>
                       <p style={{ margin: 0, fontSize: 12, color: subscriptionStatus === "active" && !isCancelling ? emerald : subscriptionStatus === "trialing" ? amber : isCancelling ? "#f97316" : "#64748b" }}>
-                        {isCancelling ? `Résiliation le ${periodEnd ?? "–"}` : subscriptionStatus === "active" ? "Actif" : subscriptionStatus === "trialing" ? "Période d'essai" : subscriptionStatus === "past_due" ? "Paiement en retard" : subscriptionStatus === "cancelled" ? "Résilié" : "–"}
+                        {isCancelling ? `Résiliation le ${periodEnd ?? "–"}` : subscriptionStatus === "active" ? "Actif" : subscriptionStatus === "trialing" ? "Période d'essai" : subscriptionStatus === "past_due" ? "Paiement en retard" : (subscriptionStatus === "canceled" || subscriptionStatus === "cancelled") ? "Résilié" : subscriptionStatus ?? "–"}
                       </p>
                     </div>
                     {periodEnd && !isCancelling && (
@@ -4367,20 +4414,16 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Zone danger */}
-                    <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                      {!isCancelling && subscriptionStatus !== "cancelled" && (
+                    {!isCancelling && subscriptionStatus !== "canceled" && subscriptionStatus !== "cancelled" && (
+                      <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                         <button onClick={() => setShowCancelConfirm(true)}
-                          style={{ width: "100%", height: 40, borderRadius: 10, background: "transparent", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", fontSize: 13, fontWeight: 500, cursor: "pointer", marginBottom: 12, transition: "all 0.15s" }}
+                          style={{ width: "100%", height: 40, borderRadius: 10, background: "transparent", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.15s" }}
                           onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.06)"; }}
                           onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
                           Résilier mon abonnement
                         </button>
-                      )}
-                      <button onClick={() => setShowDeleteConfirm(true)}
-                        style={{ width: "100%", background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#475569", textDecoration: "underline", padding: "4px 0" }}>
-                        Supprimer mon compte
-                      </button>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -4405,45 +4448,29 @@ export default function DashboardPage() {
 
               {/* ── Modal confirmation résiliation ── */}
               {showCancelConfirm && (
-                <div onClick={() => setShowCancelConfirm(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 10 }}>
-                  <div onClick={e => e.stopPropagation()} style={{ width: "100%", background: "#111", borderRadius: "16px 16px 0 0", padding: "24px 24px 32px" }}>
-                    <p style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "white" }}>Résilier mon abonnement ?</p>
-                    <p style={{ margin: "0 0 20px", fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
+                <div onClick={() => setShowCancelConfirm(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+                  <div onClick={e => e.stopPropagation()} style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 360, border: "1px solid rgba(239,68,68,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", textAlign: "center" }}>
+                    <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    </div>
+                    <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Résilier mon abonnement ?</h2>
+                    <p style={{ margin: "0 0 24px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
                       Votre accès restera actif jusqu'au <strong style={{ color: "white" }}>{periodEnd ?? "fin de la période"}</strong>. Aucun montant ne sera prélevé après cette date. Un email de confirmation vous sera envoyé.
                     </p>
-                    <button onClick={() => void handleCancelSubscription()} disabled={cancelLoading}
-                      style={{ width: "100%", height: 44, borderRadius: 12, background: "#ef4444", border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: cancelLoading ? "default" : "pointer", marginBottom: 10, opacity: cancelLoading ? 0.7 : 1 }}>
-                      {cancelLoading ? "Traitement…" : "Confirmer la résiliation"}
-                    </button>
-                    <button onClick={() => setShowCancelConfirm(false)}
-                      style={{ width: "100%", height: 40, borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "none", color: "#94a3b8", fontSize: 13, cursor: "pointer" }}>
-                      Annuler
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* ── Modal confirmation suppression compte ── */}
-              {showDeleteConfirm && (
-                <div onClick={() => setShowDeleteConfirm(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 10 }}>
-                  <div onClick={e => e.stopPropagation()} style={{ width: "100%", background: "#111", borderRadius: "16px 16px 0 0", padding: "24px 24px 32px" }}>
-                    <p style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "white" }}>Supprimer mon compte ?</p>
-                    <p style={{ margin: "0 0 16px", fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
-                      En envoyant cette demande, votre abonnement sera annulé et votre compte supprimé dans un délai de <strong style={{ color: "white" }}>30 jours</strong> (RGPD Art. 17). Vous recevrez un email de confirmation.
-                    </p>
-                    <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", marginBottom: 20 }}>
-                      <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
-                        <strong style={{ color: "#94a3b8" }}>Données patients</strong> — conformément au RGPD, les dossiers de suivi peuvent être soumis à des obligations de conservation. Nous vous contacterons si nécessaire.
-                      </p>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <button onClick={() => setShowCancelConfirm(false)}
+                        style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                        Annuler
+                      </button>
+                      <button onClick={() => void handleCancelSubscription()} disabled={cancelLoading}
+                        style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: cancelLoading ? "default" : "pointer", opacity: cancelLoading ? 0.7 : 1 }}
+                        onMouseEnter={e => { if (!cancelLoading) { e.currentTarget.style.background = "rgba(239,68,68,0.15)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.35)"; } }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; e.currentTarget.style.borderColor = "rgba(239,68,68,0.2)"; }}>
+                        {cancelLoading ? "Traitement…" : "Confirmer"}
+                      </button>
                     </div>
-                    <button onClick={() => void handleDeleteAccountRequest()} disabled={deleteRequestLoading}
-                      style={{ width: "100%", height: 44, borderRadius: 12, background: "#ef4444", border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: deleteRequestLoading ? "default" : "pointer", marginBottom: 10, opacity: deleteRequestLoading ? 0.7 : 1 }}>
-                      {deleteRequestLoading ? "Envoi…" : "Envoyer la demande"}
-                    </button>
-                    <button onClick={() => setShowDeleteConfirm(false)}
-                      style={{ width: "100%", height: 40, borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "none", color: "#94a3b8", fontSize: 13, cursor: "pointer" }}>
-                      Annuler
-                    </button>
                   </div>
                 </div>
               )}
