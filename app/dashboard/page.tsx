@@ -2639,13 +2639,6 @@ export default function DashboardPage() {
               </>
             )}
           </div>
-            {onboardingDemoMode && (
-              <div style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: 20, padding: "4px 12px" }}>
-                <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#818cf8", animation: "breathe 2s ease-in-out infinite", flexShrink: 0 }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#818cf8", whiteSpace: "nowrap" }}>Mode Démo</span>
-                <span style={{ fontSize: 11, color: "#4b5563", whiteSpace: "nowrap" }}>· 3 patients fictifs · Vous pouvez tester toutes les fonctionnalités.</span>
-              </div>
-            )}
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2683,10 +2676,12 @@ export default function DashboardPage() {
 
         {/* ═══ Bannière mode démo ═══ */}
         {activeTab === "patients" && onboardingDemoMode && !testMode && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, height: 38, marginBottom: 12, borderRadius: 10, background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.25)", padding: "0 16px" }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#8b5cf6", flexShrink: 0 }} />
-            <span style={{ fontSize: 11, fontWeight: 600, color: "#a78bfa", letterSpacing: "0.08em", textTransform: "uppercase" }}>Mode démo</span>
-            <span style={{ fontSize: 11, color: "#64748b" }}>Aperçu simulé de l&apos;expérience praticien — invitez votre premier patient pour commencer</span>
+          <div style={{ marginLeft: "calc(300px + 16px)", marginRight: "calc(330px + 16px)", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, height: 38, borderRadius: 10, background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.3)", padding: "0 20px" }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#8b5cf6", flexShrink: 0 }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.06em", textTransform: "uppercase" }}>Mode démo</span>
+              <span style={{ fontSize: 11, color: "#c4b5fd" }}>Aperçu simulé de l&apos;expérience praticien. Invitez votre premier patient pour commencer.</span>
+            </div>
           </div>
         )}
 
