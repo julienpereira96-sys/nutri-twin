@@ -459,12 +459,12 @@ const ORANGE_BEHAVIORAL = "#f59e0b"; // red_behavioral côté praticien → ambe
 const SLATE_BLUE = "#60a5fa"; // identity_correction — administratif, non-urgent
 const RED_CRITICAL_COLOR = "#ef4444";
 function getStatusColor(status?: string) {
-  if (status === "red_critical" || status === "red") return RED_CRITICAL_COLOR;
+  if (status === "red_critical") return RED_CRITICAL_COLOR;
   if (status === "red_behavioral") return ORANGE_BEHAVIORAL;
   return emerald;
 }
 function getStatusEmoji(status?: string) {
-  if (status === "red_critical" || status === "red") return "🔴";
+  if (status === "red_critical") return "🔴";
   if (status === "red_behavioral") return "🟠";
   return "🟢";
 }
@@ -1670,7 +1670,7 @@ export default function DashboardPage() {
     : patients.find((p) => p.id === selectedPatientId);
 
   const filteredPatients = displayedPatients.filter((p) => `${p.firstName} ${p.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()));
-  const redPatients = displayedPatients.filter((p) => p.emotional_status === "red" || p.emotional_status === "red_critical");
+  const redPatients = displayedPatients.filter((p) => p.emotional_status === "red_critical");
   const orangePatients = displayedPatients.filter((p) => p.emotional_status === "orange");
   const isVictoryFresh = (p: { latest_victory?: string; victory_detected_at?: string | null }) =>
     !!(p.latest_victory && p.victory_detected_at
@@ -2757,7 +2757,7 @@ export default function DashboardPage() {
                 ) : filteredPatients.map((patient) => {
                   const isSelected = patient.id === (selectedPatientId ?? (onboardingDemoMode ? "demo-1" : null));
                   const isCritical = patient.emotional_status === "red_critical";
-                  const isRed = patient.emotional_status === "red" || isCritical;
+                  const isRed = isCritical;
                   const isBehavioralList = patient.emotional_status === "red_behavioral";
                   const hasAlert = isRed || isBehavioralList;
                   const alertDismissed = alertBannerDismissed[patient.id];
@@ -2768,13 +2768,12 @@ export default function DashboardPage() {
                   const victoryFresh = !!(patient.latest_victory && patient.victory_detected_at
                     && (Date.now() - new Date(patient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
                   // Couleurs des cartes — red_behavioral → amber, vert sans victoire → neutre
-                  const alertColor2 = isRed ? coral : amber; // behavioral et orange = amber
+                  const alertColor2 = isRed ? coral : amber; // behavioral = amber
                   let cardBg = "transparent";
                   let cardBorder = "transparent";
                   let cardShadow = "none";
                   if (isSelected) {
                     if (isCritical) { cardBg = "rgba(244,63,94,0.07)"; cardBorder = "rgba(244,63,94,0.4)"; cardShadow = "0 0 16px rgba(244,63,94,0.1)"; }
-                    else if (isRed) { cardBg = "rgba(244,63,94,0.05)"; cardBorder = "rgba(244,63,94,0.3)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
                     else if (isBehavioralList) { cardBg = "rgba(245,158,11,0.04)"; cardBorder = "rgba(245,158,11,0.28)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
                     else if (hasIdentityAlert) { cardBg = "rgba(96,165,250,0.05)"; cardBorder = "rgba(96,165,250,0.28)"; cardShadow = "0 4px 16px rgba(0,0,0,0.4)"; }
                     else if (victoryFresh) {
@@ -2875,7 +2874,7 @@ export default function DashboardPage() {
                     {(() => {
                       const alerts = selectedPatient.admin_alerts?.filter(a => !a.seen) ?? [];
                       const isCritical = selectedPatient.emotional_status === "red_critical";
-                      const isRed = selectedPatient.emotional_status === "red" || isCritical;
+                      const isRed = isCritical;
                       const isBehavioralBanner = selectedPatient.emotional_status === "red_behavioral";
                       const hasAlert = isRed || isBehavioralBanner;
                       if (!hasAlert || alertBannerDismissed[selectedPatient.id]) return null;
@@ -2902,26 +2901,36 @@ export default function DashboardPage() {
                             if (hoursSilent <= 24) return null;
                             return <span style={{ fontSize: 11, color: amber, whiteSpace: "nowrap", fontWeight: 500 }}>· Sans nouvelles depuis {Math.round(hoursSilent)}h</span>;
                           })()}
-                          {alerts.length > 0 && (
-                          <button onClick={() => scrollToAlertMessage(alerts[0])}
-                            style={{ fontSize: 11, fontWeight: 600, color: alertColor, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, whiteSpace: "nowrap" }}>
-                            Aller au message
-                          </button>
+                          {/* red_critical : seulement "Aller au message" — résolution formelle via LeverAlerteCritique uniquement */}
+                          {isCritical && alerts.length > 0 && (
+                            <button onClick={() => scrollToAlertMessage(alerts[0])}
+                              style={{ fontSize: 11, fontWeight: 600, color: alertColor, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, whiteSpace: "nowrap" }}>
+                              Aller au message
+                            </button>
                           )}
-                          {alerts.length > 0 && <span style={{ color: "#4b5563", fontSize: 11 }}>·</span>}
-                          <button onClick={() => void dismissAlertFromHeader(selectedPatient.id)}
-                            style={{ fontSize: 11, color: "#64748b", background: "none", border: "none", cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}
-                            onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
-                            onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
-                            Marquer comme vu / Classer
-                          </button>
+                          {/* red_behavioral : "Aller au message" optionnel + "Marquer comme vu" */}
+                          {isBehavioralBanner && alerts.length > 0 && (
+                            <button onClick={() => scrollToAlertMessage(alerts[0])}
+                              style={{ fontSize: 11, fontWeight: 600, color: alertColor, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, whiteSpace: "nowrap" }}>
+                              Aller au message
+                            </button>
+                          )}
+                          {isBehavioralBanner && alerts.length > 0 && <span style={{ color: "#4b5563", fontSize: 11 }}>·</span>}
+                          {isBehavioralBanner && (
+                            <button onClick={() => void dismissAlertFromHeader(selectedPatient.id)}
+                              style={{ fontSize: 11, color: "#64748b", background: "none", border: "none", cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}
+                              onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+                              onMouseLeave={e => e.currentTarget.style.color = "#64748b"}>
+                              Marquer comme vu
+                            </button>
+                          )}
                         </div>
                       );
                     })()}
 
                     {/* Bandeau victoire HAUT — texte + "Aller au message" uniquement */}
                     {(() => {
-                      const hasActiveAlert = (selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical" || selectedPatient.emotional_status === "red_behavioral") && !alertBannerDismissed[selectedPatient.id];
+                      const hasActiveAlert = (selectedPatient.emotional_status === "red_critical" || selectedPatient.emotional_status === "red_behavioral") && !alertBannerDismissed[selectedPatient.id];
                       const victoryFreshBanner = !!(selectedPatient.latest_victory && selectedPatient.victory_detected_at && (Date.now() - new Date(selectedPatient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
                       if (!victoryFreshBanner || hasActiveAlert) return null;
                       return (
@@ -2952,7 +2961,7 @@ export default function DashboardPage() {
                     ) : displayedConversations.map((message, idx) => {
                       const isPatient = message.role === "user";
                       const isHighlighted = message.id === highlightedMessageId;
-                      const selIsRed = selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical";
+                      const selIsRed = selectedPatient.emotional_status === "red_critical";
                       const selIsVictory = !selIsRed && !!(selectedPatient.latest_victory && selectedPatient.victory_detected_at && (Date.now() - new Date(selectedPatient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
                       const highlightColor = selIsRed ? "rgba(244,63,94,0.22)" : selIsVictory ? "rgba(16,185,129,0.22)" : "rgba(245,158,11,0.18)";
                       const highlightOutline = selIsRed ? "rgba(244,63,94,0.5)" : selIsVictory ? "rgba(16,185,129,0.5)" : "rgba(245,158,11,0.4)";
@@ -3008,12 +3017,11 @@ export default function DashboardPage() {
                   {/* Bloc Action — intervention bubble */}
                   {(showInterventionBubble || (
                     !alertBannerDismissed[selectedPatient.id] && (
-                      selectedPatient.emotional_status === "red" ||
                       selectedPatient.emotional_status === "red_critical" ||
                       selectedPatient.emotional_status === "red_behavioral"
                     )
                   )) && !replyMode && (() => {
-                    const patIsRed = selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical";
+                    const patIsRed = selectedPatient.emotional_status === "red_critical";
                     const patIsBehavioral = selectedPatient.emotional_status === "red_behavioral";
                     // Behavioral → orange, critical/red → rouge, sinon amber
                     const actionColor = patIsRed ? coral : patIsBehavioral ? ORANGE_BEHAVIORAL : amber;
@@ -3039,7 +3047,7 @@ export default function DashboardPage() {
 
                   {/* Bloc Action — zone bravo victoire (bas Suivi) */}
                   {(() => {
-                    const hasActiveAlert = (selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical" || selectedPatient.emotional_status === "red_behavioral") && !alertBannerDismissed[selectedPatient.id];
+                    const hasActiveAlert = (selectedPatient.emotional_status === "red_critical" || selectedPatient.emotional_status === "red_behavioral") && !alertBannerDismissed[selectedPatient.id];
                     const victoryFreshBottom = !!(selectedPatient.latest_victory && selectedPatient.victory_detected_at && (Date.now() - new Date(selectedPatient.victory_detected_at).getTime()) < 48 * 60 * 60 * 1000);
                     if (!victoryFreshBottom || hasActiveAlert || replyMode) return null;
                     const bState = bravoState[selectedPatient.id];
@@ -3120,7 +3128,7 @@ export default function DashboardPage() {
 
                   {/* Zone de réponse praticien */}
                   {replyMode && (() => {
-                    const patIsRed = selectedPatient.emotional_status === "red" || selectedPatient.emotional_status === "red_critical";
+                    const patIsRed = selectedPatient.emotional_status === "red_critical";
                     const accentColor = patIsRed ? coral : amber;
                     const accentBorder = patIsRed ? "rgba(244,63,94,0.2)" : "rgba(245,158,11,0.18)";
                     return (
@@ -3563,6 +3571,15 @@ export default function DashboardPage() {
 
         {activeTab === "vue_ensemble" && (
           <div>
+            {onboardingDemoMode && !testMode && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, height: 38, borderRadius: 10, background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.3)", padding: "0 20px" }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#8b5cf6", flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa", letterSpacing: "0.06em", textTransform: "uppercase" }}>Mode démo</span>
+                  <span style={{ fontSize: 11, color: "#c4b5fd" }}>Aperçu simulé de l&apos;expérience praticien. Invitez votre premier patient pour commencer.</span>
+                </div>
+              </div>
+            )}
             <div style={{ marginBottom: 28 }}>
               <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Vue d'ensemble</h2>
               <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Suivi en cours · Statut IA mis à jour à chaque message</p>
@@ -3663,9 +3680,9 @@ export default function DashboardPage() {
             {displayedPatients.length === 0 ? (
               <p style={{ textAlign: "center", color: "#64748b", marginTop: 60 }}>Aucun patient</p>
             ) : (() => {
-              // Tri strict : red_critical > red_behavioral > orange > green
+              // Tri strict : red_critical > red_behavioral > green
               const sorted = [...displayedPatients].sort((a, b) => {
-                const order: Record<string, number> = { red_critical: 0, red: 1, red_behavioral: 2, orange: 3, green: 4 };
+                const order: Record<string, number> = { red_critical: 0, red_behavioral: 1, green: 2 };
                 const ao = order[a.emotional_status ?? "green"] ?? 4;
                 const bo = order[b.emotional_status ?? "green"] ?? 4;
                 if (ao !== bo) return ao - bo;
@@ -3680,7 +3697,7 @@ export default function DashboardPage() {
                 ? cabinetSharedPatients
                 : sorted.filter(p => {
                     if (vueEnsembleFilter === "tous") return true;
-                    if (vueEnsembleFilter === "alertes") return p.emotional_status === "red_critical" || p.emotional_status === "red" || p.emotional_status === "red_behavioral" || p.emotional_status === "orange";
+                    if (vueEnsembleFilter === "alertes") return p.emotional_status === "red_critical" || p.emotional_status === "red_behavioral";
                     if (vueEnsembleFilter === "victoires") return isVictoryFresh(p) && p.emotional_status === "green";
                     if (vueEnsembleFilter === "ras") return p.emotional_status === "green" && !isVictoryFresh(p);
                     return true;
@@ -3693,9 +3710,7 @@ export default function DashboardPage() {
                   {filtered.map((patient) => {
                     const isCritical = patient.emotional_status === "red_critical";
                     const isBehavioral = patient.emotional_status === "red_behavioral";
-                    const isRed = patient.emotional_status === "red" || isCritical;
-                    const isOrange = patient.emotional_status === "orange";
-                    const hasAlert = isRed || isBehavioral || isOrange;
+                    const hasAlert = isCritical || isBehavioral;
                     const hasVictory = isVictoryFresh(patient) && !hasAlert;
                     const hasIdentityAlertGrid = !hasAlert && (patient.admin_alerts ?? []).some((a: { type?: string; alert_type?: string; seen?: boolean }) => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request"));
                     const bState = bravoState[patient.id];
@@ -3705,13 +3720,11 @@ export default function DashboardPage() {
                     let cardBorder = "rgba(255,255,255,0.07)";
                     let cardShadow = "none";
                     if (isCritical) { cardBg = "rgba(239,68,68,0.04)"; cardBorder = "rgba(239,68,68,0.25)"; cardShadow = "0 0 16px rgba(239,68,68,0.10)"; }
-                    else if (isRed) { cardBg = "rgba(239,68,68,0.03)"; cardBorder = "rgba(239,68,68,0.18)"; }
                     else if (isBehavioral) { cardBg = "rgba(245,158,11,0.03)"; cardBorder = "rgba(245,158,11,0.22)"; cardShadow = "0 0 12px rgba(245,158,11,0.08)"; }
-                    else if (isOrange) { cardBg = "rgba(245,158,11,0.02)"; cardBorder = "rgba(245,158,11,0.15)"; }
                     else if (hasIdentityAlertGrid) { cardBg = "rgba(96,165,250,0.03)"; cardBorder = "rgba(96,165,250,0.18)"; }
                     else if (hasVictory) { cardBg = "rgba(16,185,129,0.02)"; cardBorder = "rgba(16,185,129,0.15)"; }
 
-                    const alertColor = isCritical || isRed ? RED_CRITICAL_COLOR : isBehavioral ? ORANGE_BEHAVIORAL : amber;
+                    const alertColor = isCritical ? RED_CRITICAL_COLOR : ORANGE_BEHAVIORAL;
 
                     return (
                       <div key={patient.id}
@@ -3754,10 +3767,10 @@ export default function DashboardPage() {
                               {patient.emotional_insight || (isCritical ? "Intervention immédiate requise" : "Point de vigilance détecté")}
                             </p>
                             <button onClick={(e) => { e.stopPropagation(); setSelectedPatientId(patient.id); navigateTab("patients"); setShowInterventionBubble(false); }}
-                              style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: `1px solid ${isRed ? "rgba(244,63,94,0.4)" : "rgba(245,158,11,0.4)"}`, background: isRed ? "rgba(244,63,94,0.12)" : "rgba(245,158,11,0.1)", color: alertColor, transition: "all 0.2s" }}
-                              onMouseEnter={e => { e.currentTarget.style.background = isRed ? "rgba(244,63,94,0.22)" : "rgba(245,158,11,0.2)"; }}
-                              onMouseLeave={e => { e.currentTarget.style.background = isRed ? "rgba(244,63,94,0.12)" : "rgba(245,158,11,0.1)"; }}>
-                              {isRed ? "Traiter l'urgence →" : "Prendre des nouvelles →"}
+                              style={{ height: 30, borderRadius: 8, padding: "0 14px", fontSize: 11, fontWeight: 700, cursor: "pointer", border: `1px solid ${isCritical ? "rgba(244,63,94,0.4)" : "rgba(245,158,11,0.4)"}`, background: isCritical ? "rgba(244,63,94,0.12)" : "rgba(245,158,11,0.1)", color: alertColor, transition: "all 0.2s" }}
+                              onMouseEnter={e => { e.currentTarget.style.background = isCritical ? "rgba(244,63,94,0.22)" : "rgba(245,158,11,0.2)"; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = isCritical ? "rgba(244,63,94,0.12)" : "rgba(245,158,11,0.1)"; }}>
+                              {isCritical ? "Traiter l'urgence →" : "Prendre des nouvelles →"}
                             </button>
                           </>
                         )}
