@@ -3853,7 +3853,7 @@ export default function DashboardPage() {
             </div>
             <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Supprimer mon compte ?</h2>
             <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
-              Votre compte sera supprimé dans un délai de <strong style={{ color: "white" }}>30 jours</strong> (RGPD Art. 17). Vous recevrez un email de confirmation.
+              Cette action est <strong style={{ color: "white" }}>irréversible</strong>. Votre abonnement sera résilié et votre compte ainsi que vos données supprimés sous <strong style={{ color: "white" }}>30 jours</strong> (RGPD Art. 17). Un email de confirmation vous sera envoyé.
             </p>
             <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", marginBottom: 20, textAlign: "left" }}>
               <p style={{ margin: 0, fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
@@ -4154,7 +4154,7 @@ export default function DashboardPage() {
                   <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.05)", textAlign: "center" }}>
                     <button onClick={() => setShowDeleteConfirm(true)}
                       style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#374151", textDecoration: "underline", padding: "4px 0" }}
-                      onMouseEnter={e => { e.currentTarget.style.color = "#64748b"; }}
+                      onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; }}
                       onMouseLeave={e => { e.currentTarget.style.color = "#374151"; }}>
                       Supprimer mon compte
                     </button>
@@ -4268,7 +4268,7 @@ export default function DashboardPage() {
                   onMouseLeave={e => { if (!savingSettings && newPin && newPin.length >= 4) e.currentTarget.style.background = "rgba(245,158,11,0.08)"; }}>
                   {settingsSaved ? <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>PIN sauvegardé</span> : savingSettings ? "Sauvegarde…" : "Sauvegarder le PIN"}
                 </button>
-                {savedPin && <button onClick={() => setShowDeletePinModal(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", textDecoration: "underline", padding: 0 }}>Supprimer le PIN</button>}
+                {savedPin && <div style={{ textAlign: "center" }}><button onClick={() => setShowDeletePinModal(true)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#f87171", textDecoration: "underline", padding: 0 }}>Supprimer le PIN</button></div>}
               </div>
             </div>
           )}
@@ -4768,7 +4768,7 @@ export default function DashboardPage() {
             <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 6 }}>
               <p style={{ margin: 0, fontSize: 11, color: "#475569", textAlign: "center", lineHeight: 1.5 }}>
                 Sans engagement · Résiliable à tout moment · Le changement est effectif immédiatement.
-                {onboardingDemoMode && <span style={{ display: "block", color: amber, marginTop: 4 }}>Mode démo — aucun paiement réel.</span>}
+                {onboardingDemoMode && <span style={{ display: "block", color: amber, marginTop: 4 }}>Mode démo · aucun paiement réel.</span>}
               </p>
               <div style={{ marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 5 }}>
                 {[
