@@ -2,9 +2,16 @@
 -- NUTRITWIN — Script droit à l'oubli (RGPD Art. 17)
 -- À utiliser UNIQUEMENT sur demande explicite du patient
 -- ============================================================
--- 1. Remplacer 'PATIENT_UUID_ICI' par l'UUID du patient
---    (visible dans Supabase → Authentication → Users)
--- 2. Coller dans Supabase → SQL Editor → Run
+-- ÉTAPE 1 — Ce script SQL (toutes les données)
+--   1. Remplacer 'PATIENT_UUID_ICI' par l'UUID du patient
+--      (Supabase → Authentication → Users → copier l'UUID)
+--   2. Coller dans Supabase → SQL Editor → Run
+--
+-- ÉTAPE 2 — Supprimer le compte Auth (après le script)
+--   Supabase ne permet pas de supprimer auth.users en SQL.
+--   → Aller dans Authentication → Users
+--   → Trouver l'utilisateur par email ou UUID
+--   → Cliquer sur "..." → Delete user
 -- ============================================================
 
 DO $$
@@ -35,9 +42,7 @@ BEGIN
     WHERE bucket_id = 'Avatars'
     AND name LIKE (pid::text || '/%');
 
-  -- Compte de connexion (Auth)
-  DELETE FROM auth.users WHERE id = pid;
-
-  RAISE NOTICE 'Patient % supprimé définitivement.', pid;
+  RAISE NOTICE '✓ Toutes les données du patient % ont été supprimées.', pid;
+  RAISE NOTICE '→ Supprimer maintenant le compte Auth dans Supabase → Authentication → Users.';
 
 END $$;

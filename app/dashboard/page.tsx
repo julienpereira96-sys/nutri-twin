@@ -4,6 +4,10 @@ import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from "rea
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { buildMurmureExpiry } from "@/lib/murmure";
 import { findClosuresInWindow, closureFeeling, type SosClosureEvent, type SosSummary } from "@/lib/sosClosures";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 const emerald = "#10b981";
 const amber = "#f59e0b";
@@ -565,6 +569,63 @@ function LeverAlerteCritique({ alert, patientId, practitionerId, onResolved }: {
   );
 }
 
+// ─── Composant interne pour mise à jour de carte (nécessite les hooks Stripe) ─
+function CardUpdateForm({ onSuccess }: { onSuccess: (last4: string, brand: string) => void }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    setLoading(true);
+    setError(null);
+    const result = await stripe.confirmSetup({
+      elements,
+      confirmParams: { return_url: window.location.href },
+      redirect: "if_required",
+    });
+    if (result.error) {
+      setError(result.error.message ?? "Erreur lors de la mise à jour.");
+      setLoading(false);
+      return;
+    }
+    const setupIntent = result.setupIntent;
+    if (setupIntent?.payment_method) {
+      const pmId = typeof setupIntent.payment_method === "string"
+        ? setupIntent.payment_method
+        : setupIntent.payment_method.id;
+      const res = await fetch("/api/billing/update-payment-method", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentMethodId: pmId }),
+      });
+      if (res.ok) {
+        // Récupérer les infos de la nouvelle carte
+        const pm = typeof setupIntent.payment_method === "object" ? setupIntent.payment_method : null;
+        const last4 = (pm as { card?: { last4?: string } } | null)?.card?.last4 ?? "****";
+        const brand = (pm as { card?: { brand?: string } } | null)?.card?.brand ?? "carte";
+        onSuccess(last4, brand);
+      } else {
+        setError("Erreur lors de la sauvegarde de la carte.");
+      }
+    }
+    setLoading(false);
+  };
+
+  return (
+    <form onSubmit={e => void handleSubmit(e)}>
+      <PaymentElement options={{ layout: "tabs" }} />
+      {error && <p style={{ margin: "10px 0 0", fontSize: 12, color: "#ef4444" }}>{error}</p>}
+      <button type="submit" disabled={!stripe || loading}
+        style={{ width: "100%", height: 40, borderRadius: 10, background: loading ? "rgba(16,185,129,0.05)" : "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 13, fontWeight: 600, cursor: loading ? "default" : "pointer", marginTop: 14, transition: "all 0.15s", opacity: loading ? 0.7 : 1 }}>
+        {loading ? "Enregistrement…" : "Enregistrer la carte"}
+      </button>
+    </form>
+  );
+}
+
 export default function DashboardPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
@@ -710,6 +771,22 @@ export default function DashboardPage() {
   const [pendingPlanSwitch, setPendingPlanSwitch] = useState<{ plan: string; label: string; price: string } | null>(null);
   const [isPurchasingPack, setIsPurchasingPack] = useState(false);
   const [packError, setPackError] = useState("");
+  // ─── Billing étendu ───────────────────────────────────────────────────────────
+  const [billingTab, setBillingTab] = useState<"facturation"|"plan">("facturation");
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [invoices, setInvoices] = useState<Array<{ id: string; number: string | null; amount_paid: number; currency: string; status: string | null; created: number; invoice_pdf: string | null; hosted_invoice_url: string | null }>>([]);
+  const [billingSubscription, setBillingSubscription] = useState<{ id: string; status: string; cancel_at_period_end: boolean; current_period_end: number; cancel_at: number | null } | null>(null);
+  const [cardLast4, setCardLast4] = useState<string | null>(null);
+  const [cardBrand, setCardBrand] = useState<string | null>(null);
+  const [showCardForm, setShowCardForm] = useState(false);
+  const [cardSetupClientSecret, setCardSetupClientSecret] = useState<string | null>(null);
+  const [cardUpdateSuccess, setCardUpdateSuccess] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [cancelSuccess, setCancelSuccess] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteRequestLoading, setDeleteRequestLoading] = useState(false);
+  const [deleteRequestSent, setDeleteRequestSent] = useState(false);
   const [reportError, setReportError] = useState("");
   const [showBilanModal, setShowBilanModal] = useState(false);
   const [bilanContent, setBilanContent] = useState("");
@@ -1363,6 +1440,14 @@ export default function DashboardPage() {
   // Sync patientsRef / testModeRef pour éviter les stale closures dans les intervals
   useEffect(() => { patientsRef.current = patients; }, [patients]);
   useEffect(() => { testModeRef.current = testMode; }, [testMode]);
+
+  // Charger les données billing dès que l'onglet Abonnement est ouvert
+  useEffect(() => {
+    if (settingsScreen === "abonnement" && billingTab === "facturation" && invoices.length === 0 && !billingLoading) {
+      void loadBillingData();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsScreen]);
 
   // ═══ EMAIL COMPORTEMENTAL 12H ═══
   // Sur chaque changement de la liste patients (polling 10s), on vérifie si un patient
@@ -2127,6 +2212,65 @@ export default function DashboardPage() {
     if (newPin) setSavedPin(newPin); setNewPin("");
     setSavingSettings(false); setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 2000);
+  };
+
+  // ─── Chargement données billing ──────────────────────────────────────────────
+  const loadBillingData = async () => {
+    if (billingLoading) return;
+    setBillingLoading(true);
+    try {
+      const res = await fetch("/api/billing/invoices");
+      if (res.ok) {
+        const data = await res.json() as {
+          invoices: typeof invoices;
+          subscription: typeof billingSubscription;
+          cardLast4: string | null;
+          cardBrand: string | null;
+        };
+        setInvoices(data.invoices ?? []);
+        setBillingSubscription(data.subscription ?? null);
+        setCardLast4(data.cardLast4);
+        setCardBrand(data.cardBrand);
+      }
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    setCancelLoading(true);
+    try {
+      const res = await fetch("/api/billing/cancel-subscription", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json() as { current_period_end: number };
+        setCancelSuccess(true);
+        setShowCancelConfirm(false);
+        setBillingSubscription(prev => prev ? { ...prev, cancel_at_period_end: true, cancel_at: data.current_period_end } : prev);
+      }
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handleResumeSubscription = async () => {
+    const res = await fetch("/api/billing/resume-subscription", { method: "POST" });
+    if (res.ok) {
+      setBillingSubscription(prev => prev ? { ...prev, cancel_at_period_end: false, cancel_at: null } : prev);
+      setCancelSuccess(false);
+    }
+  };
+
+  const handleDeleteAccountRequest = async () => {
+    setDeleteRequestLoading(true);
+    try {
+      const res = await fetch("/api/billing/delete-account-request", { method: "POST" });
+      if (res.ok) {
+        setDeleteRequestSent(true);
+        setShowDeleteConfirm(false);
+      }
+    } finally {
+      setDeleteRequestLoading(false);
+    }
   };
 
   // ─── Changement de plan abonnement ───────────────────────────────────────────
@@ -4083,40 +4227,229 @@ export default function DashboardPage() {
           )}
 
           {/* ══ ABONNEMENT ══ */}
-          {settingsScreen === "abonnement" && (
+          {settingsScreen === "abonnement" && (() => {
+            const periodEnd = billingSubscription?.current_period_end
+              ? new Date(billingSubscription.current_period_end * 1000).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+              : null;
+            const isCancelling = billingSubscription?.cancel_at_period_end === true;
+            return (
             <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
               <SubHeader title="Abonnement" />
-              <div style={{ padding: "24px" }}>
-                <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.08)", padding: "18px 20px", marginBottom: 20 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: planUpdateSuccess ? 12 : 0 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.18)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                    </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px 32px" }}>
+
+                {/* ── Plan actuel ── */}
+                <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", marginBottom: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div>
-                      <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "white" }}>
+                      <p style={{ margin: "0 0 2px", fontSize: 15, fontWeight: 700, color: "white" }}>
                         {practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Professionnel" : practitionerPlan === "cabinet" ? "Cabinet" : "–"}
                       </p>
-                      <p style={{ margin: "2px 0 0", fontSize: 12, color: subscriptionStatus === "active" ? emerald : subscriptionStatus === "trialing" ? amber : "#64748b" }}>
-                        {subscriptionStatus === "active" ? "Actif" : subscriptionStatus === "trialing" ? "Période d'essai" : subscriptionStatus === "past_due" ? "Paiement en retard" : subscriptionStatus === "cancelled" ? "Résilié" : subscriptionStatus ?? "–"}
+                      <p style={{ margin: 0, fontSize: 12, color: subscriptionStatus === "active" && !isCancelling ? emerald : subscriptionStatus === "trialing" ? amber : isCancelling ? "#f97316" : "#64748b" }}>
+                        {isCancelling ? `Résiliation le ${periodEnd ?? "–"}` : subscriptionStatus === "active" ? "Actif" : subscriptionStatus === "trialing" ? "Période d'essai" : subscriptionStatus === "past_due" ? "Paiement en retard" : subscriptionStatus === "cancelled" ? "Résilié" : "–"}
                       </p>
                     </div>
+                    {periodEnd && !isCancelling && (
+                      <p style={{ margin: 0, fontSize: 11, color: "#475569", textAlign: "right" }}>
+                        Renouvellement<br />
+                        <span style={{ color: "#94a3b8", fontWeight: 500 }}>{periodEnd}</span>
+                      </p>
+                    )}
                   </div>
-                  {planUpdateSuccess && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, paddingTop: 10, borderTop: "1px solid rgba(16,185,129,0.12)" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      <span style={{ fontSize: 12, color: emerald }}>Plan mis à jour avec succès.</span>
+                  {isCancelling && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(249,115,22,0.15)" }}>
+                      <p style={{ margin: "0 0 10px", fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
+                        Vous avez changé d'avis ? Votre accès reste actif jusqu'au <strong style={{ color: "white" }}>{periodEnd}</strong>.
+                      </p>
+                      <button onClick={() => void handleResumeSubscription()}
+                        style={{ fontSize: 12, fontWeight: 600, color: emerald, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                        Annuler la résiliation →
+                      </button>
                     </div>
                   )}
+                  {cancelSuccess && !isCancelling && (
+                    <p style={{ margin: "10px 0 0", fontSize: 12, color: emerald }}>
+                      ✓ Un email de confirmation vous a été envoyé.
+                    </p>
+                  )}
+                  {deleteRequestSent && (
+                    <p style={{ margin: "10px 0 0", fontSize: 12, color: "#94a3b8" }}>
+                      ✓ Votre demande de suppression a été envoyée. Traitement sous 30 jours.
+                    </p>
+                  )}
                 </div>
-                <button onClick={() => { setPlanUpdateError(""); setShowBillingModal(true); }}
-                  style={{ width: "100%", height: 46, borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: emerald, fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}>
-                  Changer de plan
-                </button>
+
+                {/* ── Tabs ── */}
+                <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: 4, marginBottom: 20 }}>
+                  {(["facturation", "plan"] as const).map(tab => (
+                    <button key={tab} onClick={() => { setBillingTab(tab); if (tab === "facturation" && invoices.length === 0) void loadBillingData(); }}
+                      style={{ flex: 1, height: 32, borderRadius: 8, border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.15s",
+                        background: billingTab === tab ? "rgba(255,255,255,0.09)" : "transparent",
+                        color: billingTab === tab ? "white" : "#64748b" }}>
+                      {tab === "facturation" ? "Facturation" : "Changer de plan"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* ══ TAB FACTURATION ══ */}
+                {billingTab === "facturation" && (
+                  <div>
+                    {/* Carte */}
+                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", marginBottom: 14 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: showCardForm ? 16 : 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                          <span style={{ fontSize: 13, color: cardLast4 ? "white" : "#64748b" }}>
+                            {cardLast4
+                              ? <>{cardBrand ? cardBrand.charAt(0).toUpperCase() + cardBrand.slice(1) : "Carte"} <span style={{ color: "#94a3b8" }}>•••• {cardLast4}</span></>
+                              : billingLoading ? "Chargement…" : "Aucune carte enregistrée"}
+                          </span>
+                        </div>
+                        <button onClick={async () => {
+                          if (!showCardForm) {
+                            const res = await fetch("/api/billing/card-setup-intent", { method: "POST" });
+                            if (res.ok) {
+                              const { clientSecret } = await res.json() as { clientSecret: string };
+                              setCardSetupClientSecret(clientSecret);
+                            }
+                          }
+                          setShowCardForm(v => !v);
+                          setCardUpdateSuccess(false);
+                        }}
+                          style={{ fontSize: 12, fontWeight: 600, color: showCardForm ? "#64748b" : emerald, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                          {showCardForm ? "Annuler" : "Modifier"}
+                        </button>
+                      </div>
+                      {showCardForm && cardSetupClientSecret && (
+                        <Elements stripe={stripePromise} options={{ clientSecret: cardSetupClientSecret, appearance: { theme: "night", variables: { colorPrimary: emerald, colorBackground: "#0d0d0d", colorText: "#ffffff", fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif", borderRadius: "10px" }, rules: { ".Input": { border: "1px solid rgba(255,255,255,0.1)", boxShadow: "none", backgroundColor: "#161616" }, ".Input:focus": { border: `1px solid ${emerald}`, boxShadow: `0 0 0 2px ${emerald}25` }, ".Label": { color: "#9ca3af", fontSize: "12px" } } } }}>
+                          <CardUpdateForm
+                            onSuccess={(last4, brand) => { setCardLast4(last4); setCardBrand(brand); setShowCardForm(false); setCardUpdateSuccess(true); }}
+                          />
+                        </Elements>
+                      )}
+                      {cardUpdateSuccess && (
+                        <p style={{ margin: "10px 0 0", fontSize: 12, color: emerald }}>✓ Carte mise à jour avec succès.</p>
+                      )}
+                    </div>
+
+                    {/* Factures */}
+                    <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden" }}>
+                      <div style={{ padding: "14px 18px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.8)" }}>Factures</p>
+                      </div>
+                      {billingLoading ? (
+                        <p style={{ margin: 0, padding: "20px 18px", fontSize: 13, color: "#64748b" }}>Chargement…</p>
+                      ) : invoices.length === 0 ? (
+                        <p style={{ margin: 0, padding: "20px 18px", fontSize: 13, color: "#64748b" }}>Aucune facture pour le moment.</p>
+                      ) : invoices.map((inv, i) => {
+                        const date = new Date(inv.created * 1000).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+                        const amount = (inv.amount_paid / 100).toLocaleString("fr-FR", { style: "currency", currency: inv.currency.toUpperCase() });
+                        return (
+                          <div key={inv.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderBottom: i < invoices.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                            <div>
+                              <p style={{ margin: "0 0 1px", fontSize: 13, color: "rgba(255,255,255,0.8)", fontWeight: 500 }}>{amount}</p>
+                              <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{date}{inv.number ? ` · ${inv.number}` : ""}</p>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: inv.status === "paid" ? emerald : "#f97316", background: inv.status === "paid" ? "rgba(16,185,129,0.1)" : "rgba(249,115,22,0.1)", borderRadius: 6, padding: "2px 8px" }}>
+                                {inv.status === "paid" ? "Payée" : "En attente"}
+                              </span>
+                              {inv.invoice_pdf && (
+                                <a href={inv.invoice_pdf} target="_blank" rel="noreferrer"
+                                  style={{ fontSize: 11, color: "#64748b", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                  PDF
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Zone danger */}
+                    <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                      {!isCancelling && subscriptionStatus !== "cancelled" && (
+                        <button onClick={() => setShowCancelConfirm(true)}
+                          style={{ width: "100%", height: 40, borderRadius: 10, background: "transparent", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", fontSize: 13, fontWeight: 500, cursor: "pointer", marginBottom: 12, transition: "all 0.15s" }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.06)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
+                          Résilier mon abonnement
+                        </button>
+                      )}
+                      <button onClick={() => setShowDeleteConfirm(true)}
+                        style={{ width: "100%", background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#475569", textDecoration: "underline", padding: "4px 0" }}>
+                        Supprimer mon compte
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* ══ TAB PLAN ══ */}
+                {billingTab === "plan" && (
+                  <div>
+                    <button onClick={() => { setPlanUpdateError(""); setShowBillingModal(true); }}
+                      style={{ width: "100%", height: 42, borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: emerald, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s", marginBottom: 12 }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.15)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.08)"; }}>
+                      Voir les plans disponibles
+                    </button>
+                    {planUpdateSuccess && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 14px", background: "rgba(16,185,129,0.06)", borderRadius: 10, border: "1px solid rgba(16,185,129,0.12)" }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        <span style={{ fontSize: 12, color: emerald }}>Plan mis à jour avec succès.</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* ── Modal confirmation résiliation ── */}
+              {showCancelConfirm && (
+                <div onClick={() => setShowCancelConfirm(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 10 }}>
+                  <div onClick={e => e.stopPropagation()} style={{ width: "100%", background: "#111", borderRadius: "16px 16px 0 0", padding: "24px 24px 32px" }}>
+                    <p style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "white" }}>Résilier mon abonnement ?</p>
+                    <p style={{ margin: "0 0 20px", fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
+                      Votre accès restera actif jusqu'au <strong style={{ color: "white" }}>{periodEnd ?? "fin de la période"}</strong>. Aucun montant ne sera prélevé après cette date. Un email de confirmation vous sera envoyé.
+                    </p>
+                    <button onClick={() => void handleCancelSubscription()} disabled={cancelLoading}
+                      style={{ width: "100%", height: 44, borderRadius: 12, background: "#ef4444", border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: cancelLoading ? "default" : "pointer", marginBottom: 10, opacity: cancelLoading ? 0.7 : 1 }}>
+                      {cancelLoading ? "Traitement…" : "Confirmer la résiliation"}
+                    </button>
+                    <button onClick={() => setShowCancelConfirm(false)}
+                      style={{ width: "100%", height: 40, borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "none", color: "#94a3b8", fontSize: 13, cursor: "pointer" }}>
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Modal confirmation suppression compte ── */}
+              {showDeleteConfirm && (
+                <div onClick={() => setShowDeleteConfirm(false)} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 10 }}>
+                  <div onClick={e => e.stopPropagation()} style={{ width: "100%", background: "#111", borderRadius: "16px 16px 0 0", padding: "24px 24px 32px" }}>
+                    <p style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "white" }}>Supprimer mon compte ?</p>
+                    <p style={{ margin: "0 0 16px", fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
+                      En envoyant cette demande, votre abonnement sera annulé et votre compte supprimé dans un délai de <strong style={{ color: "white" }}>30 jours</strong> (RGPD Art. 17). Vous recevrez un email de confirmation.
+                    </p>
+                    <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", marginBottom: 20 }}>
+                      <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
+                        <strong style={{ color: "#94a3b8" }}>Données patients</strong> — conformément au RGPD, les dossiers de suivi peuvent être soumis à des obligations de conservation. Nous vous contacterons si nécessaire.
+                      </p>
+                    </div>
+                    <button onClick={() => void handleDeleteAccountRequest()} disabled={deleteRequestLoading}
+                      style={{ width: "100%", height: 44, borderRadius: 12, background: "#ef4444", border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: deleteRequestLoading ? "default" : "pointer", marginBottom: 10, opacity: deleteRequestLoading ? 0.7 : 1 }}>
+                      {deleteRequestLoading ? "Envoi…" : "Envoyer la demande"}
+                    </button>
+                    <button onClick={() => setShowDeleteConfirm(false)}
+                      style={{ width: "100%", height: 40, borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "none", color: "#94a3b8", fontSize: 13, cursor: "pointer" }}>
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+            );
+          })()}
 
           {/* ══ NOTIFICATIONS ══ */}
           {settingsScreen === "notifications" && (
