@@ -113,7 +113,9 @@ export default function LoginPage() {
       <div className="mb-8 text-center">
           <div className="relative mx-auto mb-4 w-fit">
             <div className="absolute inset-0 rounded-full bg-emerald-500/15 blur-2xl" style={{ transform: "scale(1.4)" }} />
-            <img src="/logo.png" alt="NutriTwin" style={{ position: "relative", width: 100, height: 100, objectFit: "contain", filter: "drop-shadow(0 0 18px rgba(16,185,129,0.35))" }} />
+            <div style={{ position: "relative", width: 96, height: 96, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)", overflow: "hidden" }}>
+              <img src="/logo.png" alt="NutriTwin" style={{ width: 96, height: 96, padding: "18px", objectFit: "contain", boxSizing: "border-box" }} />
+            </div>
           </div>
           <h1 className="text-[22px] tracking-tight text-white" style={{ fontFamily: "var(--font-jakarta), sans-serif" }}>Mon espace Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></h1>
           <p className="mt-2 text-base text-zinc-400">Connectez-vous pour accéder <br /> à votre espace praticien</p>

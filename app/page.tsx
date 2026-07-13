@@ -427,10 +427,10 @@ export default function Home() {
       <header className="fixed top-0 z-50 w-full border-b border-white/[0.04] bg-[#070707]/80 backdrop-blur-2xl">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
       <a href="/" className="flex items-center gap-2.5">
-        <div style={{ position: "relative", flexShrink: 0, width: 34, height: 34 }}>
+        <div style={{ position: "relative", flexShrink: 0, width: 44, height: 44 }}>
           <div style={{ position: "absolute", inset: -8, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.2), transparent 70%)", pointerEvents: "none" }} />
-          <div style={{ width: 34, height: 34, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.6)", display: "flex", alignItems: "center", justifyContent: "center", background: "#070707", position: "relative" }}>
-            <img src="/logo.png" alt="" style={{ width: 22, height: 22, objectFit: "contain" }} />
+          <div style={{ width: 44, height: 44, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.6)", display: "flex", alignItems: "center", justifyContent: "center", background: "#070707", position: "relative", overflow: "hidden" }}>
+            <img src="/logo.png" alt="" style={{ width: 44, height: 44, padding: "8px", objectFit: "contain", boxSizing: "border-box" }} />
           </div>
         </div>
         <span className="text-[22px] tracking-tight" style={{ fontFamily: "var(--font-jakarta), sans-serif" }}>Nutri<strong className="font-black" style={{ color: "#10b981" }}>Twin</strong></span>
