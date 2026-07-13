@@ -152,8 +152,8 @@ export default function SetPasswordPage() {
           <div className="relative mx-auto mb-3 w-fit">
             <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-lg" />
             <div style={{ position: "relative", width: 96, height: 96, margin: "0 auto" }}>
-              <div style={{ width: 96, height: 96, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)", display: "flex", alignItems: "center", justifyContent: "center", animation: "pulse-ring 2s ease-in-out infinite" }}>
-                <img src="/logo.png" alt="" style={{ width: 68, height: 68, objectFit: "contain" }} />
+              <div style={{ width: 96, height: 96, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", animation: "pulse-ring 2s ease-in-out infinite" }}>
+                <img src="/logo.png" alt="" style={{ width: 96, height: 96, padding: "12px", objectFit: "contain", boxSizing: "border-box" }} />
               </div>
             </div>
           </div>
