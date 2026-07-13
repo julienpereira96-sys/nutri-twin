@@ -14,25 +14,25 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["health", "lifestyle"],
     icons: [
       {
-        src: "/icons/icon-192.png?v=2",
+        src: "/icons/icon-192.png?v=3",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-192-maskable.png?v=2",
+        src: "/icons/icon-192-maskable.png?v=3",
         sizes: "192x192",
         type: "image/png",
         purpose: "maskable",
       },
       {
-        src: "/icons/icon-512.png?v=2",
+        src: "/icons/icon-512.png?v=3",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-512-maskable.png?v=2",
+        src: "/icons/icon-512-maskable.png?v=3",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
