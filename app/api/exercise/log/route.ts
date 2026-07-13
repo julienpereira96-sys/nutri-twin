@@ -113,9 +113,59 @@ Réponds uniquement avec la phrase, sans guillemets ni ponctuation finale.`;
   }
 }
 
-// ─── Résumé praticien ─────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type ExerciseOutcome = "crise_desamorcee" | "seance_positive" | "sans_resolution" | "neutre";
+
+/** Génère une note clinique narrative de 2-3 phrases (prose, passé, clinique). */
+async function generateClinicalNote(
+  intake: string,
+  closing: string,
+  exerciseType: string,
+  outcome: ExerciseOutcome,
+  extra: Record<string, unknown>
+): Promise<string> {
+  const labels: Record<string, string> = {
+    breathing:       "cohérence cardiaque",
+    ancrage:         "ancrage sensoriel 4-3-2-1",
+    restructuration: "restructuration cognitive",
+    manger:          "pleine conscience alimentaire",
+  };
+  const outcomeLabels: Record<ExerciseOutcome, string> = {
+    crise_desamorcee: "crise désamorcée avec succès",
+    seance_positive:  "séance positive sans crise préalable",
+    sans_resolution:  "crise non résolue en fin de session",
+    neutre:           "session préventive sans marqueur émotionnel notable",
+  };
+  const exLabel = labels[exerciseType] ?? "exercice thérapeutique";
+  const outcomeLabel = outcomeLabels[outcome];
+
+  const extraLines: string[] = [];
+  if (exerciseType === "breathing" && extra.blocks_completed !== undefined)
+    extraLines.push(`${extra.blocks_completed as number} bloc(s) de respiration complété(s)`);
+  if (exerciseType === "ancrage" && extra.senses_completed !== undefined)
+    extraLines.push(`${extra.senses_completed as number}/4 sens explorés`);
+  if (exerciseType === "restructuration") {
+    if (extra.original_thought) extraLines.push(`pensée initiale : "${(extra.original_thought as string).slice(0, 80)}"`);
+    if (extra.reformulated_thought) extraLines.push(`pensée reformulée : "${(extra.reformulated_thought as string).slice(0, 80)}"`);
+  }
+
+  try {
+    const prompt = `Tu es un assistant clinique. Rédige une note de suivi concise (2-3 phrases, prose, au passé, style clinique sobre) pour un praticien, à partir des données suivantes :
+- Exercice réalisé : ${exLabel}
+- État avant : "${intake.trim().slice(0, 200) || "non renseigné"}"
+- État après : "${closing.trim().slice(0, 150) || "non renseigné"}"${extraLines.length ? `\n- Détails : ${extraLines.join(", ")}` : ""}
+- Issue : ${outcomeLabel}
+
+Commence directement la note sans titre ni préambule. Ne mentionne pas le nom du patient. Reste factuel et bienveillant.`;
+    const raw = await vertexGenerate("gemini-2.5-flash-lite", prompt, { maxOutputTokens: 120, temperature: 0.3 });
+    return raw.trim();
+  } catch {
+    return "";
+  }
+}
+
+// ─── Résumé praticien ─────────────────────────────────────────────────────────
 
 function buildPractitionerSummary(
   exerciseType: string,
@@ -247,13 +297,21 @@ export async function POST(request: Request) {
         else if (wasCrisis && !apaisementConfirmed) outcome = "sans_resolution";
         else                                         outcome = "neutre";
 
-        // 4. Mise à jour sos_events
+        // 4. Note clinique narrative + mise à jour sos_events
         const finalOrigin = wasCrisis ? "crise" : exerciseType;
         const finalStatus = apaisementConfirmed ? "success" : baseStatus;
+        const clinicalNote = await generateClinicalNote(
+          intakeMessage?.trim() ?? "",
+          closingMessage?.trim() ?? "",
+          exerciseType,
+          outcome,
+          extra
+        );
         if (eventData?.id) {
           await supabase.from("sos_events").update({
-            origin: finalOrigin,
-            status: finalStatus,
+            origin:       finalOrigin,
+            status:       finalStatus,
+            summary_text: clinicalNote || null,
           }).eq("id", eventData.id);
         }
 

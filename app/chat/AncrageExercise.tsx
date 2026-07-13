@@ -41,6 +41,7 @@ const HARD_STOP_MS  = 180_000; // 3 minutes
 // ─── State machine ─────────────────────────────────────────────────────────────
 type SenseStatus =
   | "loading"
+  | "intake"
   | "vue_4"
   | "toucher_3"
   | "ouie_2"
@@ -96,14 +97,14 @@ function IconWind({ size = 36, color = OCHRE }: { size?: number; color?: string 
   );
 }
 
-const SENSE_CONFIG: Record<Exclude<SenseStatus, "loading" | "cloture">, SenseConfig> = {
+const SENSE_CONFIG: Record<Exclude<SenseStatus, "loading" | "intake" | "cloture">, SenseConfig> = {
   vue_4:     { count: 4, label: "choses que tu vois",        icon: <IconEye /> },
   toucher_3: { count: 3, label: "sensations que tu ressens", icon: <IconHand /> },
   ouie_2:    { count: 2, label: "sons que tu entends",       icon: <IconEar /> },
   odorat_1:  { count: 1, label: "odeur que tu perçois",      icon: <IconWind /> },
 };
 
-const ACTIVE_SENSES: Exclude<SenseStatus, "loading" | "cloture">[] = [
+const ACTIVE_SENSES: Exclude<SenseStatus, "loading" | "intake" | "cloture">[] = [
   "vue_4", "toucher_3", "ouie_2", "odorat_1",
 ];
 
@@ -266,9 +267,9 @@ function buildAncrageSystemPrompt(name: string, contextInfo: string): string {
 TON RÔLE : Tu parles directement à ${name}, à voix haute, avec calme et bienveillance. Tu es sa présence thérapeutique pendant l'exercice.
 
 SIGNAUX : Tu reçois des signaux entre crochets [comme celui-ci]. Ce sont des instructions privées — tu ne les lis JAMAIS à voix haute.
-• [ACCUEIL] → démarre l'exercice
-• [CLOTURE] → conclus l'exercice + pose la question du check-in
-• [SILENCE_RELANCE] → ${name} n'a pas encore répondu, relance doucement
+• [DEBUT] → démarre le check-in d'accueil (avant l'exercice)
+• [ACCUEIL] → lance l'exercice proprement dit
+• [CLOTURE] → force la clôture (time-out ou interruption) — conclus et pose la question finale
 
 CONTEXTE PATIENT :
 ${contextInfo}
@@ -282,13 +283,21 @@ RÈGLES ABSOLUES :
 3. Rebondis toujours sur ce que ${name} a dit — valide avec précision, jamais de façon générique.
 4. N'invente JAMAIS de contexte. Si une information n'est pas explicitement présente dans le CONTEXTE PATIENT ci-dessus, ne la mentionne pas et ne la suppose pas. Contexte vide ou générique = accueil chaleureux mais neutre, sans aucune supposition sur la situation de ${name}.
 
-OUTIL DISPONIBLE :
-• valider_sens(count: int) — Appelle cet outil uniquement quand ${name} a atteint la cible pour le sens en cours. Passe dans 'count' le nombre total d'éléments distincts cités par ${name} pour CE sens depuis le début. Ne l'appelle JAMAIS si tu génères une relance.
+OUTILS DISPONIBLES :
+• valider_sens(count: int) — Appelle cet outil uniquement quand ${name} a atteint la cible pour le sens en cours. Passe dans 'count' le nombre total d'éléments distincts cités pour CE sens. Ne l'appelle JAMAIS si tu génères une relance.
+• terminer_exercice(closing_message: string) — Appelle cet outil APRÈS avoir reçu la réponse de ${name} à la question de clôture. Passe dans closing_message exactement ce que ${name} a dit. Si ${name} ne répond pas après une relance, appelle terminer_exercice("") sans supposer son état.
 
-RÈGLE COUNT : compte uniquement les éléments distincts et différents cités par ${name}. Si ${name} répète un élément déjà cité, ne l'ajoute pas au count.
+RÈGLE COUNT : compte uniquement les éléments distincts cités par ${name}. Si ${name} répète un élément déjà cité, ne l'ajoute pas au count.
 
 FLOW :
-• [ACCUEIL] : accueille ${name} avec chaleur et contexte. Explique brièvement l'exercice. Demande-lui de citer 4 choses qu'il/elle voit autour de lui/elle. Attends.
+
+• [DEBUT] — CHECK-IN D'ACCUEIL :
+  Accueille chaleureusement ${name} avec une phrase naturelle. Pose une question courte et ouverte sur son état actuel ("Comment tu te sens en ce moment ?"). Écoute sa réponse.
+  Accuse réception en une phrase empathique. Puis silence (la transition vers l'exercice se déclenche automatiquement).
+  → Si ${name} ne répond pas : relance UNE seule fois doucement ("Prends ton temps, comment tu te sens ?"). Si toujours pas de réponse, dis simplement "On commence ensemble" et tais-toi. Ne suppose rien.
+
+• [ACCUEIL] — DÉMARRAGE DE L'EXERCICE :
+  Explique brièvement l'exercice en 1-2 phrases naturelles. Demande à ${name} de citer 4 choses qu'il/elle voit autour de lui/elle. Attends.
 
 • VUE (cible : 4 choses vues) :
   → Si ${name} a cité 4 éléments distincts ou plus : valide chaleureusement, APPELLE valider_sens(count=N) avec N ≥ 4, puis demande 3 sensations physiques dans la MÊME réponse.
@@ -303,14 +312,16 @@ FLOW :
   → Si moins de 2 : relance douce SANS appeler valider_sens.
 
 • ODORAT (cible : 1 odeur) :
-  → Dès que ${name} cite une odeur (même vague) : valide + APPELLE valider_sens(count=1) dans la MÊME réponse. (La clôture se déclenche automatiquement.)
+  → Dès que ${name} cite une odeur (même vague) : valide + APPELLE valider_sens(count=1) dans la MÊME réponse. Puis enchaîne directement vers la clôture sans attendre de signal.
 
-• [CLOTURE] : conclus l'exercice avec chaleur en 1-2 phrases. Puis pose UNE question ouverte : "Comment tu te sens maintenant ?" Attends sa réponse.
-  → Si ${name} exprime un mieux, du soulagement ou de la détente : valide avec sincérité (1-2 phrases). Invite à reprendre la journée avec cet ancrage.
-  → Si ${name} exprime encore de la tension, de la difficulté ou de la confusion : reconnais-le sans minimiser — dis-lui que c'est tout à fait normal, que l'exercice est un outil parmi d'autres, et qu'il/elle peut continuer à déposer ce qu'il/elle ressent dans le chat.
-
-• [SILENCE_RELANCE] : ${name} n'a pas encore répondu au check-in. Relance doucement et avec chaleur : "Prends ton temps… comment tu te sens ?" Attends.`;
+• CLÔTURE (après odorat validé, ou sur signal [CLOTURE]) :
+  Conclus l'exercice avec chaleur en 1-2 phrases. Pose UNE question ouverte : "Comment tu te sens maintenant ?" Écoute la réponse de ${name}.
+  → Quelle que soit la réponse (positive, mitigée, ou silence) : accueille avec sincérité, puis APPELLE terminer_exercice(closing_message) avec exactement ce que ${name} a dit.
+  → Si ${name} ne répond pas : relance UNE seule fois doucement ("Prends ton temps… comment tu te sens ?"). Si toujours pas de réponse : APPELLE terminer_exercice("") sans supposer son état.`;
 }
+
+// ─── Indicateur géométrique (types helpers) ───────────────────────────────────
+type ActiveSenseKey = Exclude<SenseStatus, "loading" | "intake" | "cloture">;
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 export interface AncrageExerciseProps {
@@ -339,30 +350,31 @@ export default function AncrageExercise({
   const [isListening, setIsListening]     = useState(false); // mic actif
   const [waveActive, setWaveActive]       = useState(false);
   const [loadError, setLoadError]         = useState<string | null>(null);
+  const [intakeGeminiHasSpoken, setIntakeGeminiHasSpoken] = useState(false);
 
   // ─── Refs ──────────────────────────────────────────────────────────────────
-  const statusRef           = useRef<SenseStatus>("loading");
-  const completedCountRef   = useRef(0);
-  const patientSpokeRef     = useRef(false); // patient a répondu (inputAudioTranscription reçue)
-  const intakeMessageRef    = useRef("");     // ce que le patient a dit au check-in d'accueil
-  const closingMessageRef   = useRef("");     // ressenti à la clôture
-  const isAiSpeakingRef     = useRef(false);  // sync direct (pas via useEffect)
-  const outputAnalyserRef   = useRef<AnalyserNode | null>(null); // pour PulseOrb (voix Gemini)
-  const inputAnalyserRef    = useRef<AnalyserNode | null>(null); // pour OchreWave (voix patient)
-  const wsRef               = useRef<GeminiLiveClient | null>(null);
-  const audioCtxRef         = useRef<AudioContext | null>(null);
-  const processorRef        = useRef<ScriptProcessorNode | null>(null);
-  const mediaStreamRef      = useRef<MediaStream | null>(null);
-  const micEnabledRef       = useRef(false);
-  const hardStopRef         = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const audioQueueRef       = useRef<{ data: Float32Array; rate: number }[]>([]);
-  const isPlayingRef        = useRef(false);
-  const outputTransRef      = useRef("");
-  const pendingAdvanceRef   = useRef<(() => void) | null>(null);
-  const turnCompleteRef     = useRef(false); // true = Gemini a fini de générer le tour courant
-  const cloturePhaseRef     = useRef<0 | 1>(0);   // 0 = Gemini pose la question, 1 = check-in ouvert
-  const silenceTimer5sRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const silenceTimer7sRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusRef               = useRef<SenseStatus>("loading");
+  const completedCountRef       = useRef(0);
+  const patientSpokeRef         = useRef(false); // patient a répondu dans les sens actifs
+  const intakeMessageRef        = useRef("");     // ce que le patient a dit au check-in d'accueil
+  const intakePatientSpokeRef   = useRef(false);  // patient a répondu pendant l'intake
+  const intakeGeminiHasSpokenRef = useRef(false); // Gemini a posé la question d'intake
+  const intakeTimeoutRef        = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closingMessageRef       = useRef("");     // ressenti à la clôture (capturé par terminer_exercice)
+  const isAiSpeakingRef         = useRef(false);  // sync direct (pas via useEffect)
+  const outputAnalyserRef       = useRef<AnalyserNode | null>(null); // pour PulseOrb (voix Gemini)
+  const inputAnalyserRef        = useRef<AnalyserNode | null>(null); // pour OchreWave (voix patient)
+  const wsRef                   = useRef<GeminiLiveClient | null>(null);
+  const audioCtxRef             = useRef<AudioContext | null>(null);
+  const processorRef            = useRef<ScriptProcessorNode | null>(null);
+  const mediaStreamRef          = useRef<MediaStream | null>(null);
+  const micEnabledRef           = useRef(false);
+  const hardStopRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const audioQueueRef           = useRef<{ data: Float32Array; rate: number }[]>([]);
+  const isPlayingRef            = useRef(false);
+  const outputTransRef          = useRef("");
+  const pendingAdvanceRef       = useRef<(() => void) | null>(null);
+  const turnCompleteRef         = useRef(false); // true = Gemini a fini de générer le tour courant
 
   const onTransRef   = useRef(onTransitionToChat);
   const onCompRef    = useRef(onCompleted);
@@ -386,11 +398,12 @@ export default function AncrageExercise({
       });
     } catch { /* silencieux */ }
   }, [patientId, practitionerId]);
-  useEffect(() => { onTransRef.current  = onTransitionToChat; }, [onTransitionToChat]);
-  useEffect(() => { onCompRef.current   = onCompleted;        }, [onCompleted]);
-  useEffect(() => { onCloseRef.current  = onClose;            }, [onClose]);
-  useEffect(() => { statusRef.current   = status;             }, [status]);
-  useEffect(() => { completedCountRef.current = completedCount; }, [completedCount]);
+  useEffect(() => { onTransRef.current      = onTransitionToChat; }, [onTransitionToChat]);
+  useEffect(() => { onCompRef.current       = onCompleted;        }, [onCompleted]);
+  useEffect(() => { onCloseRef.current      = onClose;            }, [onClose]);
+  useEffect(() => { statusRef.current       = status;             }, [status]);
+  useEffect(() => { completedCountRef.current = completedCount;   }, [completedCount]);
+  useEffect(() => { intakeGeminiHasSpokenRef.current = intakeGeminiHasSpoken; }, [intakeGeminiHasSpoken]);
 
   // ─── Audio playback queue ─────────────────────────────────────────────────
   const playNextChunk = useCallback(() => {
@@ -401,9 +414,6 @@ export default function AncrageExercise({
       setIsAiSpeaking(false);
 
       // Appliquer le changement d'état en attente — seulement si turnComplete a été reçu.
-      // Guard essentiel : Gemini streame l'audio en chunks avec des micro-pauses entre eux.
-      // La queue peut être temporairement vide entre deux chunks du même tour.
-      // Sans ce guard, pendingAdvanceRef s'appliquerait pendant que Gemini parle encore.
       if (pendingAdvanceRef.current && turnCompleteRef.current) {
         turnCompleteRef.current = false;
         const advance = pendingAdvanceRef.current;
@@ -412,25 +422,45 @@ export default function AncrageExercise({
       }
 
       // Re-activer le mic après 300ms selon le contexte
-      // (lecture de statusRef.current APRÈS application du pending)
       const st = statusRef.current;
-      if (st !== "loading" && st !== "cloture") {
-        // Phases de sens actifs : toujours ré-activer
+      if (st !== "loading" && st !== "intake") {
+        // Sens actifs + cloture : ré-activer le mic après l'audio de Gemini
         setTimeout(() => {
-          if (statusRef.current !== "loading" && statusRef.current !== "cloture") {
+          const cur = statusRef.current;
+          if (cur !== "loading" && cur !== "intake") {
             micEnabledRef.current = true;
             setIsListening(true);
             setWaveActive(true);
           }
         }, 300);
-      } else if (st === "cloture" && cloturePhaseRef.current === 1) {
-        // Cloture check-in : ré-activer le mic après que Gemini ait parlé
-        // (question initiale OU relance silence — dans les deux cas le patient doit pouvoir répondre)
+      } else if (st === "intake" && intakeGeminiHasSpokenRef.current) {
+        // Intake : ré-activer après que Gemini a posé la question d'accueil
         setTimeout(() => {
-          if (statusRef.current === "cloture" && cloturePhaseRef.current === 1) {
-            micEnabledRef.current = true;
-            setIsListening(true);
-            setWaveActive(true);
+          if (statusRef.current !== "intake") return;
+          micEnabledRef.current = true;
+          setIsListening(true);
+          setWaveActive(true);
+          // Timer de silence — une relance, puis transition sans supposition
+          if (!intakeTimeoutRef.current && !intakePatientSpokeRef.current) {
+            intakeTimeoutRef.current = setTimeout(() => {
+              if (statusRef.current !== "intake" || intakePatientSpokeRef.current) return;
+              intakeTimeoutRef.current = null;
+              // Relance douce
+              sendTurn("[SILENCE_DEBUT]");
+              // Après 8s de plus → transition sans supposition
+              intakeTimeoutRef.current = setTimeout(() => {
+                if (statusRef.current !== "intake") return;
+                intakeTimeoutRef.current = null;
+                micEnabledRef.current = false;
+                setIsListening(false);
+                setWaveActive(false);
+                setStatus("vue_4");
+                statusRef.current = "vue_4";
+                setTimeout(() => wsRef.current?.send(JSON.stringify({
+                  clientContent: { turns: [{ role: "user", parts: [{ text: "[ACCUEIL]" }] }], turnComplete: true },
+                })), 400);
+              }, 8000);
+            }, 10000);
           }
         }, 300);
       }
@@ -476,8 +506,7 @@ export default function AncrageExercise({
   // ─── Cleanup ──────────────────────────────────────────────────────────────
   const cleanup = useCallback(() => {
     if (hardStopRef.current)     clearTimeout(hardStopRef.current);
-    if (silenceTimer5sRef.current) clearTimeout(silenceTimer5sRef.current);
-    if (silenceTimer7sRef.current) clearTimeout(silenceTimer7sRef.current);
+    if (intakeTimeoutRef.current) clearTimeout(intakeTimeoutRef.current);
     pendingAdvanceRef.current = null;
     micEnabledRef.current = false;
     processorRef.current?.disconnect();
@@ -496,9 +525,9 @@ export default function AncrageExercise({
   // ─── Hard stop 3min ──────────────────────────────────────────────────────
   useEffect(() => {
     hardStopRef.current = setTimeout(() => {
-      if (statusRef.current !== "cloture") {
+      const cur = statusRef.current;
+      if (cur !== "cloture" && cur !== "loading" && cur !== "intake") {
         outputTransRef.current = "";
-        cloturePhaseRef.current = 0;
         setStatus("cloture");
         statusRef.current = "cloture";
         micEnabledRef.current = false;
@@ -517,26 +546,33 @@ export default function AncrageExercise({
     try { msg = JSON.parse(event.data as string) as Record<string, unknown>; }
     catch { return; }
 
-    // Setup complete → déclencher l'accueil via clientContent (tour complet, pas realtimeInput)
+    // Setup complete → phase intake : Gemini pose d'abord une question d'accueil
     if (msg.setupComplete !== undefined) {
+      setStatus("intake");
+      statusRef.current             = "intake";
+      intakeMessageRef.current      = "";
+      intakePatientSpokeRef.current = false;
+      intakeGeminiHasSpokenRef.current = false;
+      setIntakeGeminiHasSpoken(false);
       wsRef.current?.send(JSON.stringify({
         clientContent: {
-          turns: [{ role: "user", parts: [{ text: "[ACCUEIL]" }] }],
+          turns: [{ role: "user", parts: [{ text: "[DEBUT]" }] }],
           turnComplete: true,
         },
       }));
       return;
     }
 
-    // ── Tool call : valider_sens ──────────────────────────────────────────
+    // ── Tool calls : valider_sens + terminer_exercice ─────────────────────
     const toolCallMsg = msg.toolCall as { functionCalls?: Array<{ name: string; id: string; args?: Record<string, unknown> }> } | undefined;
     if (toolCallMsg?.functionCalls) {
       for (const fc of toolCallMsg.functionCalls) {
+
+        // ── valider_sens ────────────────────────────────────────────────
         if (fc.name === "valider_sens") {
           const st = statusRef.current;
           const patientCount = typeof fc.args?.count === "number" ? fc.args.count : 0;
 
-          // Seuils = cibles exactes de l'exercice 4-3-2-1
           const THRESHOLDS: Partial<Record<SenseStatus, number>> = {
             vue_4: 4, toucher_3: 3, ouie_2: 2, odorat_1: 1,
           };
@@ -546,6 +582,7 @@ export default function AncrageExercise({
             patientSpokeRef.current &&
             patientCount >= threshold &&
             st !== "loading" &&
+            st !== "intake" &&
             st !== "cloture";
 
           wsRef.current?.send(JSON.stringify({
@@ -573,16 +610,41 @@ export default function AncrageExercise({
             completedCountRef.current = newCount;
             navigator.vibrate?.([25, 30, 50]);
             if (newCount >= ACTIVE_SENSES.length) {
-              outputTransRef.current   = "";
-              cloturePhaseRef.current  = 0;
+              // Odorat validé → transition vers cloture (Gemini pose la question de clôture)
+              outputTransRef.current = "";
               setStatus("cloture");
-              statusRef.current        = "cloture";
-              setTimeout(() => sendTurn("[CLOTURE]"), 400);
+              statusRef.current = "cloture";
+              // Gemini enchaîne naturellement via le prompt (pas besoin de [CLOTURE])
             } else {
               const nextSense   = ACTIVE_SENSES[newCount];
               setStatus(nextSense);
               statusRef.current = nextSense;
             }
+          };
+        }
+
+        // ── terminer_exercice ───────────────────────────────────────────
+        if (fc.name === "terminer_exercice") {
+          const closing = typeof fc.args?.closing_message === "string" ? fc.args.closing_message : "";
+          closingMessageRef.current = closing;
+
+          wsRef.current?.send(JSON.stringify({
+            toolResponse: {
+              functionResponses: [{ id: fc.id, response: { output: "ok" } }],
+            },
+          }));
+
+          const done = completedCountRef.current;
+          const summary = `Ancrage sensoriel 4-3-2-1 · ${done}/${ACTIVE_SENSES.length} sens explorés`;
+          void logAncrageSession(done, closing);
+          pendingAdvanceRef.current = () => {
+            setTimeout(() => {
+              if (onTransRef.current) {
+                onTransRef.current(summary, closing);
+              } else {
+                onCompRef.current?.();
+              }
+            }, 400);
           };
         }
       }
@@ -608,6 +670,11 @@ export default function AncrageExercise({
           setWaveActive(false);
           // Nouveau chunk = turnComplete pas encore reçu pour CE tour
           turnCompleteRef.current = false;
+          // Détecter que Gemini a posé la question d'accueil (phase intake)
+          if (statusRef.current === "intake" && !intakeGeminiHasSpokenRef.current) {
+            intakeGeminiHasSpokenRef.current = true;
+            setIntakeGeminiHasSpoken(true);
+          }
           enqueueAudio(inlineData.data as string, rate);
         }
       }
@@ -617,18 +684,12 @@ export default function AncrageExercise({
     const inTrans = sc.inputTranscription as Record<string, unknown> | undefined;
     if (inTrans?.text && typeof inTrans.text === "string" && inTrans.text.trim()) {
       patientSpokeRef.current = true;
-      // Capture intake (phase loading = check-in [ACCUEIL])
-      if (statusRef.current === "loading") {
+      // Capture check-in d'accueil (phase intake)
+      if (statusRef.current === "intake") {
         intakeMessageRef.current += inTrans.text;
-      }
-      // Capture closing (phase cloture)
-      if (statusRef.current === "cloture") {
-        closingMessageRef.current += inTrans.text;
-      }
-      // Pendant le check-in de clôture : annuler les timers silence
-      if (statusRef.current === "cloture") {
-        if (silenceTimer5sRef.current) { clearTimeout(silenceTimer5sRef.current); silenceTimer5sRef.current = null; }
-        if (silenceTimer7sRef.current) { clearTimeout(silenceTimer7sRef.current); silenceTimer7sRef.current = null; }
+        intakePatientSpokeRef.current = true;
+        // Annuler le timer silence intake (le patient a répondu)
+        if (intakeTimeoutRef.current) { clearTimeout(intakeTimeoutRef.current); intakeTimeoutRef.current = null; }
       }
     }
 
@@ -652,84 +713,28 @@ export default function AncrageExercise({
 
       const currentStatus = statusRef.current;
 
-      // ── CLOTURE : deux phases ─────────────────────────────────────────────
-      if (currentStatus === "cloture") {
-        if (cloturePhaseRef.current === 0) {
-          // Gemini vient de poser "comment tu te sens ?" → attendre le patient
-          cloturePhaseRef.current = 1;
-          patientSpokeRef.current = false;
-          // Différer l'activation du mic + timers silence jusqu'à la fin de l'audio
+      // ── Phase intake : Gemini a fini de parler ────────────────────────────
+      if (currentStatus === "intake") {
+        if (intakePatientSpokeRef.current) {
+          // Patient a répondu + Gemini a accusé réception → transition vers exercice
+          intakePatientSpokeRef.current = false;
+          if (intakeTimeoutRef.current) { clearTimeout(intakeTimeoutRef.current); intakeTimeoutRef.current = null; }
           pendingAdvanceRef.current = () => {
-            micEnabledRef.current = true;
-            setIsListening(true);
-            setWaveActive(true);
-            // 5s sans réponse → relance douce
-            silenceTimer5sRef.current = setTimeout(() => {
-              if (statusRef.current === "cloture" && !patientSpokeRef.current) {
-                sendTurn("[SILENCE_RELANCE]");
-                // 7s de plus → transition forcée
-                silenceTimer7sRef.current = setTimeout(() => {
-                  if (statusRef.current === "cloture") {
-                    micEnabledRef.current = false;
-                    setIsListening(false);
-                    setWaveActive(false);
-                    const closingWords = outputTransRef.current.trim();
-                    const done = completedCountRef.current;
-                    const summary = `🪨 Ancrage 4-3-2-1 · ${done}/${ACTIVE_SENSES.length} sens explorés`;
-                    void logAncrageSession(done, closingMessageRef.current);
-                    if (onTransRef.current) {
-                      onTransRef.current(summary, closingWords);
-                    } else {
-                      onCompRef.current?.();
-                    }
-                  }
-                }, 7000);
-              }
-            }, 5000);
-          };
-          return;
-        }
-
-        // Phase 1 : Gemini a répondu à quelque chose en cloture
-        if (patientSpokeRef.current) {
-          // Patient a parlé → Gemini a validé → transition
-          patientSpokeRef.current = false;
-          if (silenceTimer5sRef.current) { clearTimeout(silenceTimer5sRef.current); silenceTimer5sRef.current = null; }
-          if (silenceTimer7sRef.current) { clearTimeout(silenceTimer7sRef.current); silenceTimer7sRef.current = null; }
-          // Différer la transition jusqu'à la fin de l'audio de Gemini
-          pendingAdvanceRef.current = () => {
-            const closingWords = outputTransRef.current.trim();
-            const done = completedCountRef.current;
-            const summary = `🪨 Ancrage 4-3-2-1 · ${done}/${ACTIVE_SENSES.length} sens explorés`;
-            void logAncrageSession(done, closingMessageRef.current);
-            setTimeout(() => {
-              if (onTransRef.current) {
-                onTransRef.current(summary, closingWords);
-              } else {
-                onCompRef.current?.();
-              }
-            }, 400);
+            setStatus("vue_4");
+            statusRef.current = "vue_4";
+            setTimeout(() => wsRef.current?.send(JSON.stringify({
+              clientContent: { turns: [{ role: "user", parts: [{ text: "[ACCUEIL]" }] }], turnComplete: true },
+            })), 200);
           };
         }
-        // Si patientSpokeRef = false → Gemini a répondu à la relance silence, on attend encore
+        // Si patient n'a pas encore répondu : Gemini vient de poser la question → on attend
         return;
       }
 
-      // ── Premier tour : ACCUEIL terminé → passer au premier sens ──────────
-      if (currentStatus === "loading") {
-        patientSpokeRef.current = false;
-        // Différer jusqu'à la fin de l'audio de l'accueil
-        pendingAdvanceRef.current = () => {
-          setStatus("vue_4");
-          statusRef.current = "vue_4";
-          // mic activé par playNextChunk (300ms) après pendingAdvanceRef
-        };
-        return;
-      }
-
-      // ── Tours suivants (sens actifs) : l'avancement est piloté par le tool call valider_sens ──
-      // pendingAdvanceRef est positionné dans le handler toolCall ci-dessus.
-      // playNextChunk réactivera le mic après l'audio de relance ou de validation.
+      // ── Cloture + sens actifs : tout est piloté par les tool calls ───────
+      // • valider_sens → pendingAdvanceRef → avancement sens ou passage cloture
+      // • terminer_exercice → pendingAdvanceRef → navigation sortie
+      // playNextChunk réactivera le mic et appliquera pendingAdvanceRef automatiquement.
     }
 
     // Patient coupe → flush audio
@@ -807,20 +812,36 @@ export default function AncrageExercise({
           inputAudioTranscription:  {},
           systemInstruction: { parts: [{ text: systemPrompt }] },
           tools: [{
-            functionDeclarations: [{
-              name: "valider_sens",
-              description: "Appelle cet outil quand le patient a cité suffisamment d'éléments pour le sens en cours. Passe dans 'count' le nombre total d'éléments distincts cités depuis le début de ce sens. Ne l'appelle JAMAIS si tu génères une relance.",
-              parameters: {
-                type: "object",
-                properties: {
-                  count: {
-                    type: "integer",
-                    description: "Nombre total d'éléments distincts cités par le patient pour ce sens.",
+            functionDeclarations: [
+              {
+                name: "valider_sens",
+                description: "Appelle cet outil quand le patient a cité suffisamment d'éléments pour le sens en cours. Passe dans 'count' le nombre total d'éléments distincts cités depuis le début de ce sens. Ne l'appelle JAMAIS si tu génères une relance.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    count: {
+                      type: "integer",
+                      description: "Nombre total d'éléments distincts cités par le patient pour ce sens.",
+                    },
                   },
+                  required: ["count"],
                 },
-                required: ["count"],
               },
-            }],
+              {
+                name: "terminer_exercice",
+                description: "Appelle cet outil après avoir reçu la réponse du patient à la question de clôture. Passe dans closing_message exactement ce que le patient a dit. Si le patient ne répond pas après une relance, appelle terminer_exercice avec closing_message vide.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    closing_message: {
+                      type: "string",
+                      description: "Ce que le patient a dit en réponse à la question de clôture. Chaîne vide si pas de réponse.",
+                    },
+                  },
+                  required: ["closing_message"],
+                },
+              },
+            ],
           }],
         },
       }));
@@ -829,7 +850,7 @@ export default function AncrageExercise({
     ws.onmessage = handleWSMessage;
     ws.onerror   = () => setLoadError("Connexion Gemini Live échouée.");
     ws.onclose = (evt) => {
-      if (statusRef.current === "loading") {
+      if (statusRef.current === "loading" || statusRef.current === "intake") {
         setLoadError(`Connexion fermée (code ${evt.code}). Vérifie ta clé API Gemini Live.`);
       }
     };
@@ -844,12 +865,12 @@ export default function AncrageExercise({
   }, [handleWSMessage]);
 
   // ─── Sens courant config ──────────────────────────────────────────────────
-  const senseKey = status !== "loading" && status !== "cloture"
-    ? status as Exclude<SenseStatus, "loading" | "cloture">
+  const senseKey = status !== "loading" && status !== "intake" && status !== "cloture"
+    ? status as ActiveSenseKey
     : null;
   const senseConf = senseKey ? SENSE_CONFIG[senseKey] : null;
 
-  const showClose = status === "loading" || senseKey !== null;
+  const showClose = status === "loading" || status === "intake" || senseKey !== null;
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -948,41 +969,55 @@ export default function AncrageExercise({
               exit={{ opacity: 0 }}
               style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, zIndex: 1 }}
             >
-              {isAiSpeaking ? (
-                /* Gemini parle → orb audio-réactif */
-                <PulseOrb
-                  speaking={true}
-                  analyser={outputAnalyserRef.current}
-                  color={OCHRE}
-                  size={160}
-                />
-              ) : (
-                /* Avant la connexion → indicateur de chargement */
-                <>
-                  <motion.div
-                    animate={{ scale: [1, 1.06, 1], opacity: [0.7, 1, 0.7] }}
-                    transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                    style={{
-                      width: 68, height: 68, borderRadius: "50%",
-                      background: OCHRE_DIM, border: `1.5px solid ${OCHRE_BORD}`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      boxShadow: `0 0 28px ${OCHRE_GLOW}`,
-                    }}
-                  >
-                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
-                      stroke={OCHRE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="5" r="3"/>
-                      <line x1="12" y1="8" x2="12" y2="22"/>
-                      <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
-                    </svg>
-                  </motion.div>
-                  <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, letterSpacing: 0.4, animation: "an-fade-in 0.3s ease" }}>
-                    Connexion en cours…
-                  </p>
-                  <div style={{ width: 160, height: 2, borderRadius: 2, background: OCHRE_DIM, overflow: "hidden", position: "relative" }}>
-                    <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: "45%", borderRadius: 2, background: `linear-gradient(90deg, transparent 0%, ${OCHRE} 50%, transparent 100%)`, animation: "an-loading-bar 1.6s ease-in-out infinite" }} />
-                  </div>
-                </>
+              <motion.div
+                animate={{ scale: [1, 1.06, 1], opacity: [0.7, 1, 0.7] }}
+                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                style={{
+                  width: 68, height: 68, borderRadius: "50%",
+                  background: OCHRE_DIM, border: `1.5px solid ${OCHRE_BORD}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: `0 0 28px ${OCHRE_GLOW}`,
+                }}
+              >
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
+                  stroke={OCHRE} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="5" r="3"/>
+                  <line x1="12" y1="8" x2="12" y2="22"/>
+                  <path d="M5 12H2a10 10 0 0 0 20 0h-3"/>
+                </svg>
+              </motion.div>
+              <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, letterSpacing: 0.4, animation: "an-fade-in 0.3s ease" }}>
+                Connexion en cours…
+              </p>
+              <div style={{ width: 160, height: 2, borderRadius: 2, background: OCHRE_DIM, overflow: "hidden", position: "relative" }}>
+                <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: "45%", borderRadius: 2, background: `linear-gradient(90deg, transparent 0%, ${OCHRE} 50%, transparent 100%)`, animation: "an-loading-bar 1.6s ease-in-out infinite" }} />
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── INTAKE (check-in d'accueil) ───────────────────────────────── */}
+          {status === "intake" && (
+            <motion.div key="intake"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, zIndex: 1 }}
+            >
+              <PulseOrb
+                speaking={isAiSpeaking}
+                analyser={outputAnalyserRef.current}
+                color={OCHRE}
+                size={160}
+              />
+              {!isAiSpeaking && intakeGeminiHasSpoken && (
+                <p style={{
+                  margin: 0, fontSize: 13, fontWeight: 300,
+                  letterSpacing: "0.14em",
+                  color: `rgba(212,162,85,0.55)`,
+                  animation: "an-fade-in 0.3s ease",
+                }}>
+                  Je t&apos;écoute…
+                </p>
               )}
             </motion.div>
           )}

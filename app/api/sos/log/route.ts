@@ -71,6 +71,32 @@ Réponds uniquement avec la phrase, sans guillemets ni ponctuation finale.`;
   }
 }
 
+/** Génère une note clinique narrative (2-3 phrases, prose, passé) pour l'exercice SOS vocal. */
+async function generateSosClinicalNote(
+  intake: string,
+  closing: string,
+  apaisementConfirmed: boolean,
+  sosContext?: string | null
+): Promise<string> {
+  const contextLabel = sosContext && !sosContext.startsWith("[contexte chat récent]") && sosContext !== "Mon Soutien"
+    ? sosContext.split("|")[0]?.trim()
+    : null;
+  const outcomeLabel = apaisementConfirmed ? "crise désamorcée avec succès" : "crise sans résolution complète en fin de session";
+  try {
+    const prompt = `Tu es un assistant clinique. Rédige une note de suivi concise (2-3 phrases, prose, au passé, style clinique sobre) pour un praticien, à partir des données suivantes :
+- Exercice réalisé : exercice SOS vocal guidé (tracé + respiration)${contextLabel ? `\n- Contexte de crise : ${contextLabel}` : ""}
+- État avant : "${intake.trim().slice(0, 200) || "non renseigné"}"
+- État après : "${closing.trim().slice(0, 150) || "non renseigné"}"
+- Issue : ${outcomeLabel}
+
+Commence directement la note sans titre ni préambule. Ne mentionne pas le nom du patient. Reste factuel et bienveillant.`;
+    const raw = await vertexGenerate("gemini-2.5-flash-lite", prompt, { maxOutputTokens: 120, temperature: 0.3 });
+    return raw.trim();
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Nettoie les transcriptions STT en français lisible.
  * Retourne { intake, closing } reformulés — "" si le texte est vide ou
@@ -232,6 +258,14 @@ export async function POST(request: Request) {
               const histSos = (curPatSos?.victories_history as { text: string; created_at: string }[] | null) ?? [];
               historiqueSos = [...histSos, { text: victoryText, created_at: new Date().toISOString() }].slice(-50);
             }
+            // Note clinique narrative — générée après confirmation de l'apaisement
+            const clinicalNote = await generateSosClinicalNote(
+              intakeForInsight,
+              closingForAnalysis,
+              true, // apaisement confirmé ici
+              ev?.sos_context ?? null
+            );
+
             await Promise.all([
               supabase.from("patients").update({
                 emotional_status: "green",
@@ -243,7 +277,10 @@ export async function POST(request: Request) {
                 } : {}),
                 ...(historiqueSos ? { victories_history: historiqueSos } : {}),
               }).eq("user_id", patientId),
-              supabase.from("sos_events").update({ status: "success" }).eq("id", recent.id),
+              supabase.from("sos_events").update({
+                status: "success",
+                summary_text: clinicalNote || null,
+              }).eq("id", recent.id),
             ]);
           } catch { /* silencieux — ne doit jamais perturber la réponse client */ }
         })();

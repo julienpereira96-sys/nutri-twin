@@ -47,6 +47,7 @@ const HARD_STOP   = 240;  // 4 minutes en secondes
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type Status =
+  | "intake"
   | "intro"
   | "chewing"
   | "listening"
@@ -157,14 +158,15 @@ function ChewRing({ secondsLeft, total }: { secondsLeft: number; total: number }
 
 // ─── Main component ────────────────────────────────────────────────────────────
 export default function MindfulEating({
-  patientId: _patientId,
-  practitionerId: _practitionerId,
+  patientId,
+  practitionerId,
   firstName,
   sosContext: _sosContext = "",
   onTransitionToChat,
   onClose,
 }: MindfulEatingProps) {
-  const [status, setStatus]           = useState<Status>("intro");
+  const [status, setStatus]           = useState<Status>("intake");
+  const [intakeText, setIntakeText]   = useState("");
   const [biteCount, setBiteCount]     = useState(0);       // bouchées complétées
   const [chewSecs, setChewSecs]       = useState(CHEW_SECS);
   const [vadSecs, setVadSecs]         = useState(VAD_TIMEOUT);
@@ -175,6 +177,7 @@ export default function MindfulEating({
   const [canAdvance, setCanAdvance]       = useState(false); // chewing timer terminé, patient contrôle
 
   // ─── Refs ──────────────────────────────────────────────────────────────────
+  const intakeMessageRef = useRef("");
   const chewIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const vadIntervalRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const hardStopRef      = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -182,6 +185,25 @@ export default function MindfulEating({
   const globalIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onTransitionRef  = useRef(onTransitionToChat);
   useEffect(() => { onTransitionRef.current = onTransitionToChat; }, [onTransitionToChat]);
+
+  // ── Log silencieux vers /api/exercise/log ────────────────────────────────
+  const logMangerSession = useCallback(async (bites: number, mode: ExitMode, emergency = false) => {
+    if (!patientId || !practitionerId) return;
+    try {
+      await fetch("/api/exercise/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientId,
+          practitionerId,
+          exerciseType: "manger",
+          intakeMessage:  intakeMessageRef.current || undefined,
+          emergencyExit:  emergency,
+          extra: { bites_completed: bites, exit_mode: mode },
+        }),
+      });
+    } catch { /* silencieux */ }
+  }, [patientId, practitionerId]);
 
   // ─── Hard stop global (4min) ───────────────────────────────────────────────
   const goToCloture = useCallback((mode: ExitMode) => {
@@ -302,6 +324,9 @@ export default function MindfulEating({
 
   // ─── Clôture → injection chat ──────────────────────────────────────────────
   const handleTransition = useCallback(() => {
+    // Log silencieux — fire-and-forget
+    void logMangerSession(biteCount, exitMode);
+
     const modeLabel =
       exitMode === "victory"  ? "Signal positif — repas ancré avec succès" :
       exitMode === "moderate" ? "Stabilisation partielle" :
@@ -312,7 +337,7 @@ export default function MindfulEating({
       `${biteCount} bouchée${biteCount > 1 ? "s" : ""} consciente${biteCount > 1 ? "s" : ""} · ${modeLabel}`;
 
     onTransitionRef.current(summary, exitMode);
-  }, [biteCount, exitMode]);
+  }, [biteCount, exitMode, logMangerSession]);
 
   // ─── Cleanup on unmount ───────────────────────────────────────────────────
   useEffect(() => () => {
@@ -355,7 +380,11 @@ export default function MindfulEating({
 
       {/* ── Close ─────────────────────────────────────────────────────────── */}
       {status !== "cloture" && (
-        <button onClick={onClose} aria-label="Fermer" style={{
+        <button onClick={() => {
+          // Log abandon uniquement si l'exercice avait démarré
+          if (status !== "intake") void logMangerSession(biteCount, exitMode, true);
+          onClose();
+        }} aria-label="Fermer" style={{
           position: "absolute", top: 20, right: 20,
           width: 34, height: 34, borderRadius: "50%",
           background: MINT_DIM, border: `1px solid ${MINT_BORD}`,
@@ -374,7 +403,7 @@ export default function MindfulEating({
         gap: 8,
         zIndex: 1,
       }}>
-        {status !== "intro" && status !== "cloture" && (
+        {status !== "intake" && status !== "intro" && status !== "cloture" && (
           <>
             <BiteArc bite={biteCount} max={MAX_BITES} />
             <p style={{ margin: 0, fontSize: 11, color: TEXT_FADED, letterSpacing: 1.2, textTransform: "uppercase" }}>
@@ -388,6 +417,79 @@ export default function MindfulEating({
           Contenu central — AnimatePresence pour transitions fluides
       ══════════════════════════════════════════════════════════════════════ */}
       <AnimatePresence mode="wait">
+
+        {/* ── INTAKE — check-in avant le repas ─────────────────────────── */}
+        {status === "intake" && (
+          <motion.div key="intake"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20, zIndex: 1, width: "100%", maxWidth: 340, padding: "0 28px" }}
+          >
+            {/* Icône */}
+            <motion.div
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ repeat: Infinity, duration: 3.5, ease: "easeInOut" }}
+              style={{
+                width: 64, height: 64, borderRadius: "50%",
+                background: MINT_DIM, border: `1.5px solid ${MINT_BORD}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: `0 0 28px ${MINT_GLOW}`,
+              }}
+            >
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                stroke={MINT} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 11l19-9-9 19-2-8-8-2z" />
+              </svg>
+            </motion.div>
+
+            <div style={{ textAlign: "center" }}>
+              <p style={{ margin: "0 0 6px", fontSize: 15, color: TEXT_PRIMARY, lineHeight: 1.7 }}>
+                Avant de commencer…
+              </p>
+              <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, lineHeight: 1.6 }}>
+                Comment te sens-tu en ce moment ?
+              </p>
+            </div>
+
+            <textarea
+              value={intakeText}
+              onChange={(e) => setIntakeText(e.target.value)}
+              placeholder="Je me sens… (facultatif)"
+              maxLength={300}
+              rows={3}
+              style={{
+                width: "100%",
+                background: MINT_DIM,
+                border: `1px solid ${MINT_BORD}`,
+                borderRadius: 14,
+                padding: "12px 14px",
+                color: TEXT_PRIMARY,
+                fontSize: 14,
+                lineHeight: 1.6,
+                resize: "none",
+                outline: "none",
+                fontFamily: "inherit",
+              }}
+            />
+
+            <button
+              onClick={() => {
+                intakeMessageRef.current = intakeText.trim();
+                setStatus("intro");
+              }}
+              style={{
+                padding: "13px 32px", borderRadius: 14,
+                background: `linear-gradient(135deg, #10b981, #34d399)`,
+                border: "none", color: "#fff",
+                fontSize: 15, fontWeight: 700, cursor: "pointer",
+                boxShadow: `0 4px 20px ${MINT_GLOW}`,
+              }}
+            >
+              Commencer →
+            </button>
+          </motion.div>
+        )}
 
         {/* ── INTRO ─────────────────────────────────────────────────────── */}
         {status === "intro" && (

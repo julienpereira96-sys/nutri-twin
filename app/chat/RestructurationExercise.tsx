@@ -124,30 +124,46 @@ function buildPrompt(firstName: string, contextInfo: string): string {
   return `Tu es un thérapeute bienveillant qui accompagne ${firstName} dans un exercice de restructuration cognitive. Parle en français, voix calme et chaleureuse, phrases courtes.
 
 SIGNAUX : Tu reçois des signaux entre crochets [comme celui-ci]. Ce sont des instructions privées — tu ne les lis JAMAIS à voix haute.
-• [ACCUEIL] → démarre l'exercice
+• [DEBUT] → check-in d'accueil émotionnel (avant l'exercice)
+• [SILENCE_DEBUT] → relance douce si le patient n'a pas répondu à l'accueil
+• [ACCUEIL] → démarre l'exercice proprement dit
+
+OUTILS DISPONIBLES :
+• capturer_pensee(original) — fin de phase identification
+• valider_restructuration(reformulated) — fin de phase reformulation; après cet appel, enchaîne directement sur la clôture émotionnelle
+• terminer_exercice(closing_message) — après la réponse du patient à la question de clôture. Si silence après relance → terminer_exercice("")
 
 CONTEXTE PATIENT :
 ${contextInfo}
 
 TON SEUL OBJECTIF : aider ${firstName} à arriver lui-même à une pensée plus équilibrée. Tu ne formules jamais la pensée alternative à sa place.
 
-━━━ PHASE 1 — IDENTIFICATION ━━━
-• [ACCUEIL] : accueille ${firstName} avec chaleur, puis demande-lui quelle pensée revient souvent ou le/la pèse en ce moment. Attends sa réponse.
-• Écoute attentivement. Reformule la pensée pour confirmer : "Si je comprends bien, la pensée c'est… c'est ça ?" Attends sa confirmation.
-• Dès que le patient confirme, appelle capturer_pensee(original) avec exactement la pensée telle qu'il/elle la formule.
+━━━ [DEBUT] — CHECK-IN D'ACCUEIL ━━━
+Accueille ${firstName} chaleureusement. Pose une question courte sur son état actuel ("Comment tu te sens en ce moment ?"). Écoute sa réponse. Accuse réception en une phrase empathique, puis silence.
+→ [SILENCE_DEBUT] : relance doucement ("Prends ton temps, comment tu te sens ?"). Si toujours pas de réponse, dis "On commence ensemble" et tais-toi.
+
+━━━ [ACCUEIL] — PHASE 1 : IDENTIFICATION ━━━
+Accueille ${firstName} avec chaleur, puis demande-lui quelle pensée revient souvent ou le/la pèse en ce moment. Attends sa réponse.
+Reformule la pensée pour confirmer : "Si je comprends bien, la pensée c'est… c'est ça ?" Attends sa confirmation.
+Dès que le patient confirme, appelle capturer_pensee(original) avec exactement la pensée telle qu'il/elle la formule.
 
 ━━━ PHASE 2 — EXPLORATION SOCRATIQUE ━━━
-• Engage un dialogue d'exploration — une question à la fois, attends toujours la réponse avant de poser la suivante.
-• Angles possibles selon ce qui émerge :
+Engage un dialogue d'exploration — une question à la fois, attends toujours la réponse avant de poser la suivante.
+Angles possibles selon ce qui émerge :
   — "Sur quoi tu t'appuies pour croire ça ?"
   — "Est-ce qu'il y a eu des moments où ce n'était pas le cas ?"
   — "Qu'est-ce que tu dirais à un ami proche qui aurait cette pensée ?"
   — "Si tu l'observes de loin, qu'est-ce que tu vois ?"
-• Laisse ${firstName} cheminer à son rythme. Ne suggère jamais la réponse.
+Laisse ${firstName} cheminer à son rythme. Ne suggère jamais la réponse.
 
 ━━━ PHASE 3 — REFORMULATION ━━━
-• Quand ${firstName} formule lui-même une pensée plus juste ou nuancée, accueille-la ("C'est ça, oui.") et invite-le/la à la répéter ou confirmer.
-• Appelle ensuite valider_restructuration(reformulated) avec exactement ce que le patient a dit.
+Quand ${firstName} formule lui-même une pensée plus juste ou nuancée, accueille-la ("C'est ça, oui.") et invite-le/la à la répéter ou confirmer.
+Appelle valider_restructuration(reformulated) avec exactement ce que le patient a dit.
+
+━━━ CLÔTURE ÉMOTIONNELLE (après valider_restructuration) ━━━
+Conclus en 1-2 phrases sincères. Pose la question de clôture : "Comment tu te sens maintenant ?" Écoute la réponse.
+→ Quelle que soit la réponse : accueille avec sincérité, puis appelle terminer_exercice(closing_message) avec ce que ${firstName} a dit.
+→ Si ${firstName} ne répond pas : relance UNE seule fois ("Prends ton temps…"). Si toujours pas de réponse : appelle terminer_exercice("").
 
 INTERDITS ABSOLUS :
 — formuler toi-même la pensée alternative (ex. "et si tu pensais que…")
@@ -160,7 +176,7 @@ INTERDITS ABSOLUS :
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Status = "loading" | "active" | "exploring" | "complete";
+type Status = "loading" | "intake" | "active" | "exploring" | "complete";
 
 export interface RestructurationExerciseProps {
   patientId?:   string;
@@ -187,32 +203,49 @@ export default function RestructurationExercise({
   const [loadError,           setLoadError]           = useState<string | null>(null);
   const [originalThought,     setOriginalThought]     = useState("");
   const [reformulatedThought, setReformulatedThought] = useState("");
+  const [intakeGeminiHasSpoken, setIntakeGeminiHasSpoken] = useState(false);
 
   // ─── Refs ──────────────────────────────────────────────────────────────────
-  const statusRef          = useRef<Status>("loading");
-  const wsRef              = useRef<GeminiLiveClient | null>(null);
-  const audioCtxRef        = useRef<AudioContext | null>(null);
-  const processorRef       = useRef<ScriptProcessorNode | null>(null);
-  const mediaStreamRef     = useRef<MediaStream | null>(null);
-  const outputAnalyserRef  = useRef<AnalyserNode | null>(null);
-  const inputAnalyserRef   = useRef<AnalyserNode | null>(null);
-  const micEnabledRef      = useRef(false);
-  const isAiSpeakingRef    = useRef(false);
-  const audioQueueRef      = useRef<{ data: Float32Array; rate: number }[]>([]);
-  const isPlayingRef       = useRef(false);
-  const turnCompleteRef    = useRef(false);
-  const pendingAdvanceRef  = useRef<(() => void) | null>(null);
-  const outputTransRef     = useRef("");
-  const patientSpokeRef    = useRef(false);
+  const statusRef              = useRef<Status>("loading");
+  const wsRef                  = useRef<GeminiLiveClient | null>(null);
+  const audioCtxRef            = useRef<AudioContext | null>(null);
+  const processorRef           = useRef<ScriptProcessorNode | null>(null);
+  const mediaStreamRef         = useRef<MediaStream | null>(null);
+  const outputAnalyserRef      = useRef<AnalyserNode | null>(null);
+  const inputAnalyserRef       = useRef<AnalyserNode | null>(null);
+  const micEnabledRef          = useRef(false);
+  const isAiSpeakingRef        = useRef(false);
+  const audioQueueRef          = useRef<{ data: Float32Array; rate: number }[]>([]);
+  const isPlayingRef           = useRef(false);
+  const turnCompleteRef        = useRef(false);
+  const pendingAdvanceRef      = useRef<(() => void) | null>(null);
+  const outputTransRef         = useRef("");
+  const patientSpokeRef        = useRef(false);
+  // Intake refs
+  const intakeMessageRef       = useRef("");
+  const intakePatientSpokeRef  = useRef(false);
+  const intakeGeminiHasSpokenRef = useRef(false);
+  const intakeTimeoutRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Closing ref
+  const closingMessageRef      = useRef("");
+  // Thought refs (miroir des états pour lecture dans les tool handlers)
+  const originalThoughtRef     = useRef("");
+  const reformulatedThoughtRef = useRef("");
 
   const onTransitionRef = useRef(onTransitionToChat);
   const onCloseRef      = useRef(onClose);
-  useEffect(() => { onTransitionRef.current = onTransitionToChat; }, [onTransitionToChat]);
-  useEffect(() => { onCloseRef.current      = onClose;            }, [onClose]);
-  useEffect(() => { statusRef.current       = status;             }, [status]);
+  useEffect(() => { onTransitionRef.current = onTransitionToChat;      }, [onTransitionToChat]);
+  useEffect(() => { onCloseRef.current      = onClose;                 }, [onClose]);
+  useEffect(() => { statusRef.current       = status;                  }, [status]);
+  useEffect(() => { intakeGeminiHasSpokenRef.current = intakeGeminiHasSpoken; }, [intakeGeminiHasSpoken]);
 
   // ── Log silencieux vers /api/exercise/log ─────────────────────────────────
-  const logRestructurationSession = useCallback(async (original: string, reformulated: string) => {
+  const logRestructurationSession = useCallback(async (
+    original: string,
+    reformulated: string,
+    intake: string,
+    closing: string,
+  ) => {
     if (!patientId || !practitionerId) return;
     try {
       await fetch("/api/exercise/log", {
@@ -222,10 +255,10 @@ export default function RestructurationExercise({
           patientId,
           practitionerId,
           exerciseType: "restructuration",
-          intakeMessage:  original  || undefined,
-          closingMessage: reformulated || undefined,
+          intakeMessage:  intake  || undefined,  // ressenti émotionnel initial
+          closingMessage: closing || undefined,  // ressenti émotionnel final
           extra: {
-            original_thought:    original    || undefined,
+            original_thought:     original    || undefined,
             reformulated_thought: reformulated || undefined,
           },
         }),
@@ -249,7 +282,7 @@ export default function RestructurationExercise({
         advance();
       }
 
-      // Ré-activer le mic si on est en phase active ou exploring
+      // Ré-activer le mic selon la phase
       const st = statusRef.current;
       if (st === "active" || st === "exploring") {
         setTimeout(() => {
@@ -257,6 +290,32 @@ export default function RestructurationExercise({
           if (cur === "active" || cur === "exploring") {
             micEnabledRef.current = true;
             setIsListening(true);
+          }
+        }, 300);
+      } else if (st === "intake" && intakeGeminiHasSpokenRef.current) {
+        // Intake : ré-activer après que Gemini a posé la question d'accueil
+        setTimeout(() => {
+          if (statusRef.current !== "intake") return;
+          micEnabledRef.current = true;
+          setIsListening(true);
+          // Timer de silence — une relance, puis transition sans supposition
+          if (!intakeTimeoutRef.current && !intakePatientSpokeRef.current) {
+            intakeTimeoutRef.current = setTimeout(() => {
+              if (statusRef.current !== "intake" || intakePatientSpokeRef.current) return;
+              intakeTimeoutRef.current = null;
+              wsRef.current?.send(JSON.stringify({ realtimeInput: { text: "[SILENCE_DEBUT]" } }));
+              intakeTimeoutRef.current = setTimeout(() => {
+                if (statusRef.current !== "intake") return;
+                intakeTimeoutRef.current = null;
+                micEnabledRef.current = false;
+                setIsListening(false);
+                setStatus("active");
+                statusRef.current = "active";
+                setTimeout(() => wsRef.current?.send(JSON.stringify({
+                  clientContent: { turns: [{ role: "user", parts: [{ text: "[ACCUEIL]" }] }], turnComplete: true },
+                })), 400);
+              }, 8000);
+            }, 10000);
           }
         }, 300);
       }
@@ -302,6 +361,7 @@ export default function RestructurationExercise({
 
   // ─── Cleanup ──────────────────────────────────────────────────────────────
   const cleanup = useCallback(() => {
+    if (intakeTimeoutRef.current) { clearTimeout(intakeTimeoutRef.current); intakeTimeoutRef.current = null; }
     pendingAdvanceRef.current = null;
     micEnabledRef.current     = false;
     processorRef.current?.disconnect();
@@ -323,11 +383,17 @@ export default function RestructurationExercise({
     try { msg = JSON.parse(event.data) as Record<string, unknown>; }
     catch { return; }
 
-    // Setup complete → déclencher l'accueil
+    // Setup complete → phase intake : Gemini pose d'abord une question d'accueil
     if (msg.setupComplete !== undefined) {
+      setStatus("intake");
+      statusRef.current               = "intake";
+      intakeMessageRef.current        = "";
+      intakePatientSpokeRef.current   = false;
+      intakeGeminiHasSpokenRef.current = false;
+      setIntakeGeminiHasSpoken(false);
       wsRef.current?.send(JSON.stringify({
         clientContent: {
-          turns: [{ role: "user", parts: [{ text: "[ACCUEIL]" }] }],
+          turns: [{ role: "user", parts: [{ text: "[DEBUT]" }] }],
           turnComplete: true,
         },
       }));
@@ -365,6 +431,7 @@ export default function RestructurationExercise({
           if (!isValid) break;
 
           patientSpokeRef.current = false;
+          originalThoughtRef.current = original;
           setOriginalThought(original);
           pendingAdvanceRef.current = () => {
             setStatus("exploring");
@@ -384,7 +451,7 @@ export default function RestructurationExercise({
                 id: fc.id,
                 response: {
                   output: isValid
-                    ? "ok"
+                    ? "ok — pose maintenant la question de clôture émotionnelle."
                     : !inExploringPhase
                       ? "Erreur : appelle d'abord capturer_pensee pour identifier la pensée de départ."
                       : !patientSpokeRef.current
@@ -398,12 +465,37 @@ export default function RestructurationExercise({
           if (!isValid) break;
 
           patientSpokeRef.current = false;
+          reformulatedThoughtRef.current = reformulated;
+          setReformulatedThought(reformulated);
+          // Garder le status "exploring" — Gemini enchaîne sur la question de clôture
+          // Le mic reste actif (playNextChunk gère la réactivation)
+          pendingAdvanceRef.current = () => { /* status unchanged */ };
+        }
+
+        // ── terminer_exercice : clôture émotionnelle ──────────────────────
+        if (fc.name === "terminer_exercice") {
+          const closing = typeof fc.args?.closing_message === "string" ? fc.args.closing_message : "";
+          closingMessageRef.current = closing;
+
+          wsRef.current?.send(JSON.stringify({
+            toolResponse: {
+              functionResponses: [{ id: fc.id, response: { output: "ok" } }],
+            },
+          }));
+
+          const original    = originalThoughtRef.current;
+          const reformulated = reformulatedThoughtRef.current;
+          const intake      = intakeMessageRef.current;
+          void logRestructurationSession(original, reformulated, intake, closing);
+
           pendingAdvanceRef.current = () => {
-            setReformulatedThought(reformulated);
-            micEnabledRef.current = false;
-            setIsListening(false);
             setStatus("complete");
             statusRef.current = "complete";
+            micEnabledRef.current = false;
+            setIsListening(false);
+            setTimeout(() => {
+              onTransitionRef.current(original, reformulated, closing);
+            }, 600);
           };
         }
       }
@@ -426,18 +518,29 @@ export default function RestructurationExercise({
           micEnabledRef.current   = false;
           setIsListening(false);
           turnCompleteRef.current = false;
+          // Détecter que Gemini a posé la question d'accueil (phase intake)
+          if (statusRef.current === "intake" && !intakeGeminiHasSpokenRef.current) {
+            intakeGeminiHasSpokenRef.current = true;
+            setIntakeGeminiHasSpoken(true);
+          }
           enqueueAudio(inlineData.data as string, rate);
         }
       }
     }
 
-    // Transcription entrée → patient a répondu (transition false → true)
+    // Transcription entrée
     const inTrans = sc.inputTranscription as Record<string, unknown> | undefined;
     if (inTrans?.text && typeof inTrans.text === "string" && inTrans.text.trim()) {
       patientSpokeRef.current = true;
+      // Capture check-in d'accueil (phase intake)
+      if (statusRef.current === "intake") {
+        intakeMessageRef.current += inTrans.text;
+        intakePatientSpokeRef.current = true;
+        if (intakeTimeoutRef.current) { clearTimeout(intakeTimeoutRef.current); intakeTimeoutRef.current = null; }
+      }
     }
 
-    // Transcription sortie → clôture
+    // Transcription sortie
     const outTrans = sc.outputTranscription as Record<string, unknown> | undefined;
     if (outTrans?.text && typeof outTrans.text === "string") {
       outputTransRef.current += outTrans.text;
@@ -447,29 +550,36 @@ export default function RestructurationExercise({
     if (sc.turnComplete === true) {
       turnCompleteRef.current = true;
 
-      // Edge case : audio déjà fini avant turnComplete
       if (!isPlayingRef.current && audioQueueRef.current.length === 0) {
         playNextChunk();
         return;
       }
 
-      if (statusRef.current === "loading") {
-        // Premier tour (accueil) → passer en active après l'audio
-        patientSpokeRef.current = false;
-        pendingAdvanceRef.current = () => {
-          setStatus("active");
-          statusRef.current = "active";
-        };
-      } else if (statusRef.current === "active" || statusRef.current === "exploring") {
-        // Gemini vient de terminer sa réponse → reset patientSpokeRef
-        // pour détecter le prochain tour patient (transition false → true)
+      if (statusRef.current === "intake") {
+        if (intakePatientSpokeRef.current) {
+          // Patient a répondu → Gemini a accusé réception → transition vers exercice
+          intakePatientSpokeRef.current = false;
+          if (intakeTimeoutRef.current) { clearTimeout(intakeTimeoutRef.current); intakeTimeoutRef.current = null; }
+          pendingAdvanceRef.current = () => {
+            setStatus("active");
+            statusRef.current = "active";
+            setTimeout(() => wsRef.current?.send(JSON.stringify({
+              clientContent: { turns: [{ role: "user", parts: [{ text: "[ACCUEIL]" }] }], turnComplete: true },
+            })), 200);
+          };
+        }
+        return;
+      }
+
+      if (statusRef.current === "active" || statusRef.current === "exploring") {
+        // Gemini termine sa réponse → reset pour détecter le prochain tour patient
         patientSpokeRef.current = false;
       }
     }
 
     // Patient coupe → flush audio
     if (sc.interrupted === true) flushAudio();
-  }, [enqueueAudio, flushAudio, playNextChunk]);
+  }, [enqueueAudio, flushAudio, playNextChunk, logRestructurationSession]);
 
   // ─── Init session ─────────────────────────────────────────────────────────
   const initSession = useCallback(async () => {
@@ -556,13 +666,24 @@ export default function RestructurationExercise({
               },
               {
                 name: "valider_restructuration",
-                description: "Appelle cet outil uniquement après capturer_pensee, quand le patient a lui-même formulé une pensée alternative plus équilibrée. Ne l'appelle jamais si c'est toi qui as suggéré la reformulation.",
+                description: "Appelle cet outil uniquement après capturer_pensee, quand le patient a lui-même formulé une pensée alternative plus équilibrée. Ne l'appelle jamais si c'est toi qui as suggéré la reformulation. Après cet appel, enchaîne directement sur la question de clôture émotionnelle.",
                 parameters: {
                   type: "object",
                   properties: {
                     reformulated: { type: "string", description: "La pensée plus équilibrée formulée par le patient lui-même, telle qu'il l'a dite." },
                   },
                   required: ["reformulated"],
+                },
+              },
+              {
+                name: "terminer_exercice",
+                description: "Appelle cet outil après avoir reçu la réponse du patient à la question de clôture émotionnelle. Passe dans closing_message exactement ce que le patient a dit. Si le patient ne répond pas après une relance, appelle terminer_exercice avec closing_message vide.",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    closing_message: { type: "string", description: "Ce que le patient a dit en réponse à 'Comment tu te sens maintenant ?'. Chaîne vide si pas de réponse." },
+                  },
+                  required: ["closing_message"],
                 },
               },
             ],
@@ -574,7 +695,7 @@ export default function RestructurationExercise({
     ws.onmessage = handleWSMessage;
     ws.onerror   = () => setLoadError("Connexion Gemini Live échouée.");
     ws.onclose = (evt) => {
-      if (statusRef.current === "loading") {
+      if (statusRef.current === "loading" || statusRef.current === "intake") {
         setLoadError(`Connexion fermée (code ${evt.code}). Vérifie ta clé API Gemini Live.`);
       }
     };
@@ -587,16 +708,11 @@ export default function RestructurationExercise({
     if (wsRef.current) wsRef.current.onmessage = handleWSMessage;
   }, [handleWSMessage]);
 
-  // ─── Clôture ──────────────────────────────────────────────────────────────
+  // ─── Clôture (bouton manuel) ─────────────────────────────────────────────
   const handleClose = useCallback(() => {
-    if (statusRef.current === "complete") {
-      void logRestructurationSession(originalThought, reformulatedThought);
-      onTransitionRef.current(originalThought, reformulatedThought, outputTransRef.current.trim());
-    } else {
-      onCloseRef.current();
-    }
     cleanup();
-  }, [originalThought, reformulatedThought, cleanup, logRestructurationSession]);
+    onCloseRef.current();
+  }, [cleanup]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -631,7 +747,7 @@ export default function RestructurationExercise({
       </div>
 
       {/* ── Bouton fermer ────────────────────────────────────────────────── */}
-      {status !== "complete" && (
+      {status !== "complete" && status !== "intake" && (
         <button onClick={() => { cleanup(); onCloseRef.current(); }} aria-label="Fermer" style={{
           position: "absolute", top: 20, right: 20,
           width: 34, height: 34, borderRadius: "50%",
@@ -654,7 +770,7 @@ export default function RestructurationExercise({
             letterSpacing: "0.18em", textTransform: "uppercase",
             color: `rgba(139,92,246,0.45)`,
           }}>
-            {status === "exploring" ? "Exploration" : "Défier une pensée négative"}
+            {status === "exploring" ? "Exploration" : "Restructuration cognitive"}
           </p>
         </div>
       )}
@@ -681,34 +797,48 @@ export default function RestructurationExercise({
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}
               >
-                {isAiSpeaking ? (
-                  <PulseOrb speaking={true} analyser={outputAnalyserRef.current} color={VIOLET} size={160} />
-                ) : (
-                  <>
-                    <motion.div
-                      animate={{ scale: [1, 1.06, 1], opacity: [0.7, 1, 0.7] }}
-                      transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                      style={{
-                        width: 68, height: 68, borderRadius: "50%",
-                        background: VIOLET_DIM, border: `1.5px solid ${VIOLET_BDR}`,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        boxShadow: `0 0 28px ${VIOLET_GLW}`,
-                      }}
-                    >
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
-                        stroke={VIOLET} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                        <line x1="12" y1="17" x2="12.01" y2="17"/>
-                      </svg>
-                    </motion.div>
-                    <p style={{ margin: 0, fontSize: 13, color: TEXT_SEC, letterSpacing: 0.4, animation: "rv-fade-in 0.3s ease" }}>
-                      Connexion en cours…
-                    </p>
-                    <div style={{ width: 160, height: 2, borderRadius: 2, background: VIOLET_DIM, overflow: "hidden", position: "relative" }}>
-                      <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: "45%", borderRadius: 2, background: `linear-gradient(90deg, transparent 0%, ${VIOLET} 50%, transparent 100%)`, animation: "rv-loading-bar 1.6s ease-in-out infinite" }} />
-                    </div>
-                  </>
+                <motion.div
+                  animate={{ scale: [1, 1.06, 1], opacity: [0.7, 1, 0.7] }}
+                  transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                  style={{
+                    width: 68, height: 68, borderRadius: "50%",
+                    background: VIOLET_DIM, border: `1.5px solid ${VIOLET_BDR}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    boxShadow: `0 0 28px ${VIOLET_GLW}`,
+                  }}
+                >
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
+                    stroke={VIOLET} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                </motion.div>
+                <p style={{ margin: 0, fontSize: 13, color: TEXT_SEC, letterSpacing: 0.4, animation: "rv-fade-in 0.3s ease" }}>
+                  Connexion en cours…
+                </p>
+                <div style={{ width: 160, height: 2, borderRadius: 2, background: VIOLET_DIM, overflow: "hidden", position: "relative" }}>
+                  <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: "45%", borderRadius: 2, background: `linear-gradient(90deg, transparent 0%, ${VIOLET} 50%, transparent 100%)`, animation: "rv-loading-bar 1.6s ease-in-out infinite" }} />
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── Intake (check-in d'accueil) ───────────────────────────── */}
+            {status === "intake" && (
+              <motion.div key="intake"
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}
+              >
+                <PulseOrb speaking={isAiSpeaking} analyser={outputAnalyserRef.current} color={VIOLET} size={160} />
+                {!isAiSpeaking && intakeGeminiHasSpoken && (
+                  <p style={{
+                    margin: 0, fontSize: 13, fontWeight: 300,
+                    letterSpacing: "0.14em",
+                    color: `rgba(139,92,246,0.55)`,
+                    animation: "rv-fade-in 0.3s ease",
+                  }}>
+                    Je t&apos;écoute…
+                  </p>
                 )}
               </motion.div>
             )}
@@ -815,7 +945,7 @@ export default function RestructurationExercise({
       )}
 
       {/* ── VioletWave (bas d'écran) ─────────────────────────────────────── */}
-      {!loadError && (status === "active" || status === "exploring") && (
+      {!loadError && (status === "intake" || status === "active" || status === "exploring") && (
         <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 0, paddingBottom: 34, zIndex: 1 }}>
           <VioletWave
             active={isListening && !isAiSpeaking}

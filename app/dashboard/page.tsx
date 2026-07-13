@@ -277,10 +277,10 @@ const OnboardingTour = ({ practitionerName, onSkip, onTestMode }: OnboardingProp
         <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 200, height: 2, background: "linear-gradient(90deg, transparent, rgba(16,185,129,0.6), transparent)", borderRadius: 2 }} />
 
         {/* Logo — cercle lumineux identique à la page login */}
-        <div style={{ position: "relative", width: 75, height: 75, margin: "0 auto 20px" }}>
+        <div style={{ position: "relative", width: 96, height: 96, margin: "0 auto 20px" }}>
           <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(16px)" }} />
-          <div style={{ position: "relative", width: 75, height: 75, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <img src="/logo.png" alt="" style={{ width: 44, height: 44, objectFit: "contain" }} />
+          <div style={{ position: "relative", width: 96, height: 96, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <img src="/logo.png" alt="" style={{ width: 80, height: 80, objectFit: "contain" }} />
           </div>
         </div>
 
@@ -357,7 +357,7 @@ type RealPatient = {
   regime_specifique?: string;   practitioner_instruction?: { id: string; text: string; expires_at?: string | null; created_at: string }[];
   emotional_status?: string; emotional_insight?: string;
   latest_victory?: string; victory_detected_at?: string | null; victory_message_id?: string; private_notes?: { id: string; text: string; created_at: string }[]; created_at?: string;
-  lastActive?: string | null; streak?: number; sosResolved?: number; sosEvents?: { triggered_at: string; sos_context: string; tool_id?: string; status?: string | null; origin?: string | null }[]; red_behavioral_until?: string | null; last_patient_message_at?: string | null; onboardingCompleted?: boolean; onboardingStatus?: string | null;
+  lastActive?: string | null; streak?: number; sosResolved?: number; sosEvents?: { triggered_at: string; sos_context: string; tool_id?: string; status?: string | null; origin?: string | null; summary_text?: string | null }[]; red_behavioral_until?: string | null; last_patient_message_at?: string | null; onboardingCompleted?: boolean; onboardingStatus?: string | null;
   sharing_status?: string; cabinet_id?: string;
   is_test?: boolean;
   motivation?: string; defi?: string; notes?: string; aliments_detestes?: string;
@@ -365,7 +365,7 @@ type RealPatient = {
 
 type Conversation = {
   id: string;
-  role: "user" | "assistant" | "widget";
+  role: "user" | "assistant" | "widget" | "system";
   content: string;
   created_at: string;
   /** role "widget" — carte "Exercice SOS terminé", jamais persistée en base
@@ -915,7 +915,7 @@ export default function DashboardPage() {
   const [inviteError, setInviteError] = useState("");
   const [editingMurmureId, setEditingMurmureId] = useState<string | null>(null);
   const [editingMurmureText, setEditingMurmureText] = useState("");
-  const [openSosPopover, setOpenSosPopover] = useState<string | null>(null); // patientId ou null
+  const [openSosModal, setOpenSosModal] = useState<string | null>(null); // patientId ou null — modale crises désamorcées
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteText, setEditingNoteText] = useState("");
   const [inviteAge, setInviteAge] = useState("");
@@ -1041,13 +1041,15 @@ export default function DashboardPage() {
       }, 0) / 60 * 10
     ) / 10;
 
-    // crisis_events — source de vérité pour taux d'apaisement et crises apaisées
-    const { data: crisisEvents } = await supabase.from("crisis_events")
-      .select("triggered_at, resolved_at")
+    // sos_events — source de vérité pour taux d'apaisement et crises apaisées
+    // Couvre toutes les origines : SOS vocal, exercices (breathing, ancrage, restructuration, manger)
+    const { data: crisisSosEvents } = await supabase.from("sos_events")
+      .select("triggered_at, status")
       .eq("practitioner_id", pid)
+      .eq("origin", "crise")
       .gte("triggered_at", startOfMonth);
-    const triggered = (crisisEvents ?? []).length;
-    const resolved = (crisisEvents ?? []).filter(e => e.resolved_at !== null).length;
+    const triggered = (crisisSosEvents ?? []).length;
+    const resolved = (crisisSosEvents ?? []).filter(e => e.status === "success").length;
     const tauxApaisement = triggered > 0 ? Math.round((resolved / triggered) * 100) : null;
 
     // Contexte de crise le plus fréquent → météo émotionnelle "Avant"
@@ -1118,7 +1120,7 @@ export default function DashboardPage() {
         .eq("role", "user")
         .gte("created_at", thirtyDaysAgo),
       supabase.from("sos_events")
-        .select("patient_id, triggered_at, sos_context, raw_response, status, origin")
+        .select("patient_id, triggered_at, sos_context, raw_response, status, origin, summary_text")
         .in("patient_id", patientIds)
         .gte("triggered_at", startOfCurrentMonth)
         .order("triggered_at", { ascending: false }),
@@ -1141,7 +1143,7 @@ export default function DashboardPage() {
       streakDaysByPatient.get(p)!.add(day);
     }
 
-    type SosEventItem = { triggered_at: string; sos_context: string; tool_id?: string; status?: string | null; origin?: string | null };
+    type SosEventItem = { triggered_at: string; sos_context: string; tool_id?: string; status?: string | null; origin?: string | null; summary_text?: string | null };
     const sosCountByPatient = new Map<string, number>();
     const sosEventsByPatient = new Map<string, SosEventItem[]>();
     for (const sos of (allSosEvents ?? [])) {
@@ -1155,6 +1157,7 @@ export default function DashboardPage() {
         status: (sos.status as string | null) ?? null,
         // Historique (avant migration) : pas de colonne origin → traité comme "crise" par défaut
         origin: (sos.origin as string | null) ?? "crise",
+        summary_text: (sos.summary_text as string | null) ?? null,
       };
       if (!sosEventsByPatient.has(p)) sosEventsByPatient.set(p, []);
       sosEventsByPatient.get(p)!.push(item);
@@ -2996,6 +2999,45 @@ export default function DashboardPage() {
                           </Fragment>
                         );
                       }
+                      if (message.role === "system") {
+                        // Résumé praticien généré par /api/exercise/log (practitioner_only=true)
+                        // Format : "[EXERCICE : Nom]\n\nContexte...\n\nIssue : ..."
+                        const sysLines = message.content.split("\n");
+                        const sysFirstLine = sysLines[0];
+                        const exMatch = sysFirstLine.match(/\[EXERCICE : (.+?)\]/);
+                        const exLabel = exMatch?.[1] ?? "Exercice";
+                        const sysBody = sysLines.slice(1).join("\n").trim();
+                        const issueMatch = sysBody.match(/Issue : (.+)/);
+                        const issue = issueMatch?.[1]?.trim() ?? "";
+                        const isCriseOk = issue === "Crise désamorcée";
+                        const isPositif = issue === "Séance positive";
+                        const accentColor = isCriseOk ? "rgba(16,185,129,0.7)" : isPositif ? "rgba(99,102,241,0.6)" : "rgba(100,116,139,0.35)";
+                        const bgColor = isCriseOk ? "rgba(16,185,129,0.05)" : isPositif ? "rgba(99,102,241,0.06)" : "rgba(255,255,255,0.02)";
+                        const issueTextColor = isCriseOk ? "#10b981" : isPositif ? "#818cf8" : "#64748b";
+                        return (
+                          <Fragment key={message.id}>
+                            {dateSep}
+                            <div data-message-id={message.id} data-message-date={message.created_at}
+                              style={{ display: "flex", justifyContent: "flex-start" }}>
+                              <div style={{ maxWidth: "100%", borderLeft: `3px solid ${accentColor}`, background: bgColor, borderRadius: "0 10px 10px 0", padding: "10px 14px", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: "#6366f1", textTransform: "uppercase", letterSpacing: "0.08em" }}>Résumé exercice</span>
+                                  <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.6)" }}>{exLabel}</span>
+                                </div>
+                                <pre style={{ margin: 0, fontSize: 12, lineHeight: 1.75, color: "rgba(255,255,255,0.72)", whiteSpace: "pre-wrap", fontFamily: "inherit" }}>
+                                  {sysBody.replace(/\nIssue : .+/, "").trim()}
+                                </pre>
+                                {issue && (
+                                  <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: issueTextColor }}>→ {issue}</span>
+                                  </div>
+                                )}
+                                <p style={{ margin: "6px 0 0", fontSize: 10, color: "#4b5563" }}>{msgDateLabel}</p>
+                              </div>
+                            </div>
+                          </Fragment>
+                        );
+                      }
                       return (
                         <Fragment key={message.id}>
                           {dateSep}
@@ -3274,28 +3316,20 @@ export default function DashboardPage() {
                                 };
                                 return (
                                   <div style={{ position: "relative" }}>
-                                    <button
-                                      onClick={() => setOpenSosPopover(openSosPopover === p.id ? null : p.id)}
-                                      style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 0, opacity: 0.7, transition: "opacity 0.15s" }}
-                                      onMouseEnter={e => { e.currentTarget.style.opacity = "1"; }}
-                                      onMouseLeave={e => { e.currentTarget.style.opacity = "0.7"; }}
-                                      title="Voir le détail des crises désamorcées"
-                                    >
-                                      <InfoCircleIcon size={13} color={emerald} />
-                                    </button>
-                                    {openSosPopover === p.id && (
-                                      <div style={{
-                                        position: "absolute", right: 0, bottom: "calc(100% + 6px)", zIndex: 200,
-                                        background: "#0f172a", border: "1px solid rgba(16,185,129,0.25)",
-                                        borderRadius: 10, padding: "10px 12px", minWidth: 220, maxWidth: 280,
-                                        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-                                      }}>
-                                        <div style={{ fontSize: 10, fontWeight: 700, color: emerald, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>
-                                          Crises désamorcées — ce mois
-                                        </div>
-                                        {resolvedCrisisEvts.map((ev, idx) => renderRow(ev, idx, resolvedCrisisEvts))}
+                                    <div className="sos-modal-trigger" style={{ position: "relative", display: "inline-block" }}>
+                                      <button
+                                        onClick={() => setOpenSosModal(p.id)}
+                                        style={{ background: "none", border: "none", cursor: "pointer", padding: 0, lineHeight: 0, opacity: 0.7, transition: "opacity 0.15s" }}
+                                        onMouseEnter={e => { e.currentTarget.style.opacity = "1"; (e.currentTarget.nextElementSibling as HTMLElement | null)?.style && ((e.currentTarget.nextElementSibling as HTMLElement).style.opacity = "1"); }}
+                                        onMouseLeave={e => { e.currentTarget.style.opacity = "0.7"; (e.currentTarget.nextElementSibling as HTMLElement | null)?.style && ((e.currentTarget.nextElementSibling as HTMLElement).style.opacity = "0"); }}
+                                      >
+                                        <InfoCircleIcon size={13} color={emerald} />
+                                      </button>
+                                      {/* Tooltip hover */}
+                                      <div style={{ position: "absolute", right: 0, bottom: "calc(100% + 5px)", background: "#0f172a", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 6, padding: "4px 8px", fontSize: 10, color: "#94a3b8", whiteSpace: "nowrap", pointerEvents: "none", opacity: 0, transition: "opacity 0.15s", zIndex: 100 }}>
+                                        Voir le détail
                                       </div>
-                                    )}
+                                    </div>
                                   </div>
                                 );
                               })()}
@@ -3887,6 +3921,72 @@ export default function DashboardPage() {
       </main>
 
       {/* ═══ MODALES ═══ */}
+
+      {/* ── Modale : Crises désamorcées ── */}
+      {openSosModal && (() => {
+        const modalPatient = patients.find(p => p.id === openSosModal);
+        const modalSosEvts = (modalPatient?.sosEvents ?? []).filter(ev => ev.status === "success" && ev.origin === "crise");
+        const toolNames: Record<string, string> = {
+          breathing: "Cohérence cardiaque", ancrage: "Ancrage sensoriel",
+          manger: "Pleine conscience alimentaire", restructuration: "Restructuration cognitive",
+          defusion: "Défusion cognitive", ecriture: "Écriture cathartique",
+        };
+        return (
+          <div
+            onClick={e => { if (e.target === e.currentTarget) setOpenSosModal(null); }}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}
+          >
+            <div style={{ background: "#0d0d0d", borderRadius: 20, width: "100%", maxWidth: 520, border: "1px solid rgba(16,185,129,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.8)", overflow: "hidden" }}>
+              {/* Header */}
+              <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "white" }}>Crises désamorcées</p>
+                    <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>{modalPatient?.firstName} {modalPatient?.lastName} · Ce mois</p>
+                  </div>
+                </div>
+                <button onClick={() => setOpenSosModal(null)} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, color: "#64748b", transition: "color 0.15s" }} onMouseEnter={e => { e.currentTarget.style.color = "white"; }} onMouseLeave={e => { e.currentTarget.style.color = "#64748b"; }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
+              {/* Corps */}
+              <div style={{ maxHeight: "60vh", overflowY: "auto", padding: "8px 0" }}>
+                {modalSosEvts.length === 0 ? (
+                  <p style={{ textAlign: "center", fontSize: 13, color: "#64748b", padding: "32px 24px" }}>Aucune crise désamorcée ce mois.</p>
+                ) : modalSosEvts.map((ev, idx) => {
+                  const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+                  const time = new Date(ev.triggered_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+                  const context = ev.sos_context?.split(" | ")[0]?.trim() ?? "–";
+                  const exercise = ev.tool_id ? (toolNames[ev.tool_id] ?? ev.tool_id) : "Exercice SOS vocal";
+                  const hasSummary = !!ev.summary_text;
+                  return (
+                    <div key={idx} style={{ padding: "16px 24px", borderBottom: idx < modalSosEvts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                      {/* En-tête de l'événement */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: hasSummary ? 10 : 0 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: emerald, flexShrink: 0, marginTop: 1 }} />
+                        <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{date} à {time}</span>
+                        <span style={{ fontSize: 11, color: emerald, fontWeight: 600, marginLeft: "auto", whiteSpace: "nowrap" }}>{exercise}</span>
+                      </div>
+                      {/* Note clinique narrative */}
+                      {hasSummary ? (
+                        <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.82)", lineHeight: 1.7, paddingLeft: 14 }}>{ev.summary_text}</p>
+                      ) : (
+                        // Fallback pré-summary_text : contexte brut
+                        <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.6, paddingLeft: 14, fontStyle: "italic" }}>
+                          {context !== "–" ? `Contexte : ${context}` : "Détail non disponible pour cette session."}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {showPinModal && (
         <div onClick={e => { if (e.target === e.currentTarget) setShowPinModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>

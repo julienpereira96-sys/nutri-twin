@@ -355,10 +355,10 @@ const OnboardingTour = ({ firstName, onDone }: OnboardingProps) => {
         <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 160, height: 2, background: "linear-gradient(90deg, transparent, rgba(16,185,129,0.6), transparent)", borderRadius: 2 }} />
 
         {/* Logo cercle lumineux */}
-        <div style={{ position: "relative", width: 72, height: 72, margin: "0 auto 24px" }}>
+        <div style={{ position: "relative", width: 96, height: 96, margin: "0 auto 24px" }}>
           <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(16px)" }} />
-          <div style={{ position: "relative", width: 72, height: 72, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <img src="/logo.png" alt="" style={{ width: 44, height: 44, objectFit: "contain" }} />
+          <div style={{ position: "relative", width: 96, height: 96, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <img src="/logo.png" alt="" style={{ width: 80, height: 80, objectFit: "contain" }} />
           </div>
         </div>
 
@@ -2855,9 +2855,9 @@ export default function ChatPage() {
                 {/* NutriTwin logo */}
                 <div style={{ position: "relative", margin: "0 auto 28px", display: "inline-block" }}>
                   <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(16px)" }} />
-                  <div style={{ position: "relative", width: 75, height: 75 }}>
-                    <div style={{ width: 75, height: 75, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <img src="/logo.png" alt="NutriTwin" style={{ width: 44, height: 44, objectFit: "contain" }} />
+                  <div style={{ position: "relative", width: 96, height: 96 }}>
+                    <div style={{ width: 96, height: 96, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <img src="/logo.png" alt="NutriTwin" style={{ width: 80, height: 80, objectFit: "contain" }} />
                     </div>
                   </div>
                 </div>
