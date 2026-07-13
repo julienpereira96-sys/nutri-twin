@@ -356,9 +356,9 @@ const OnboardingTour = ({ firstName, onDone }: OnboardingProps) => {
 
         {/* Logo cercle lumineux */}
         <div style={{ position: "relative", width: 96, height: 96, margin: "0 auto 24px" }}>
-          <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(16px)" }} />
-          <div style={{ position: "relative", width: 96, height: 96, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <img src="/logo.png" alt="" style={{ width: 80, height: 80, objectFit: "contain" }} />
+          <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.08)", filter: "blur(16px)" }} />
+          <div style={{ position: "relative", width: 96, height: 96, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+            <img src="/logo.png" alt="" style={{ width: 96, height: 96, padding: "18px", objectFit: "contain", boxSizing: "border-box" }} />
           </div>
         </div>
 
@@ -2854,10 +2854,10 @@ export default function ChatPage() {
               <div style={{ maxWidth: 580, width: "100%", textAlign: "center" }}>
                 {/* NutriTwin logo */}
                 <div style={{ position: "relative", margin: "0 auto 28px", display: "inline-block" }}>
-                  <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.2)", filter: "blur(16px)" }} />
+                  <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "rgba(16,185,129,0.08)", filter: "blur(16px)" }} />
                   <div style={{ position: "relative", width: 96, height: 96 }}>
-                    <div style={{ width: 96, height: 96, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <img src="/logo.png" alt="NutriTwin" style={{ width: 80, height: 80, objectFit: "contain" }} />
+                    <div style={{ width: 96, height: 96, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                      <img src="/logo.png" alt="NutriTwin" style={{ width: 96, height: 96, padding: "18px", objectFit: "contain", boxSizing: "border-box" }} />
                     </div>
                   </div>
                 </div>

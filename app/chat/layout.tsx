@@ -26,7 +26,7 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             {/* Halo radial externe */}
             <div style={{ position: "absolute", top: -28, left: -28, right: -28, bottom: -28, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.16), transparent 60%)", pointerEvents: "none" }} />
             {/* Cercle pulsant + logo */}
-            <div id="static-splash-inner" style={{ width: 88, height: 88, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div id="static-splash-inner" style={{ width: 88, height: 88, borderRadius: "50%", background: "transparent", border: "2px solid rgba(16,185,129,0.6)", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
               <svg width="42" height="42" viewBox="0 0 585 586" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
                 <path d={path} fill="#10B981" />
               </svg>

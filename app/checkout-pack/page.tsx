@@ -295,10 +295,10 @@ function CheckoutPackForm() {
       <header className="border-b border-white/[0.04] bg-[#070707]/80 backdrop-blur-2xl px-4 sm:px-6 py-4 sticky top-0 z-50">
         <div className="mx-auto max-w-6xl flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <div style={{ position: "relative", flexShrink: 0, width: 34, height: 34 }}>
+            <div style={{ position: "relative", flexShrink: 0, width: 44, height: 44 }}>
               <div style={{ position: "absolute", inset: -8, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.2), transparent 70%)", pointerEvents: "none" }} />
-              <div style={{ width: 34, height: 34, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.6)", display: "flex", alignItems: "center", justifyContent: "center", background: "#070707", position: "relative" }}>
-                <img src="/logo.png" alt="" style={{ width: 22, height: 22, objectFit: "contain" }} />
+              <div style={{ width: 44, height: 44, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.6)", display: "flex", alignItems: "center", justifyContent: "center", background: "#070707", position: "relative", overflow: "hidden" }}>
+                <img src="/logo.png" alt="" style={{ width: 44, height: 44, padding: "8px", objectFit: "contain", boxSizing: "border-box" }} />
               </div>
             </div>
             <span className="text-[20px] tracking-tight" style={{ fontFamily: "var(--font-jakarta), sans-serif" }}>

@@ -112,7 +112,7 @@ export default function LoginPage() {
 
       <div className="mb-8 text-center">
           <div className="relative mx-auto mb-4 w-fit">
-            <div className="absolute inset-0 rounded-full bg-emerald-500/15 blur-2xl" style={{ transform: "scale(1.4)" }} />
+            <div className="absolute inset-0 rounded-full bg-emerald-500/8 blur-2xl" style={{ transform: "scale(1.4)" }} />
             <div style={{ position: "relative", width: 96, height: 96, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.6)", boxShadow: "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)", overflow: "hidden" }}>
               <img src="/logo.png" alt="NutriTwin" style={{ width: 96, height: 96, padding: "18px", objectFit: "contain", boxSizing: "border-box" }} />
             </div>
