@@ -9,6 +9,15 @@ function ResetPasswordForm() {
  const searchParams = useSearchParams();
  const isPatient = searchParams.get("type") === "patient";
 
+ // Redirection depuis nutri-twin.vercel.app → nutritwin.fr (hash préservé)
+ useEffect(() => {
+   if (typeof window !== "undefined" && window.location.hostname === "nutri-twin.vercel.app") {
+     window.location.replace(
+       "https://nutritwin.fr" + window.location.pathname + window.location.search + window.location.hash
+     );
+   }
+ }, []);
+
  const [password, setPassword] = useState("");
  const [confirm, setConfirm] = useState("");
  const [showPassword, setShowPassword] = useState(false);
