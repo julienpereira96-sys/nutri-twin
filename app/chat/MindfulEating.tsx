@@ -328,9 +328,9 @@ export default function MindfulEating({
     void logMangerSession(biteCount, exitMode);
 
     const modeLabel =
-      exitMode === "victory"  ? "Signal positif — repas ancré avec succès" :
+      exitMode === "victory"  ? "Repas ancré avec succès" :
       exitMode === "moderate" ? "Stabilisation partielle" :
-      "Exercice interrompu — accompagnement recommandé";
+      "Exercice interrompu, accompagnement recommandé";
 
     const summary =
       `🌿 *Exercice Pleine Conscience Alimentaire*\n` +
@@ -676,7 +676,7 @@ export default function MindfulEating({
               Ton Jumeau entend ce que tu ressens.
             </p>
             <p style={{ margin: 0, fontSize: 14, color: TEXT_MUTED, lineHeight: 1.65 }}>
-              Avant la prochaine bouchée — une respiration lente.
+              Avant la prochaine bouchée, une respiration lente.
             </p>
           </motion.div>
         )}
@@ -705,7 +705,7 @@ export default function MindfulEating({
               </svg>
             </motion.div>
             <p style={{ margin: 0, fontSize: 15, color: TEXT_PRIMARY, lineHeight: 1.7 }}>
-              Parfait. Ton corps a faim — c'est légitime.
+              Parfait. Ton corps a faim, c'est légitime.
             </p>
             <p style={{ margin: 0, fontSize: 14, color: TEXT_MUTED, lineHeight: 1.65 }}>
               Ancre-toi dans la texture et le goût.
@@ -765,10 +765,10 @@ export default function MindfulEating({
               <p style={{ margin: 0, fontSize: 14, color: TEXT_MUTED, lineHeight: 1.65 }}>
                 {biteCount} bouchée{biteCount > 1 ? "s" : ""} consciente{biteCount > 1 ? "s" : ""} ·{" "}
                 {exitMode === "victory"
-                  ? "Signal positif — repas ancré avec succès"
+                  ? "Repas ancré avec succès"
                   : exitMode === "moderate"
                   ? "Stabilisation partielle"
-                  : "Session interrompue — suivi recommandé"}
+                  : "Session interrompue, suivi recommandé"}
               </p>
             </motion.div>
 

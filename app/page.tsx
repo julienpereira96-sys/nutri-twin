@@ -764,14 +764,13 @@ export default function Home() {
                   </svg>
                 ), title: "Propriété Exclusive", desc: "Votre jumeau est privé. Votre savoir, vos protocoles et vos méthodes ne servent jamais à entraîner d'autres modèles." },
                 { icon: (
-                    <svg width="22" height="16" viewBox="0 0 22 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, overflow: "hidden", display: "block" }}>
-                      <rect width="22" height="16" fill="#003399"/>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                       {[0,1,2,3,4,5,6,7,8,9,10,11].map((i) => {
                         const a = (i * 30 - 90) * Math.PI / 180;
-                        const cx = 11 + 4.8 * Math.cos(a);
-                        const cy = 8 + 4.8 * Math.sin(a);
+                        const cx = 10 + 7.5 * Math.cos(a);
+                        const cy = 10 + 7.5 * Math.sin(a);
                         const pts = Array.from({length:5}, (_,k) => {
-                          const r = k%2===0 ? 1.05 : 0.42;
+                          const r = k%2===0 ? 1.3 : 0.52;
                           const ang = (k*72 - 90) * Math.PI/180;
                           return `${cx + r*Math.cos(ang)},${cy + r*Math.sin(ang)}`;
                         }).join(" ");
@@ -877,7 +876,7 @@ export default function Home() {
                   { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true, exclusive: true },
                   { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true, exclusive: true },
                   { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true, exclusive: true },
-                  { text: "Espace collaboratif : Possibilité de transférer ou de partager un dossier entre confrères", included: true, exclusive: true },
+                  { text: "Espace collaboratif : possibilité de transférer ou de partager un dossier entre confrères", included: true, exclusive: true },
                 ]}
                 plan="cabinet"
                 featured={false}
@@ -888,8 +887,8 @@ export default function Home() {
             {/* Notes de bas de grille tarifaire */}
             <div className="mx-auto mt-8 max-w-3xl text-left text-[11px] leading-relaxed text-zinc-500 flex flex-col gap-2">
               <p><sup>(1)</sup> Le plan Cabinet inclut 3 comptes praticiens indépendants. Chaque praticien supplémentaire est facturé 149&nbsp;€/mois et ouvre 25 patients additionnels.</p>
-              <p><sup>(2)</sup> 80 patients inclus pour les 3 praticiens du plan Cabinet ; chaque praticien supplémentaire bénéficie de 25 patients additionnels.</p>
-              <p><sup>(3)</sup> Gestion des volumes et sécurité : L&apos;enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel et élargie à 100 messages/jour sur les plans Professionnel et Cabinet afin de garantir la stabilité technique de la plateforme et de maintenir un cadre d&apos;échange structuré pour le patient. Conformément à la réglementation, toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais utilisées pour entraîner des modèles d&apos;IA publics.</p>
+              <p><sup>(2)</sup> 80 patients inclus pour les 3 praticiens du plan Cabinet. Chaque praticien supplémentaire bénéficie de 25 patients additionnels.</p>
+              <p><sup>(3)</sup> Gestion des volumes et sécurité : l&apos;enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel et élargie à 100 messages/jour sur les plans Professionnel et Cabinet afin de garantir la stabilité technique de la plateforme et de maintenir un cadre d&apos;échange structuré pour le patient. Conformément à la réglementation, toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais utilisées pour entraîner des modèles d&apos;IA publics.</p>
             </div>
           </div>
         </section>

@@ -183,7 +183,7 @@ export default function MicConsentOverlay({ exerciseName = "Cet exercice", denie
                 {exerciseName} t&apos;accompagne en temps réel grâce à ta voix. Quand ton navigateur
                 te demande l&apos;accès, appuie sur{" "}
                 <span style={{ color: TEXT_PRI, fontWeight: 600 }}>Autoriser</span>
-                {" "}— l&apos;expérience sera bien plus riche.
+                {" "}: l&apos;expérience sera bien plus riche.
               </p>
               <p style={{ margin: "0 0 36px", fontSize: 13, color: TEXT_MUT, lineHeight: 1.6 }}>
                 Ton micro n&apos;est actif qu&apos;pendant l&apos;exercice. Aucune donnée audio n&apos;est stockée.

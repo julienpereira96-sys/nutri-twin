@@ -49,7 +49,7 @@ const DEMO_PATIENTS_INITIAL = [
     practitioner_instruction: [{ id: "d-m2", text: "Rappelle-lui de prendre soin d'elle malgré la charge de travail.", expires_at: null, created_at: new Date().toISOString() }],
     private_notes: [],
     lastActive: "Il y a 1j", streak: 3, sosResolved: 0, onboardingCompleted: true,
-    lastMessage: "Le lien alimentation-sommeil est réel — continuez sur cette lancée.",
+    lastMessage: "Le lien alimentation-sommeil est réel, continuez sur cette lancée.",
     victory_detected_at: null, // stable — pas de victoire récente
   },
   {
@@ -165,11 +165,11 @@ const DEMO_CONVERSATIONS_THOMAS: { id: string; role: "user" | "assistant"; conte
   { id: "t18", role: "assistant", content: "C'est tout ce qu'il faut faire : reprendre sans drama. La flexibilité fait partie d'une alimentation saine.", created_at: "2026-04-22T10:03:00" },
   // Fin avril — semaine de stress + SOS
   { id: "t18b", role: "user", content: "Cette semaine c'était difficile. Réorganisation dans mon service, je dormais mal, j'ai sauté des repas et grignoté le soir.", created_at: "2026-04-26T21:10:00" },
-  { id: "t18c", role: "assistant", content: "Je vous entends, Thomas. Le stress professionnel est souvent le premier facteur à faire dérailler les bonnes habitudes. Là, maintenant — nuque, tension, tête — comment vous sentez-vous physiquement ?", created_at: "2026-04-26T21:11:00" },
+  { id: "t18c", role: "assistant", content: "Je vous entends, Thomas. Le stress professionnel est souvent le premier facteur à faire dérailler les bonnes habitudes. Là, maintenant : nuque, tension, tête, comment vous sentez-vous physiquement ?", created_at: "2026-04-26T21:11:00" },
   { id: "t18d", role: "user", content: "Tendu. Nuque raide, j'ai l'impression que ma tension est remontée. Je me sens un peu submergé.", created_at: "2026-04-26T21:12:00" },
-  { id: "t18e", role: "assistant", content: "Ce que vous décrivez — tension physique, sentiment d'être submergé — c'est exactement le bon moment pour l'exercice SOS. Il prend quelques minutes et aide le système nerveux à redescendre. Essayez-le maintenant, je suis là quand vous revenez.", created_at: "2026-04-26T21:12:30" },
+  { id: "t18e", role: "assistant", content: "Ce que vous décrivez, tension physique, sentiment d'être submergé : c'est exactement le bon moment pour l'exercice SOS. Il prend quelques minutes et aide le système nerveux à redescendre. Essayez-le maintenant, je suis là quand vous revenez.", created_at: "2026-04-26T21:12:30" },
   { id: "t18f", role: "user", content: "Je l'ai fait. C'est étrange… je me sens vraiment plus calme. La nuque s'est détendue.", created_at: "2026-04-26T21:25:00" },
-  { id: "t18g", role: "assistant", content: "Ce n'est pas étrange, c'est de la physiologie. Vous venez d'activer votre système parasympathique. Gardez ça en mémoire — c'est un outil que vous avez maintenant, pour la prochaine fois que le travail déborde. La semaine prochaine repart comme avant.", created_at: "2026-04-26T21:26:00" },
+  { id: "t18g", role: "assistant", content: "Ce n'est pas étrange, c'est de la physiologie. Vous venez d'activer votre système parasympathique. Gardez ça en mémoire : c'est un outil que vous avez maintenant, pour la prochaine fois que le travail déborde. La semaine prochaine repart comme avant.", created_at: "2026-04-26T21:26:00" },
   // Mois 3 — alimentation intuitive
   { id: "t19", role: "user", content: "J'ai arrêté de compter les calories la semaine dernière. Je mange quand j'ai faim, je m'arrête quand je suis rassasié.", created_at: "2026-05-01T11:00:00" },
   { id: "t20", role: "assistant", content: "Thomas, c'est une étape majeure. L'alimentation intuitive, c'est l'objectif final, quand le corps reprend le pilotage naturel. Comment ça se passe concrètement ?", created_at: "2026-05-01T11:01:00" },
@@ -210,7 +210,7 @@ const DEMO_BILAN_BY_PATIENT: Record<string, { question: string; justification: s
   "demo-1": [
     { question: "Comment avez-vous géré les moments de stress professionnel cette semaine sur le plan alimentaire ?", justification: "Sophie a mentionné ne pas avoir eu le temps de déjeuner correctement entre deux réunions, ce qui a précédé une fringale en soirée.", objectif: "Identifier les déclencheurs situationnels et co-construire une stratégie d'anticipation." },
     { question: "Avez-vous pu mettre en place une routine de petit-déjeuner plus structurée depuis notre dernière séance ?", justification: "L'objectif fixé ensemble était de stabiliser le premier repas de la journée pour réduire les compensations du soir.", objectif: "Évaluer l'adhésion au plan et ajuster si la routine reste difficile à tenir." },
-    { question: "Qu'est-ce qui vous a aidée à résister à la cantine la semaine dernière ?", justification: "Sophie a réussi à faire un choix alimentaire cohérent dans un contexte social contraignant — comprendre ce levier est précieux.", objectif: "Renforcer les mécanismes d'auto-efficacité et capitaliser sur les succès." },
+    { question: "Qu'est-ce qui vous a aidée à résister à la cantine la semaine dernière ?", justification: "Sophie a réussi à faire un choix alimentaire cohérent dans un contexte social contraignant : comprendre ce levier est précieux.", objectif: "Renforcer les mécanismes d'auto-efficacité et capitaliser sur les succès." },
   ],
   "demo-2": [
     { question: "Comment se passe l'équilibre entre votre charge de travail et vos repas au quotidien ?", justification: "Julie a indiqué ne manger qu'un croissant le matin et une salade à 15h lors d'une semaine chargée.", objectif: "Identifier des solutions concrètes adaptées à ses contraintes professionnelles." },
@@ -218,9 +218,9 @@ const DEMO_BILAN_BY_PATIENT: Record<string, { question: string; justification: s
     { question: "Qu'est-ce qui vous rend le plus difficile de prendre soin de vous quand vous êtes surchargée ?", justification: "La fatigue professionnelle semble être un obstacle majeur à l'alimentation équilibrée chez Julie.", objectif: "Explorer les croyances sous-jacentes et trouver des solutions minimales applicables même en période intense." },
   ],
   "demo-3": [
-    { question: "Comment vivez-vous la stabilité actuelle de votre poids — est-ce que cela vous rassure ou est-ce anxiogène ?", justification: "Thomas est stable depuis 3 semaines, ce qui est une réussite, mais la phase de maintien peut générer une vigilance nouvelle.", objectif: "Valider psychologiquement la phase de maintien et prévenir les rechutes liées à la pression de résultats." },
+    { question: "Comment vivez-vous la stabilité actuelle de votre poids : est-ce que cela vous rassure ou est-ce anxiogène ?", justification: "Thomas est stable depuis 3 semaines, ce qui est une réussite, mais la phase de maintien peut générer une vigilance nouvelle.", objectif: "Valider psychologiquement la phase de maintien et prévenir les rechutes liées à la pression de résultats." },
     { question: "Avez-vous envie d'évoluer vos objectifs maintenant que vous avez trouvé votre équilibre ?", justification: "Thomas se dit bien, avec plus d'énergie et un meilleur sommeil. Il est peut-être prêt pour un objectif de nouvelle phase.", objectif: "Explorer l'évolution des motivations et préparer la suite du parcours." },
-    { question: "Comment se passent vos repas en contexte social depuis que vous ne comptez plus les calories ?", justification: "Thomas a évoqué l'arrêt du comptage calorique comme une libération — tester cette liberté en situation sociale est l'étape suivante.", objectif: "Consolider la flexibilité alimentaire et préparer à gérer les situations sociales sereinement." },
+    { question: "Comment se passent vos repas en contexte social depuis que vous ne comptez plus les calories ?", justification: "Thomas a évoqué l'arrêt du comptage calorique comme une libération : tester cette liberté en situation sociale est l'étape suivante.", objectif: "Consolider la flexibilité alimentaire et préparer à gérer les situations sociales sereinement." },
   ],
 };
 
@@ -239,9 +239,9 @@ const DEMO_RAPPORT_BY_PATIENT: Record<string, { synthese: string; patterns: stri
     murmures_bilan: "Travailler sur des solutions ultra-simples pour les matins chargés (préparation la veille, aliments pratiques). Évoquer avec Julie la possibilité de poser des alertes ou rendez-vous repas dans son agenda professionnel.",
   },
   "demo-3": {
-    synthese: "Thomas est en phase de consolidation avec d'excellents résultats : stabilité pondérale depuis 3 semaines, relation apaisée à la nourriture, amélioration de l'énergie et du sommeil. Il est dans la phase la plus fragile du parcours — le maintien.",
+    synthese: "Thomas est en phase de consolidation avec d'excellents résultats : stabilité pondérale depuis 3 semaines, relation apaisée à la nourriture, amélioration de l'énergie et du sommeil. Il est dans la phase la plus fragile du parcours : le maintien.",
     patterns: "Thomas ne compte plus les calories et mange intuitivement, avec succès. Pas de schéma problématique observé sur la période. Bonne régularité des échanges avec le jumeau.",
-    victoires: "Stabilité pondérale maintenue 3 semaines consécutives. Meilleure énergie et qualité de sommeil rapportées spontanément. Recommande le programme à son entourage — signe d'adhésion profonde.",
+    victoires: "Stabilité pondérale maintenue 3 semaines consécutives. Meilleure énergie et qualité de sommeil rapportées spontanément. Recommande le programme à son entourage, signe d'adhésion profonde.",
     murmures_bilan: "Préparer Thomas à la gestion des situations de tentation futures (vacances, fêtes). Évoquer la possibilité d'espacer les consultations, tout en maintenant le suivi du jumeau. Proposer des objectifs de maintenance ou de nouvelle phase (activité physique, optimisation).",
   },
 };
@@ -2412,7 +2412,7 @@ export default function DashboardPage() {
       const demoMsg = displayedSelectedPatient?.firstName === "Sophie"
         ? "Sophie, je voulais juste vous dire que je pense à vous en ce moment. Ce que vous traversez au travail est épuisant, et c'est tout à fait normal que ça déborde sur le reste. N'hésitez pas à m'écrire, je suis là."
         : displayedSelectedPatient?.firstName === "Julie"
-        ? "Julie, je sais que cette semaine a été lourde. Prenez soin de vous, même à petites doses — un vrai repas, une vraie pause. Vous comptez."
+        ? "Julie, je sais que cette semaine a été lourde. Prenez soin de vous, même à petites doses : un vrai repas, une vraie pause. Vous comptez."
         : "Je voulais prendre un instant pour vous dire que votre parcours est remarquable. Continuez à vous faire confiance.";
       setReplyText(demoMsg);
       setReplyGenerating(false);
@@ -3361,7 +3361,7 @@ export default function DashboardPage() {
                             {alert.type === "crisis" && alert.alert_type === "medical" && "Urgence médicale signalée par le patient."}
                             {alert.type === "crisis" && alert.alert_type === "threat" && "Le patient a exprimé une menace envers autrui."}
                             {alert.type === "crisis" && alert.alert_type === "critical" && "Urgence vitale détectée (mots-clés)."}
-                            {alert.type === "admin_alert" && alert.alert_type === "critical_llm" && "Détresse critique détectée par analyse IA — vérification recommandée."}
+                            {alert.type === "admin_alert" && alert.alert_type === "critical_llm" && "Détresse critique détectée par analyse IA, vérification recommandée."}
                           </p>
                           <LeverAlerteCritique alert={alert} patientId={selectedPatient.id} practitionerId={practitionerId ?? undefined} onResolved={() => {
                             setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a) } : p));
@@ -4113,7 +4113,7 @@ export default function DashboardPage() {
             <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>L'accès au chat sera désactivé et le patient disparaîtra de votre liste.</p>
             <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", marginBottom: 20, textAlign: "left" }}>
               <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
-                <span style={{ color: "#94a3b8", fontWeight: 600 }}>Données conservées</span> — conformément au RGPD, l'historique du suivi est conservé. Si le patient demande explicitement la suppression de ses données, contactez-nous par email.
+                <span style={{ color: "#94a3b8", fontWeight: 600 }}>Données conservées.</span> Conformément au RGPD, l'historique du suivi est conservé. Si le patient demande explicitement la suppression de ses données, contactez-nous par email.
               </p>
             </div>
             <div style={{ display: "flex", gap: 10 }}>
@@ -5141,7 +5141,7 @@ export default function DashboardPage() {
                     <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                       <span style={{ fontSize: 12, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 260 }}>
-                        {visionText ? "Ma Vision" : <span style={{ color: "#4b5563" }}>Ma Vision — non renseignée</span>}
+                        {visionText ? "Ma Vision" : <span style={{ color: "#4b5563" }}>Ma Vision (non renseignée)</span>}
                       </span>
                     </div>
                     <button onClick={() => { if (!onboardingDemoMode) { setVisionDraft(visionText); setEditingVision(true); } }}
@@ -5173,7 +5173,7 @@ export default function DashboardPage() {
                     <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                       <span style={{ fontSize: 12, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 260 }}>
-                        {signatureText ? "Ma Signature" : <span style={{ color: "#4b5563" }}>Ma Signature — non renseignée</span>}
+                        {signatureText ? "Ma Signature" : <span style={{ color: "#4b5563" }}>Ma Signature (non renseignée)</span>}
                       </span>
                     </div>
                     <button onClick={() => { if (!onboardingDemoMode) { setSignatureDraft(signatureText); setEditingSignature(true); } }}
@@ -5445,7 +5445,7 @@ export default function DashboardPage() {
                 <div>
                   <p style={{ margin: "0 0 5px", fontSize: 12, fontWeight: 700, color: "#f59e0b" }}>{pendingCorrections.length} correction{pendingCorrections.length > 1 ? "s" : ""} demandée{pendingCorrections.length > 1 ? "s" : ""} par le patient</p>
                   {pendingCorrections.map((c, i) => (
-                    <p key={i} style={{ margin: "0 0 2px", fontSize: 11, color: "#94a3b8" }}><strong style={{ color: "#e2e8f0" }}>{c.field}</strong>{c.correction ? ` — ${c.correction}` : ""}</p>
+                    <p key={i} style={{ margin: "0 0 2px", fontSize: 11, color: "#94a3b8" }}><strong style={{ color: "#e2e8f0" }}>{c.field}</strong>{c.correction ? ` : ${c.correction}` : ""}</p>
                   ))}
                 </div>
               </div>
@@ -5670,7 +5670,7 @@ export default function DashboardPage() {
                         );
                       })}
                     </div>
-                    {reportDateFrom && <p style={{ margin: "10px 0 0", fontSize: 11, color: "#818cf8", textAlign: "center" }}>{reportDateTo ? `Du ${new Date(reportDateFrom + "T12:00:00").toLocaleDateString("fr-FR")} au ${new Date(reportDateTo + "T12:00:00").toLocaleDateString("fr-FR")}` : `Début : ${new Date(reportDateFrom + "T12:00:00").toLocaleDateString("fr-FR")} — sélectionnez la date de fin`}</p>}
+                    {reportDateFrom && <p style={{ margin: "10px 0 0", fontSize: 11, color: "#818cf8", textAlign: "center" }}>{reportDateTo ? `Du ${new Date(reportDateFrom + "T12:00:00").toLocaleDateString("fr-FR")} au ${new Date(reportDateTo + "T12:00:00").toLocaleDateString("fr-FR")}` : `Début : ${new Date(reportDateFrom + "T12:00:00").toLocaleDateString("fr-FR")}, sélectionnez la date de fin`}</p>}
                   </div>
                 )}
               </div>
@@ -6004,7 +6004,7 @@ export default function DashboardPage() {
                     </div>
                   ) : null}
                 </div>
-                <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Notes internes <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#4b5563" }}>— visibles uniquement par vous</span></p>
+                <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Notes internes <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#4b5563" }}>· visibles uniquement par vous</span></p>
                 <textarea value={inviteNotes} onChange={e => setInviteNotes(e.target.value)}
                   placeholder="Contexte de la prise en charge, objectifs du moment, points de vigilance, blocages..."
                   rows={3}

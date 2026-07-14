@@ -137,7 +137,7 @@ function CountdownCircle({
 function getIntroText(sosContext: string, firstName: string): string {
   const name = firstName ? `, ${firstName}` : "";
   if (sosContext.includes("fringale"))
-    return `Cette envie de manger${name} est une invitation. On va la traverser lentement, en pleine conscience — une bouchée à la fois.`;
+    return `Cette envie de manger${name} est une invitation. On va la traverser lentement, en pleine conscience, une bouchée à la fois.`;
   if (sosContext.includes("stress") || sosContext.includes("anxiété"))
     return `Manger lentement${name} met ton corps en mode repos. Chaque bouchée devient une ancre dans le moment présent.`;
   if (sosContext.includes("culpabilité"))

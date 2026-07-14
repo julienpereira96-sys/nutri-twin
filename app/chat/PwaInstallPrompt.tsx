@@ -276,7 +276,7 @@ export default function PwaInstallPrompt() {
           lineHeight: 1.65,
         }}>
           En installant l&apos;application, tu accèdes à tes exercices en un seul geste depuis ton
-          écran d&apos;accueil — sans passer par un navigateur, même en pleine crise.
+          écran d&apos;accueil, sans passer par un navigateur, même en pleine crise.
         </p>
 
         {/* ── Corps iOS : 3 étapes ── */}
@@ -335,7 +335,7 @@ export default function PwaInstallPrompt() {
               fontStyle: "italic",
               lineHeight: 1.5,
             }}>
-              Sur iOS, Apple ne permet pas d&apos;automatiser cette installation — ces 3 étapes
+              Sur iOS, Apple ne permet pas d&apos;automatiser cette installation : ces 3 étapes
               sont incontournables. Ça prend 10 secondes&nbsp;!
             </p>
           </div>

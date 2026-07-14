@@ -463,7 +463,7 @@ export default function OnboardingPage() {
             {/* Progress bar */}
             <div className="mb-8">
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-medium text-zinc-300">Configuration de votre jumeau — {progress}%</p>
+                <p className="text-sm font-medium text-zinc-300">Configuration de votre jumeau : {progress}%</p>
                 {!isIdentityStep && !isGenerating && <p className="text-xs text-zinc-500">{step + 1} / {total}</p>}
               </div>
               <div className="h-1.5 w-full rounded-full bg-white/10">
@@ -582,7 +582,7 @@ export default function OnboardingPage() {
                     <p className="text-sm text-zinc-400 max-w-sm leading-relaxed mb-2">
                       Votre double numérique est désormais capable de prendre le relais auprès de vos patients, avec votre philosophie, votre expertise et votre signature.
                     </p>
-                    <p className="text-xs font-mono text-[#10b981]/50 mb-10">[NT-006] Certification validée — Jumeau opérationnel</p>
+                    <p className="text-xs font-mono text-[#10b981]/50 mb-10">[NT-006] Certification validée · Jumeau opérationnel</p>
                     {saveError && <p className="mb-4 text-sm text-red-400">{saveError}</p>}
                     <button type="button" onClick={() => { setNavigating(true); setTimeout(() => router.push("/dashboard"), 800); }}
                       style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "black", borderRadius: 12, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", border: "none", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
@@ -657,7 +657,7 @@ export default function OnboardingPage() {
                         {genStep === 3 && "› Injection du profil stylistique dans le LLM..."}
                         {genStep === 4 && "› Fusion des documents d'expertise avec le profil..."}
                         {genStep === 5 && "› Application de la signature émotionnelle unique..."}
-                        {genStep === 6 && "› Jumeau certifié — Lancement imminent..."}
+                        {genStep === 6 && "› Jumeau certifié · Lancement imminent..."}
                       </p>
                     </div>
                   </>
