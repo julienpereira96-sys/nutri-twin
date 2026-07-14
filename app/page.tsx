@@ -765,11 +765,20 @@ export default function Home() {
                 ), title: "Propriété Exclusive", desc: "Votre jumeau est privé. Votre savoir, vos protocoles et vos méthodes ne servent jamais à entraîner d'autres modèles." },
                 { icon: (
                     <svg width="22" height="16" viewBox="0 0 22 16" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ borderRadius: 2, overflow: "hidden", display: "block" }}>
-                      <rect width="7.33" height="16" fill="#002395"/>
-                      <rect x="7.33" width="7.34" height="16" fill="#FFFFFF"/>
-                      <rect x="14.67" width="7.33" height="16" fill="#ED2939"/>
+                      <rect width="22" height="16" fill="#003399"/>
+                      {[0,1,2,3,4,5,6,7,8,9,10,11].map((i) => {
+                        const a = (i * 30 - 90) * Math.PI / 180;
+                        const cx = 11 + 4.8 * Math.cos(a);
+                        const cy = 8 + 4.8 * Math.sin(a);
+                        const pts = Array.from({length:5}, (_,k) => {
+                          const r = k%2===0 ? 1.05 : 0.42;
+                          const ang = (k*72 - 90) * Math.PI/180;
+                          return `${cx + r*Math.cos(ang)},${cy + r*Math.sin(ang)}`;
+                        }).join(" ");
+                        return <polygon key={i} points={pts} fill="#FFCC00"/>;
+                      })}
                     </svg>
-                  ), title: "Souveraineté & RGPD", desc: "Vos données et celles de vos patients sont stockées sur des serveurs basés à Paris, conformément au RGPD." },
+                  ), title: "Souveraineté & RGPD", desc: "Vos données sont hébergées et traitées exclusivement sur des serveurs européens, conformément au RGPD." },
                 { icon: (
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="12" y1="3" x2="12" y2="21"/>
@@ -780,7 +789,7 @@ export default function Home() {
                     <line x1="19" y1="7" x2="19" y2="12"/>
                     <path d="M17 12 Q19 14 21 12"/>
                   </svg>
-                ), title: "Cadre Éthique", desc: "NutriTwin est un assistant de suivi, pas de diagnostic. Pour toute question médicale, vous serez systématiquement consulté." },
+                ), title: "Cadre Éthique", desc: "NutriTwin est un assistant de suivi, pas de diagnostic. Vous définissez ses limites et gardez le contrôle total." },
               ].map((item, i) => (
                 <div key={i} className="rounded-2xl p-6 sm:p-8" style={{ border: "1px solid rgba(255,255,255,0.10)", background: "#0d0d0d" }}>
                   <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl text-xl" style={{ background: "rgba(16,185,129,0.10)", boxShadow: "0 0 0 1px rgba(16,185,129,0.25)" }}>
