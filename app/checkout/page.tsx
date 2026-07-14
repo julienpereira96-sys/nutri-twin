@@ -22,22 +22,48 @@ const PLANS: Record<string, {
     name: "Essentiel",
     price: "89€",
     description: "Pour démarrer et accompagner vos patients prioritaires.",
-    features: ["Jusqu'à 10 patients", "1 praticien", "Jumeau configuré sur 31 questions", "Chat patient 24h/24", "Dashboard praticien", "Support par email"],
+    features: [
+      "Jusqu'à 10 patients suivis en simultané",
+      "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)",
+      "Analyse en temps réel (détection des comportements et alertes de crises)",
+      "Préparation automatisée de vos consultations et bilans",
+      "Espace de stockage sécurisé pour vos protocoles et documents",
+    ],
     color: emerald,
   },
   pro: {
     name: "Professionnel",
     price: "199€",
     badge: "Recommandé",
-    description: "Le jumeau le plus fidèle à votre expertise.",
-    features: ["Jusqu'à 50 patients", "1 praticien", "Jumeau configuré sur 31 questions", "Upload documents & protocoles", "Fidélité maximale du jumeau", "Rapport IA mensuel par patient", "Support prioritaire"],
+    description: "Idéal pour les praticiens indépendants qui gèrent un suivi actif au quotidien.",
+    features: [
+      "Jusqu'à 25 patients suivis en simultané",
+      "Votre Jumeau personnalisé (calqué sur votre approche et vos consignes)",
+      "Analyse en temps réel (détection des comportements et alertes de crises)",
+      "Préparation automatisée de vos consultations et bilans",
+      "Espace de stockage sécurisé pour vos protocoles et documents",
+      "Vision IA : Analyse et décodage des photos de repas",
+      "Mémoire clinique long terme (synthèse permanente de tout le parcours)",
+      "Plafond d'échanges quotidien étendu par patient",
+    ],
     color: emerald,
   },
   cabinet: {
     name: "Cabinet",
     price: "499€",
-    description: "Pour les cabinets multi-praticiens.",
-    features: ["Jusqu'à 150 patients", "3 praticiens inclus", "Upload documents illimité", "Rapport IA mensuel par patient", "+149€/praticien supplémentaire (+25 patients)", "Support dédié"],
+    description: "Pour les cabinets multi-praticiens et centres de santé.",
+    features: [
+      "Jusqu'à 80 patients suivis en simultané (3 praticiens inclus)",
+      "Jumeau personnalisé par praticien (calqué sur l'approche de chacun)",
+      "Analyse en temps réel (détection des comportements et alertes de crises)",
+      "Préparation automatisée de vos consultations et bilans",
+      "Espace de stockage sécurisé pour vos protocoles et documents",
+      "Vision IA : Analyse et décodage des photos de repas",
+      "Mémoire clinique long terme (synthèse permanente de tout le parcours)",
+      "Plafond d'échanges quotidien étendu par patient",
+      "Espace collaboratif : transfert et partage de dossiers entre confrères",
+      "+149 €/mois par praticien supplémentaire (+25 patients)",
+    ],
     color: emerald,
   },
 };
@@ -271,14 +297,9 @@ function CheckoutForm() {
     <div className="min-h-screen bg-[#070707] text-white">
             <header className="border-b border-white/[0.04] bg-[#070707]/80 backdrop-blur-2xl px-4 sm:px-6 py-4 sticky top-0 z-50">
         <div className="mx-auto max-w-6xl flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div style={{ position: "relative", flexShrink: 0, width: 44, height: 44 }}>
-              <div style={{ position: "absolute", inset: -8, borderRadius: "50%", background: "radial-gradient(circle, rgba(16,185,129,0.2), transparent 70%)", pointerEvents: "none" }} />
-              <div style={{ width: 44, height: 44, borderRadius: "50%", border: "1.5px solid rgba(16,185,129,0.6)", display: "flex", alignItems: "center", justifyContent: "center", background: "#070707", position: "relative", overflow: "hidden" }}>
-                <img src="/logo.png" alt="" style={{ width: 44, height: 44, padding: "8px", objectFit: "contain", boxSizing: "border-box" }} />
-              </div>
-            </div>
-            <span className="text-[20px] tracking-tight" style={{ fontFamily: "var(--font-jakarta), sans-serif" }}>Nutri<strong className="font-black" style={{ color: emerald }}>Twin</strong></span>
+          <Link href="/" className="flex items-center" style={{ gap: 3 }}>
+            <img src="/logo.png" alt="" style={{ width: 30, height: 30, objectFit: "contain", flexShrink: 0 }} />
+            <span className="text-[22px] tracking-tight" style={{ fontFamily: "var(--font-jakarta), sans-serif" }}>Nutri<strong className="font-black" style={{ color: emerald }}>Twin</strong></span>
           </Link>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/[0.05] px-3 py-1.5">
