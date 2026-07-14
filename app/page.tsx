@@ -769,12 +769,12 @@ export default function Home() {
                         const a = (i * 30 - 90) * Math.PI / 180;
                         const cx = 10 + 7.5 * Math.cos(a);
                         const cy = 10 + 7.5 * Math.sin(a);
-                        const pts = Array.from({length:5}, (_,k) => {
-                          const r = k%2===0 ? 1.3 : 0.52;
-                          const ang = (k*72 - 90) * Math.PI/180;
+                        const pts = Array.from({length:10}, (_,k) => {
+                          const r = k%2===0 ? 1.5 : 0.63;
+                          const ang = (k*36 - 90) * Math.PI/180;
                           return `${cx + r*Math.cos(ang)},${cy + r*Math.sin(ang)}`;
                         }).join(" ");
-                        return <polygon key={i} points={pts} fill="#FFCC00"/>;
+                        return <polygon key={i} points={pts} fill="#10b981"/>;
                       })}
                     </svg>
                   ), title: "Souveraineté & RGPD", desc: "Vos données sont hébergées et traitées exclusivement sur des serveurs européens, conformément au RGPD." },
