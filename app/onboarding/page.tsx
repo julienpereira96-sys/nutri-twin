@@ -242,16 +242,20 @@ export default function OnboardingPage() {
         localStorage.setItem("onboarding_signature", profile.signature as string);
       }
 
-      // Si localStorage n'a pas de réponses, on hydrate depuis Supabase
-      // (cas : localStorage vidé, changement de navigateur, etc.)
-      let localAnswersParsed: Record<string, string | string[]> = {};
-      try {
-        const raw = localStorage.getItem("onboarding_answers");
-        localAnswersParsed = raw ? JSON.parse(raw) as Record<string, string | string[]> : {};
-      } catch { /* ignore */ }
-      const hasLocalAnswers = Object.keys(localAnswersParsed).length > 0;
+      // Si vision ou signature existent en Supabase, l'utilisateur a déjà atteint
+      // l'étape identité (on ne peut sauvegarder ces champs que depuis cette étape).
+      // On saute directement à l'étape identité si le step courant est en arrière.
+      if (profile?.vision || profile?.signature) {
+        const currentLocalStep = parseInt(localStorage.getItem("onboarding_step") ?? "0");
+        if (currentLocalStep < questions.length) {
+          setStep(questions.length);
+          localStorage.setItem("onboarding_step", String(questions.length));
+        }
+      }
 
-      if (!hasLocalAnswers && profile) {
+      // Hydrate les réponses aux questions depuis Supabase si elles y sont
+      // (cas : activation précédente réussie ou partielle).
+      if (profile) {
         const hydrated: Record<string, string | string[]> = {};
         for (const q of questions) {
           const val = (profile as Record<string, unknown>)[q.id];
@@ -262,9 +266,6 @@ export default function OnboardingPage() {
         if (Object.keys(hydrated).length > 0) {
           setAnswers(hydrated);
           localStorage.setItem("onboarding_answers", JSON.stringify(hydrated));
-          // Sauter directement à l'étape identité — les questions sont déjà répondues
-          setStep(questions.length);
-          localStorage.setItem("onboarding_step", String(questions.length));
         }
       }
     };
