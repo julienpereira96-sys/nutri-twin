@@ -224,22 +224,48 @@ export default function OnboardingPage() {
         localStorage.setItem("onboarding_user_id", user.id);
       }
 
-      // Load existing vision/signature from Supabase (source of truth for saved state)
+      // Load existing profile from Supabase (source of truth)
       const { data: profile } = await supabase
         .from("practitioner_profiles")
-        .select("vision, signature")
+        .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
 
       if (profile?.vision) {
-        setVisionText(profile.vision);
+        setVisionText(profile.vision as string);
         setVisionSaved(true);
-        localStorage.setItem("onboarding_vision", profile.vision);
+        localStorage.setItem("onboarding_vision", profile.vision as string);
       }
       if (profile?.signature) {
-        setSignatureText(profile.signature);
+        setSignatureText(profile.signature as string);
         setSignatureSaved(true);
-        localStorage.setItem("onboarding_signature", profile.signature);
+        localStorage.setItem("onboarding_signature", profile.signature as string);
+      }
+
+      // Si localStorage n'a pas de réponses, on hydrate depuis Supabase
+      // (cas : localStorage vidé, changement de navigateur, etc.)
+      let localAnswersParsed: Record<string, string | string[]> = {};
+      try {
+        const raw = localStorage.getItem("onboarding_answers");
+        localAnswersParsed = raw ? JSON.parse(raw) as Record<string, string | string[]> : {};
+      } catch { /* ignore */ }
+      const hasLocalAnswers = Object.keys(localAnswersParsed).length > 0;
+
+      if (!hasLocalAnswers && profile) {
+        const hydrated: Record<string, string | string[]> = {};
+        for (const q of questions) {
+          const val = (profile as Record<string, unknown>)[q.id];
+          if (val !== undefined && val !== null && val !== "") {
+            hydrated[q.id] = val as string | string[];
+          }
+        }
+        if (Object.keys(hydrated).length > 0) {
+          setAnswers(hydrated);
+          localStorage.setItem("onboarding_answers", JSON.stringify(hydrated));
+          // Sauter directement à l'étape identité — les questions sont déjà répondues
+          setStep(questions.length);
+          localStorage.setItem("onboarding_step", String(questions.length));
+        }
       }
     };
     void init();
