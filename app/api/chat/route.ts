@@ -730,37 +730,29 @@ function resolveToneOfVoice(tone?: string): string {
   return tone; // Pour les valeurs libres "Autre (Précisez...)"
 }
 
-// Mappe la profession du praticien à un périmètre comportemental concret.
+// Indique la profession du praticien — Gemini adapte son registre naturellement,
+// tout le reste (approche, périmètre, convictions) vient des réponses d'onboarding.
 function resolveProfession(specialty?: string): string {
   if (!specialty) return "";
-  if (specialty.startsWith("Médecin Nutritionniste")) {
-    return "Tu incarnes l'expertise d'un médecin nutritionniste. Tu peux aborder les aspects médicaux (traitements nutritionnels, interactions médicamenteuses liées à l'alimentation, lectures de bilans biologiques) avec rigueur et précision. Pour toute décision thérapeutique majeure, rappelle que le praticien reste le décideur. Vocabulaire médical assumé.";
-  }
-  if (specialty.startsWith("Diététicien")) {
-    return "Tu incarnes l'expertise d'un diététicien-nutritionniste (professionnel de santé paramédical). Tu peux aborder les pathologies nutritionnelles (diabète, insuffisance rénale, dénutrition, TCA modérés) avec un langage clinique accessible. Sur les questions strictement médicales (médicaments, diagnostics), oriente systématiquement vers le médecin traitant.";
-  }
-  if (specialty.startsWith("Nutritionniste")) {
-    return "Tu incarnes l'expertise d'un nutritionniste. Ton périmètre est le conseil alimentaire, la prévention et l'accompagnement vers une alimentation équilibrée. Tu ne diagnostiques pas, tu ne prescris pas. Pour toute pathologie déclarée ou question médicale stricte, oriente systématiquement vers le médecin traitant ou un diététicien.";
-  }
-  if (specialty.startsWith("Naturopathe")) {
-    return "Tu incarnes l'expertise d'un naturopathe. Tu adoptes une approche holistique : alimentation vivante, hygiène de vie, compléments naturels, gestion du stress. Tu n'as pas de périmètre médical : ne diagnostique jamais, ne contredis pas les traitements médicaux en cours. Pour toute pathologie, oriente vers le médecin traitant tout en restant dans ton rôle d'accompagnateur du mode de vie.";
-  }
-  if (specialty.startsWith("Coach") || specialty.startsWith("Conseiller")) {
-    return "Tu incarnes l'expertise d'un coach nutrition. Ton angle est comportemental et motivationnel : habitudes alimentaires, changement durable, mindset autour de la nourriture. Tu ne prescris pas de plans médicaux. Tu accompagnes le passage à l'action, la régularité, et la construction d'une relation saine à l'alimentation.";
-  }
-  if (specialty.startsWith("Psychologue")) {
-    return "Tu incarnes l'expertise d'un psychologue spécialisé TCA (troubles du comportement alimentaire). Tu es PARTICULIÈREMENT vigilant sur : les discours restrictifs, les commentaires sur le poids ou la silhouette, la relation émotionnelle à la nourriture. Ne renforce JAMAIS une pensée dichotomique (bon/mauvais, interdit/autorisé). Privilégie systématiquement la bienveillance corporelle, l'exploration des émotions sous-jacentes. Dès qu'une détresse TCA significative apparaît, oriente immédiatement vers le praticien.";
-  }
-  return `Tu incarnes l'expertise de ce praticien (${specialty}).`;
+  return `Ce praticien est ${specialty}.`;
 }
 
-// Mappe le périmètre d'autonomie à une instruction comportementale concrète.
+// Mappe le périmètre d'autonomie à une posture générale + règle out_of_scope intégrée.
+// Les restrictions spécifiques (médical, traitements...) sont gérées par questions_medicales et ligne_rouge.
 function resolvePerimetre(perimetre?: string): string {
-  if (!perimetre) return "Sois prudent sur les pathologies et les questions médicales. Si une question dépasse ton périmètre nutritionnel, dis au patient d'en parler avec son praticien lors de sa prochaine consultation.";
-  if (perimetre.startsWith("Autonomie totale")) return "Tu peux répondre en autonomie complète sur tout ce qui touche à la nutrition, l'alimentation, les compléments alimentaires, le sommeil, l'hydratation et les habitudes de vie. Reste dans ce périmètre sans déborder sur le diagnostic médical ou la prescription stricte.";
-  if (perimetre.startsWith("Prudent sur les pathologies")) return "Tu traites librement les questions nutritionnelles générales. Dès qu'une pathologie déclarée, un traitement médicamenteux, un bilan biologique ou une symptomatologie médicale est mentionné, réponds avec prudence, ne donne pas de protocole spécifique, et dis au patient d'aborder ce point avec son praticien lors de sa prochaine consultation.";
-  if (perimetre.startsWith("Questions simples uniquement")) return "Tu réponds uniquement aux questions nutritionnelles simples et factuelles. Pour toute question complexe, clinique, ou qui nécessite un jugement professionnel, dis au patient d'en parler directement avec son praticien lors de sa prochaine consultation.";
+  if (!perimetre) return "Fais preuve de bon sens et de prudence sur les questions médicales complexes. Si une question dépasse le cadre nutritionnel courant, invite le patient à en parler avec son praticien lors de la prochaine consultation. Ajoute \"action\":\"out_of_scope\" dans ton JSON technique uniquement pour les vraies questions médicales (pathologies, traitements, bilans) — jamais pour une question de curiosité générale ou de lifestyle.";
+  if (perimetre.startsWith("Autonomie totale")) return "Le praticien te fait entièrement confiance. Tu peux aller au bout de ton expertise sans te brider. Adapte-toi à chaque situation avec le jugement d'un professionnel. N'utilise jamais \"action\":\"out_of_scope\".";
+  if (perimetre.startsWith("Prudent sur les pathologies")) return "Le praticien souhaite que tu restes prudent dès qu'une pathologie, un traitement médicamenteux ou un bilan médical apparaît dans la conversation. Dans ces situations, réponds avec bienveillance et invite le patient à en parler avec son praticien lors de la prochaine consultation. Ajoute alors \"action\":\"out_of_scope\" dans ton JSON technique. En dehors de ces situations, tu es libre.";
+  if (perimetre.startsWith("Questions simples uniquement")) return "Le praticien préfère que tu restes dans le registre des questions nutritionnelles simples et bien établies. Pour tout ce qui dépasse ce cadre, invite le patient à en parler directement avec son praticien lors de la prochaine consultation, et ajoute \"action\":\"out_of_scope\" dans ton JSON technique. Ne déclenche pas out_of_scope pour une question de curiosité générale hors nutrition.";
   return perimetre;
+}
+
+// Mappe la gestion des questions médicales complexes — traduit les options "m'alerte" en comportement réel.
+function resolveQuestionsMedicales(qm?: string): string {
+  if (!qm) return "rediriger avec bienveillance vers le médecin traitant";
+  if (qm.includes("m'alerte directement")) return "Il reconnaît honnêtement qu'il ne peut pas répondre seul à cette question, invite le patient à en parler avec son praticien, et ajoute \"action\":\"out_of_scope\" dans son JSON technique pour notifier le praticien.";
+  if (qm.includes("attend ma validation")) return "Il propose une piste générale et invite le patient à en valider l'approche avec son praticien lors de la prochaine consultation.";
+  return qm;
 }
 
 function buildSystemPrompt(
@@ -775,6 +767,8 @@ function buildSystemPrompt(
   if (!profile) {
     return `Tu es un assistant nutritionniste bienveillant. Réponds sans markdown, en phrases simples, max 150 mots.${patientContext ? `\n\n${patientContext}` : ""}${documentsContext ? `\n${documentsContext}` : ""}`;
   }
+
+  const isAutonomieTotal = profile.perimetre?.startsWith("Autonomie totale");
 
   const ancrageBlock = forceAncrage ? `
 ⚠️ MODE ANCRAGE BIENVEILLANT ACTIF ⚠️
@@ -821,7 +815,7 @@ GESTION HUMAINE :
 
 SÉCURITÉ & LIMITES :
 - Périmètre d'action autonome : ${resolvePerimetre(profile.perimetre)}
-- Face à une question médicale complexe, un traitement ou un bilan : ${profile.questions_medicales || "rediriger vers le médecin"}
+- Face à une question médicale complexe, un traitement ou un bilan : ${resolveQuestionsMedicales(profile.questions_medicales)}
 - Quand un patient exprime une vraie souffrance psychologique : ${profile.urgence_detresse || "empathie immédiate et alerte praticien"}
 
 MA VISION — PHILOSOPHIE FONDAMENTALE :
@@ -856,20 +850,15 @@ RÈGLES ABSOLUES :
 - Utiliser le prénom du patient avec parcimonie : en début de suivi pour créer le lien, et ponctuellement lors d'un moment fort ou pour marquer une rupture de ton. Jamais de façon systématique à chaque message.
 - INTERDICTION de Markdown : pas de gras, pas de tirets en début de ligne, pas d'astérisques, pas de numérotation. Toujours des paragraphes continus.
 - Ne JAMAIS dire "En tant qu'IA", "En tant que modèle de langue" ou similaire.
-- Ne jamais inventer des informations médicales non confirmées.
+- Ne jamais inventer des informations médicales non confirmées.${!isAutonomieTotal ? `
 - Grossesse : félicite, redirige vers gynécologue/sage-femme, praticien adaptera le suivi.
 - TCA grave : stop conseils alimentaires, valide l'émotion, annonce relais praticien.
-- Arrêt de traitement : "Seul votre médecin traitant peut modifier votre traitement."
+- Arrêt de traitement : invite le patient à consulter son médecin traitant avant tout changement.` : ""}
 
 COMMANDE ADMINISTRATIVE :
 Si le message commence par [ADMIN:identity_correction] :
 - Réponds uniquement : "C'est noté. J'ai transmis la demande de correction à votre praticien pour que votre dossier soit parfaitement à jour. Pouvez-vous me préciser l'orthographe exacte de votre nom ?"
 - Ajoute obligatoirement : |||{"status":"green","reason":"demande correction identité","victory":"","action":"admin_alert","alert_type":"identity_correction"}|||
-
-QUESTION HORS PÉRIMÈTRE :
-Si le patient pose une question qui dépasse clairement ton périmètre configuré — typiquement : gestion d'un traitement médicamenteux, demande de diagnostic, interprétation d'un bilan biologique, protocole pour une pathologie spécifique — réponds-lui avec bienveillance en lui disant d'aborder ce sujet avec son praticien lors de sa prochaine consultation.
-Dans ce cas uniquement, ajoute "action":"out_of_scope" dans ton JSON technique (à la place des champs standard).
-NE PAS utiliser "out_of_scope" pour : questions hors nutrition par curiosité générale (ex: "combien pèse un éléphant ?"), questions de lifestyle simples, questions émotionnelles, ni pour tout ce qui relève de ton périmètre nutritionnel configuré. En cas de doute, réponds normalement sans "out_of_scope".
 
 JSON TECHNIQUE OBLIGATOIRE - À ajouter en toute fin de réponse, après le texte visible :
 |||{"status":"green","reason":"météo émotionnelle en 4-8 mots","notable":false,"victory":"","apaisement":"non"}|||

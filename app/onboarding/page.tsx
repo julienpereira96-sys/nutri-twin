@@ -47,9 +47,9 @@ const questions: Question[] = [
   { id: "adaptation_profil", block: "Gestion Humaine & Émotions", label: "Comment adaptez-vous votre communication selon le profil du patient ?", type: "single", options: ["Je reste moi-même avec tout le monde, c'est ma force", "J'adapte le ton mais pas le fond de mes conseils", "J'adapte à la fois le fond et la forme selon la personne", "Je laisse le patient me guider vers ce dont il a besoin"] },
 
   // BLOC 4 — SÉCURITÉ & LIMITES
-  { id: "perimetre", block: "Sécurité & Limites", label: "Jusqu'où peut aller votre jumeau de manière autonome ?", type: "single", options: ["Autonomie totale sur nutrition et lifestyle", "Prudent sur les pathologies, il me redirige", "Questions simples uniquement, il m'alerte pour tout le reste"] },
-  { id: "questions_medicales", block: "Sécurité & Limites", label: "Face à une question médicale complexe, un traitement ou un bilan sanguin ?", type: "single", options: ["Il répond selon la littérature scientifique disponible", "Il dit qu'il ne sait pas et m'alerte directement", "Il propose une piste et attend ma validation", "Il redirige systématiquement vers le médecin"] },
-  { id: "urgence_detresse", block: "Sécurité & Limites", label: "Un patient exprime une vraie souffrance psychologique ?", type: "single", options: ["Il exprime de l'empathie et m'alerte immédiatement", "Il oriente vers une ligne d'écoute ou un professionnel de santé", "Il gère avec bienveillance dans les limites de son périmètre"] },
+  { id: "perimetre", block: "Sécurité & Limites", label: "Jusqu'où peut aller votre jumeau de manière autonome ?", type: "single", options: ["Autonomie totale", "Prudent sur les pathologies, il me redirige", "Questions simples uniquement, il m'alerte pour tout le reste"] },
+  { id: "questions_medicales", block: "Sécurité & Limites", label: "Face à une question médicale complexe, un traitement ou un bilan sanguin ?", type: "single", options: ["Il répond selon la littérature scientifique disponible", "Il dit qu'il ne sait pas et m'alerte directement", "Il propose une piste et invite à valider lors de la consultation", "Il redirige systématiquement vers le médecin"] },
+  { id: "urgence_detresse", block: "Sécurité & Limites", label: "Comment votre jumeau gère-t-il une souffrance psychologique exprimée ?", type: "single", options: ["Il exprime de l'empathie et invite doucement à en parler lors de la prochaine consultation", "Il oriente vers une ligne d'écoute ou un professionnel de santé", "Il gère avec bienveillance dans les limites de son périmètre"] },
   { id: "ligne_rouge", block: "Sécurité & Limites", label: "Votre ligne rouge absolue ?", sublabel: "Ce que votre jumeau ne doit JAMAIS dire ou faire, quoi qu'il arrive", type: "free", placeholder: "Exemple : Ne jamais culpabiliser un patient. Ne jamais donner de calories précises sans contexte. Ne jamais parler de médicaments..." },
 
   // MISES EN SITUATION
@@ -154,6 +154,9 @@ export default function OnboardingPage() {
   // Per-section colors
   const visionColor = !visionSaved ? "#64748b" : signatureSaved ? "#10b981" : "#06b6d4";
   const signatureColor = !signatureSaved ? "#64748b" : visionSaved ? "#10b981" : "#06b6d4";
+  // RGB components for inline rgba() usage — green when both filled, cyan otherwise
+  const visionRgb = visionColor === "#10b981" ? "16,185,129" : "6,182,212";
+  const signatureRgb = signatureColor === "#10b981" ? "16,185,129" : "6,182,212";
 
   // Persistence effects
   useEffect(() => { localStorage.setItem("onboarding_step", String(step)); }, [step]);
@@ -747,9 +750,9 @@ export default function OnboardingPage() {
                           placeholder="Je crois que la santé commence dans l'intestin et que l'alimentation doit être un levier de vitalité, jamais une source d'anxiété. Pour moi, aucun aliment n'est à diaboliser..."
                           rows={6}
                           className="w-full rounded-2xl bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition-all placeholder:text-zinc-600"
-                          style={{ border: `1px solid ${visionEditing ? "rgba(96,165,250,0.5)" : visionText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"}` }}
-                          onFocus={e => { e.currentTarget.style.borderColor = visionEditing ? "rgba(96,165,250,0.7)" : "rgba(16,185,129,0.5)"; e.currentTarget.style.boxShadow = visionEditing ? "0 0 0 2px rgba(96,165,250,0.12)" : "0 0 0 2px rgba(16,185,129,0.12)"; }}
-                          onBlur={e => { e.currentTarget.style.borderColor = visionEditing ? "rgba(96,165,250,0.5)" : visionText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+                          style={{ border: `1px solid ${visionSaved && visionText.trim() ? `rgba(${visionRgb},${visionEditing ? "0.5" : "0.35"})` : "rgba(255,255,255,0.1)"}` }}
+                          onFocus={e => { e.currentTarget.style.borderColor = visionSaved ? `rgba(${visionRgb},0.7)` : "rgba(255,255,255,0.25)"; e.currentTarget.style.boxShadow = visionSaved ? `0 0 0 2px rgba(${visionRgb},0.12)` : "0 0 0 2px rgba(255,255,255,0.05)"; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = visionSaved && visionText.trim() ? `rgba(${visionRgb},${visionEditing ? "0.5" : "0.35"})` : "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
                         />
                         {visionError && <p className="mt-1 text-xs" style={{ color: "#f87171" }}>{visionError}</p>}
                         <div className="mt-3 flex items-center justify-end gap-3">
@@ -761,12 +764,12 @@ export default function OnboardingPage() {
                           )}
                           <button type="button" onClick={() => void saveVision()} disabled={!visionText.trim() || savingVision}
                             style={visionEditing
-                              ? { background: visionText.trim() && !savingVision ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.03)", border: visionText.trim() && !savingVision ? "1px solid rgba(96,165,250,0.3)" : "1px solid rgba(255,255,255,0.06)", color: visionText.trim() && !savingVision ? "#60a5fa" : "#3f3f46", borderRadius: 10, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: visionText.trim() && !savingVision ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }
-                              : saveBtnStyle(!!visionText.trim(), savingVision)}
-                            onMouseEnter={e => { if (visionText.trim() && !savingVision) { e.currentTarget.style.background = visionEditing ? "rgba(96,165,250,0.2)" : "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = visionEditing ? "rgba(96,165,250,0.5)" : "rgba(16,185,129,0.5)"; } }}
-                            onMouseLeave={e => { if (visionText.trim()) { e.currentTarget.style.background = visionEditing ? "rgba(96,165,250,0.12)" : "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = visionEditing ? "rgba(96,165,250,0.3)" : "rgba(16,185,129,0.3)"; } }}>
+                              ? { background: visionText.trim() && !savingVision ? `rgba(${visionRgb},0.12)` : "rgba(255,255,255,0.03)", border: visionText.trim() && !savingVision ? `1px solid rgba(${visionRgb},0.3)` : "1px solid rgba(255,255,255,0.06)", color: visionText.trim() && !savingVision ? visionColor : "#3f3f46", borderRadius: 10, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: visionText.trim() && !savingVision ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }
+                              : { background: visionText.trim() && !savingVision ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)", border: visionText.trim() && !savingVision ? "1px solid rgba(255,255,255,0.15)" : "1px solid rgba(255,255,255,0.06)", color: visionText.trim() && !savingVision ? "#e4e4e7" : "#3f3f46", borderRadius: 10, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: visionText.trim() && !savingVision ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
+                            onMouseEnter={e => { if (visionText.trim() && !savingVision) { e.currentTarget.style.background = visionEditing ? `rgba(${visionRgb},0.2)` : "rgba(255,255,255,0.1)"; e.currentTarget.style.borderColor = visionEditing ? `rgba(${visionRgb},0.5)` : "rgba(255,255,255,0.25)"; } }}
+                            onMouseLeave={e => { if (visionText.trim()) { e.currentTarget.style.background = visionEditing ? `rgba(${visionRgb},0.12)` : "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = visionEditing ? `rgba(${visionRgb},0.3)` : "rgba(255,255,255,0.15)"; } }}>
                             {savingVision
-                              ? <><span style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block", flexShrink: 0 }} />Enregistrement...</>
+                              ? <><span style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block", flexShrink: 0 }} />Enregistrement</>
                               : visionEditing ? "Mettre à jour ma vision" : "Enregistrer ma vision"}
                           </button>
                         </div>
@@ -840,9 +843,9 @@ export default function OnboardingPage() {
                           placeholder={"Je compare souvent le métabolisme à un feu de camp. Mon expression fétiche pour relancer la machine c'est : \"Un repas ne fait pas le moine, on tourne la page\". Mon mantra : \"La régularité bat la perfection\"..."}
                           rows={6}
                           className="w-full rounded-2xl bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition-all placeholder:text-zinc-600"
-                          style={{ border: `1px solid ${signatureEditing ? "rgba(96,165,250,0.5)" : signatureText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"}` }}
-                          onFocus={e => { e.currentTarget.style.borderColor = signatureEditing ? "rgba(96,165,250,0.7)" : "rgba(16,185,129,0.5)"; e.currentTarget.style.boxShadow = signatureEditing ? "0 0 0 2px rgba(96,165,250,0.12)" : "0 0 0 2px rgba(16,185,129,0.12)"; }}
-                          onBlur={e => { e.currentTarget.style.borderColor = signatureEditing ? "rgba(96,165,250,0.5)" : signatureText.trim() ? "rgba(16,185,129,0.35)" : "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
+                          style={{ border: `1px solid ${signatureSaved && signatureText.trim() ? `rgba(${signatureRgb},${signatureEditing ? "0.5" : "0.35"})` : "rgba(255,255,255,0.1)"}` }}
+                          onFocus={e => { e.currentTarget.style.borderColor = signatureSaved ? `rgba(${signatureRgb},0.7)` : "rgba(255,255,255,0.25)"; e.currentTarget.style.boxShadow = signatureSaved ? `0 0 0 2px rgba(${signatureRgb},0.12)` : "0 0 0 2px rgba(255,255,255,0.05)"; }}
+                          onBlur={e => { e.currentTarget.style.borderColor = signatureSaved && signatureText.trim() ? `rgba(${signatureRgb},${signatureEditing ? "0.5" : "0.35"})` : "rgba(255,255,255,0.1)"; e.currentTarget.style.boxShadow = "none"; }}
                         />
                         {signatureError && <p className="mt-1 text-xs" style={{ color: "#f87171" }}>{signatureError}</p>}
                         <div className="mt-3 flex items-center justify-end gap-3">
@@ -854,12 +857,12 @@ export default function OnboardingPage() {
                           )}
                           <button type="button" onClick={() => void saveSignature()} disabled={!signatureText.trim() || savingSignature}
                             style={signatureEditing
-                              ? { background: signatureText.trim() && !savingSignature ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.03)", border: signatureText.trim() && !savingSignature ? "1px solid rgba(96,165,250,0.3)" : "1px solid rgba(255,255,255,0.06)", color: signatureText.trim() && !savingSignature ? "#60a5fa" : "#3f3f46", borderRadius: 10, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: signatureText.trim() && !savingSignature ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }
-                              : saveBtnStyle(!!signatureText.trim(), savingSignature)}
-                            onMouseEnter={e => { if (signatureText.trim() && !savingSignature) { e.currentTarget.style.background = signatureEditing ? "rgba(96,165,250,0.2)" : "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = signatureEditing ? "rgba(96,165,250,0.5)" : "rgba(16,185,129,0.5)"; } }}
-                            onMouseLeave={e => { if (signatureText.trim()) { e.currentTarget.style.background = signatureEditing ? "rgba(96,165,250,0.12)" : "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = signatureEditing ? "rgba(96,165,250,0.3)" : "rgba(16,185,129,0.3)"; } }}>
+                              ? { background: signatureText.trim() && !savingSignature ? `rgba(${signatureRgb},0.12)` : "rgba(255,255,255,0.03)", border: signatureText.trim() && !savingSignature ? `1px solid rgba(${signatureRgb},0.3)` : "1px solid rgba(255,255,255,0.06)", color: signatureText.trim() && !savingSignature ? signatureColor : "#3f3f46", borderRadius: 10, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: signatureText.trim() && !savingSignature ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }
+                              : { background: signatureText.trim() && !savingSignature ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.03)", border: signatureText.trim() && !savingSignature ? "1px solid rgba(255,255,255,0.15)" : "1px solid rgba(255,255,255,0.06)", color: signatureText.trim() && !savingSignature ? "#e4e4e7" : "#3f3f46", borderRadius: 10, padding: "8px 18px", fontSize: 13, fontWeight: 600, cursor: signatureText.trim() && !savingSignature ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}
+                            onMouseEnter={e => { if (signatureText.trim() && !savingSignature) { e.currentTarget.style.background = signatureEditing ? `rgba(${signatureRgb},0.2)` : "rgba(255,255,255,0.1)"; e.currentTarget.style.borderColor = signatureEditing ? `rgba(${signatureRgb},0.5)` : "rgba(255,255,255,0.25)"; } }}
+                            onMouseLeave={e => { if (signatureText.trim()) { e.currentTarget.style.background = signatureEditing ? `rgba(${signatureRgb},0.12)` : "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = signatureEditing ? `rgba(${signatureRgb},0.3)` : "rgba(255,255,255,0.15)"; } }}>
                             {savingSignature
-                              ? <><span style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block", flexShrink: 0 }} />Enregistrement...</>
+                              ? <><span style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block", flexShrink: 0 }} />Enregistrement</>
                               : signatureEditing ? "Mettre à jour ma signature" : "Enregistrer ma signature"}
                           </button>
                         </div>
