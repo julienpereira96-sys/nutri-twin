@@ -56,8 +56,9 @@ export default function LoginPage() {
         return;
       }
       const { data: { user } } = await supabase.auth.getUser();
-      const { data: practitioner } = await supabase.from("practitioners").select("plan").eq("user_id", user?.id).single();
+      const { data: practitioner } = await supabase.from("practitioners").select("plan, pending_plan").eq("user_id", user?.id).single();
       if (!practitioner?.plan) {
+        if (practitioner?.pending_plan) setPendingPlan(practitioner.pending_plan);
         setError("__no_plan__");
         return;
       }
