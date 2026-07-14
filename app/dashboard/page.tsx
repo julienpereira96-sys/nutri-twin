@@ -289,11 +289,6 @@ const OnboardingTour = ({ practitionerName, onSkip, onTestMode }: OnboardingProp
           Bienvenue sur votre<br />Dashboard, {firstName}&nbsp;!
         </h1>
 
-        {/* Sous-titre */}
-        <p style={{ margin: "0 0 36px", fontSize: 14, fontWeight: 500, color: "#10b981", textAlign: "center", letterSpacing: "0.01em" }}>
-          Votre cabinet numérique est prêt
-        </p>
-
         {/* Séparateur */}
         <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 0 22px" }} />
 
