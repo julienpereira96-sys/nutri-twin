@@ -769,7 +769,7 @@ export default function OnboardingPage() {
                             onMouseEnter={e => { if (visionText.trim() && !savingVision) { e.currentTarget.style.background = visionEditing ? `rgba(${visionRgb},0.2)` : "rgba(255,255,255,0.1)"; e.currentTarget.style.borderColor = visionEditing ? `rgba(${visionRgb},0.5)` : "rgba(255,255,255,0.25)"; } }}
                             onMouseLeave={e => { if (visionText.trim()) { e.currentTarget.style.background = visionEditing ? `rgba(${visionRgb},0.12)` : "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = visionEditing ? `rgba(${visionRgb},0.3)` : "rgba(255,255,255,0.15)"; } }}>
                             {savingVision
-                              ? <><span style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block", flexShrink: 0 }} />Enregistrement</>
+                              ? <><span style={{ width: 13, height: 13, borderRadius: "50%", border: `2px solid rgba(${visionRgb},0.2)`, borderTop: `2px solid rgba(${visionRgb},1)`, animation: "spin 1s linear infinite", display: "inline-block", flexShrink: 0 }} />Enregistrement</>
                               : visionEditing ? "Mettre à jour ma vision" : "Enregistrer ma vision"}
                           </button>
                         </div>
@@ -862,7 +862,7 @@ export default function OnboardingPage() {
                             onMouseEnter={e => { if (signatureText.trim() && !savingSignature) { e.currentTarget.style.background = signatureEditing ? `rgba(${signatureRgb},0.2)` : "rgba(255,255,255,0.1)"; e.currentTarget.style.borderColor = signatureEditing ? `rgba(${signatureRgb},0.5)` : "rgba(255,255,255,0.25)"; } }}
                             onMouseLeave={e => { if (signatureText.trim()) { e.currentTarget.style.background = signatureEditing ? `rgba(${signatureRgb},0.12)` : "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = signatureEditing ? `rgba(${signatureRgb},0.3)` : "rgba(255,255,255,0.15)"; } }}>
                             {savingSignature
-                              ? <><span style={{ width: 13, height: 13, borderRadius: "50%", border: "2px solid rgba(16,185,129,0.2)", borderTop: "2px solid #10b981", animation: "spin 1s linear infinite", display: "inline-block", flexShrink: 0 }} />Enregistrement</>
+                              ? <><span style={{ width: 13, height: 13, borderRadius: "50%", border: `2px solid rgba(${signatureRgb},0.2)`, borderTop: `2px solid rgba(${signatureRgb},1)`, animation: "spin 1s linear infinite", display: "inline-block", flexShrink: 0 }} />Enregistrement</>
                               : signatureEditing ? "Mettre à jour ma signature" : "Enregistrer ma signature"}
                           </button>
                         </div>
