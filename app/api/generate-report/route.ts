@@ -90,7 +90,7 @@ export async function POST(request: Request) {
           rapport_corps, rapport_alimentation,
           historique_regime, contexte_social,
           objectif_poids_actuel, objectif_poids_cible,
-          objectif_delai, onboarding_answers, archived_alerts
+          objectif_delai, onboarding_answers, archived_alerts, admin_alerts
         `)
         .eq("user_id", patientId)
         .single(),
@@ -293,9 +293,28 @@ ${lines.join("\n")}`;
 ${alertsList}`;
     }
 
+    // Questions hors périmètre détectées par le Jumeau sur la période
+    type OutOfScopeAlert = { type?: string; date?: string; seen?: boolean; question_snippet?: string };
+    const adminAlerts = (p?.admin_alerts as OutOfScopeAlert[] | null) ?? [];
+    const outOfScopeAlerts = adminAlerts.filter(a => {
+      if (a.type !== "out_of_scope" || !a.date) return false;
+      return a.date >= `${dateFrom}T00:00:00` && a.date <= `${dateTo}T23:59:59`;
+    });
+    let outOfScopeSection = "";
+    if (outOfScopeAlerts.length > 0) {
+      const list = outOfScopeAlerts.map(a => {
+        const date = new Date(a.date!).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+        return `  - ${date} : "${a.question_snippet ?? "question non enregistrée"}"`;
+      }).join("\n");
+      outOfScopeSection = `QUESTIONS HORS PÉRIMÈTRE (période du ${dateFrom} au ${dateTo}) :
+Le Jumeau Numérique a détecté ${outOfScopeAlerts.length} question${outOfScopeAlerts.length > 1 ? "s" : ""} dépassant son périmètre d'autonomie configuré et a redirigé le patient vers le praticien :
+${list}
+→ Points à aborder lors de la prochaine consultation.`;
+    }
+
     const prompt = `Tu es l'assistant d'un nutritionniste. Génère un compte rendu professionnel pour ${firstName} sur la période du ${dateFrom} au ${dateTo}.
 
-${profileSection ? `${profileSection}\n\n` : ""}${sosSection ? `${sosSection}\n\n` : ""}${alertsSection ? `${alertsSection}\n\n` : ""}${chatSection ? `${chatSection}\n\n` : ""}Génère EXACTEMENT les 4 sections suivantes, basées UNIQUEMENT sur les données fournies. N'invente aucune information. Si une section n'a pas de données suffisantes, dis-le honnêtement en une phrase.
+${profileSection ? `${profileSection}\n\n` : ""}${sosSection ? `${sosSection}\n\n` : ""}${alertsSection ? `${alertsSection}\n\n` : ""}${outOfScopeSection ? `${outOfScopeSection}\n\n` : ""}${chatSection ? `${chatSection}\n\n` : ""}Génère EXACTEMENT les 4 sections suivantes, basées UNIQUEMENT sur les données fournies. N'invente aucune information. Si une section n'a pas de données suffisantes, dis-le honnêtement en une phrase.
 
 - synthese : Vue d'ensemble de la période (2-3 phrases). Ton clinique et factuel.
 - patterns : Patterns comportementaux ou émotionnels observés dans les données (2-4 phrases). Ne cite que ce qui est documenté.

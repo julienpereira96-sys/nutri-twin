@@ -351,7 +351,7 @@ const OnboardingTour = ({ practitionerName, onSkip, onTestMode }: OnboardingProp
 type RealPatient = {
   id: string; firstName: string; lastName: string; initials: string; avatarColor: string; email: string;
   lastMessage: string; lastMessageTime: string; lastMessageRole: string; totalMessages: number;
-  admin_alerts?: { type: string; date: string; seen: boolean; alert_type?: string; murmure?: string; trigger_message_id?: string }[];
+  admin_alerts?: { type: string; date: string; seen: boolean; alert_type?: string; murmure?: string; trigger_message_id?: string; question_snippet?: string }[];
   age?: number; sexe?: string; taille?: number; poids?: number; objective?: string; pathologies?: string;
   allergies?: string; traitements?: string; objectif_clinique?: string; niveau_activite?: string;
   regime_specifique?: string;   practitioner_instruction?: { id: string; text: string; expires_at?: string | null; created_at: string }[];
@@ -900,6 +900,7 @@ export default function DashboardPage() {
   const [practitionerCabinetId, setPractitionerCabinetId] = useState<string | null>(null);
   const [cabinetSharedPatients, setCabinetSharedPatients] = useState<RealPatient[]>([]);
   const [bravoState, setBravoState] = useState<Record<string, { expanded: boolean; text: string; editing: boolean; loading: boolean; sending: boolean; sent: boolean }>>({});
+  const [outOfScopeReply, setOutOfScopeReply] = useState<Record<string, { expanded: boolean; text: string; sending: boolean }>>({}); // keyed by `${patientId}-${alertDate}`
   const conversationContainerRef = useRef<HTMLDivElement>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
@@ -1967,6 +1968,34 @@ export default function DashboardPage() {
       setTimeout(() => setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], sent: false } })), 3000);
     } catch {
       setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], sending: false } }));
+    }
+  };
+
+  const supabaseDashboard = useMemo(() => createSupabaseBrowserClient(), []);
+
+  const markOutOfScopeSeen = async (patientId: string, alertDate: string) => {
+    const { data: cur } = await supabaseDashboard.from("patients").select("admin_alerts").eq("user_id", patientId).single();
+    const existing = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+    const updated = existing.map((a: object) => {
+      const al = a as { type?: string; date?: string; seen?: boolean };
+      return al.type === "out_of_scope" && al.date === alertDate ? { ...a, seen: true } : a;
+    });
+    await supabaseDashboard.from("patients").update({ admin_alerts: updated }).eq("user_id", patientId);
+    setPatients(prev => prev.map(p => p.id === patientId
+      ? { ...p, admin_alerts: p.admin_alerts?.map(a => a.type === "out_of_scope" && a.date === alertDate ? { ...a, seen: true } : a) }
+      : p));
+  };
+
+  const sendOutOfScopeReply = async (patientId: string, alertDate: string, text: string) => {
+    const key = `${patientId}-${alertDate}`;
+    setOutOfScopeReply(prev => ({ ...prev, [key]: { ...prev[key], sending: true } }));
+    try {
+      await fetch("/api/send-bravo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId, practitionerId, messageText: text }) });
+      setOutOfScopeReply(prev => ({ ...prev, [key]: { expanded: false, text: "", sending: false } }));
+      // Also mark as seen after reply
+      await markOutOfScopeSeen(patientId, alertDate);
+    } catch {
+      setOutOfScopeReply(prev => ({ ...prev, [key]: { ...prev[key], sending: false } }));
     }
   };
 
@@ -3370,6 +3399,65 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   )}
+                  {/* ── Bloc bleu : questions hors périmètre ── */}
+                  {(selectedPatient.admin_alerts?.filter(a => !a.seen && a.type === "out_of_scope").length ?? 0) > 0 && !onboardingDemoMode && (
+                    <div style={{ background: "rgba(96,165,250,0.07)", border: "1px solid rgba(96,165,250,0.22)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={SLATE_BLUE} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: SLATE_BLUE }}>Question hors périmètre</span>
+                      </div>
+                      {selectedPatient.admin_alerts?.filter(a => !a.seen && a.type === "out_of_scope").map((alert, i) => {
+                        const alertKey = `${selectedPatient.id}-${alert.date}`;
+                        const replyS = outOfScopeReply[alertKey] ?? { expanded: false, text: "", sending: false };
+                        return (
+                          <div key={i} style={{ marginBottom: i < (selectedPatient.admin_alerts?.filter(a => !a.seen && a.type === "out_of_scope").length ?? 1) - 1 ? 10 : 0, paddingBottom: i < (selectedPatient.admin_alerts?.filter(a => !a.seen && a.type === "out_of_scope").length ?? 1) - 1 ? 10 : 0, borderBottom: i < (selectedPatient.admin_alerts?.filter(a => !a.seen && a.type === "out_of_scope").length ?? 1) - 1 ? "1px solid rgba(96,165,250,0.12)" : "none" }}>
+                            {alert.question_snippet && (
+                              <p style={{ margin: "0 0 5px", fontSize: 11, color: "#94a3b8", lineHeight: 1.5, fontStyle: "italic" }}>
+                                &ldquo;{alert.question_snippet}{alert.question_snippet.length >= 150 ? "…" : ""}&rdquo;
+                              </p>
+                            )}
+                            <p style={{ margin: "0 0 6px", fontSize: 10, color: "#4b5563" }}>
+                              {new Date(alert.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </p>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                              {alert.trigger_message_id && (
+                                <button onClick={() => scrollToAlertMessage(alert)}
+                                  style={{ fontSize: 11, fontWeight: 600, color: SLATE_BLUE, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+                                  Aller au message
+                                </button>
+                              )}
+                              <button onClick={() => void markOutOfScopeSeen(selectedPatient.id, alert.date)}
+                                style={{ fontSize: 11, color: "#64748b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+                                Marquer comme vu
+                              </button>
+                              <button onClick={() => setOutOfScopeReply(prev => ({ ...prev, [alertKey]: { ...replyS, expanded: !replyS.expanded } }))}
+                                style={{ fontSize: 11, fontWeight: 600, color: SLATE_BLUE, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0 }}>
+                                {replyS.expanded ? "Annuler" : "Répondre au patient"}
+                              </button>
+                            </div>
+                            {replyS.expanded && (
+                              <div style={{ marginTop: 8 }}>
+                                <textarea
+                                  value={replyS.text}
+                                  onChange={e => setOutOfScopeReply(prev => ({ ...prev, [alertKey]: { ...replyS, text: e.target.value } }))}
+                                  placeholder="Votre message au patient…"
+                                  rows={2}
+                                  style={{ width: "100%", borderRadius: 8, border: "1px solid rgba(96,165,250,0.3)", background: "rgba(255,255,255,0.03)", color: "white", padding: "6px 8px", fontSize: 11, outline: "none", resize: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", lineHeight: 1.5 }}
+                                />
+                                <button
+                                  onClick={() => void sendOutOfScopeReply(selectedPatient.id, alert.date, replyS.text)}
+                                  disabled={!replyS.text.trim() || replyS.sending}
+                                  style={{ marginTop: 4, width: "100%", height: 28, borderRadius: 7, background: replyS.text.trim() ? "rgba(96,165,250,0.12)" : "rgba(255,255,255,0.04)", border: `1px solid ${replyS.text.trim() ? "rgba(96,165,250,0.3)" : "rgba(255,255,255,0.06)"}`, color: replyS.text.trim() ? SLATE_BLUE : "#4b5563", fontSize: 11, fontWeight: 600, cursor: replyS.text.trim() ? "pointer" : "not-allowed", transition: "all 0.2s" }}>
+                                  {replyS.sending ? "Envoi…" : "Envoyer"}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {/* ── Correction(s) en attente — discrète, intégrée dans "Modifier le profil" ── */}
                   {(selectedPatient.admin_alerts?.filter(a => !a.seen && a.type === "admin_alert" && (a.alert_type === "identity_correction" || a.alert_type === "rectification_request")).length ?? 0) > 0 && !onboardingDemoMode && (
                     <p style={{ margin: "0 0 10px", fontSize: 11, color: "#64748b", display: "flex", alignItems: "center", gap: 5 }}>
