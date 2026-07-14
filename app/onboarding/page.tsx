@@ -470,9 +470,7 @@ export default function OnboardingPage() {
                 {!isIdentityStep && !isGenerating && <p className="text-xs text-zinc-500">{step + 1} / {total}</p>}
               </div>
               <div className="h-1.5 w-full rounded-full bg-white/10">
-                <div className="h-full rounded-full bg-[#10b981] transition-all duration-500 relative overflow-hidden" style={{ width: `${progress}%` }}>
-                  <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: "45%", background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)", animation: "onboarding-shimmer 1.8s ease-in-out infinite" }} />
-                </div>
+                <div className="h-full rounded-full bg-[#10b981] transition-all duration-500" style={{ width: `${progress}%` }} />
               </div>
               {!isIdentityStep && !isGenerating && (
                 <div ref={blockBarRef} className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-none" style={{ scrollbarWidth: "none" }}>
@@ -683,10 +681,8 @@ export default function OnboardingPage() {
                     <span className="text-lg font-bold" style={{ color: identityColor }}>{identityScore}%</span>
                   </div>
                   <div className="h-3 w-full rounded-full bg-white/10">
-                    <div className="h-full rounded-full transition-all duration-700 relative overflow-hidden"
-                      style={{ width: `${identityScore}%`, backgroundColor: identityColor }}>
-                      <div style={{ position: "absolute", top: 0, left: 0, height: "100%", width: "45%", background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 50%, transparent 100%)", animation: "onboarding-shimmer 1.8s ease-in-out infinite" }} />
-                    </div>
+                    <div className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${identityScore}%`, backgroundColor: identityColor }} />
                   </div>
                   <p className="mt-3 text-sm leading-relaxed" style={{ color: identityColor }}>
                     {identityFilled === 0 && "La structure de votre Jumeau est prête ! Vos réponses lui ont transmis votre logique clinique complète : positions scientifiques, règles de sécurité et réflexes face aux situations difficiles. Il sait désormais quoi répondre sur le fond. Il ne lui manque plus que votre style unique : complétez votre Vision et votre Signature pour que l'IA s'approprie votre identité professionnelle et devienne votre véritable double virtuel."}
@@ -887,10 +883,16 @@ export default function OnboardingPage() {
                     {showCertTooltip && identityFilled < 2 && (
                       <>
                         <div className="hidden sm:block" style={{ position: "absolute", top: "50%", right: "calc(100% + 12px)", transform: "translateY(-50%)", width: 280, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
-                          🔒 Enregistrez votre {!visionSaved && !signatureSaved ? "Vision et votre Signature" : !visionSaved ? "Vision" : "Signature"} pour activer votre Jumeau.
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            Enregistrez votre {!visionSaved && !signatureSaved ? "Vision et votre Signature" : !visionSaved ? "Vision" : "Signature"} pour activer votre Jumeau.
+                          </span>
                         </div>
                         <div className="block sm:hidden" style={{ position: "absolute", bottom: "calc(100% + 8px)", right: 0, width: 240, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
-                          🔒 Enregistrez votre {!visionSaved && !signatureSaved ? "Vision et votre Signature" : !visionSaved ? "Vision" : "Signature"} pour activer votre Jumeau.
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            Enregistrez votre {!visionSaved && !signatureSaved ? "Vision et votre Signature" : !visionSaved ? "Vision" : "Signature"} pour activer votre Jumeau.
+                          </span>
                         </div>
                       </>
                     )}
@@ -941,7 +943,6 @@ export default function OnboardingPage() {
             @keyframes drawCheck { from { stroke-dashoffset: 30; } to { stroke-dashoffset: 0; } }
             @keyframes fadeOut { from { opacity: 0.8; } to { opacity: 0; } }
             @keyframes pulse-ring { 0%, 100% { box-shadow: 0 0 14px rgba(16,185,129,0.3), 0 0 28px rgba(16,185,129,0.1); } 50% { box-shadow: 0 0 22px rgba(16,185,129,0.55), 0 0 40px rgba(16,185,129,0.2); } }
-            @keyframes onboarding-shimmer { 0% { transform: translateX(-150%); } 100% { transform: translateX(350%); } }
           `}</style>
         </div>
       )}
