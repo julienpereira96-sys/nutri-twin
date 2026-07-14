@@ -502,7 +502,7 @@ export default function OnboardingPage() {
                     <div className="grid gap-3">
                       {currentQuestion.options?.map(option => (
                         <button key={option} type="button" onClick={() => setSelected(option)}
-                          className={`w-full rounded-2xl border px-4 py-4 text-left text-[15px] transition-all duration-200 cursor-pointer ${selected === option ? "border-[#10b981] bg-[#10b981]/15 text-white" : "border-white/10 bg-[#1a1a1a] text-zinc-300 hover:border-[#10b981]/50"}`}>
+                          className={`w-full rounded-2xl border px-4 py-4 text-left text-[14px] transition-all duration-200 cursor-pointer ${selected === option ? "border-[#10b981] bg-[#10b981]/15 text-white" : "border-white/10 bg-[#1a1a1a] text-zinc-300 hover:border-[#10b981]/50"}`}>
                           {option}
                         </button>
                       ))}
@@ -512,7 +512,7 @@ export default function OnboardingPage() {
                     <div className="grid gap-3">
                       {currentQuestion.options?.map(option => (
                         <button key={option} type="button" onClick={() => { setSelected(option); if (option !== AUTRE_OPTION) setAutreText(""); }}
-                          className={`w-full rounded-2xl border px-4 py-4 text-left text-[15px] transition-all duration-200 cursor-pointer ${selected === option ? "border-[#10b981] bg-[#10b981]/15 text-white" : "border-white/10 bg-[#1a1a1a] text-zinc-300 hover:border-[#10b981]/50"}`}>
+                          className={`w-full rounded-2xl border px-4 py-4 text-left text-[14px] transition-all duration-200 cursor-pointer ${selected === option ? "border-[#10b981] bg-[#10b981]/15 text-white" : "border-white/10 bg-[#1a1a1a] text-zinc-300 hover:border-[#10b981]/50"}`}>
                           {option}
                         </button>
                       ))}
