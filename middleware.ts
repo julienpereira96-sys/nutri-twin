@@ -35,7 +35,7 @@ export async function middleware(request: NextRequest) {
 
   const getPractitioner = async () => {
     if (!user) return null;
-    const { data } = await supabase.from("practitioners").select("plan, last_active_at, pending_plan").eq("user_id", user.id).single();
+    const { data } = await supabase.from("practitioners").select("plan, last_active_at, pending_plan, onboarding_done").eq("user_id", user.id).single();
     return data;
   };
 
@@ -90,7 +90,7 @@ export async function middleware(request: NextRequest) {
     const practitioner = await getPractitioner(); 
     if (!practitioner?.plan) return NextResponse.redirect(new URL("/choose-plan", request.url));
     const profile = await getProfile();
-    if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
+    if (!profile || !practitioner.onboarding_done) return NextResponse.redirect(new URL("/onboarding", request.url));
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -100,7 +100,7 @@ export async function middleware(request: NextRequest) {
       const practitioner = await getPractitioner();
       if (!practitioner?.plan) return supabaseResponse; // connecté sans plan → on laisse passer
       const profile = await getProfile();
-      if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
+      if (!profile || !practitioner.onboarding_done) return NextResponse.redirect(new URL("/onboarding", request.url));
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
 
@@ -110,7 +110,7 @@ export async function middleware(request: NextRequest) {
     const practitioner = await getPractitioner();
     if (practitioner?.plan) {
       const profile = await getProfile();
-      if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
+      if (!profile || !practitioner.onboarding_done) return NextResponse.redirect(new URL("/onboarding", request.url));
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
     return supabaseResponse;
@@ -140,7 +140,7 @@ export async function middleware(request: NextRequest) {
     const practitioner = await getPractitioner();
     if (!practitioner?.plan) return supabaseResponse;
     const profile = await getProfile();
-    if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
+    if (!profile || !practitioner.onboarding_done) return NextResponse.redirect(new URL("/onboarding", request.url));
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
@@ -152,23 +152,23 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // /onboarding — praticien avec plan sans profil uniquement
+  // /onboarding — praticien avec plan, onboarding non terminé
   if (path.startsWith("/onboarding")) {
     if (!user) return NextResponse.redirect(new URL("/login", request.url));
     const practitioner = await getPractitioner();
     if (!practitioner?.plan) return NextResponse.redirect(new URL("/login", request.url));
-    const profile = await getProfile();
-    if (profile) return NextResponse.redirect(new URL("/dashboard", request.url));
+    // Rediriger vers dashboard uniquement si l'onboarding est vraiment terminé
+    if (practitioner.onboarding_done) return NextResponse.redirect(new URL("/dashboard", request.url));
     return supabaseResponse;
   }
 
-  // /dashboard — praticien avec plan et profil uniquement
+  // /dashboard — praticien avec plan et onboarding terminé uniquement
   if (path.startsWith("/dashboard")) {
     if (!user) return NextResponse.redirect(new URL("/login", request.url));
     const practitioner = await getPractitioner();
     if (!practitioner?.plan) return NextResponse.redirect(new URL("/login", request.url));
     const profile = await getProfile();
-    if (!profile) return NextResponse.redirect(new URL("/onboarding", request.url));
+    if (!profile || !practitioner.onboarding_done) return NextResponse.redirect(new URL("/onboarding", request.url));
 
     await supabase.from("practitioners").update({ last_active_at: new Date().toISOString() }).eq("user_id", user.id);
     return supabaseResponse;
