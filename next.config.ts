@@ -16,6 +16,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Désactiver la barre Vercel (visible quand connecté à Vercel dans le navigateur)
+  devIndicators: false,
   async headers() {
     return [
       {
