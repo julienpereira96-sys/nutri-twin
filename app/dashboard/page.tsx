@@ -28,7 +28,7 @@ const DEMO_PATIENTS_INITIAL = [
     niveau_activite: "Modérée", regime_specifique: "Aucun",
     allergies: "Lactose", traitements: "Aucun",
     email: "sophie.m@demo.fr",
-    practitioner_instruction: [{ id: "d-m1", text: "Sois plus doux cette semaine, elle traverse une période difficile au travail.", expires_at: null, created_at: new Date().toISOString() }],
+    practitioner_instruction: [{ id: "d-m1", text: "Sois plus doux cette semaine, elle traverse une période difficile au travail.", expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), created_at: new Date().toISOString() }],
     private_notes: [{ id: "n1", text: "Tendances émotionnelles fortes le soir. Suggérer un journal alimentaire.", created_at: new Date().toISOString() }],
     lastActive: "Il y a 2h", streak: 5, sosResolved: 2, onboardingCompleted: true,
     lastMessage: "Oui, c'est clair maintenant. Merci. On continue !",
@@ -67,7 +67,7 @@ const DEMO_PATIENTS_INITIAL = [
     private_notes: [{ id: "n3", text: "Très assidu. Envisager de passer à une consultation mensuelle.", created_at: new Date().toISOString() }],
     lastActive: "Il y a 3h", streak: 12, sosResolved: 1, onboardingCompleted: true,
     lastMessage: "C'est la meilleure preuve que le programme a fonctionné 😊",
-    victory_detected_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // il y a 2h → trophée visible
+    victory_detected_at: "2026-05-18T08:15:00", // correspond à t35 — "Bonne nouvelle : je me suis pesé ce matin, stable depuis 3 semaines !"
   },
 ];
 
@@ -724,10 +724,14 @@ export default function DashboardPage() {
   // ═══ ÉTATS PRINCIPAUX ═══
   const [activeTab, setActiveTab] = useState<ActiveTab>("patients");
 
-  // Lire le tab depuis l'URL au montage (client-only, sans useSearchParams)
+  // Lire le tab au montage — URL en priorité, localStorage en fallback.
+  // localStorage couvre le cas où le refresh arrive avant que window.history.replaceState
+  // ait été appelé (très rare, mais possible sur des machines lentes).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const tab = params.get("tab") as ActiveTab | null;
+    const tabFromUrl = params.get("tab") as ActiveTab | null;
+    const tabFromStorage = localStorage.getItem("dashboard_active_tab") as ActiveTab | null;
+    const tab = tabFromUrl ?? tabFromStorage;
     if (tab === "patients" || tab === "vue_ensemble") setActiveTab(tab);
   }, []);
 
@@ -737,11 +741,15 @@ export default function DashboardPage() {
     if (cached) setPractitionerPhoto(cached);
   }, []);
 
-  // Helper : change le tab ET met à jour l'URL sans rechargement
+  // Helper : change le tab ET met à jour l'URL sans rechargement.
+  // On utilise window.history.replaceState (synchrone) plutôt que router.replace
+  // (asynchrone — passe par la machinerie Next.js) pour que l'URL soit garantie
+  // à jour même si l'utilisateur refreshe immédiatement après le changement de tab.
   const navigateTab = useCallback((tab: ActiveTab) => {
     setActiveTab(tab);
-    router.replace(`/dashboard?tab=${tab}`, { scroll: false });
-  }, [router]);
+    window.history.replaceState(null, "", `/dashboard?tab=${tab}`);
+    localStorage.setItem("dashboard_active_tab", tab);
+  }, []);
   const [searchQuery, setSearchQuery] = useState("");
   const [discretMode, setDiscretMode] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -908,6 +916,8 @@ export default function DashboardPage() {
   const [resentInviteLoading, setResentInviteLoading] = useState(false);
   const [showDeletePatientModal, setShowDeletePatientModal] = useState(false);
   const [deletingPatient, setDeletingPatient] = useState(false);
+  const [showDeleteTestPatientModal, setShowDeleteTestPatientModal] = useState(false);
+  const [deletingTestPatient, setDeletingTestPatient] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [editingMurmureId, setEditingMurmureId] = useState<string | null>(null);
   const [editingMurmureText, setEditingMurmureText] = useState("");
@@ -1824,6 +1834,31 @@ export default function DashboardPage() {
       alert("Erreur réseau lors de la suppression du patient.");
     }
     setDeletingPatient(false);
+  };
+
+  const removeTestPatient = async (testPatientUserId: string) => {
+    setDeletingTestPatient(true);
+    try {
+      const res = await fetch("/api/test-mode/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ testPatientUserId }),
+      });
+      if (res.ok) {
+        // Retirer de la liste locale
+        setPatients(prev => prev.filter(p => p.id !== testPatientUserId));
+        // Si c'était le patient sélectionné, vider la sélection
+        if (selectedPatientId === testPatientUserId) setSelectedPatientId(null);
+        // Si la liste devient vide, réinitialiser la clé iframe
+        setTestIframeKey("test-chat-empty");
+        setShowDeleteTestPatientModal(false);
+      } else {
+        alert("Une erreur est survenue lors de la suppression du patient test.");
+      }
+    } catch {
+      alert("Erreur réseau lors de la suppression du patient test.");
+    }
+    setDeletingTestPatient(false);
   };
 
   const deleteMurmure = async (murmureId: string) => {
@@ -2828,11 +2863,18 @@ export default function DashboardPage() {
                       setReplyText("");
                       setReplyIsFromJumeau(false);
                       if (testMode) {
-                        setTestIframeKey(`test-chat-${patient.id}`);
-                        void fetch("/api/test-mode/active", {
+                        // Attendre que le patient actif soit mis à jour en BDD avant de
+                        // recharger l'iframe — évite la race condition où session/route.ts
+                        // lirait encore l'ancien test_patient_user_id.
+                        fetch("/api/test-mode/active", {
                           method: "PATCH",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ testPatientUserId: patient.id }),
+                        }).then(() => {
+                          setTestIframeKey(`test-chat-${patient.id}`);
+                        }).catch(() => {
+                          // En cas d'erreur réseau, recharger quand même pour ne pas bloquer l'UX
+                          setTestIframeKey(`test-chat-${patient.id}`);
                         });
                       }
                     }}
@@ -3663,8 +3705,8 @@ export default function DashboardPage() {
                     })()
                   )}
 
-                  {/* Supprimer le patient */}
-                  {!onboardingDemoMode && selectedPatient && !(selectedPatient as RealPatient).email?.includes("demo") && (
+                  {/* Supprimer le patient — masqué pour les patients test (ils ont leur propre flux de suppression dans le panneau mode test) */}
+                  {!onboardingDemoMode && selectedPatient && !(selectedPatient as RealPatient).email?.includes("demo") && !(selectedPatient as RealPatient).is_test && (
                     <div style={{ marginTop: 24, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
                       <button
                         onClick={() => setShowDeletePatientModal(true)}
@@ -4203,6 +4245,46 @@ export default function DashboardPage() {
               <button onClick={() => setShowDeletePatientModal(false)} disabled={deletingPatient} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: deletingPatient ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 500, opacity: deletingPatient ? 0.5 : 1, transition: "all 0.2s" }} onMouseEnter={e => { if (!deletingPatient) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; e.currentTarget.style.color = "white"; } }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "#94a3b8"; }}>Annuler</button>
               <button onClick={() => void removePatient(selectedPatientId)} disabled={deletingPatient} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: deletingPatient ? "not-allowed" : "pointer", opacity: deletingPatient ? 0.7 : 1, transition: "all 0.2s" }} onMouseEnter={e => { if (!deletingPatient) { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.35)"; } }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; }}>
                 {deletingPatient ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-red-500/20 border-t-red-400" />Suppression</span> : "Supprimer"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ Modale suppression patient test ═══ */}
+      {showDeleteTestPatientModal && selectedPatientId && (
+        <div onClick={e => { if (e.target === e.currentTarget && !deletingTestPatient) setShowDeleteTestPatientModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: "#0d0d0d", borderRadius: 20, padding: 28, width: "100%", maxWidth: 360, border: "1px solid rgba(244,63,94,0.2)", boxShadow: "0 20px 60px rgba(0,0,0,0.6)", textAlign: "center" }}>
+            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><polyline points="3,6 5,6 21,6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M10 11v6M14 11v6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Supprimer ce profil de test ?</h2>
+            <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+              Le compte, le profil et l'historique de conversation seront définitivement supprimés.
+            </p>
+            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", marginBottom: 20, textAlign: "left" }}>
+              <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
+                <span style={{ color: "#94a3b8", fontWeight: 600 }}>Aucune obligation de rétention.</span> Il s'agit d'un compte interne de simulation, sans valeur clinique.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setShowDeleteTestPatientModal(false)}
+                disabled={deletingTestPatient}
+                style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: deletingTestPatient ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 500, opacity: deletingTestPatient ? 0.5 : 1, transition: "all 0.2s" }}
+                onMouseEnter={e => { if (!deletingTestPatient) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; } }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}
+              >Annuler</button>
+              <button
+                onClick={() => void removeTestPatient(selectedPatientId)}
+                disabled={deletingTestPatient}
+                style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: deletingTestPatient ? "not-allowed" : "pointer", opacity: deletingTestPatient ? 0.7 : 1, transition: "all 0.2s" }}
+                onMouseEnter={e => { if (!deletingTestPatient) { e.currentTarget.style.background = "rgba(244,63,94,0.15)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.35)"; } }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.08)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.2)"; }}
+              >
+                {deletingTestPatient
+                  ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-red-500/20 border-t-red-400" />Suppression</span>
+                  : "Supprimer"}
               </button>
             </div>
           </div>
@@ -6272,6 +6354,18 @@ export default function DashboardPage() {
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: emerald, display: "inline-block", flexShrink: 0 }} />
             <span style={{ fontSize: 10, fontWeight: 600, color: "#6ee7b7", letterSpacing: "0.1em", textTransform: "uppercase" }}>Mode test - vue patient simulée</span>
           </div>
+          {/* Bouton supprimer le patient test actif */}
+          {selectedPatientId && (
+            <button
+              onClick={() => setShowDeleteTestPatientModal(true)}
+              title="Supprimer ce profil de test"
+              style={{ position: "absolute", right: 46, top: "50%", transform: "translateY(-50%)", background: "rgba(244,63,94,0.06)", border: "1px solid rgba(244,63,94,0.15)", cursor: "pointer", color: "#f87171", width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,63,94,0.14)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.3)"; e.currentTarget.style.color = "#fca5a5"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,63,94,0.06)"; e.currentTarget.style.borderColor = "rgba(244,63,94,0.15)"; e.currentTarget.style.color = "#f87171"; }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3,6 5,6 21,6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            </button>
+          )}
           <button
             onClick={() => setTestMode(false)}
             title="Quitter le mode test"

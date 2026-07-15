@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { Redis } from "@upstash/redis";
 import { getSessionUser, unauthorized } from "@/lib/api-auth";
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 /**
  * PATCH /api/test-mode/active
@@ -42,6 +48,9 @@ export async function PATCH(request: Request) {
     .from("practitioners")
     .update({ test_patient_user_id: testPatientUserId })
     .eq("user_id", user.id);
+
+  // Invalider le cache profil IA du nouveau patient actif pour garantir des données fraîches
+  await redis.del(`patient_profile_v2:${testPatientUserId}`).catch(() => {});
 
   return NextResponse.json({ ok: true });
 }
