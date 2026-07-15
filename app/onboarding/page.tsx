@@ -486,19 +486,68 @@ export default function OnboardingPage() {
     <>
       {showResume ? (
         <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-4">
-          <div className="rounded-3xl border border-amber-500/25 bg-[#121212] p-8 max-w-md w-full text-center">
-            <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6"
-              style={{ background: "rgba(245,158,11,0.08)", border: "2px solid rgba(245,158,11,0.3)" }}>
-              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-              </svg>
+          <div className="rounded-3xl border border-amber-500/20 bg-[#121212] p-8 max-w-sm w-full text-center">
+            {/* Logo avec progress ring gelé à ~32% en amber */}
+            <div className="flex justify-center mb-6">
+              {(() => {
+                const r = 72;
+                const cx = 80;
+                const cy = 80;
+                const circumference = 2 * Math.PI * r;
+                const frozenProgress = 32;
+                const dashOffset = circumference * (1 - frozenProgress / 100);
+                const angle = (frozenProgress / 100) * 2 * Math.PI - Math.PI / 2;
+                const dotX = cx + r * Math.cos(angle);
+                const dotY = cy + r * Math.sin(angle);
+                return (
+                  <div className="relative" style={{ width: 160, height: 160 }}>
+                    {/* Amber halo */}
+                    <div className="absolute rounded-full" style={{ inset: -16, background: "radial-gradient(circle, rgba(245,158,11,0.10) 0%, rgba(245,158,11,0.03) 50%, transparent 70%)", pointerEvents: "none" }} />
+                    {/* SVG ring */}
+                    <svg width="160" height="160" style={{ position: "absolute", inset: 0 }}>
+                      {/* Track */}
+                      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(245,158,11,0.10)" strokeWidth="3.5" />
+                      {/* Arc gelé à 32% */}
+                      <circle
+                        cx={cx} cy={cy} r={r}
+                        fill="none"
+                        stroke="#f59e0b"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={dashOffset}
+                        transform={`rotate(-90 ${cx} ${cy})`}
+                        style={{ filter: "drop-shadow(0 0 4px rgba(245,158,11,0.7))" }}
+                      />
+                      {/* Point lumineux à la pointe */}
+                      <circle
+                        cx={dotX} cy={dotY} r={4}
+                        fill="white"
+                        style={{ filter: "drop-shadow(0 0 5px rgba(245,158,11,1)) drop-shadow(0 0 10px rgba(245,158,11,0.6))" }}
+                      />
+                    </svg>
+                    {/* Logo centré */}
+                    <div style={{
+                      position: "absolute",
+                      top: 32, left: 32,
+                      width: 96, height: 96,
+                      borderRadius: "50%",
+                      border: "2px solid rgba(245,158,11,0.5)",
+                      boxShadow: "0 0 20px rgba(245,158,11,0.25), 0 0 40px rgba(245,158,11,0.08)",
+                      overflow: "hidden",
+                    }}>
+                      <img src="/logo.png" alt="NutriTwin" style={{ width: 96, height: 96, padding: "18px", objectFit: "contain", boxSizing: "border-box" }} />
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
             <p className="text-xs font-mono font-bold tracking-widest text-amber-400 uppercase mb-3">Génération interrompue</p>
             <h1 className="text-xl font-bold text-white mb-3 leading-tight">Votre Jumeau n'est pas encore prêt.</h1>
-            <p className="text-sm text-zinc-400 leading-relaxed mb-8">
+            <p className="text-sm text-zinc-400 leading-relaxed mb-2">
               Vous avez quitté la page avant la fin de la génération. Votre profil a été conservé — il suffit de reprendre pour finaliser votre Jumeau.
             </p>
+            <p className="text-xs font-mono text-amber-500/45 mb-8">[NT-GEN] Reprise disponible · Profil conservé</p>
             <button type="button"
               onClick={() => { setShowResume(false); startGeneration(); }}
               style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "black", borderRadius: 12, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", border: "none", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease", width: "100%" }}
