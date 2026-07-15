@@ -636,19 +636,41 @@ export default function OnboardingPage() {
                       </div>
                     </div>
                     <div className="flex justify-center mb-10" style={{ opacity: genFlash ? 0 : 1, transition: "opacity 0.4s ease" }}>
-                      <div className="relative" style={{ width: 88, height: 88 }}>
-                        {/* Halo */}
-                        <div className="absolute rounded-full" style={{ inset: -14, background: "radial-gradient(circle, rgba(16,185,129,0.10), transparent 65%)", pointerEvents: "none" }} />
-                        {/* Arc comète */}
-                        <div className="absolute inset-0 rounded-full" style={{
-                          background: "conic-gradient(from 0deg, #10b981 0%, rgba(16,185,129,0.55) 10%, rgba(16,185,129,0.15) 22%, transparent 32%, transparent 100%)",
-                          WebkitMask: "radial-gradient(circle, transparent 37px, black 38px)",
-                          mask: "radial-gradient(circle, transparent 37px, black 38px)",
-                          animation: "spin 2s linear infinite"
-                        }} />
-                        {/* Logo flottant */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <img src="/logo.png" alt="NutriTwin" style={{ width: 46, height: 46, objectFit: "contain" }} />
+                      <div className="relative" style={{ width: 160, height: 160 }}>
+                        {/* Halo radial de fond */}
+                        <div className="absolute rounded-full" style={{ inset: -20, background: "radial-gradient(circle, rgba(16,185,129,0.13) 0%, rgba(16,185,129,0.04) 50%, transparent 70%)", pointerEvents: "none" }} />
+                        {/* Arc comète + point lumineux — tournent ensemble */}
+                        <div className="absolute inset-0" style={{ animation: "spin 2s linear infinite" }}>
+                          {/* Anneau arc avec queue comète */}
+                          <div className="absolute inset-0 rounded-full" style={{
+                            background: "conic-gradient(from 0deg, #10b981 0%, rgba(16,185,129,0.55) 12%, rgba(16,185,129,0.12) 26%, transparent 36%, transparent 100%)",
+                            WebkitMask: "radial-gradient(circle at center, transparent 69px, black 70px, black 75px, transparent 76px)",
+                            mask: "radial-gradient(circle at center, transparent 69px, black 70px, black 75px, transparent 76px)",
+                          }} />
+                          {/* Point lumineux à la tête de l'arc */}
+                          <div style={{
+                            position: "absolute",
+                            top: 4,
+                            left: "50%",
+                            transform: "translateX(-50%)",
+                            width: 7,
+                            height: 7,
+                            borderRadius: "50%",
+                            background: "#ffffff",
+                            boxShadow: "0 0 6px 2px rgba(16,185,129,0.95), 0 0 14px 5px rgba(16,185,129,0.5), 0 0 24px 8px rgba(16,185,129,0.2)",
+                          }} />
+                        </div>
+                        {/* Logo style login — centré */}
+                        <div style={{
+                          position: "absolute",
+                          top: 32, left: 32,
+                          width: 96, height: 96,
+                          borderRadius: "50%",
+                          border: "2px solid rgba(16,185,129,0.6)",
+                          boxShadow: "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)",
+                          overflow: "hidden",
+                        }}>
+                          <img src="/logo.png" alt="NutriTwin" style={{ width: 96, height: 96, padding: "18px", objectFit: "contain", boxSizing: "border-box" }} />
                         </div>
                       </div>
                     </div>
