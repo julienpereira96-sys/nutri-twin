@@ -105,6 +105,7 @@ export default function OnboardingPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [alreadyDone, setAlreadyDone] = useState(false);
+  const [showResume, setShowResume] = useState(false);
   const [showCertTooltip, setShowCertTooltip] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [genStep, setGenStep] = useState(0);
@@ -253,6 +254,12 @@ export default function OnboardingPage() {
         }
       }
 
+      // Détecter si l'utilisateur a quitté en cours de génération :
+      // profile a des réponses aux questions (tone_of_voice existe) mais onboarding_done = false
+      if (!prac?.onboarding_done && profile && (profile as Record<string, unknown>).tone_of_voice) {
+        setShowResume(true);
+      }
+
       // Hydrate les réponses aux questions depuis Supabase si elles y sont
       // (cas : activation précédente réussie ou partielle).
       if (profile) {
@@ -386,7 +393,7 @@ export default function OnboardingPage() {
   };
 
   // Save all answers + activate
-  const saveProfile = async (redirect = true, extras?: { vision?: string; signature?: string }) => {
+  const saveProfile = async (redirect = true, activate = true, extras?: { vision?: string; signature?: string }) => {
     if (isSaving) return;
     setIsSaving(true); setSaveError("");
     try {
@@ -406,19 +413,34 @@ export default function OnboardingPage() {
         const data = await response.json() as { error?: string };
         throw new Error(data.error ?? "Erreur lors de la sauvegarde.");
       }
-      await supabase.from("practitioners").update({ onboarding_done: true }).eq("user_id", user?.id ?? "");
-      localStorage.removeItem("onboarding_step");
-      localStorage.removeItem("onboarding_answers");
-      localStorage.removeItem("onboarding_selected");
-      localStorage.removeItem("onboarding_autre");
-      if (redirect) router.push("/dashboard");
+      if (activate) {
+        await supabase.from("practitioners").update({ onboarding_done: true }).eq("user_id", user?.id ?? "");
+        localStorage.removeItem("onboarding_step");
+        localStorage.removeItem("onboarding_answers");
+        localStorage.removeItem("onboarding_selected");
+        localStorage.removeItem("onboarding_autre");
+        if (redirect) router.push("/dashboard");
+      }
     } catch (error: unknown) {
       setSaveError(error instanceof Error ? error.message : "Impossible de sauvegarder votre profil.");
     } finally { setIsSaving(false); }
   };
 
+  // Activation finale : met onboarding_done à true + nettoie localStorage + redirige
+  const activateJumeau = async () => {
+    const supabase = createSupabaseBrowserClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("practitioners").update({ onboarding_done: true }).eq("user_id", user?.id ?? "");
+    localStorage.removeItem("onboarding_step");
+    localStorage.removeItem("onboarding_answers");
+    localStorage.removeItem("onboarding_selected");
+    localStorage.removeItem("onboarding_autre");
+    setNavigating(true);
+    setTimeout(() => router.push("/dashboard"), 800);
+  };
+
   const startGeneration = () => {
-    void saveProfile(false, { vision: visionText, signature: signatureText });
+    void saveProfile(false, false, { vision: visionText, signature: signatureText });
     setIsGenerating(true); setGenStep(0); setGenProgress(0);
     genTimeoutsRef.current = [];
     const totalDuration = 40000;
@@ -462,7 +484,31 @@ export default function OnboardingPage() {
 
   return (
     <>
-      {alreadyDone ? (
+      {showResume ? (
+        <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-4">
+          <div className="rounded-3xl border border-amber-500/25 bg-[#121212] p-8 max-w-md w-full text-center">
+            <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6"
+              style={{ background: "rgba(245,158,11,0.08)", border: "2px solid rgba(245,158,11,0.3)" }}>
+              <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <p className="text-xs font-mono font-bold tracking-widest text-amber-400 uppercase mb-3">Génération interrompue</p>
+            <h1 className="text-xl font-bold text-white mb-3 leading-tight">Votre Jumeau n'est pas encore prêt.</h1>
+            <p className="text-sm text-zinc-400 leading-relaxed mb-8">
+              Vous avez quitté la page avant la fin de la génération. Votre profil a été conservé — il suffit de reprendre pour finaliser votre Jumeau.
+            </p>
+            <button type="button"
+              onClick={() => { setShowResume(false); startGeneration(); }}
+              style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "black", borderRadius: 12, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", border: "none", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease", width: "100%" }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>
+              Reprendre la génération
+            </button>
+          </div>
+        </div>
+      ) : alreadyDone ? (
         <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-4">
           <div className="rounded-3xl border border-[#10b981]/30 bg-[#121212] p-8 max-w-md w-full text-center">
             <div className="w-28 h-28 rounded-full flex items-center justify-center mx-auto mb-6"
@@ -614,7 +660,7 @@ export default function OnboardingPage() {
                     </p>
                     <p className="text-xs font-mono text-[#10b981]/50 mb-10">[NT-006] Certification validée · Jumeau opérationnel</p>
                     {saveError && <p className="mb-4 text-sm text-red-400">{saveError}</p>}
-                    <button type="button" onClick={() => { setNavigating(true); setTimeout(() => router.push("/dashboard"), 800); }}
+                    <button type="button" onClick={() => { void activateJumeau(); }}
                       style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "black", borderRadius: 12, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", border: "none", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
                       onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>
