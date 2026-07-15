@@ -15,7 +15,7 @@ export default function CGUPage() {
           Conditions Générales d'Utilisation
         </h1>
         <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 48 }}>
-          Dernière mise à jour : juillet 2026
+          Dernière mise à jour : 15 juillet 2026
         </p>
 
         <Section title="1. Mentions légales et présentation du service">
@@ -75,7 +75,42 @@ export default function CGUPage() {
           12 derniers mois.
         </Section>
 
-        <Section title="6. Obligations du Praticien">
+        <Section title="6. Système de détection automatique des situations de détresse">
+          NutriTwin intègre un système de détection automatique des situations de détresse
+          psychologique ou clinique (ci-après « Alertes »), basé sur l'intelligence artificielle.
+          Ce système analyse en temps réel les échanges entre le patient et l'assistant, sans
+          intervention humaine préalable.
+          <br /><br />
+          <strong>Niveaux d'alerte.</strong> Deux niveaux existent : l'alerte comportementale (niveau orange),
+          déclenchée lors de la détection d'une détresse émotionnelle significative, et l'alerte
+          critique (niveau rouge), déclenchée lors de la détection de propos à risque vital ou
+          nécessitant une prise en charge immédiate.
+          <br /><br />
+          <strong>Visibilité dashboard.</strong> Les Alertes sont systématiquement affichées sur le
+          dashboard praticien, de manière permanente et sans possibilité de désactivation. Le Praticien
+          s'engage à consulter régulièrement son dashboard afin de prendre connaissance des Alertes
+          en temps utile.
+          <br /><br />
+          <strong>Notifications email.</strong> En complément de l'affichage sur le dashboard, NutriTwin
+          peut notifier le Praticien par email lors du déclenchement d'une Alerte. Les deux niveaux
+          fonctionnent différemment : les notifications comportementales (orange) sont désactivées par
+          défaut et relèvent d'un opt-in volontaire du Praticien ; les notifications critiques (rouge)
+          sont activées par défaut et relèvent d'un opt-out que le Praticien peut exercer depuis
+          Paramètres → Notifications. Dans les deux cas, la désactivation des emails n'affecte pas la
+          visibilité des Alertes sur le dashboard. En cas de désactivation des notifications email, le
+          Praticien reconnaît expressément que la consultation régulière du dashboard est nécessaire
+          pour prendre connaissance des Alertes et qu'il assume l'entière responsabilité des
+          conséquences liées à un défaut de consultation.
+          <br /><br />
+          <strong>Limitation de responsabilité liée à la détection IA.</strong> Le système de détection
+          repose sur l'intelligence artificielle et peut générer des faux positifs (alerte sans
+          situation réelle de danger) ou des faux négatifs (absence d'alerte malgré une situation
+          de danger). NutriTwin ne garantit pas l'exhaustivité ni l'exactitude de la détection et
+          décline toute responsabilité en cas d'Alerte non déclenchée ou déclenchée à tort. La
+          décision d'intervenir auprès du patient relève de la responsabilité exclusive du Praticien.
+        </Section>
+
+        <Section title="7. Obligations du Praticien">
           En utilisant NutriTwin, le Praticien s'engage à :
           <ul style={{ marginTop: 12, paddingLeft: 24, lineHeight: 2, listStyleType: "disc" }}>
             <li>Informer ses patients de l'utilisation d'un outil d'IA dans le cadre de leur suivi.</li>
@@ -88,7 +123,7 @@ export default function CGUPage() {
           </ul>
         </Section>
 
-        <Section title="7. Propriété intellectuelle">
+        <Section title="8. Propriété intellectuelle">
           L'ensemble des éléments constituant NutriTwin (interface, algorithmes, contenu, marque) sont
           la propriété exclusive de Nutritwin. Toute reproduction, représentation ou exploitation non
           autorisée est strictement interdite.
@@ -98,7 +133,7 @@ export default function CGUPage() {
           données et ne les utilise pas à d'autres fins que la fourniture du service.
         </Section>
 
-        <Section title="8. Abonnement et résiliation">
+        <Section title="9. Abonnement et résiliation">
           L'abonnement est sans engagement et peut être résilié à tout moment depuis l'espace praticien.
           La résiliation prend effet à la fin de la période de facturation en cours. Aucun remboursement
           prorata temporis ne sera effectué sauf en cas d'erreur de facturation de notre part.
@@ -107,7 +142,7 @@ export default function CGUPage() {
           l'accès sans préavis ni indemnité.
         </Section>
 
-        <Section title="9. Disponibilité du service et force majeure">
+        <Section title="10. Disponibilité du service et force majeure">
           NutriTwin s'engage à maintenir le service disponible 24h/24 et 7j/7, dans la limite du
           possible. Des interruptions temporaires peuvent survenir pour maintenance, avec préavis autant
           que faire se peut. NutriTwin ne saurait être tenu responsable des interruptions liées à des
@@ -119,7 +154,7 @@ export default function CGUPage() {
           de l'Éditeur.
         </Section>
 
-        <Section title="10. Données personnelles">
+        <Section title="11. Données personnelles">
           Le traitement des données personnelles collectées dans le cadre de l'utilisation du service est
           régi par la{" "}
           <a href="/confidentialite" style={{ color: "#10b981", textDecoration: "underline" }}>
@@ -129,13 +164,13 @@ export default function CGUPage() {
           le Praticien reconnaît avoir pris connaissance de cette politique.
         </Section>
 
-        <Section title="11. Loi applicable et juridiction">
+        <Section title="12. Loi applicable et juridiction">
           Les présentes CGU sont soumises au droit français. En cas de litige, et à défaut de résolution
           amiable dans un délai de 30 jours à compter de la notification du différend, les tribunaux
           compétents de Chaumont seront seuls compétents.
         </Section>
 
-        <Section title="12. Contact">
+        <Section title="13. Contact">
           Pour toute question relative aux présentes CGU : contact@nutritwin.fr
         </Section>
       </div>

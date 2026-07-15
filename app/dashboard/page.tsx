@@ -769,7 +769,7 @@ export default function DashboardPage() {
   const [showDeletePinModal, setShowDeletePinModal] = useState(false);
   const [deletePinInput, setDeletePinInput] = useState("");
   const [settingsScreen, setSettingsScreen] = useState<"main"|"profil"|"motdepasse"|"discret"|"abonnement"|"notifications">("main");
-  const [notifyBehavioral, setNotifyBehavioral] = useState(true);
+  const [notifyBehavioral, setNotifyBehavioral] = useState(false);
   const [notifyCritical, setNotifyCritical] = useState(true);
   const [showDisableCriticalConfirm, setShowDisableCriticalConfirm] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
@@ -4923,7 +4923,7 @@ export default function DashboardPage() {
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={coral} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                     </div>
                     <p style={{ margin: "0 0 8px", fontSize: 15, fontWeight: 700, color: "white", textAlign: "center" }}>Désactiver les alertes d'urgence ?</p>
-                    <p style={{ margin: "0 0 22px", fontSize: 13, color: "#94a3b8", lineHeight: 1.6, textAlign: "center" }}>Désactiver peut engager votre responsabilité en cas de crise non détectée. Êtes-vous sûr ?</p>
+                    <p style={{ margin: "0 0 22px", fontSize: 13, color: "#94a3b8", lineHeight: 1.6, textAlign: "center" }}>En désactivant, vous ne recevrez plus d'email lors d'une alerte critique. Les alertes resteront néanmoins visibles sur votre dashboard, veillez à le consulter régulièrement. Cette décision peut engager votre responsabilité professionnelle. Êtes-vous sûr ?</p>
                     <div style={{ display: "flex", gap: 10 }}>
                       <button onClick={() => setShowDisableCriticalConfirm(false)}
                         style={{ flex: 1, height: 42, borderRadius: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500 }}

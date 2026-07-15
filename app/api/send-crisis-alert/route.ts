@@ -28,8 +28,8 @@ export async function POST(request: Request) {
 
   if (!practitioner?.email) return Response.json({ error: "Email praticien introuvable" }, { status: 400 });
 
-  // Respecter le choix du praticien — sauf pour les alertes via mots-clés bruts (toujours envoyées)
-  if (practitioner.notify_critical === false && alertType !== "suicide" && alertType !== "medical" && alertType !== "threat") {
+  // Respecter le choix du praticien — les alertes dashboard restent toujours actives côté app
+  if (practitioner.notify_critical === false) {
     return Response.json({ skipped: true, reason: "notify_critical désactivé" });
   }
 
