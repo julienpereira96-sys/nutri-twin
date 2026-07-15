@@ -104,7 +104,6 @@ export default function OnboardingPage() {
   // Core UI states
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const [alreadyDone, setAlreadyDone] = useState(false);
   const [showResume, setShowResume] = useState(false);
   const [showCertTooltip, setShowCertTooltip] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -210,20 +209,16 @@ export default function OnboardingPage() {
       if (!user) return;
 
       const { data: prac } = await supabase.from("practitioners").select("onboarding_done").eq("user_id", user.id).single();
-      if (prac?.onboarding_done) {
-        setAlreadyDone(true);
-      } else {
-        const savedUserId = localStorage.getItem("onboarding_user_id");
-        if (savedUserId && savedUserId !== user.id) {
-          localStorage.removeItem("onboarding_step");
-          localStorage.removeItem("onboarding_answers");
-          localStorage.removeItem("onboarding_selected");
-          localStorage.removeItem("onboarding_autre");
-          localStorage.removeItem("onboarding_vision");
-          localStorage.removeItem("onboarding_signature");
-        }
-        localStorage.setItem("onboarding_user_id", user.id);
+      const savedUserId = localStorage.getItem("onboarding_user_id");
+      if (savedUserId && savedUserId !== user.id) {
+        localStorage.removeItem("onboarding_step");
+        localStorage.removeItem("onboarding_answers");
+        localStorage.removeItem("onboarding_selected");
+        localStorage.removeItem("onboarding_autre");
+        localStorage.removeItem("onboarding_vision");
+        localStorage.removeItem("onboarding_signature");
       }
+      localStorage.setItem("onboarding_user_id", user.id);
 
       // Load existing profile from Supabase (source of truth)
       const { data: profile } = await supabase
@@ -554,30 +549,6 @@ export default function OnboardingPage() {
               onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
               onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>
               Reprendre la génération
-            </button>
-          </div>
-        </div>
-      ) : alreadyDone ? (
-        <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-4">
-          <div className="rounded-3xl border border-[#10b981]/30 bg-[#121212] p-8 max-w-md w-full text-center">
-            <div className="w-28 h-28 rounded-full flex items-center justify-center mx-auto mb-6"
-              style={{ background: "rgba(16,185,129,0.12)", border: "2px solid rgba(16,185,129,0.4)" }}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="4 12 9 17 20 6" stroke="#10b981" strokeWidth="2"/>
-              </svg>
-            </div>
-            <p className="text-xs font-mono font-bold tracking-widest text-[#10b981] uppercase mb-3">Jumeau opérationnel</p>
-            <h1 className="text-xl font-bold text-white mb-3">Votre jumeau s'est finalisé<br />en arrière-plan.</h1>
-            <p className="text-sm text-zinc-400 leading-relaxed mb-8">
-              Même si vous avez quitté la page, votre profil a bien été enregistré. Votre Jumeau est prêt à prendre le relais auprès de vos patients.
-            </p>
-            <button type="button" onClick={() => { setNavigating(true); setTimeout(() => router.push("/dashboard"), 800); }}
-              style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "black", borderRadius: 12, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", border: "none", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>
-              {navigating
-                ? <span style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 16, height: 16, borderRadius: "50%", border: "2px solid rgba(0,0,0,0.2)", borderTop: "2px solid black", animation: "spin 1s linear infinite", display: "inline-block" }} />Chargement</span>
-                : "Accéder à mon cabinet numérique"}
             </button>
           </div>
         </div>
