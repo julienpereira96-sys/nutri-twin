@@ -485,18 +485,18 @@ export default function OnboardingPage() {
             {/* Logo avec ring gelé à ~32% en vert */}
             <div className="flex justify-center mb-6">
               {(() => {
-                const r = 48;
-                const cx = 52;
-                const cy = 52;
+                const r = 50;
+                const cx = 54;
+                const cy = 54;
                 const circumference = 2 * Math.PI * r;
                 const frozenProgress = 32;
                 const dashOffset = circumference * (1 - frozenProgress / 100);
                 return (
-                  <div className="relative" style={{ width: 104, height: 104 }}>
+                  <div className="relative" style={{ width: 108, height: 108 }}>
                     {/* Halo */}
                     <div className="absolute rounded-full" style={{ inset: -14, background: "radial-gradient(circle, rgba(16,185,129,0.10) 0%, transparent 70%)", pointerEvents: "none" }} />
                     {/* SVG ring */}
-                    <svg width="104" height="104" style={{ position: "absolute", inset: 0, overflow: "visible" }}>
+                    <svg width="108" height="108" style={{ position: "absolute", inset: 0, overflow: "visible" }}>
                       <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(16,185,129,0.18)" strokeWidth="2.5" />
                       <circle
                         cx={cx} cy={cy} r={r}
@@ -651,8 +651,8 @@ export default function OnboardingPage() {
               <section className="rounded-3xl border border-[#10b981]/20 bg-[#0d0d0d] p-8 min-h-[520px] flex flex-col overflow-hidden">
                 {genDone ? (
                   <div className="flex-1 flex flex-col items-center justify-center text-center" style={{ animation: "fadeInUp 0.6s ease forwards" }}>
-                    <div className="w-28 h-28 rounded-full flex items-center justify-center mb-8"
-                      style={{ background: "rgba(16,185,129,0.12)", border: "2px solid rgba(16,185,129,0.4)" }}>
+                    <div className="rounded-full flex items-center justify-center mb-8"
+                      style={{ width: 108, height: 108, background: "rgba(16,185,129,0.12)", border: "2px solid rgba(16,185,129,0.4)" }}>
                       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="4 12 9 17 20 6" stroke="rgba(16,185,129,0.15)" strokeWidth="2"/>
                         <polyline points="4 12 9 17 20 6" stroke="#10b981" strokeWidth="2" strokeDasharray="30" strokeDashoffset="30" style={{ animation: "drawCheck 5s ease 0.3s forwards" }}/>
@@ -689,18 +689,18 @@ export default function OnboardingPage() {
                     </div>
                     <div className="flex justify-center mb-10" style={{ opacity: genFlash ? 0 : 1, transition: "opacity 0.4s ease" }}>
                       {(() => {
-                        const r = 48;
-                        const cx = 52;
-                        const cy = 52;
+                        const r = 50;
+                        const cx = 54;
+                        const cy = 54;
                         const circumference = 2 * Math.PI * r;
                         const dashOffset = circumference * (1 - genProgress / 100);
                         const isComplete = genProgress >= 100;
                         return (
-                          <div className="relative" style={{ width: 104, height: 104 }}>
+                          <div className="relative" style={{ width: 108, height: 108 }}>
                             {/* Halo */}
                             <div className="absolute rounded-full" style={{ inset: -14, background: "radial-gradient(circle, rgba(16,185,129,0.10) 0%, transparent 70%)", pointerEvents: "none" }} />
                             {/* SVG — le cercle IS la bordure du logo */}
-                            <svg width="104" height="104" style={{ position: "absolute", inset: 0, overflow: "visible" }}>
+                            <svg width="108" height="108" style={{ position: "absolute", inset: 0, overflow: "visible" }}>
                               <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(16,185,129,0.18)" strokeWidth="2.5" />
                               <circle
                                 cx={cx} cy={cy} r={r}
