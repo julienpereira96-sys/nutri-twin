@@ -496,7 +496,7 @@ export default function OnboardingPage() {
                     {/* Halo */}
                     <div className="absolute rounded-full" style={{ inset: -14, background: "radial-gradient(circle, rgba(16,185,129,0.10) 0%, transparent 70%)", pointerEvents: "none" }} />
                     {/* SVG ring */}
-                    <svg width="104" height="104" style={{ position: "absolute", inset: 0 }}>
+                    <svg width="104" height="104" style={{ position: "absolute", inset: 0, overflow: "visible" }}>
                       <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(16,185,129,0.18)" strokeWidth="2.5" />
                       <circle
                         cx={cx} cy={cy} r={r}
@@ -700,7 +700,7 @@ export default function OnboardingPage() {
                             {/* Halo */}
                             <div className="absolute rounded-full" style={{ inset: -14, background: "radial-gradient(circle, rgba(16,185,129,0.10) 0%, transparent 70%)", pointerEvents: "none" }} />
                             {/* SVG — le cercle IS la bordure du logo */}
-                            <svg width="104" height="104" style={{ position: "absolute", inset: 0 }}>
+                            <svg width="104" height="104" style={{ position: "absolute", inset: 0, overflow: "visible" }}>
                               <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(16,185,129,0.18)" strokeWidth="2.5" />
                               <circle
                                 cx={cx} cy={cy} r={r}
@@ -713,8 +713,9 @@ export default function OnboardingPage() {
                                 transform={`rotate(-90 ${cx} ${cy})`}
                                 style={{
                                   transition: "stroke-dashoffset 1.2s ease-out, stroke 0.5s ease",
+                                  animation: isComplete ? "ring-done 1.2s ease-out 0.2s both" : "none",
                                   filter: isComplete
-                                    ? "drop-shadow(0 0 8px rgba(255,255,255,0.95)) drop-shadow(0 0 18px rgba(16,185,129,0.8))"
+                                    ? "drop-shadow(0 0 8px rgba(255,255,255,0.9)) drop-shadow(0 0 20px rgba(16,185,129,0.8))"
                                     : "drop-shadow(0 0 7px rgba(16,185,129,0.95)) drop-shadow(0 0 14px rgba(16,185,129,0.5))"
                                 }}
                               />
@@ -1048,6 +1049,12 @@ export default function OnboardingPage() {
             @keyframes drawCheck { from { stroke-dashoffset: 30; } to { stroke-dashoffset: 0; } }
             @keyframes fadeOut { from { opacity: 0.8; } to { opacity: 0; } }
             @keyframes pulse-ring { 0%, 100% { box-shadow: 0 0 14px rgba(16,185,129,0.3), 0 0 28px rgba(16,185,129,0.1); } 50% { box-shadow: 0 0 22px rgba(16,185,129,0.55), 0 0 40px rgba(16,185,129,0.2); } }
+            @keyframes ring-done {
+              0%   { filter: drop-shadow(0 0 7px rgba(16,185,129,0.9)) drop-shadow(0 0 14px rgba(16,185,129,0.5)); stroke: #10b981; }
+              30%  { filter: drop-shadow(0 0 18px rgba(255,255,255,1)) drop-shadow(0 0 36px rgba(255,255,255,0.5)) drop-shadow(0 0 56px rgba(16,185,129,0.9)); stroke: #ffffff; }
+              65%  { filter: drop-shadow(0 0 10px rgba(255,255,255,0.95)) drop-shadow(0 0 22px rgba(16,185,129,0.9)); stroke: #ffffff; }
+              100% { filter: drop-shadow(0 0 8px rgba(255,255,255,0.9)) drop-shadow(0 0 20px rgba(16,185,129,0.8)); stroke: #ffffff; }
+            }
           `}</style>
         </div>
       )}
