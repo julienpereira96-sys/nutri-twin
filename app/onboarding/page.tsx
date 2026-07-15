@@ -481,68 +481,54 @@ export default function OnboardingPage() {
     <>
       {showResume ? (
         <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center px-4">
-          <div className="rounded-3xl border border-amber-500/20 bg-[#121212] p-8 max-w-sm w-full text-center">
-            {/* Logo avec progress ring gelé à ~32% en amber */}
+          <div className="rounded-3xl border border-[#10b981]/20 bg-[#121212] p-8 max-w-md w-full text-center">
+            {/* Logo avec ring gelé à ~32% en vert */}
             <div className="flex justify-center mb-6">
               {(() => {
-                const r = 72;
-                const cx = 80;
-                const cy = 80;
+                const r = 48;
+                const cx = 52;
+                const cy = 52;
                 const circumference = 2 * Math.PI * r;
                 const frozenProgress = 32;
                 const dashOffset = circumference * (1 - frozenProgress / 100);
-                const angle = (frozenProgress / 100) * 2 * Math.PI - Math.PI / 2;
-                const dotX = cx + r * Math.cos(angle);
-                const dotY = cy + r * Math.sin(angle);
                 return (
-                  <div className="relative" style={{ width: 160, height: 160 }}>
-                    {/* Amber halo */}
-                    <div className="absolute rounded-full" style={{ inset: -16, background: "radial-gradient(circle, rgba(245,158,11,0.10) 0%, rgba(245,158,11,0.03) 50%, transparent 70%)", pointerEvents: "none" }} />
+                  <div className="relative" style={{ width: 104, height: 104 }}>
+                    {/* Halo */}
+                    <div className="absolute rounded-full" style={{ inset: -14, background: "radial-gradient(circle, rgba(16,185,129,0.10) 0%, transparent 70%)", pointerEvents: "none" }} />
                     {/* SVG ring */}
-                    <svg width="160" height="160" style={{ position: "absolute", inset: 0 }}>
-                      {/* Track */}
-                      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(245,158,11,0.10)" strokeWidth="3.5" />
-                      {/* Arc gelé à 32% */}
+                    <svg width="104" height="104" style={{ position: "absolute", inset: 0 }}>
+                      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(16,185,129,0.12)" strokeWidth="3.5" />
                       <circle
                         cx={cx} cy={cy} r={r}
                         fill="none"
-                        stroke="#f59e0b"
+                        stroke="#10b981"
                         strokeWidth="3.5"
                         strokeLinecap="round"
                         strokeDasharray={circumference}
                         strokeDashoffset={dashOffset}
                         transform={`rotate(-90 ${cx} ${cy})`}
-                        style={{ filter: "drop-shadow(0 0 4px rgba(245,158,11,0.7))" }}
-                      />
-                      {/* Point lumineux à la pointe */}
-                      <circle
-                        cx={dotX} cy={dotY} r={4}
-                        fill="white"
-                        style={{ filter: "drop-shadow(0 0 5px rgba(245,158,11,1)) drop-shadow(0 0 10px rgba(245,158,11,0.6))" }}
+                        style={{ filter: "drop-shadow(0 0 4px rgba(16,185,129,0.6))" }}
                       />
                     </svg>
-                    {/* Logo centré */}
+                    {/* Logo */}
                     <div style={{
                       position: "absolute",
-                      top: 32, left: 32,
-                      width: 96, height: 96,
+                      inset: 4,
                       borderRadius: "50%",
-                      border: "2px solid rgba(245,158,11,0.5)",
-                      boxShadow: "0 0 20px rgba(245,158,11,0.25), 0 0 40px rgba(245,158,11,0.08)",
                       overflow: "hidden",
                     }}>
-                      <img src="/logo.png" alt="NutriTwin" style={{ width: 96, height: 96, padding: "18px", objectFit: "contain", boxSizing: "border-box" }} />
+                      <img src="/logo.png" alt="NutriTwin" style={{ width: "100%", height: "100%", padding: "14px", objectFit: "contain", boxSizing: "border-box" }} />
                     </div>
                   </div>
                 );
               })()}
             </div>
-            <p className="text-xs font-mono font-bold tracking-widest text-amber-400 uppercase mb-3">Génération interrompue</p>
+            <p className="text-xs font-mono font-bold tracking-widest text-[#10b981] uppercase mb-3">Génération interrompue</p>
             <h1 className="text-xl font-bold text-white mb-3 leading-tight">Votre Jumeau n'est pas encore prêt.</h1>
             <p className="text-sm text-zinc-400 leading-relaxed mb-2">
-              Vous avez quitté la page avant la fin de la génération. Votre profil a été conservé — il suffit de reprendre pour finaliser votre Jumeau.
+              Vous avez quitté la page avant la fin de la génération. Votre profil a été conservé, il suffit de reprendre le téléchargement pour finaliser votre Jumeau.
             </p>
-            <p className="text-xs font-mono text-amber-500/45 mb-8">[NT-GEN] Reprise disponible · Profil conservé</p>
+            <p className="text-xs font-mono text-[#10b981]/45 mb-8">[NT-GEN] Reprise disponible · Profil conservé</p>
             <button type="button"
               onClick={() => { setShowResume(false); startGeneration(); }}
               style={{ background: "linear-gradient(135deg, #10b981, #059669)", color: "black", borderRadius: 12, padding: "14px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer", border: "none", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease", width: "100%" }}
@@ -703,25 +689,19 @@ export default function OnboardingPage() {
                     </div>
                     <div className="flex justify-center mb-10" style={{ opacity: genFlash ? 0 : 1, transition: "opacity 0.4s ease" }}>
                       {(() => {
-                        const r = 72;
-                        const cx = 80;
-                        const cy = 80;
+                        const r = 48;
+                        const cx = 52;
+                        const cy = 52;
                         const circumference = 2 * Math.PI * r;
                         const dashOffset = circumference * (1 - genProgress / 100);
                         const isComplete = genProgress >= 100;
-                        // Position du point lumineux à la pointe de l'arc
-                        const angle = (genProgress / 100) * 2 * Math.PI - Math.PI / 2;
-                        const dotX = cx + r * Math.cos(angle);
-                        const dotY = cy + r * Math.sin(angle);
                         return (
-                          <div className="relative" style={{ width: 160, height: 160 }}>
-                            {/* Halo radial de fond */}
-                            <div className="absolute rounded-full" style={{ inset: -20, background: "radial-gradient(circle, rgba(16,185,129,0.13) 0%, rgba(16,185,129,0.04) 50%, transparent 70%)", pointerEvents: "none" }} />
-                            {/* SVG progress ring */}
-                            <svg width="160" height="160" style={{ position: "absolute", inset: 0 }}>
-                              {/* Track — cercle vide en fond */}
+                          <div className="relative" style={{ width: 104, height: 104 }}>
+                            {/* Halo */}
+                            <div className="absolute rounded-full" style={{ inset: -14, background: "radial-gradient(circle, rgba(16,185,129,0.10) 0%, transparent 70%)", pointerEvents: "none" }} />
+                            {/* SVG — le cercle IS la bordure du logo */}
+                            <svg width="104" height="104" style={{ position: "absolute", inset: 0 }}>
                               <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(16,185,129,0.12)" strokeWidth="3.5" />
-                              {/* Arc de progression */}
                               <circle
                                 cx={cx} cy={cy} r={r}
                                 fill="none"
@@ -735,32 +715,19 @@ export default function OnboardingPage() {
                                   transition: "stroke-dashoffset 0.35s ease, stroke 0.4s ease",
                                   filter: isComplete
                                     ? "drop-shadow(0 0 6px rgba(255,255,255,0.9)) drop-shadow(0 0 14px rgba(16,185,129,0.8))"
-                                    : "drop-shadow(0 0 4px rgba(16,185,129,0.7))"
+                                    : "drop-shadow(0 0 4px rgba(16,185,129,0.6))"
                                 }}
                               />
-                              {/* Point lumineux à la pointe */}
-                              {genProgress > 0 && genProgress < 100 && (
-                                <circle
-                                  cx={dotX} cy={dotY} r={4}
-                                  fill={isComplete ? "white" : "white"}
-                                  style={{ filter: "drop-shadow(0 0 5px rgba(16,185,129,1)) drop-shadow(0 0 10px rgba(16,185,129,0.6))" }}
-                                />
-                              )}
                             </svg>
-                            {/* Logo style login — centré */}
+                            {/* Logo — inset 4px par rapport au ring */}
                             <div style={{
                               position: "absolute",
-                              top: 32, left: 32,
-                              width: 96, height: 96,
+                              inset: 4,
                               borderRadius: "50%",
-                              border: isComplete ? "2px solid rgba(255,255,255,0.7)" : "2px solid rgba(16,185,129,0.6)",
-                              boxShadow: isComplete
-                                ? "0 0 24px rgba(255,255,255,0.4), 0 0 48px rgba(16,185,129,0.3)"
-                                : "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)",
                               overflow: "hidden",
-                              transition: "border-color 0.4s ease, box-shadow 0.4s ease",
+                              transition: "border-color 0.4s ease",
                             }}>
-                              <img src="/logo.png" alt="NutriTwin" style={{ width: 96, height: 96, padding: "18px", objectFit: "contain", boxSizing: "border-box" }} />
+                              <img src="/logo.png" alt="NutriTwin" style={{ width: "100%", height: "100%", padding: "14px", objectFit: "contain", boxSizing: "border-box" }} />
                             </div>
                           </div>
                         );
