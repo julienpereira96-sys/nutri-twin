@@ -636,43 +636,69 @@ export default function OnboardingPage() {
                       </div>
                     </div>
                     <div className="flex justify-center mb-10" style={{ opacity: genFlash ? 0 : 1, transition: "opacity 0.4s ease" }}>
-                      <div className="relative" style={{ width: 160, height: 160 }}>
-                        {/* Halo radial de fond */}
-                        <div className="absolute rounded-full" style={{ inset: -20, background: "radial-gradient(circle, rgba(16,185,129,0.13) 0%, rgba(16,185,129,0.04) 50%, transparent 70%)", pointerEvents: "none" }} />
-                        {/* Arc comète + point lumineux — tournent ensemble */}
-                        <div className="absolute inset-0" style={{ animation: "spin 2s linear infinite" }}>
-                          {/* Anneau arc avec queue comète */}
-                          <div className="absolute inset-0 rounded-full" style={{
-                            background: "conic-gradient(from 0deg, #10b981 0%, rgba(16,185,129,0.55) 12%, rgba(16,185,129,0.12) 26%, transparent 36%, transparent 100%)",
-                            WebkitMask: "radial-gradient(circle at center, transparent 69px, black 70px, black 75px, transparent 76px)",
-                            mask: "radial-gradient(circle at center, transparent 69px, black 70px, black 75px, transparent 76px)",
-                          }} />
-                          {/* Point lumineux à la tête de l'arc */}
-                          <div style={{
-                            position: "absolute",
-                            top: 4,
-                            left: "50%",
-                            transform: "translateX(-50%)",
-                            width: 7,
-                            height: 7,
-                            borderRadius: "50%",
-                            background: "#ffffff",
-                            boxShadow: "0 0 6px 2px rgba(16,185,129,0.95), 0 0 14px 5px rgba(16,185,129,0.5), 0 0 24px 8px rgba(16,185,129,0.2)",
-                          }} />
-                        </div>
-                        {/* Logo style login — centré */}
-                        <div style={{
-                          position: "absolute",
-                          top: 32, left: 32,
-                          width: 96, height: 96,
-                          borderRadius: "50%",
-                          border: "2px solid rgba(16,185,129,0.6)",
-                          boxShadow: "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)",
-                          overflow: "hidden",
-                        }}>
-                          <img src="/logo.png" alt="NutriTwin" style={{ width: 96, height: 96, padding: "18px", objectFit: "contain", boxSizing: "border-box" }} />
-                        </div>
-                      </div>
+                      {(() => {
+                        const r = 72;
+                        const cx = 80;
+                        const cy = 80;
+                        const circumference = 2 * Math.PI * r;
+                        const dashOffset = circumference * (1 - genProgress / 100);
+                        const isComplete = genProgress >= 100;
+                        // Position du point lumineux à la pointe de l'arc
+                        const angle = (genProgress / 100) * 2 * Math.PI - Math.PI / 2;
+                        const dotX = cx + r * Math.cos(angle);
+                        const dotY = cy + r * Math.sin(angle);
+                        return (
+                          <div className="relative" style={{ width: 160, height: 160 }}>
+                            {/* Halo radial de fond */}
+                            <div className="absolute rounded-full" style={{ inset: -20, background: "radial-gradient(circle, rgba(16,185,129,0.13) 0%, rgba(16,185,129,0.04) 50%, transparent 70%)", pointerEvents: "none" }} />
+                            {/* SVG progress ring */}
+                            <svg width="160" height="160" style={{ position: "absolute", inset: 0 }}>
+                              {/* Track — cercle vide en fond */}
+                              <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(16,185,129,0.12)" strokeWidth="3.5" />
+                              {/* Arc de progression */}
+                              <circle
+                                cx={cx} cy={cy} r={r}
+                                fill="none"
+                                stroke={isComplete ? "#ffffff" : "#10b981"}
+                                strokeWidth="3.5"
+                                strokeLinecap="round"
+                                strokeDasharray={circumference}
+                                strokeDashoffset={dashOffset}
+                                transform={`rotate(-90 ${cx} ${cy})`}
+                                style={{
+                                  transition: "stroke-dashoffset 0.35s ease, stroke 0.4s ease",
+                                  filter: isComplete
+                                    ? "drop-shadow(0 0 6px rgba(255,255,255,0.9)) drop-shadow(0 0 14px rgba(16,185,129,0.8))"
+                                    : "drop-shadow(0 0 4px rgba(16,185,129,0.7))"
+                                }}
+                              />
+                              {/* Point lumineux à la pointe */}
+                              {genProgress > 0 && genProgress < 100 && (
+                                <circle
+                                  cx={dotX} cy={dotY} r={4}
+                                  fill={isComplete ? "white" : "white"}
+                                  style={{ filter: "drop-shadow(0 0 5px rgba(16,185,129,1)) drop-shadow(0 0 10px rgba(16,185,129,0.6))" }}
+                                />
+                              )}
+                            </svg>
+                            {/* Logo style login — centré */}
+                            <div style={{
+                              position: "absolute",
+                              top: 32, left: 32,
+                              width: 96, height: 96,
+                              borderRadius: "50%",
+                              border: isComplete ? "2px solid rgba(255,255,255,0.7)" : "2px solid rgba(16,185,129,0.6)",
+                              boxShadow: isComplete
+                                ? "0 0 24px rgba(255,255,255,0.4), 0 0 48px rgba(16,185,129,0.3)"
+                                : "0 0 20px rgba(16,185,129,0.35), 0 0 40px rgba(16,185,129,0.12)",
+                              overflow: "hidden",
+                              transition: "border-color 0.4s ease, box-shadow 0.4s ease",
+                            }}>
+                              <img src="/logo.png" alt="NutriTwin" style={{ width: 96, height: 96, padding: "18px", objectFit: "contain", boxSizing: "border-box" }} />
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="space-y-3 font-mono flex-1" style={{ opacity: genFlash ? 0 : 1, transition: "opacity 0.4s ease" }}>
                       {[
