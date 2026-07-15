@@ -4259,14 +4259,9 @@ export default function DashboardPage() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><polyline points="3,6 5,6 21,6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M10 11v6M14 11v6" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <h2 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 700, color: "white" }}>Supprimer ce profil de test ?</h2>
-            <p style={{ margin: "0 0 12px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
+            <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b", lineHeight: 1.6 }}>
               Le compte, le profil et l'historique de conversation seront définitivement supprimés.
             </p>
-            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "10px 14px", marginBottom: 20, textAlign: "left" }}>
-              <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
-                <span style={{ color: "#94a3b8", fontWeight: 600 }}>Aucune obligation de rétention.</span> Il s'agit d'un compte interne de simulation, sans valeur clinique.
-              </p>
-            </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button
                 onClick={() => setShowDeleteTestPatientModal(false)}
