@@ -216,7 +216,13 @@ export default function ChoosePlanPage() {
         ))}
       </div>
 
-      <p style={{ marginTop: 28, fontSize: 12, color: "#52525b", textAlign: "center" }}>
+      <div style={{ marginTop: 20, maxWidth: 1100, width: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
+        <p style={{ margin: 0, fontSize: 11, lineHeight: 1.6, color: "#52525b" }}><sup>(1)</sup> Le plan Cabinet inclut 3 comptes praticiens indépendants. Chaque praticien supplémentaire est facturé 149&nbsp;€/mois et ouvre 25 patients additionnels.</p>
+        <p style={{ margin: 0, fontSize: 11, lineHeight: 1.6, color: "#52525b" }}><sup>(2)</sup> 80 patients inclus pour les 3 praticiens du plan Cabinet. Chaque praticien supplémentaire bénéficie de 25 patients additionnels.</p>
+        <p style={{ margin: 0, fontSize: 11, lineHeight: 1.6, color: "#52525b" }}><sup>(3)</sup> Gestion des volumes et sécurité : l&apos;enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel et élargie à 100 messages/jour sur les plans Professionnel et Cabinet afin de garantir la stabilité technique de la plateforme et de maintenir un cadre d&apos;échange structuré pour le patient. Conformément à la réglementation, toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais utilisées pour entraîner des modèles d&apos;IA publics.</p>
+      </div>
+
+      <p style={{ marginTop: 16, fontSize: 12, color: "#52525b", textAlign: "center" }}>
         Sans engagement · Résiliable à tout moment · Paiement sécurisé
       </p>
     </div>
