@@ -171,8 +171,11 @@ export default function ChoosePlanPage() {
             background: "transparent",
             border: "2px solid rgba(16,185,129,0.6)",
             boxShadow: "0 0 16px rgba(16,185,129,0.3), 0 0 32px rgba(16,185,129,0.1)",
-            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26,
-          }}>🌿</div>
+            display: "flex", alignItems: "center", justifyContent: "center",
+            overflow: "hidden",
+          }}>
+            <img src="/logo.png" alt="NutriTwin" style={{ width: 72, height: 72, padding: "14px", objectFit: "contain", boxSizing: "border-box" }} />
+          </div>
         </div>
 
         <div style={{

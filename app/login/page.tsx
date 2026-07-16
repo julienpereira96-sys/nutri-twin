@@ -97,7 +97,6 @@ export default function LoginPage() {
     });
     setResetSent(true);
     setResetLoading(false);
-    setTimeout(() => setResetSent(false), 5000);
   };
 
   const closeModal = () => {
@@ -176,7 +175,7 @@ export default function LoginPage() {
 
 
 {error === "__no_plan__" ? (
-            <button key="no-plan" onClick={() => { setResending(true); router.push(`/checkout?plan=${pendingPlan}`); }}
+            <button key="no-plan" onClick={() => { setResending(true); router.push("/choose-plan"); }}
               disabled={resending}
               className="mt-6 w-full rounded-xl py-3 text-sm font-semibold text-black transition cursor-pointer disabled:opacity-60"
               style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)", border: "none", boxShadow: "0 4px 24px rgba(245,158,11,0.25)", transition: "all 0.25s ease" }}
@@ -252,7 +251,7 @@ export default function LoginPage() {
                 <p style={{ margin: "4px 0 0", fontSize: 13, fontWeight: 600, color: "#10b981" }}>{forgotEmail}</p>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#4b5563" }}>Pensez à vérifier vos spams.</p>
                 <button onClick={closeModal}
-                  style={{ marginTop: 20, height: 40, borderRadius: 20, padding: "0 24px", background: "linear-gradient(135deg, #10b981, #059669)", border: "none", color: "black", fontSize: 13, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
+                  style={{ marginTop: 20, height: 44, width: "100%", borderRadius: 10, background: "linear-gradient(135deg, #10b981, #059669)", border: "none", color: "black", fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 24px rgba(16,185,129,0.25)", transition: "all 0.25s ease" }}
                   onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(16,185,129,0.4)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                   onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>Fermer</button>
               </div>
