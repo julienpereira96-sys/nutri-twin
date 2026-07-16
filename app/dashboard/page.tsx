@@ -1091,7 +1091,7 @@ export default function DashboardPage() {
 
   const loadPatients = async (pid: string): Promise<boolean> => {
     const { data: relations } = await supabase.from("patient_practitioner").select("patient_id").eq("practitioner_id", pid);
-    if (!relations || relations.length === 0) { setLoading(false); setOnboardingDemoMode(true); return true; }
+    if (!relations || relations.length === 0) { setLoading(false); if (!testModeRef.current) setOnboardingDemoMode(true); return true; }
     const patientIds = relations.map((r) => r.patient_id as string);
 
     // Tenter d'exclure les patients test (colonne is_test peut ne pas exister avant migration)
@@ -2673,7 +2673,7 @@ export default function DashboardPage() {
         <OnboardingTour
           practitionerName={practitionerName}
           onSkip={handleOnboardingSkip}
-          onTestMode={() => { handleOnboardingSkip(); setTestMode(true); }}
+          onTestMode={() => { handleOnboardingSkip(); testModeRef.current = true; setTestMode(true); }}
         />
       )}
 
@@ -2722,8 +2722,8 @@ export default function DashboardPage() {
                   </button>
                   {/* ─── Mode test ─── */}
                   <button onClick={() => {
-                    if (testMode) { setTestMode(false); setShowAccountMenu(false); }
-                    else { setTestMode(true); setShowAccountMenu(false); }
+                    if (testMode) { testModeRef.current = false; setTestMode(false); setShowAccountMenu(false); }
+                    else { testModeRef.current = true; setTestMode(true); setShowAccountMenu(false); }
                   }}
                     style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, background: testMode ? "rgba(16,185,129,0.08)" : "transparent", border: "none", cursor: "pointer", transition: "all 0.15s", marginBottom: 2 }}
                     onMouseEnter={e => { if (!testMode) e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
@@ -6370,7 +6370,7 @@ export default function DashboardPage() {
             </button>
           )}
           <button
-            onClick={() => setTestMode(false)}
+            onClick={() => { testModeRef.current = false; setTestMode(false); }}
             title="Quitter le mode test"
             style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", color: "#94a3b8", width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }}
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; }}
