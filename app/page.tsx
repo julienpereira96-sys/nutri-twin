@@ -975,7 +975,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             )}
-            <span className={`text-[12px] leading-snug ${!f.included ? "text-zinc-700 line-through" : i < 5 ? "text-zinc-200" : "text-zinc-500"}`}>
+            <span className={`text-[12px] leading-snug ${!f.included ? "text-zinc-700" : i < 5 ? "text-zinc-200" : "text-zinc-500"}`}>
               {f.text.split(/(\([123]\))/).map((part, j) =>
                 /^\([123]\)$/.test(part) ? <sup key={j} style={{ fontSize: "0.75em" }}>{part}</sup> : part
               )}

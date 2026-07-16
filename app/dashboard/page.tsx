@@ -5052,7 +5052,7 @@ export default function DashboardPage() {
                     {/* Features */}
                     <ul style={{ margin: "0 0 16px", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
                       {features.map((f, i) => (
-                        <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: f.included ? (i < 5 ? "#e4e4e7" : "#71717a") : "#3f3f46", textDecoration: f.included ? "none" : "line-through" }}>
+                        <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: f.included ? (i < 5 ? "#e4e4e7" : "#71717a") : "#52525b" }}>
                           {f.included ? (
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ marginTop: 1, flexShrink: 0 }}><path d="M4.5 12.75l6 6 9-13.5" stroke={emerald} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                           ) : (

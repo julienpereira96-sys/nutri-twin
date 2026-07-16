@@ -34,7 +34,7 @@ const PLANS: { name: string; price: string; badge?: string; description: string;
       { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
       { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true, exclusive: true },
       { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true, exclusive: true },
-      { text: "Plafond d'échanges quotidien étendu par patient", included: true, exclusive: true },
+      { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true, exclusive: true },
     ],
     plan: "pro",
     featured: true,
@@ -44,15 +44,15 @@ const PLANS: { name: string; price: string; badge?: string; description: string;
     price: "499€",
     description: "Pour les cabinets multi-praticiens et centres de santé.",
     features: [
-      { text: "Jusqu'à 80 patients suivis en simultané", included: true, exclusive: false },
+      { text: "Jusqu'à 80 patients suivis en simultané (2)", included: true, exclusive: false },
       { text: "Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)", included: true, exclusive: false },
       { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
       { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
       { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
       { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true, exclusive: true },
       { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true, exclusive: true },
-      { text: "Plafond d'échanges quotidien étendu par patient", included: true, exclusive: true },
-      { text: "Espace collaboratif : partage de dossiers entre confrères", included: true, exclusive: true },
+      { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true, exclusive: true },
+      { text: "Espace collaboratif : possibilité de transférer ou de partager un dossier entre confrères", included: true, exclusive: true },
     ],
     plan: "cabinet",
     featured: false,
@@ -60,7 +60,7 @@ const PLANS: { name: string; price: string; badge?: string; description: string;
   },
 ];
 
-function PricingCard({ name, price, badge, description, features, plan, featured }: {
+function PricingCard({ name, price, badge, description, features, plan, featured, footnoteMark }: {
   name: string; price: string; badge?: string; description: string;
   features: { text: string; included: boolean; exclusive: boolean }[]; plan: string; featured: boolean; footnoteMark?: string;
 }) {
@@ -101,6 +101,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
       <p className="mb-1 text-[14px] font-bold text-white">{name}</p>
       <div className="mb-3 flex items-baseline gap-1">
         <span className="text-[42px] font-black tracking-tight text-white">{price}</span>
+        {footnoteMark && <sup className="text-[13px] font-normal text-zinc-500 ml-0.5">({footnoteMark})</sup>}
         <span className="text-[12px] text-zinc-600">/mois</span>
       </div>
       <p className="mb-5 text-[12px] leading-relaxed text-zinc-500">{description}</p>
@@ -113,11 +114,15 @@ function PricingCard({ name, price, badge, description, features, plan, featured
                 <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
               </svg>
             ) : (
-              <svg className="mt-0.5 size-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#52525b">
+              <svg className="mt-0.5 size-4 shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             )}
-            <span className={`text-[12px] leading-snug ${f.included ? (i < 3 ? "text-zinc-200" : "text-zinc-400") : "text-zinc-600"}`}>{f.text}</span>
+            <span className={`text-[12px] leading-snug ${!f.included ? "text-zinc-700" : i < 5 ? "text-zinc-200" : "text-zinc-500"}`}>
+              {f.text.split(/(\([123]\))/).map((part, j) =>
+                /^\([123]\)$/.test(part) ? <sup key={j} style={{ fontSize: "0.75em" }}>{part}</sup> : part
+              )}
+            </span>
           </li>
         ))}
       </ul>
@@ -194,7 +199,7 @@ export default function ChoosePlanPage() {
           Choisissez votre abonnement
         </h1>
         <p style={{ margin: 0, fontSize: 13, color: "#71717a", lineHeight: 1.6 }}>
-          Une dernière étape pour accéder à votre jumeau numérique.
+          Sélectionnez la formule adaptée à votre pratique.
         </p>
       </div>
 
