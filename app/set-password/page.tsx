@@ -230,7 +230,7 @@ export default function SetPasswordPage() {
                 onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(16,185,129,0.25)"; e.currentTarget.style.transform = "translateY(0)"; }}>
                 {loading ? <span className="flex items-center justify-center gap-2"><span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" />Création en cours</span> : "Accéder à mon espace"}
               </button>
-              <p className="mt-2 text-center text-xs text-zinc-500 whitespace-nowrap">Chiffrement de bout en bout · Données traitées en Europe (RGPD)</p>
+              <p className="mt-2 text-center text-xs text-zinc-500">Chiffrement de bout en bout · Données traitées en Europe (RGPD)</p>
             </div>
           )}
         </div>
