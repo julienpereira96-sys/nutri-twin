@@ -1245,6 +1245,13 @@ export default function DashboardPage() {
         ep.red_behavioral_until = null;
       }
     }
+    // Si le mode test a été activé pendant le chargement, ne pas écraser l'état test.
+    // On stocke les vrais patients dans realPatientsRef pour la restauration à la sortie.
+    if (testModeRef.current) {
+      realPatientsRef.current = patientsWithStats;
+      setLoading(false);
+      return false;
+    }
     setPatients(patientsWithStats);
     const isDemo = patientsWithStats.length === 0;
     setOnboardingDemoMode(isDemo);
