@@ -1853,7 +1853,8 @@ export default function DashboardPage() {
         setTestIframeKey("test-chat-empty");
         setShowDeleteTestPatientModal(false);
       } else {
-        alert("Une erreur est survenue lors de la suppression du patient test.");
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        alert(data.error ?? "Une erreur est survenue lors de la suppression du patient test.");
       }
     } catch {
       alert("Erreur réseau lors de la suppression du patient test.");

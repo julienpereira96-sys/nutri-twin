@@ -62,7 +62,10 @@ export async function DELETE(request: Request) {
   const { error: deleteAuthError } = await supabase.auth.admin.deleteUser(testPatientUserId);
   if (deleteAuthError) {
     console.error("[NutriTwin] test-mode/delete — deleteUser error:", deleteAuthError.message);
-    // Non bloquant : on continue le nettoyage même si le compte Auth est déjà absent
+    return NextResponse.json(
+      { error: `Échec suppression compte Auth : ${deleteAuthError.message}` },
+      { status: 500 }
+    );
   }
 
   // 2. Supprimer la relation praticien/patient
