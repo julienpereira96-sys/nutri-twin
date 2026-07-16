@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -361,6 +361,11 @@ export default function PatientOnboardingPage() {
 
   const totalSteps = 4;
 
+  // Guard : empêche l'écriture dans localStorage avant que le chargement initial ne soit terminé.
+  // Sans ce ref, l'effet de sauvegarde se déclenche au montage avec les states vides et écrase
+  // le localStorage avant que l'API ait eu le temps de répondre — ce qui bloque le pré-remplissage.
+  const loadCompleteRef = useRef(false);
+
   // Restaurer depuis localStorage au montage, puis compléter avec les données Supabase
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -397,6 +402,7 @@ export default function PatientOnboardingPage() {
           if (Array.isArray(p.alimentsAimes)) setAlimentsAimes(p.alimentsAimes as string[]);
           if (Array.isArray(p.alimentsDetestes)) setAlimentsDetestes(p.alimentsDetestes as string[]);
           if (Array.isArray(p.customAliments)) setCustomAliments(p.customAliments as string[]);
+          loadCompleteRef.current = true;
           return; // localStorage prime sur les données Supabase
         }
       } catch { /* ignore */ }
@@ -418,11 +424,15 @@ export default function PatientOnboardingPage() {
           setConfirmRegime(patient.regime_specifique ?? "");
         }
       }
+      loadCompleteRef.current = true;
     });
   }, []);
 
   // Sauvegarder dans localStorage à chaque changement de state
+  // Le guard loadCompleteRef empêche d'écraser le localStorage avec des valeurs vides
+  // au premier rendu, avant que le chargement API ait pu pré-remplir les champs.
   useEffect(() => {
+    if (!loadCompleteRef.current) return;
     try {
       localStorage.setItem(LS_KEY, JSON.stringify({
         step,
