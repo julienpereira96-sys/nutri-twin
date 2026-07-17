@@ -150,85 +150,63 @@ const LevierSVG = ({ id }: { id: string }) => {
   return null;
 };
 
-const MoodSVG = ({ id, color }: { id: string; color: string }) => {
+const MoodSVG = ({ id }: { id: string }) => {
+  const c = "#10b981";
+  const sw = "1.8";
   if (id === "flame") return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <defs>
-        <radialGradient id="mf1" cx="50%" cy="70%" r="60%"><stop offset="0%" stopColor="#fcd34d"/><stop offset="50%" stopColor="#f97316"/><stop offset="100%" stopColor="#b91c1c"/></radialGradient>
-        <radialGradient id="mf2" cx="50%" cy="65%" r="55%"><stop offset="0%" stopColor="#fef9c3"/><stop offset="100%" stopColor="#fbbf24"/></radialGradient>
-      </defs>
-      <path d="M12 23c5 0 9-4 9-9 0-4-2.8-7.5-5-9.5 0 2.5-1.5 4-3 4.5C14 7 13 4.5 11 2c-4.5 3.5-7 7-7 12 0 5 4 9 8 9z" fill="url(#mf1)"/>
-      <path d="M12 19c2 0 4-1.5 4-4 0-1.5-1-3-2-3.5 0 1-1 2-2 2-1.2 0-2-1.5-1.5-3C9 11.5 8 13 8 15c0 2.5 1.5 4 4 4z" fill="url(#mf2)"/>
-      <ellipse cx="10" cy="8" rx="1.5" ry="2.5" fill="white" opacity="0.12"/>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
+        d="M12 22c5 0 8-4 8-8 0-3.5-2-6.5-4.5-8.5 0 2.5-1.5 3.5-3 4C13 8 12 5.5 10 3 7 5.5 4 9 4 14c0 4.5 3.5 8 8 8z"/>
+      <path stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
+        d="M12 19c2 0 3.5-1.5 3.5-3.5 0-1.5-1-2.5-2-3 0 1-1 1.8-2 1.8-1 0-1.8-1.2-1.3-2.3C8.5 13 7.5 14.5 7.5 16c0 1.7 2 3 4.5 3z"/>
     </svg>
   );
   if (id === "sun") return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <defs>
-        <radialGradient id="ms1" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#fef9c3"/><stop offset="60%" stopColor="#fde047"/><stop offset="100%" stopColor="#a16207"/></radialGradient>
-      </defs>
-      <g stroke={color} strokeWidth="2" strokeLinecap="round" opacity="0.6">
-        <line x1="12" y1="2" x2="12" y2="4.5"/>
-        <line x1="12" y1="19.5" x2="12" y2="22"/>
-        <line x1="2" y1="12" x2="4.5" y2="12"/>
-        <line x1="19.5" y1="12" x2="22" y2="12"/>
-        <line x1="5.64" y1="5.64" x2="7.41" y2="7.41"/>
-        <line x1="16.59" y1="16.59" x2="18.36" y2="18.36"/>
-        <line x1="5.64" y1="18.36" x2="7.41" y2="16.59"/>
-        <line x1="16.59" y1="7.41" x2="18.36" y2="5.64"/>
-      </g>
-      <circle cx="12" cy="12" r="5.5" fill="url(#ms1)"/>
-      <ellipse cx="10" cy="9.5" rx="2" ry="1.2" fill="white" opacity="0.3"/>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="4.5" stroke={c} strokeWidth={sw}/>
+      <line x1="12" y1="2" x2="12" y2="5" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
+      <line x1="12" y1="19" x2="12" y2="22" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
+      <line x1="2" y1="12" x2="5" y2="12" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
+      <line x1="19" y1="12" x2="22" y2="12" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
+      <line x1="4.9" y1="4.9" x2="7.1" y2="7.1" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
+      <line x1="16.9" y1="16.9" x2="19.1" y2="19.1" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
+      <line x1="4.9" y1="19.1" x2="7.1" y2="16.9" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
+      <line x1="16.9" y1="7.1" x2="19.1" y2="4.9" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
     </svg>
   );
   if (id === "cloud") return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <defs>
-        <linearGradient id="mc1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#ddd6fe"/><stop offset="100%" stopColor="#6d28d9"/></linearGradient>
-      </defs>
-      <path d="M18.5 9.5C18.2 6.3 15.4 4 12.1 4 9.9 4 7.7 5.3 6.6 7.3 4.6 7.5 3 9.1 3 11c0 2.2 1.8 4 4 4h11.5c1.9 0 3.5-1.5 3.5-3.5 0-1.8-1.4-3.3-3.5-3.5z" fill="url(#mc1)"/>
-      <ellipse cx="9" cy="8" rx="2.5" ry="1.2" fill="white" opacity="0.25"/>
-      <polyline points="13,13 10,18 13.5,18 10.5,23" stroke="#fef3c7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
+        d="M17.5 8.5c-.3-3.2-3-5.5-6.3-5.5C8.8 3 6.7 4.3 5.6 6.3 3.6 6.5 2 8.1 2 10c0 2.2 1.8 4 4 4h11.5c1.9 0 3.5-1.5 3.5-3.5 0-1.8-1.4-3.3-3.5-3.5z"/>
+      <line x1="10" y1="17" x2="10" y2="20" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
+      <line x1="14" y1="17" x2="14" y2="19" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
+      <line x1="12" y1="17" x2="12" y2="21" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
     </svg>
   );
   if (id === "sceptique") return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <defs>
-        <radialGradient id="msk1" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#fb7185"/><stop offset="100%" stopColor="#9f1239"/></radialGradient>
-      </defs>
-      <circle cx="12" cy="12" r="10" fill="url(#msk1)"/>
-      <ellipse cx="9" cy="8" rx="3.5" ry="2" fill="white" opacity="0.2"/>
-      <path d="M7 8.5c.5-1 1.5-1.5 2.5-1" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-      <path d="M14.5 7.5h3" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-      <circle cx="9" cy="11.5" r="1.3" fill="white"/>
-      <circle cx="15" cy="11.5" r="1.3" fill="white"/>
-      <path d="M8.5 16.5q1.5-1.5 3.5-.5t3.5-.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" fill="none"/>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke={c} strokeWidth={sw}/>
+      <path stroke={c} strokeWidth={sw} strokeLinecap="round" d="M7 9c.5-1.5 2-2.5 3.5-2"/>
+      <line x1="14.5" y1="7.5" x2="17" y2="7.5" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
+      <circle cx="9" cy="12" r="1" fill={c}/>
+      <circle cx="15" cy="12" r="1" fill={c}/>
+      <path stroke={c} strokeWidth={sw} strokeLinecap="round" fill="none" d="M9 17q1.5-2 3-.5t3-1"/>
     </svg>
   );
   if (id === "compass") return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <defs>
-        <radialGradient id="mco1" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#93c5fd"/><stop offset="100%" stopColor="#1e40af"/></radialGradient>
-      </defs>
-      <circle cx="12" cy="12" r="10" fill="url(#mco1)"/>
-      <ellipse cx="9" cy="8" rx="3.5" ry="2" fill="white" opacity="0.2"/>
-      <circle cx="12" cy="12" r="1.8" fill="white"/>
-      <polygon points="12,4.5 13.5,11 12,10 10.5,11" fill="#ef4444"/>
-      <polygon points="12,19.5 10.5,13 12,14 13.5,13" fill="white" opacity="0.7"/>
-      <line x1="5.5" y1="12" x2="7" y2="12" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
-      <line x1="17" y1="12" x2="18.5" y2="12" stroke="white" strokeWidth="1.2" strokeLinecap="round" opacity="0.5"/>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="12" r="10" stroke={c} strokeWidth={sw}/>
+      <circle cx="12" cy="12" r="1.5" fill={c}/>
+      <path stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
+        d="M12 5l2 7-2 .5-2-.5L12 5z"/>
+      <path stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" opacity="0.4"
+        d="M12 19l-2-7 2-.5 2 .5L12 19z"/>
     </svg>
   );
   if (id === "moon") return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <defs>
-        <radialGradient id="mm1" cx="40%" cy="35%" r="65%"><stop offset="0%" stopColor="#cbd5e1"/><stop offset="100%" stopColor="#334155"/></radialGradient>
-      </defs>
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="url(#mm1)"/>
-      <ellipse cx="10" cy="7" rx="2.5" ry="1.5" fill="white" opacity="0.25"/>
-      <circle cx="16.5" cy="7" r="1.5" fill="white" opacity="0.7"/>
-      <circle cx="19.5" cy="11" r="1" fill="white" opacity="0.5"/>
-      <circle cx="18.5" cy="4.5" r="0.7" fill="white" opacity="0.4"/>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
+        d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>
     </svg>
   );
   return null;
@@ -639,7 +617,7 @@ export default function PatientOnboardingPage() {
               {/* Section 1 */}
               <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Vos informations personnelles</p>
               {!editMode ? (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
                   {[
                     { label: "Âge", display: confirmAge ? `${confirmAge} ans` : "Aucun" },
                     { label: "Taille", display: confirmTaille ? `${confirmTaille} cm` : "Aucune" },
@@ -653,7 +631,7 @@ export default function PatientOnboardingPage() {
                   ))}
                 </div>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
                   {[
                     { label: "Âge", value: confirmAge, onChange: setConfirmAge, placeholder: "34", type: "number" },
                     { label: "Taille (cm)", value: confirmTaille, onChange: setConfirmTaille, placeholder: "168", type: "number" },
@@ -682,7 +660,7 @@ export default function PatientOnboardingPage() {
               {/* Section 2 */}
               <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>Votre contexte médical</p>
               {!editMode ? (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
                   {medicalFields.map(f => (
                     <div key={f.label} style={fieldBox}>
                       <p style={fieldLabel}>{f.label}</p>
@@ -691,7 +669,7 @@ export default function PatientOnboardingPage() {
                   ))}
                 </div>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 20 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
                   {medicalFields.map(f => {
                     const other = isAutre(f.value, f.options);
                     return (
@@ -798,16 +776,16 @@ export default function PatientOnboardingPage() {
               <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Comment vous sentez-vous face au changement ?</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {[
-                  { id: "abloc", label: "Très motivé(e)", color: "#f97316", svg: "flame" },
-                  { id: "optimiste", label: "Optimiste", color: "#eab308", svg: "sun" },
-                  { id: "anxieux", label: "Un peu anxieux(se)", color: "#a78bfa", svg: "cloud" },
-                  { id: "sceptique", label: "Un peu sceptique", color: "#f43f5e", svg: "sceptique" },
-                  { id: "perdu", label: "Complètement perdu(e)", color: "#60a5fa", svg: "compass" },
-                  { id: "fatigue", label: "Volontaire, mais fatigué(e)", color: "#94a3b8", svg: "moon" },
+                  { id: "abloc", label: "Très motivé(e)", svg: "flame" },
+                  { id: "optimiste", label: "Optimiste", svg: "sun" },
+                  { id: "anxieux", label: "Un peu anxieux(se)", svg: "cloud" },
+                  { id: "sceptique", label: "Un peu sceptique", svg: "sceptique" },
+                  { id: "perdu", label: "Complètement perdu(e)", svg: "compass" },
+                  { id: "fatigue", label: "Volontaire, mais fatigué(e)", svg: "moon" },
                 ].map(m => (
                   <button key={m.id} onClick={() => setMood(m.id)} style={cardBtn(mood === m.id)}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: mood === m.id ? `${m.color}28` : `${m.color}10`, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6 }}>
-                      <MoodSVG id={m.svg} color={m.color} />
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: mood === m.id ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.07)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6 }}>
+                      <MoodSVG id={m.svg} />
                     </div>
                     <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>{m.label}</p>
                   </button>

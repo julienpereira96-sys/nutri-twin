@@ -918,12 +918,10 @@ export async function POST(request: Request) {
       isFinalIntake,
     } = await request.json() as ChatRequest;
 
-    // Auth
-    if (patientId) {
-      const user = await getSessionUser();
-      if (!user) return Response.json({ error: "Non autorisé." }, { status: 401 });
-      if (user.id !== patientId) return Response.json({ error: "Accès refusé." }, { status: 403 });
-    }
+    // Auth — toujours requise, que patientId soit présent ou non
+    const user = await getSessionUser();
+    if (!user) return Response.json({ error: "Non autorisé." }, { status: 401 });
+    if (patientId && user.id !== patientId) return Response.json({ error: "Accès refusé." }, { status: 403 });
 
     // ═══ BYPASS IMMÉDIAT — mots-clés urgences vitales ═══
     if (message && isCriticalKeyword(message) && patientId && practitionerId) {

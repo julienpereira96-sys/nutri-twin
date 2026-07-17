@@ -63,6 +63,15 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    // IDOR — vérifier que patientId appartient bien à ce praticien
+    const { data: rel } = await supabase
+      .from("patient_practitioner")
+      .select("patient_id")
+      .eq("patient_id", patientId)
+      .eq("practitioner_id", practitionerId)
+      .single();
+    if (!rel) return forbidden();
+
     const [
       { data: chatMessages },
       { data: patient },

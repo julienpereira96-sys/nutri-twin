@@ -19,6 +19,7 @@
 
 import { GoogleAuth } from "google-auth-library";
 import { WebSocket } from "ws";
+import { getSessionUser, unauthorized } from "@/lib/api-auth";
 
 export const runtime   = "nodejs";
 export const maxDuration = 300; // 5 minutes — requires Vercel Pro; adjust if needed
@@ -71,6 +72,10 @@ function rewriteModelPath(msg: Record<string, unknown>): Record<string, unknown>
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
+  // 0. Auth — seuls les patients/praticiens authentifiés peuvent ouvrir une session Gemini Live
+  const user = await getSessionUser();
+  if (!user) return unauthorized();
+
   // 1. Authenticate with GCP
   let token: string;
   try {

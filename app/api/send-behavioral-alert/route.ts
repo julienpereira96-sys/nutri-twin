@@ -20,6 +20,9 @@ export async function POST(request: Request) {
     practitionerId: string;
   };
 
+  // Ownership — le praticien authentifié ne peut envoyer une alerte qu'en son propre nom
+  if (user.id !== practitionerId) return Response.json({ error: "Accès refusé" }, { status: 403 });
+
   const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
   const [patientResult, practitionerResult] = await Promise.all([
@@ -87,6 +90,14 @@ export async function POST(request: Request) {
   const resendKey = process.env.RESEND_API_KEY;
   if (!resendKey) return Response.json({ error: "Resend non configuré" }, { status: 500 });
 
+  // I4 — Marquer email_sent AVANT l'envoi pour éviter les doubles envois en cas d'appels
+  // concurrents (race condition). Si deux requêtes arrivent simultanément, la première
+  // à écrire "gagne" ; la seconde lira email_sent=true au prochain polling et s'arrêtera.
+  const updatedAlerts = alerts.map(a =>
+    a === latestBehavioral ? { ...a, email_sent: true } : a
+  );
+  await supabase.from("patients").update({ admin_alerts: updatedAlerts }).eq("user_id", patientId);
+
   const emailHtml = buildEmailHtml({
     preheader: `${patientName} est en alerte comportementale depuis plus de 12h sans retour au vert.`,
     greeting: "Alerte comportementale — 12h sans retour au vert",
@@ -108,13 +119,14 @@ export async function POST(request: Request) {
     }),
   });
 
-  if (!res.ok) return Response.json({ error: "Erreur envoi email" }, { status: 500 });
-
-  // Marquer l'alerte comme notifiée pour éviter les doublons
-  const updatedAlerts = alerts.map(a =>
-    a === latestBehavioral ? { ...a, email_sent: true } : a
-  );
-  await supabase.from("patients").update({ admin_alerts: updatedAlerts }).eq("user_id", patientId);
+  if (!res.ok) {
+    // Rollback : remettre email_sent à false pour permettre une nouvelle tentative
+    const rolledBack = alerts.map(a =>
+      a === latestBehavioral ? { ...a, email_sent: false } : a
+    );
+    await supabase.from("patients").update({ admin_alerts: rolledBack }).eq("user_id", patientId);
+    return Response.json({ error: "Erreur envoi email" }, { status: 500 });
+  }
 
   return Response.json({ success: true });
 }

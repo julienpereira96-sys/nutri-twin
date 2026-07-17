@@ -10,6 +10,7 @@
  */
 
 import { NextRequest } from "next/server";
+import { getSessionUser, unauthorized } from "@/lib/api-auth";
 
 const TTS_ENDPOINT =
   "https://texttospeech.googleapis.com/v1/text:synthesize";
@@ -46,6 +47,9 @@ function langFromVoiceId(voiceId: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getSessionUser();
+  if (!user) return unauthorized();
+
   const apiKey = process.env.GOOGLE_CLOUD_TTS_API_KEY;
 
   if (!apiKey) {

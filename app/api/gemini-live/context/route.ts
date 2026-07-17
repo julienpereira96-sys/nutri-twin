@@ -14,6 +14,7 @@
 
 import { NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 function createSupabaseClient() {
   return createClient(
@@ -96,6 +97,10 @@ PHASE CLÔTURE (uniquement après l'exercice respiratoire) :
 }
 
 export async function POST(request: NextRequest) {
+  // Auth — le patient ou son praticien doit être authentifié
+  const user = await getSessionUser();
+  if (!user) return unauthorized();
+
   let body: { patientId: string; practitionerId: string };
   try {
     body = await request.json() as { patientId: string; practitionerId: string };
@@ -108,7 +113,19 @@ export async function POST(request: NextRequest) {
     return Response.json({ error: "missing_ids" }, { status: 400 });
   }
 
+  // Ownership — seul le patient lui-même (ou son praticien) peut accéder au contexte
+  if (user.id !== patientId && user.id !== practitionerId) return forbidden();
+
   const supabase = createSupabaseClient();
+
+  // Vérifier que la relation patient ↔ praticien existe bien
+  const { data: rel } = await supabase
+    .from("patient_practitioner")
+    .select("patient_id")
+    .eq("patient_id", patientId)
+    .eq("practitioner_id", practitionerId)
+    .single();
+  if (!rel) return forbidden();
 
   // Fetch patient profile — `patients` n'a pas de colonne `practitioner_id`
   // (relation patient↔praticien modélisée via la table de liaison

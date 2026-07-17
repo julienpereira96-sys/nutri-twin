@@ -58,12 +58,17 @@ export async function DELETE(request: Request) {
     );
   }
 
-  // 1. Supprimer la relation praticien/patient
-  await supabase
-    .from("patient_practitioner")
-    .delete()
-    .eq("patient_id", testPatientUserId)
-    .eq("practitioner_id", user.id);
+  // 1. Supprimer toutes les données enfant du patient test (même logique que /api/delete-account)
+  await Promise.all([
+    supabase.from("conversations").delete().eq("patient_id", testPatientUserId),
+    supabase.from("conversations_sessions").delete().eq("patient_id", testPatientUserId),
+    supabase.from("sos_events").delete().eq("patient_id", testPatientUserId),
+    supabase.from("exercise_logs").delete().eq("patient_id", testPatientUserId),
+    supabase.from("crisis_events").delete().eq("patient_id", testPatientUserId),
+    supabase.from("documents").delete().eq("patient_id", testPatientUserId),
+    supabase.from("journal_entries").delete().eq("patient_id", testPatientUserId),
+    supabase.from("patient_practitioner").delete().eq("patient_id", testPatientUserId).eq("practitioner_id", user.id),
+  ]);
 
   // 2. Supprimer le patient (toutes ses données — pas de valeur clinique pour un profil test)
   await supabase.from("patients").delete().eq("user_id", testPatientUserId);

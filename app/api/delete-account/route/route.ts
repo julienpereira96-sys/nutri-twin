@@ -19,7 +19,6 @@ export async function POST(request: Request) {
     supabaseAdmin.from("conversations").delete().eq("patient_id", verifiedUserId),
     supabaseAdmin.from("conversations_sessions").delete().eq("patient_id", verifiedUserId),
     supabaseAdmin.from("sos_events").delete().eq("patient_id", verifiedUserId),
-    supabaseAdmin.from("sos_closures").delete().eq("patient_id", verifiedUserId),
     supabaseAdmin.from("exercise_logs").delete().eq("patient_id", verifiedUserId),
     supabaseAdmin.from("crisis_events").delete().eq("patient_id", verifiedUserId),
     supabaseAdmin.from("documents").delete().eq("patient_id", verifiedUserId),

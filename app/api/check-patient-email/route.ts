@@ -1,7 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
+import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
 
 export async function POST(request: Request) {
+  // M3 — Exiger une session praticien pour éviter l'énumération d'emails patients
+  const user = await getSessionUser();
+  if (!user) return unauthorized();
+
   const { email, practitionerId } = await request.json() as { email: string; practitionerId: string };
+
+  // Le praticien authentifié ne peut interroger que sa propre liste
+  if (user.id !== practitionerId) return forbidden();
 
   const supabase = createClient(
     process.env.SUPABASE_URL!,

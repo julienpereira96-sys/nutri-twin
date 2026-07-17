@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { buildMurmureExpiry } from "@/lib/murmure";
 import { findClosuresInWindow, closureFeeling, type SosClosureEvent, type SosSummary } from "@/lib/sosClosures";
@@ -720,6 +720,7 @@ export default function DashboardPage() {
   }, [testMode]);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // ═══ ÉTATS PRINCIPAUX ═══
   const [activeTab, setActiveTab] = useState<ActiveTab>("patients");
@@ -845,6 +846,20 @@ export default function DashboardPage() {
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  // ═══ DEEPLINK ?settings=abonnement ═══
+  useEffect(() => {
+    const target = searchParams.get("settings");
+    if (target === "abonnement") {
+      setShowSettingsModal(true);
+      setSettingsScreen("abonnement");
+      setBillingTab("facturation");
+      // Nettoyer le param de l'URL sans recharger la page
+      const url = new URL(window.location.href);
+      url.searchParams.delete("settings");
+      window.history.replaceState(null, "", url.toString());
+    }
+  }, [searchParams]);
 
   const [patients, setPatients] = useState<RealPatient[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
@@ -2794,7 +2809,47 @@ export default function DashboardPage() {
         </div>
       </header>
 
+      {/* ═══ BANNIÈRE PAIEMENT ÉCHOUÉ (past_due) ═══ */}
+      {subscriptionStatus === "past_due" && (
+        <div style={{ background: "rgba(245,158,11,0.08)", borderBottom: "1px solid rgba(245,158,11,0.25)", padding: "12px 24px" }}>
+          <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 200 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <span style={{ fontSize: 13, color: "#f59e0b" }}>
+                Votre paiement a échoué. Mettez à jour votre moyen de paiement pour continuer à accéder à NutriTwin.
+              </span>
+            </div>
+            <button
+              onClick={() => { setShowSettingsModal(true); setSettingsScreen("abonnement"); }}
+              style={{ background: "#f59e0b", border: "none", borderRadius: 8, padding: "7px 14px", fontSize: 12, fontWeight: 600, color: "#000", cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>
+              Mettre à jour ma carte
+            </button>
+          </div>
+        </div>
+      )}
 
+      {/* ═══ OVERLAY BLOQUANT — ABONNEMENT SUSPENDU (canceled) ═══ */}
+      {(subscriptionStatus === "canceled" || subscriptionStatus === "cancelled") && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 45, background: "rgba(7,11,9,0.96)", backdropFilter: "blur(8px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
+          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+          <h2 style={{ margin: "0 0 10px", fontSize: 20, fontWeight: 700, color: "white" }}>Accès suspendu</h2>
+          <p style={{ margin: "0 0 28px", fontSize: 14, color: "#94a3b8", maxWidth: 360, lineHeight: 1.6 }}>
+            Votre abonnement a été suspendu suite à l&apos;échec des tentatives de paiement. Mettez à jour votre carte pour réactiver votre accès à NutriTwin.
+          </p>
+          <button
+            onClick={() => { setShowSettingsModal(true); setSettingsScreen("abonnement"); setBillingTab("facturation"); }}
+            style={{ height: 44, paddingInline: 28, borderRadius: 12, background: "#ef4444", border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+            Mettre à jour ma carte
+          </button>
+        </div>
+      )}
 
       <main style={{ maxWidth: 1600, margin: "0 auto", padding: "24px" }}>
 
@@ -4653,6 +4708,28 @@ export default function DashboardPage() {
                     </button>
                   ))}
                 </div>
+
+                {/* ══ ALERTE PAIEMENT (past_due / canceled) ══ */}
+                {(subscriptionStatus === "past_due" || subscriptionStatus === "canceled" || subscriptionStatus === "cancelled") && (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: subscriptionStatus === "past_due" ? "rgba(245,158,11,0.07)" : "rgba(239,68,68,0.07)", border: `1px solid ${subscriptionStatus === "past_due" ? "rgba(245,158,11,0.2)" : "rgba(239,68,68,0.2)"}`, borderRadius: 12, padding: "12px 14px", marginBottom: 16 }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={subscriptionStatus === "past_due" ? "#f59e0b" : "#ef4444"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+                      {subscriptionStatus === "past_due"
+                        ? <><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>
+                        : <><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>
+                      }
+                    </svg>
+                    <div>
+                      <p style={{ margin: "0 0 4px", fontSize: 13, fontWeight: 600, color: subscriptionStatus === "past_due" ? "#f59e0b" : "#ef4444", lineHeight: 1.4 }}>
+                        {subscriptionStatus === "past_due" ? "Paiement en échec" : "Abonnement suspendu"}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>
+                        {subscriptionStatus === "past_due"
+                          ? "Votre dernier paiement a échoué. Mettez à jour votre carte ci-dessous pour éviter l'interruption de service."
+                          : "Votre accès a été suspendu suite à plusieurs tentatives de paiement échouées. Mettez à jour votre carte pour réactiver votre compte."}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* ══ TAB FACTURATION ══ */}
                 {billingTab === "facturation" && (

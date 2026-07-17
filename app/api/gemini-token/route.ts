@@ -10,10 +10,13 @@
  */
 
 import { GoogleAuth } from "google-auth-library";
+import { getSessionUser, unauthorized } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
 export async function GET() {
+  const user = await getSessionUser();
+  if (!user) return unauthorized();
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!raw) {
     return Response.json({ error: "GOOGLE_SERVICE_ACCOUNT_JSON not set" }, { status: 500 });
