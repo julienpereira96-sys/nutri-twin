@@ -604,13 +604,22 @@ export default function PatientOnboardingPage() {
 
   const cardBtn = (active: boolean): React.CSSProperties => ({
     borderRadius: 12,
-    border: `2px solid ${active ? "#10b981" : "rgba(255,255,255,0.08)"}`,
-    background: active ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.02)",
-    padding: "8px 10px",
+    border: active ? "1px solid rgba(16,185,129,0.33)" : "1px solid rgba(255,255,255,0.08)",
+    background: active ? "rgba(16,185,129,0.05)" : "transparent",
+    padding: "14px 12px",
+    minHeight: 52,
     textAlign: "left",
     cursor: "pointer",
     transition: "all 0.15s",
     width: "100%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  });
+  const cardBtnText = (active: boolean): React.CSSProperties => ({
+    margin: 0, fontSize: 12,
+    fontWeight: active ? 500 : 400,
+    color: active ? "#e2e8f0" : "#94a3b8",
   });
 
   const isDirty = useMemo(() => {
@@ -951,62 +960,77 @@ export default function PatientOnboardingPage() {
             <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Pour des conseils vraiment adaptés à votre réalité.</p>
 
             {/* Équipement */}
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 24 }}>
               <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Votre équipement cuisine</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {EQUIPEMENT.map(e => (
-                  <button key={e.id} onClick={() => toggleMultiple(e.id, equipement, setEquipement)} style={cardBtn(equipement.includes(e.id))}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>{e.label}</p>
-                  </button>
-                ))}
+                {EQUIPEMENT.map(e => {
+                  const active = equipement.includes(e.id);
+                  return (
+                    <button key={e.id} onClick={() => toggleMultiple(e.id, equipement, setEquipement)} style={cardBtn(active)}>
+                      <p style={cardBtnText(active)}>{e.label}</p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {/* Temps cuisine */}
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 24 }}>
               <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Temps disponible pour cuisiner le soir</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
-                {["< 15 min", "15-30 min", "30-45 min", "45+ min"].map(t => (
-                  <button key={t} onClick={() => setTempsCuisine(t)} style={cardBtn(tempsCuisine === t)}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8", textAlign: "center" }}>{t}</p>
-                  </button>
-                ))}
+                {["< 15 min", "15-30 min", "30-45 min", "45+ min"].map(t => {
+                  const active = tempsCuisine === t;
+                  return (
+                    <button key={t} onClick={() => setTempsCuisine(t)} style={cardBtn(active)}>
+                      <p style={{ ...cardBtnText(active), textAlign: "center" }}>{t}</p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {/* Budget */}
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 24 }}>
               <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Votre rapport au budget courses</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                {[{ id: "eco", label: "Petit budget" }, { id: "standard", label: "Budget moyen" }, { id: "premium", label: "Budget flexible" }].map(b => (
-                  <button key={b.id} onClick={() => setBudget(b.id)} style={cardBtn(budget === b.id)}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8", textAlign: "center" }}>{b.label}</p>
-                  </button>
-                ))}
+                {[{ id: "eco", label: "Petit budget" }, { id: "standard", label: "Budget moyen" }, { id: "premium", label: "Budget flexible" }].map(b => {
+                  const active = budget === b.id;
+                  return (
+                    <button key={b.id} onClick={() => setBudget(b.id)} style={cardBtn(active)}>
+                      <p style={{ ...cardBtnText(active), textAlign: "center" }}>{b.label}</p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {/* Repas sautés */}
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 24 }}>
               <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Sautez-vous souvent des repas ?</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
-                {["Petit-déjeuner", "Déjeuner", "Dîner", "Jamais"].map(r => (
-                  <button key={r} onClick={() => toggleMultiple(r, repasSautes, setRepasSautes)} style={cardBtn(repasSautes.includes(r))}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8", textAlign: "center" }}>{r}</p>
-                  </button>
-                ))}
+                {["Petit-déjeuner", "Déjeuner", "Dîner", "Jamais"].map(r => {
+                  const active = repasSautes.includes(r);
+                  return (
+                    <button key={r} onClick={() => toggleMultiple(r, repasSautes, setRepasSautes)} style={cardBtn(active)}>
+                      <p style={{ ...cardBtnText(active), textAlign: "center" }}>{r}</p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
             {/* Sommeil */}
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 24 }}>
               <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Combien d&apos;heures dormez-vous en moyenne ?</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
-                {SOMMEIL.map(s => (
-                  <button key={s.id} onClick={() => setSommeil(s.id)} style={cardBtn(sommeil === s.id)}>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8", textAlign: "center" }}>{s.label}</p>
-                  </button>
-                ))}
+                {SOMMEIL.map(s => {
+                  const active = sommeil === s.id;
+                  return (
+                    <button key={s.id} onClick={() => setSommeil(s.id)} style={cardBtn(active)}>
+                      <p style={{ ...cardBtnText(active), textAlign: "center" }}>{s.label}</p>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
