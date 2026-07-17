@@ -821,22 +821,36 @@ export default function PatientOnboardingPage() {
               <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Qu&apos;est-ce qui vous motive le plus au quotidien ?</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {[
-                  { id: "progres", label: "Voir des progrès concrets" },
-                  { id: "encourage", label: "Me sentir encouragé(e)" },
-                  { id: "comprendre", label: "Comprendre le fonctionnement" },
-                  { id: "routine", label: "Avoir une routine stricte" },
-                  { id: "supervise", label: "Savoir que je suis supervisé(e)" },
-                  { id: "simplicite", label: "La simplicité des actions" },
-                ].map(o => (
-                  <button key={o.id} onClick={() => setObjectif(o.id)} style={cardBtn(objectif === o.id)}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: objectif === o.id ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.07)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6 }}>
-                      <LevierSVG id={o.id} />
-                    </div>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>{o.label}</p>
-                  </button>
-                ))}
-                <button onClick={() => setObjectif("autre")} style={cardBtn(objectif === "autre")}>
-                  <p style={{ margin: "16px 0 0", fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>Autre...</p>
+                  { id: "progres",    label: "Voir des progrès concrets",      color: "#10b981" },
+                  { id: "encourage",  label: "Me sentir encouragé(e)",          color: "#f472b6" },
+                  { id: "comprendre", label: "Comprendre le fonctionnement",    color: "#60a5fa" },
+                  { id: "routine",    label: "Avoir une routine stricte",        color: "#f59e0b" },
+                  { id: "supervise",  label: "Savoir que je suis supervisé(e)", color: "#a78bfa" },
+                  { id: "simplicite", label: "La simplicité des actions",        color: "#34d399" },
+                ].map(o => {
+                  const sel = objectif === o.id;
+                  return (
+                    <button key={o.id} onClick={() => setObjectif(o.id)} style={{
+                      background: sel ? o.color + "12" : "transparent",
+                      border: sel ? `2px solid ${o.color}` : `1.5px solid ${o.color}44`,
+                      borderRadius: 12, padding: "16px 12px", minHeight: 56,
+                      cursor: "pointer", textAlign: "left", transition: "all 0.15s",
+                      display: "flex", alignItems: "center", gap: 10,
+                    }}>
+                      <div style={{ width: 9, height: 9, borderRadius: "50%", background: o.color, flexShrink: 0, opacity: sel ? 1 : 0.55 }} />
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 600 : 500, color: sel ? "#f1f5f9" : "#94a3b8", lineHeight: 1.4 }}>{o.label}</p>
+                    </button>
+                  );
+                })}
+                <button onClick={() => setObjectif("autre")} style={{
+                  background: objectif === "autre" ? "#64748b12" : "transparent",
+                  border: objectif === "autre" ? "2px solid #64748b" : "1.5px solid #64748b44",
+                  borderRadius: 12, padding: "16px 12px", minHeight: 56,
+                  cursor: "pointer", transition: "all 0.15s",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                }}>
+                  <div style={{ width: 9, height: 9, borderRadius: "50%", background: "#64748b", flexShrink: 0, opacity: objectif === "autre" ? 1 : 0.55 }} />
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: objectif === "autre" ? 600 : 500, color: objectif === "autre" ? "#f1f5f9" : "#94a3b8" }}>Autre</p>
                 </button>
               </div>
               {objectif === "autre" && (
@@ -862,19 +876,26 @@ export default function PatientOnboardingPage() {
                   const sel = mood === m.id;
                   return (
                     <button key={m.id} onClick={() => setMood(m.id)} style={{
-                      background: sel ? `rgba(${m.color === "#10b981" ? "16,185,129" : m.color === "#f59e0b" ? "245,158,11" : m.color === "#60a5fa" ? "96,165,250" : m.color === "#94a3b8" ? "148,163,184" : m.color === "#a78bfa" ? "167,139,250" : "129,140,248"},0.07)` : "transparent",
+                      background: sel ? m.color + "12" : "transparent",
                       border: sel ? `2px solid ${m.color}` : `1.5px solid ${m.color}44`,
-                      borderRadius: 12, padding: "12px 10px",
+                      borderRadius: 12, padding: "16px 12px", minHeight: 56,
                       cursor: "pointer", textAlign: "left", transition: "all 0.15s",
-                      display: "flex", alignItems: "center", gap: 8,
+                      display: "flex", alignItems: "center", gap: 10,
                     }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, flexShrink: 0, opacity: sel ? 1 : 0.6 }} />
-                      <p style={{ margin: 0, fontSize: 12, fontWeight: sel ? 600 : 500, color: sel ? "#f1f5f9" : "#94a3b8", lineHeight: 1.4 }}>{m.label}</p>
+                      <div style={{ width: 9, height: 9, borderRadius: "50%", background: m.color, flexShrink: 0, opacity: sel ? 1 : 0.55 }} />
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 600 : 500, color: sel ? "#f1f5f9" : "#94a3b8", lineHeight: 1.4 }}>{m.label}</p>
                     </button>
                   );
                 })}
-                <button onClick={() => setMood("autre")} style={cardBtn(mood === "autre")}>
-                  <p style={{ margin: "16px 0 0", fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>Autre...</p>
+                <button onClick={() => setMood("autre")} style={{
+                  background: mood === "autre" ? "#64748b12" : "transparent",
+                  border: mood === "autre" ? "2px solid #64748b" : "1.5px solid #64748b44",
+                  borderRadius: 12, padding: "16px 12px", minHeight: 56,
+                  cursor: "pointer", transition: "all 0.15s",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                }}>
+                  <div style={{ width: 9, height: 9, borderRadius: "50%", background: "#64748b", flexShrink: 0, opacity: mood === "autre" ? 1 : 0.55 }} />
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: mood === "autre" ? 600 : 500, color: mood === "autre" ? "#f1f5f9" : "#94a3b8" }}>Autre</p>
                 </button>
               </div>
               {mood === "autre" && (
@@ -890,22 +911,36 @@ export default function PatientOnboardingPage() {
               <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Quel est votre plus gros défi ?</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {[
-                  { id: "temps", label: "Manque de temps", svg: "clock" },
-                  { id: "sucre", label: "Pulsions sucrées", svg: "heart" },
-                  { id: "restaurant", label: "Repas au restaurant", svg: "utensils" },
-                  { id: "motivation", label: "Manque de motivation", svg: "battery" },
-                  { id: "cuisine", label: "Manque d'organisation en cuisine", svg: "chefhat" },
-                  { id: "stress", label: "Manger sous le stress", svg: "zap2" },
-                ].map(d => (
-                  <button key={d.id} onClick={() => setDefi(d.id)} style={cardBtn(defi === d.id)}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: defi === d.id ? "rgba(245,158,11,0.2)" : "rgba(245,158,11,0.07)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6 }}>
-                      <DefiSVG id={d.svg} />
-                    </div>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>{d.label}</p>
-                  </button>
-                ))}
-                <button onClick={() => setDefi("autre")} style={cardBtn(defi === "autre")}>
-                  <p style={{ margin: "16px 0 0", fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>Autre...</p>
+                  { id: "temps",      label: "Manque de temps",                   color: "#fb923c" },
+                  { id: "sucre",      label: "Pulsions sucrées",                  color: "#f472b6" },
+                  { id: "restaurant", label: "Repas au restaurant",               color: "#fbbf24" },
+                  { id: "motivation", label: "Manque de motivation",              color: "#94a3b8" },
+                  { id: "cuisine",    label: "Manque d'organisation en cuisine",  color: "#60a5fa" },
+                  { id: "stress",     label: "Manger sous le stress",             color: "#f87171" },
+                ].map(d => {
+                  const sel = defi === d.id;
+                  return (
+                    <button key={d.id} onClick={() => setDefi(d.id)} style={{
+                      background: sel ? d.color + "12" : "transparent",
+                      border: sel ? `2px solid ${d.color}` : `1.5px solid ${d.color}44`,
+                      borderRadius: 12, padding: "16px 12px", minHeight: 56,
+                      cursor: "pointer", textAlign: "left", transition: "all 0.15s",
+                      display: "flex", alignItems: "center", gap: 10,
+                    }}>
+                      <div style={{ width: 9, height: 9, borderRadius: "50%", background: d.color, flexShrink: 0, opacity: sel ? 1 : 0.55 }} />
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 600 : 500, color: sel ? "#f1f5f9" : "#94a3b8", lineHeight: 1.4 }}>{d.label}</p>
+                    </button>
+                  );
+                })}
+                <button onClick={() => setDefi("autre")} style={{
+                  background: defi === "autre" ? "#64748b12" : "transparent",
+                  border: defi === "autre" ? "2px solid #64748b" : "1.5px solid #64748b44",
+                  borderRadius: 12, padding: "16px 12px", minHeight: 56,
+                  cursor: "pointer", transition: "all 0.15s",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
+                }}>
+                  <div style={{ width: 9, height: 9, borderRadius: "50%", background: "#64748b", flexShrink: 0, opacity: defi === "autre" ? 1 : 0.55 }} />
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: defi === "autre" ? 600 : 500, color: defi === "autre" ? "#f1f5f9" : "#94a3b8" }}>Autre</p>
                 </button>
               </div>
               {defi === "autre" && (
