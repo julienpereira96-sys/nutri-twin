@@ -1011,7 +1011,14 @@ export default function PatientOnboardingPage() {
                 {["Petit-déjeuner", "Déjeuner", "Dîner", "Jamais"].map(r => {
                   const active = repasSautes.includes(r);
                   return (
-                    <button key={r} onClick={() => toggleMultiple(r, repasSautes, setRepasSautes)} style={cardBtn(active)}>
+                    <button key={r} onClick={() => {
+                      if (r === "Jamais") {
+                        setRepasSautes(repasSautes.includes("Jamais") ? [] : ["Jamais"]);
+                      } else {
+                        const without = repasSautes.filter(x => x !== "Jamais");
+                        setRepasSautes(without.includes(r) ? without.filter(x => x !== r) : [...without, r]);
+                      }
+                    }} style={cardBtn(active)}>
                       <p style={{ ...cardBtnText(active), textAlign: "center" }}>{r}</p>
                     </button>
                   );
