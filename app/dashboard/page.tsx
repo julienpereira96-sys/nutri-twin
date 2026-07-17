@@ -1,6 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 
+import { Suspense } from "react";
 import { useState, useEffect, useRef, useMemo, useCallback, Fragment } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -630,7 +631,7 @@ function CardUpdateForm({ onSuccess }: { onSuccess: (last4: string, brand: strin
   );
 }
 
-export default function DashboardPage() {
+function DashboardInner() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
 
   // ═══ ONBOARDING ═══
@@ -6809,5 +6810,13 @@ export default function DashboardPage() {
       </>
     )}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={null}>
+      <DashboardInner />
+    </Suspense>
   );
 }
