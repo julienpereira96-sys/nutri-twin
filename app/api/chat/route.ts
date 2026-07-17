@@ -549,7 +549,27 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
     if (patient.defi) parts.push(`Plus gros défi déclaré : ${patient.defi}`);
     if (patient.aliments_aimes) parts.push(`Aliments aimés : ${patient.aliments_aimes}`);
     if (patient.aliments_detestes) parts.push(`Aliments détestés : ${patient.aliments_detestes}`);
-    if (patient.notes) parts.push(`Données complémentaires : ${patient.notes}`);
+    if (patient.notes) {
+      const labelMap: Record<string, string> = {
+        "Équipement":    "Équipement cuisine",
+        "Temps cuisine": "Temps disponible pour cuisiner le soir",
+        "Budget":        "Budget alimentaire",
+        "Repas sautés":  "Repas souvent sautés",
+        "Sommeil":       "Heures de sommeil par nuit",
+        "Digestif":      "Problèmes digestifs déclarés",
+      };
+      const remaining: string[] = [];
+      for (const segment of patient.notes.split(" | ")) {
+        const colonIdx = segment.indexOf(":");
+        if (colonIdx === -1) { remaining.push(segment); continue; }
+        const key = segment.slice(0, colonIdx).trim();
+        const val = segment.slice(colonIdx + 1).trim();
+        const label = labelMap[key];
+        if (label) parts.push(`${label} : ${val}`);
+        else remaining.push(segment);
+      }
+      if (remaining.length > 0) parts.push(`Données complémentaires : ${remaining.join(" | ")}`);
+    }
 
     // Murmures / consignes praticien (tuyau systématique)
     const instructionDate = (patient as { instruction_updated_at?: string }).instruction_updated_at

@@ -2708,7 +2708,7 @@ function DashboardInner() {
               </div>
               <div style={{ display: "flex", flexDirection: "column" }}>
                 <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "white", filter: discretMode ? "blur(4px)" : "none", transition: "filter 0.2s" }}>
-                  {practitionerName ? `${new Date().getHours() >= 18 ? "Bonsoir" : "Bonjour"} ${practitionerName.split(" ")[0]}` : "Dashboard"}
+                  Dashboard
                   <span style={{ fontSize: 11, color: "#64748b", marginLeft: 6 }}>▾</span>
                 </p>
                 <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>

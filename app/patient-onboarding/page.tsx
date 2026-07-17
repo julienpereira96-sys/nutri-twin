@@ -373,7 +373,13 @@ const DefiSVG = ({ id }: { id: string }) => {
 export default function PatientOnboardingPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const router = useRouter();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState<number>(() => {
+    if (typeof window === "undefined") return 1;
+    try {
+      const saved = localStorage.getItem(LS_KEY);
+      return saved ? (JSON.parse(saved).step ?? 1) : 1;
+    } catch { return 1; }
+  });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [editMode, setEditMode] = useState(false);
