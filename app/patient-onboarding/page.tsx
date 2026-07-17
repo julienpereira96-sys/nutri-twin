@@ -151,62 +151,67 @@ const LevierSVG = ({ id }: { id: string }) => {
 };
 
 const MoodSVG = ({ id }: { id: string }) => {
-  const c = "#10b981";
-  const sw = "1.8";
   if (id === "flame") return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <path stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
-        d="M12 22c5 0 8-4 8-8 0-3.5-2-6.5-4.5-8.5 0 2.5-1.5 3.5-3 4C13 8 12 5.5 10 3 7 5.5 4 9 4 14c0 4.5 3.5 8 8 8z"/>
-      <path stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
-        d="M12 19c2 0 3.5-1.5 3.5-3.5 0-1.5-1-2.5-2-3 0 1-1 1.8-2 1.8-1 0-1.8-1.2-1.3-2.3C8.5 13 7.5 14.5 7.5 16c0 1.7 2 3 4.5 3z"/>
+    <svg width="22" height="22" viewBox="0 0 24 24">
+      <path fill="#10b981" d="M12 2.5c-.7 2.8-2.5 4.5-3 7-.6-1.6-1-3-1.5-4.5C5.3 7 4 9.8 4 13c0 4.4 3.6 8 8 8s8-3.6 8-8c0-3.5-2-6.5-5-9C14.6 5.7 14 7.3 13 9c-.6-2.2-1-4.5-1-6.5z"/>
+      <path fill="white" opacity="0.3" d="M12 13c-.3 1.3-1 2.2-1 3 0-.9-.6-1.7-.9-2.5-.5.9-.6 1.8-.6 2.5 0 1.4 1.1 2.5 2.5 2.5s2.5-1.1 2.5-2.5c0-1-.6-2-1.5-2.8 0 .9-.4 1.5-1 1.8z"/>
     </svg>
   );
   if (id === "sun") return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="4.5" stroke={c} strokeWidth={sw}/>
-      <line x1="12" y1="2" x2="12" y2="5" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
-      <line x1="12" y1="19" x2="12" y2="22" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
-      <line x1="2" y1="12" x2="5" y2="12" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
-      <line x1="19" y1="12" x2="22" y2="12" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
-      <line x1="4.9" y1="4.9" x2="7.1" y2="7.1" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
-      <line x1="16.9" y1="16.9" x2="19.1" y2="19.1" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
-      <line x1="4.9" y1="19.1" x2="7.1" y2="16.9" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
-      <line x1="16.9" y1="7.1" x2="19.1" y2="4.9" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
+    <svg width="22" height="22" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="4.8" fill="#10b981"/>
+      <rect x="10.8" y="1" width="2.4" height="4" rx="1.2" fill="#10b981"/>
+      <rect x="10.8" y="19" width="2.4" height="4" rx="1.2" fill="#10b981"/>
+      <rect x="1" y="10.8" width="4" height="2.4" rx="1.2" fill="#10b981"/>
+      <rect x="19" y="10.8" width="4" height="2.4" rx="1.2" fill="#10b981"/>
+      <rect x="10.8" y="1" width="2.4" height="4" rx="1.2" fill="#10b981" transform="rotate(45 12 12)"/>
+      <rect x="10.8" y="19" width="2.4" height="4" rx="1.2" fill="#10b981" transform="rotate(45 12 12)"/>
+      <rect x="1" y="10.8" width="4" height="2.4" rx="1.2" fill="#10b981" transform="rotate(45 12 12)"/>
+      <rect x="19" y="10.8" width="4" height="2.4" rx="1.2" fill="#10b981" transform="rotate(45 12 12)"/>
+      <circle cx="10.5" cy="10.5" r="1.5" fill="white" opacity="0.25"/>
     </svg>
   );
   if (id === "cloud") return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <path stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
-        d="M17.5 8.5c-.3-3.2-3-5.5-6.3-5.5C8.8 3 6.7 4.3 5.6 6.3 3.6 6.5 2 8.1 2 10c0 2.2 1.8 4 4 4h11.5c1.9 0 3.5-1.5 3.5-3.5 0-1.8-1.4-3.3-3.5-3.5z"/>
-      <line x1="10" y1="17" x2="10" y2="20" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
-      <line x1="14" y1="17" x2="14" y2="19" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
-      <line x1="12" y1="17" x2="12" y2="21" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
+    <svg width="22" height="22" viewBox="0 0 24 24">
+      <path fill="#10b981" d="M17.5 9C17 5.7 14.2 3 10.8 3 8.4 3 6.2 4.3 5 6.3 3 6.7 1.5 8.4 1.5 10.5 1.5 12.9 3.4 14.8 5.8 15h11.7C19.4 15 21 13.4 21 11.5c0-1.9-1.5-3.4-3.5-2.5z"/>
+      <ellipse cx="8.5" cy="19" rx="1.3" ry="2" fill="#10b981" opacity="0.65"/>
+      <ellipse cx="12" cy="20.5" rx="1.3" ry="2" fill="#10b981" opacity="0.65"/>
+      <ellipse cx="15.5" cy="19" rx="1.3" ry="2" fill="#10b981" opacity="0.65"/>
+      <ellipse cx="9" cy="6.5" rx="2.5" ry="1.2" fill="white" opacity="0.18"/>
     </svg>
   );
   if (id === "sceptique") return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="10" stroke={c} strokeWidth={sw}/>
-      <path stroke={c} strokeWidth={sw} strokeLinecap="round" d="M7 9c.5-1.5 2-2.5 3.5-2"/>
-      <line x1="14.5" y1="7.5" x2="17" y2="7.5" stroke={c} strokeWidth={sw} strokeLinecap="round"/>
-      <circle cx="9" cy="12" r="1" fill={c}/>
-      <circle cx="15" cy="12" r="1" fill={c}/>
-      <path stroke={c} strokeWidth={sw} strokeLinecap="round" fill="none" d="M9 17q1.5-2 3-.5t3-1"/>
+    <svg width="22" height="22" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10.5" fill="#10b981"/>
+      <ellipse cx="9" cy="7.5" rx="3.5" ry="2" fill="white" opacity="0.14"/>
+      {/* Left eye normal, right eye narrower (skeptical squint) */}
+      <ellipse cx="9" cy="12" rx="1.4" ry="1.4" fill="white"/>
+      <ellipse cx="15" cy="11.5" rx="1.4" ry="1" fill="white"/>
+      {/* Right raised brow */}
+      <path d="M13 8.5 Q15 7.5 17 8.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.75"/>
+      {/* Mouth - skeptical lopsided */}
+      <path d="M8 16.5 Q10 15 12 15.5 Q14 16 15.5 15" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
     </svg>
   );
   if (id === "compass") return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="10" stroke={c} strokeWidth={sw}/>
-      <circle cx="12" cy="12" r="1.5" fill={c}/>
-      <path stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
-        d="M12 5l2 7-2 .5-2-.5L12 5z"/>
-      <path stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" opacity="0.4"
-        d="M12 19l-2-7 2-.5 2 .5L12 19z"/>
+    <svg width="22" height="22" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10.5" fill="#10b981"/>
+      <ellipse cx="9" cy="7.5" rx="3.5" ry="2" fill="white" opacity="0.14"/>
+      {/* North needle: white (pointing slightly off-center = lost) */}
+      <path d="M12 4 L14.2 12 L12 11 L9.8 12 Z" fill="white"/>
+      {/* South needle: transparent white */}
+      <path d="M12 20 L9.8 12 L12 13 L14.2 12 Z" fill="white" opacity="0.35"/>
+      <circle cx="12" cy="12" r="1.8" fill="#10b981"/>
+      <circle cx="12" cy="12" r="0.8" fill="white" opacity="0.5"/>
     </svg>
   );
   if (id === "moon") return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <path stroke={c} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round"
-        d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>
+    <svg width="22" height="22" viewBox="0 0 24 24">
+      <path fill="#10b981" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      <circle cx="18" cy="6.5" r="1.4" fill="#10b981"/>
+      <circle cx="21" cy="11" r="0.9" fill="#10b981" opacity="0.7"/>
+      <circle cx="17.5" cy="3.5" r="0.7" fill="#10b981" opacity="0.5"/>
+      <ellipse cx="9" cy="7" rx="2.5" ry="1.5" fill="white" opacity="0.18"/>
     </svg>
   );
   return null;
@@ -702,7 +707,6 @@ export default function PatientOnboardingPage() {
                     style={{ flex: 1, height: 50, borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s" }}
                     onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Modifier mes informations
                   </button>
                   <button onClick={() => setStep(2)}
@@ -777,16 +781,16 @@ export default function PatientOnboardingPage() {
               <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Comment vous sentez-vous face au changement ?</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {[
-                  { id: "abloc", label: "Très motivé(e)", emoji: "🔥" },
-                  { id: "optimiste", label: "Optimiste", emoji: "☀️" },
-                  { id: "anxieux", label: "Un peu anxieux(se)", emoji: "😟" },
-                  { id: "sceptique", label: "Un peu sceptique", emoji: "🤔" },
-                  { id: "perdu", label: "Complètement perdu(e)", emoji: "🧭" },
-                  { id: "fatigue", label: "Volontaire, mais fatigué(e)", emoji: "😴" },
+                  { id: "abloc", label: "Très motivé(e)", svg: "flame" },
+                  { id: "optimiste", label: "Optimiste", svg: "sun" },
+                  { id: "anxieux", label: "Un peu anxieux(se)", svg: "cloud" },
+                  { id: "sceptique", label: "Un peu sceptique", svg: "sceptique" },
+                  { id: "perdu", label: "Complètement perdu(e)", svg: "compass" },
+                  { id: "fatigue", label: "Volontaire, mais fatigué(e)", svg: "moon" },
                 ].map(m => (
                   <button key={m.id} onClick={() => setMood(m.id)} style={cardBtn(mood === m.id)}>
-                    <div style={{ width: 36, height: 36, borderRadius: 10, background: mood === m.id ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.07)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6, fontSize: 20 }}>
-                      {m.emoji}
+                    <div style={{ width: 40, height: 40, borderRadius: 12, background: mood === m.id ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.08)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6 }}>
+                      <MoodSVG id={m.svg} />
                     </div>
                     <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>{m.label}</p>
                   </button>
