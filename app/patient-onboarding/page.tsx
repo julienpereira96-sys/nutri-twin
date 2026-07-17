@@ -967,7 +967,7 @@ export default function PatientOnboardingPage() {
                   const active = equipement.includes(e.id);
                   return (
                     <button key={e.id} onClick={() => toggleMultiple(e.id, equipement, setEquipement)} style={cardBtn(active)}>
-                      <p style={cardBtnText(active)}>{e.label}</p>
+                      <p style={{ ...cardBtnText(active), textAlign: "center" }}>{e.label}</p>
                     </button>
                   );
                 })}
