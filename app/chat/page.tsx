@@ -2899,11 +2899,10 @@ export default function ChatPage() {
                 <h1 style={{ margin: "0 0 8px", fontSize: isMobile ? 26 : 30, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.5px" }}>
                   {patientFirstName ? `Bonjour ${patientFirstName}` : "Bonjour"}
                 </h1>
-                <p style={{ margin: "0 0 6px", fontSize: 13, color: TEXT_MUTED, letterSpacing: "0.01em" }}>
-                  {practitionerTutoiement?.toLowerCase().includes("tutoiement") ? "Je suis ton compagnon de suivi nutritionnel" : "Je suis votre compagnon de suivi nutritionnel"}
-                </p>
                 <p style={{ margin: "0 0 28px", fontSize: isMobile ? 15 : 16, color: TEXT_SECONDARY, lineHeight: 1.7 }}>
-                  {practitionerTutoiement?.toLowerCase().includes("tutoiement") ? "Comment puis-je t'aider aujourd'hui ?" : "Comment puis-je vous aider aujourd'hui ?"}
+                  {practitionerTutoiement?.toLowerCase().includes("tutoiement")
+                    ? <>{`Je suis ton compagnon de suivi nutritionnel.`}<br />{`Comment puis-je t'aider aujourd'hui ?`}</>
+                    : <>{`Je suis votre compagnon de suivi nutritionnel.`}<br />{`Comment puis-je vous aider aujourd'hui ?`}</>}
                 </p>
                 <div style={{ marginBottom: 40 }}>
                   <InputBar isCenter={true} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} isMobile={isMobile} />
