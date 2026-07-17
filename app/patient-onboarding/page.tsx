@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -373,13 +373,19 @@ const DefiSVG = ({ id }: { id: string }) => {
 export default function PatientOnboardingPage() {
   const supabase = useMemo(() => createSupabaseBrowserClient(), []);
   const router = useRouter();
-  const [step, setStep] = useState<number>(() => {
-    if (typeof window === "undefined") return 1;
+  const [mounted, setMounted] = useState(false);
+  const [step, setStep] = useState(1);
+
+  useLayoutEffect(() => {
     try {
       const saved = localStorage.getItem(LS_KEY);
-      return saved ? (JSON.parse(saved).step ?? 1) : 1;
-    } catch { return 1; }
-  });
+      if (saved) {
+        const p = JSON.parse(saved);
+        if (typeof p.step === "number") setStep(p.step);
+      }
+    } catch { /* ignore */ }
+    setMounted(true);
+  }, []);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [editMode, setEditMode] = useState(false);
@@ -655,6 +661,8 @@ export default function PatientOnboardingPage() {
 
   const isAutre = (value: string, options: string[]) =>
     value !== "" && value !== "__autre__" && !options.includes(value) && value !== "Aucune" && value !== "Aucun" && value !== "Choisir";
+
+  if (!mounted) return <div style={{ minHeight: "100vh", background: "#0a0a0a" }} />;
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", fontFamily: "'Inter', -apple-system, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
