@@ -581,7 +581,8 @@ export default function PatientOnboardingPage() {
             Configurons votre <strong style={{ color: "#10b981" }}>espace</strong>
           </h1>
           <p style={{ margin: 0, fontSize: 14, color: "#64748b" }}>
-            Quelques questions pour personnaliser au mieux votre expérience
+            Quelques questions pour personnaliser au mieux{" "}
+            <span style={{ whiteSpace: "nowrap" }}>votre expérience</span>
           </p>
         </div>
 
@@ -696,16 +697,16 @@ export default function PatientOnboardingPage() {
 
               {/* Buttons */}
               {!editMode ? (
-                <div style={{ display: "flex", gap: 10 }}>
+                <div style={{ display: "flex", gap: 12, paddingTop: 4 }}>
                   <button onClick={enterEditMode}
-                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s" }}
+                    style={{ flex: 1, height: 50, borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s" }}
                     onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Modifier mes informations
                   </button>
                   <button onClick={() => setStep(2)}
-                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
+                    style={{ flex: 1, height: 50, borderRadius: 12, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
                     onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
                     Confirmer et continuer →
@@ -776,16 +777,16 @@ export default function PatientOnboardingPage() {
               <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Comment vous sentez-vous face au changement ?</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {[
-                  { id: "abloc", label: "Très motivé(e)", svg: "flame" },
-                  { id: "optimiste", label: "Optimiste", svg: "sun" },
-                  { id: "anxieux", label: "Un peu anxieux(se)", svg: "cloud" },
-                  { id: "sceptique", label: "Un peu sceptique", svg: "sceptique" },
-                  { id: "perdu", label: "Complètement perdu(e)", svg: "compass" },
-                  { id: "fatigue", label: "Volontaire, mais fatigué(e)", svg: "moon" },
+                  { id: "abloc", label: "Très motivé(e)", emoji: "🔥" },
+                  { id: "optimiste", label: "Optimiste", emoji: "☀️" },
+                  { id: "anxieux", label: "Un peu anxieux(se)", emoji: "😟" },
+                  { id: "sceptique", label: "Un peu sceptique", emoji: "🤔" },
+                  { id: "perdu", label: "Complètement perdu(e)", emoji: "🧭" },
+                  { id: "fatigue", label: "Volontaire, mais fatigué(e)", emoji: "😴" },
                 ].map(m => (
                   <button key={m.id} onClick={() => setMood(m.id)} style={cardBtn(mood === m.id)}>
-                    <div style={{ width: 32, height: 32, borderRadius: 8, background: mood === m.id ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.07)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6 }}>
-                      <MoodSVG id={m.svg} />
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: mood === m.id ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.07)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6, fontSize: 20 }}>
+                      {m.emoji}
                     </div>
                     <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>{m.label}</p>
                   </button>
