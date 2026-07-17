@@ -852,20 +852,27 @@ export default function PatientOnboardingPage() {
               <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Comment vous sentez-vous face au changement ?</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 {[
-                  { id: "abloc", label: "Très motivé(e)", svg: "flame" },
-                  { id: "optimiste", label: "Optimiste", svg: "sun" },
-                  { id: "anxieux", label: "Un peu anxieux(se)", svg: "cloud" },
-                  { id: "sceptique", label: "Un peu sceptique", svg: "sceptique" },
-                  { id: "perdu", label: "Complètement perdu(e)", svg: "compass" },
-                  { id: "fatigue", label: "Volontaire, mais fatigué(e)", svg: "moon" },
-                ].map(m => (
-                  <button key={m.id} onClick={() => setMood(m.id)} style={cardBtn(mood === m.id)}>
-                    <div style={{ width: 40, height: 40, borderRadius: 12, background: mood === m.id ? "rgba(16,185,129,0.2)" : "rgba(16,185,129,0.08)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 6 }}>
-                      <MoodSVG id={m.svg} />
-                    </div>
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>{m.label}</p>
-                  </button>
-                ))}
+                  { id: "abloc",     label: "Très motivé(e)",              color: "#10b981" },
+                  { id: "optimiste", label: "Optimiste",                    color: "#f59e0b" },
+                  { id: "anxieux",   label: "Un peu anxieux(se)",           color: "#60a5fa" },
+                  { id: "sceptique", label: "Un peu sceptique",             color: "#94a3b8" },
+                  { id: "perdu",     label: "Complètement perdu(e)",        color: "#a78bfa" },
+                  { id: "fatigue",   label: "Volontaire, mais fatigué(e)",  color: "#818cf8" },
+                ].map(m => {
+                  const sel = mood === m.id;
+                  return (
+                    <button key={m.id} onClick={() => setMood(m.id)} style={{
+                      background: sel ? `rgba(${m.color === "#10b981" ? "16,185,129" : m.color === "#f59e0b" ? "245,158,11" : m.color === "#60a5fa" ? "96,165,250" : m.color === "#94a3b8" ? "148,163,184" : m.color === "#a78bfa" ? "167,139,250" : "129,140,248"},0.07)` : "transparent",
+                      border: sel ? `2px solid ${m.color}` : `1.5px solid ${m.color}44`,
+                      borderRadius: 12, padding: "12px 10px",
+                      cursor: "pointer", textAlign: "left", transition: "all 0.15s",
+                      display: "flex", alignItems: "center", gap: 8,
+                    }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, flexShrink: 0, opacity: sel ? 1 : 0.6 }} />
+                      <p style={{ margin: 0, fontSize: 12, fontWeight: sel ? 600 : 500, color: sel ? "#f1f5f9" : "#94a3b8", lineHeight: 1.4 }}>{m.label}</p>
+                    </button>
+                  );
+                })}
                 <button onClick={() => setMood("autre")} style={cardBtn(mood === "autre")}>
                   <p style={{ margin: "16px 0 0", fontSize: 12, fontWeight: 500, color: "#94a3b8" }}>Autre...</p>
                 </button>
