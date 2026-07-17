@@ -1748,7 +1748,7 @@ export default function ChatPage() {
       onClick={onClick}
       style={{
         width: "100%", display: "flex", alignItems: "center", gap: 14,
-        padding: "0 20px", minHeight: 52, background: "none", border: "none",
+        padding: "12px 20px", minHeight: 52, background: "none", border: "none",
         borderBottom: "1px solid rgba(255,255,255,0.04)",
         cursor: onClick ? "pointer" : "default", transition: "background 0.12s",
         textAlign: "left",
@@ -2628,17 +2628,17 @@ export default function ChatPage() {
                 if (isMobile) setSidebarOpen(false);
               }}
               disabled={sosLoading || emotionalStatus === "red_critical" || !patientId || !practitionerIdFromDb}
-              style={{ width: "85%", display: "flex", alignItems: "center", gap: 11, padding: "12px 22px", borderRadius: 12, background: "rgba(6,182,212,0.08)", border: "1px solid rgba(6,182,212,0.28)", cursor: sosLoading ? "not-allowed" : "pointer", transition: "all 0.2s" }}
-              onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(6,182,212,0.14)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.45)"; } }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(6,182,212,0.08)"; e.currentTarget.style.borderColor = "rgba(6,182,212,0.28)"; }}>
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "5px 8px", borderRadius: 9, background: "transparent", border: "1px solid transparent", cursor: sosLoading ? "not-allowed" : "pointer", textAlign: "left", transition: "all 0.15s" }}
+              onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; } }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}>
               {sosLoading
                 ? <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${CYAN_DIM}`, borderTop: `2px solid ${CYAN}`, animation: "spin 1s linear infinite", flexShrink: 0 }} />
-                : <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(6,182,212,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <IconActivity size={16} color={CYAN} />
+                : <div style={{ width: 26, height: 26, borderRadius: 7, background: "rgba(6,182,212,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <IconActivity size={13} color={CYAN} />
                   </div>
               }
-              <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#cffafe", letterSpacing: "-0.1px" }}>{sosLoading ? "En route..." : "Mon Soutien"}</p>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.4, marginLeft: "auto" }}><path d="M9 18l6-6-6-6" stroke={CYAN} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <p style={{ margin: 0, fontSize: 12.5, fontWeight: 500, color: TEXT_PRIMARY, flex: 1 }}>{sosLoading ? "En route..." : "Mon Soutien"}</p>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.2 }}><path d="M9 18l6-6-6-6" stroke={TEXT_MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </div>
 
@@ -2752,7 +2752,7 @@ export default function ChatPage() {
           </div>
 
           {/* ═══ SIDEBAR BOTTOM — Profil (masqué en mode test) ═══ */}
-          {!isTestMode && <div style={{ paddingBottom: isMobile ? "max(44px, env(safe-area-inset-bottom, 44px))" : 32, flexShrink: 0 }}>
+          {!isTestMode && <div style={{ paddingBottom: isMobile ? "max(16px, env(safe-area-inset-bottom, 16px))" : 32, flexShrink: 0 }}>
           <button
             onClick={() => setShowProfileModal(true)}
             style={{ padding: "10px 8px", display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left", borderRadius: 12, transition: "background 0.15s" }}
