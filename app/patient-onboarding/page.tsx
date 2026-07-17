@@ -152,66 +152,137 @@ const LevierSVG = ({ id }: { id: string }) => {
 
 const MoodSVG = ({ id }: { id: string }) => {
   if (id === "flame") return (
-    <svg width="22" height="22" viewBox="0 0 24 24">
-      <path fill="#10b981" d="M12 2.5c-.7 2.8-2.5 4.5-3 7-.6-1.6-1-3-1.5-4.5C5.3 7 4 9.8 4 13c0 4.4 3.6 8 8 8s8-3.6 8-8c0-3.5-2-6.5-5-9C14.6 5.7 14 7.3 13 9c-.6-2.2-1-4.5-1-6.5z"/>
-      <path fill="white" opacity="0.3" d="M12 13c-.3 1.3-1 2.2-1 3 0-.9-.6-1.7-.9-2.5-.5.9-.6 1.8-.6 2.5 0 1.4 1.1 2.5 2.5 2.5s2.5-1.1 2.5-2.5c0-1-.6-2-1.5-2.8 0 .9-.4 1.5-1 1.8z"/>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <defs>
+        <radialGradient id="mf1" cx="42%" cy="22%" r="72%">
+          <stop offset="0%" stopColor="#6ee7b7"/>
+          <stop offset="55%" stopColor="#10b981"/>
+          <stop offset="100%" stopColor="#064e3b"/>
+        </radialGradient>
+        <radialGradient id="mf2" cx="45%" cy="15%" r="65%">
+          <stop offset="0%" stopColor="#d1fae5"/>
+          <stop offset="100%" stopColor="#059669"/>
+        </radialGradient>
+      </defs>
+      {/* Outer flame */}
+      <path d="M12 2.5c-.7 2.8-2.5 4.5-3 7-.6-1.6-1-3-1.5-4.5C5.3 7 4 9.8 4 13c0 4.4 3.6 8 8 8s8-3.6 8-8c0-3.5-2-6.5-5-9C14.6 5.7 14 7.3 13 9c-.6-2.2-1-4.5-1-6.5z" fill="url(#mf1)"/>
+      {/* Inner bright core */}
+      <path d="M12 10c-.3 1.2-1 2-1.2 3.2-.2-.7-.4-1.4-.7-2C9 12.4 8.5 13.5 8.5 14.5c0 1.9 1.6 3.5 3.5 3.5s3.5-1.6 3.5-3.5c0-1.5-.8-2.7-2-3.5 0 .6-.3 1.2-.7 1.7-.4-1-.6-2-.8-2.7z" fill="url(#mf2)" opacity="0.72"/>
+      {/* Highlight */}
+      <ellipse cx="9.5" cy="8.5" rx="1.4" ry="2.8" fill="white" opacity="0.17" transform="rotate(-15 9.5 8.5)"/>
+      {/* Tip glow */}
+      <circle cx="12" cy="4" r="0.7" fill="#a7f3d0" opacity="0.55"/>
     </svg>
   );
   if (id === "sun") return (
-    <svg width="22" height="22" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="4.8" fill="#10b981"/>
-      <rect x="10.8" y="1" width="2.4" height="4" rx="1.2" fill="#10b981"/>
-      <rect x="10.8" y="19" width="2.4" height="4" rx="1.2" fill="#10b981"/>
-      <rect x="1" y="10.8" width="4" height="2.4" rx="1.2" fill="#10b981"/>
-      <rect x="19" y="10.8" width="4" height="2.4" rx="1.2" fill="#10b981"/>
-      <rect x="10.8" y="1" width="2.4" height="4" rx="1.2" fill="#10b981" transform="rotate(45 12 12)"/>
-      <rect x="10.8" y="19" width="2.4" height="4" rx="1.2" fill="#10b981" transform="rotate(45 12 12)"/>
-      <rect x="1" y="10.8" width="4" height="2.4" rx="1.2" fill="#10b981" transform="rotate(45 12 12)"/>
-      <rect x="19" y="10.8" width="4" height="2.4" rx="1.2" fill="#10b981" transform="rotate(45 12 12)"/>
-      <circle cx="10.5" cy="10.5" r="1.5" fill="white" opacity="0.25"/>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <defs>
+        <radialGradient id="ms1" cx="40%" cy="35%" r="65%">
+          <stop offset="0%" stopColor="#6ee7b7"/>
+          <stop offset="100%" stopColor="#065f46"/>
+        </radialGradient>
+        <radialGradient id="ms2" cx="35%" cy="28%" r="62%">
+          <stop offset="0%" stopColor="#a7f3d0"/>
+          <stop offset="100%" stopColor="#047857"/>
+        </radialGradient>
+      </defs>
+      {/* 8 rays */}
+      <rect x="10.8" y="1.2" width="2.4" height="3.8" rx="1.2" fill="url(#ms1)"/>
+      <rect x="10.8" y="19" width="2.4" height="3.8" rx="1.2" fill="url(#ms1)"/>
+      <rect x="1.2" y="10.8" width="3.8" height="2.4" rx="1.2" fill="url(#ms1)"/>
+      <rect x="19" y="10.8" width="3.8" height="2.4" rx="1.2" fill="url(#ms1)"/>
+      <rect x="10.8" y="1.2" width="2.4" height="3.8" rx="1.2" fill="url(#ms1)" transform="rotate(45 12 12)"/>
+      <rect x="10.8" y="19" width="2.4" height="3.8" rx="1.2" fill="url(#ms1)" transform="rotate(45 12 12)"/>
+      <rect x="1.2" y="10.8" width="3.8" height="2.4" rx="1.2" fill="url(#ms1)" transform="rotate(45 12 12)"/>
+      <rect x="19" y="10.8" width="3.8" height="2.4" rx="1.2" fill="url(#ms1)" transform="rotate(45 12 12)"/>
+      {/* Centre disc */}
+      <circle cx="12" cy="12" r="5.2" fill="url(#ms2)"/>
+      {/* Highlight */}
+      <ellipse cx="10.2" cy="10" rx="2" ry="1.3" fill="white" opacity="0.28"/>
     </svg>
   );
   if (id === "cloud") return (
-    <svg width="22" height="22" viewBox="0 0 24 24">
-      <path fill="#10b981" d="M17.5 9C17 5.7 14.2 3 10.8 3 8.4 3 6.2 4.3 5 6.3 3 6.7 1.5 8.4 1.5 10.5 1.5 12.9 3.4 14.8 5.8 15h11.7C19.4 15 21 13.4 21 11.5c0-1.9-1.5-3.4-3.5-2.5z"/>
-      <ellipse cx="8.5" cy="19" rx="1.3" ry="2" fill="#10b981" opacity="0.65"/>
-      <ellipse cx="12" cy="20.5" rx="1.3" ry="2" fill="#10b981" opacity="0.65"/>
-      <ellipse cx="15.5" cy="19" rx="1.3" ry="2" fill="#10b981" opacity="0.65"/>
-      <ellipse cx="9" cy="6.5" rx="2.5" ry="1.2" fill="white" opacity="0.18"/>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <defs>
+        <radialGradient id="mc1" cx="35%" cy="28%" r="70%">
+          <stop offset="0%" stopColor="#6ee7b7"/>
+          <stop offset="55%" stopColor="#10b981"/>
+          <stop offset="100%" stopColor="#065f46"/>
+        </radialGradient>
+        <linearGradient id="mc2" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#34d399"/>
+          <stop offset="100%" stopColor="#047857" stopOpacity="0.55"/>
+        </linearGradient>
+      </defs>
+      {/* Cloud body */}
+      <path d="M17.5 9C17 5.7 14.2 3 10.8 3 8.4 3 6.2 4.3 5 6.3 3 6.7 1.5 8.4 1.5 10.5 1.5 12.9 3.4 14.8 5.8 15h11.7C19.4 15 21 13.4 21 11.5c0-1.9-1.5-3.4-3.5-2.5z" fill="url(#mc1)"/>
+      {/* Highlight */}
+      <ellipse cx="8" cy="6.2" rx="3.2" ry="1.4" fill="white" opacity="0.2"/>
+      {/* Rain drops */}
+      <ellipse cx="8.5" cy="19.5" rx="1.2" ry="2.2" fill="url(#mc2)"/>
+      <ellipse cx="12" cy="21" rx="1.2" ry="2.2" fill="url(#mc2)"/>
+      <ellipse cx="15.5" cy="19.5" rx="1.2" ry="2.2" fill="url(#mc2)"/>
     </svg>
   );
   if (id === "sceptique") return (
-    <svg width="22" height="22" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="10.5" fill="#10b981"/>
-      <ellipse cx="9" cy="7.5" rx="3.5" ry="2" fill="white" opacity="0.14"/>
-      {/* Left eye normal, right eye narrower (skeptical squint) */}
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <defs>
+        <radialGradient id="msk1" cx="38%" cy="32%" r="68%">
+          <stop offset="0%" stopColor="#6ee7b7"/>
+          <stop offset="55%" stopColor="#10b981"/>
+          <stop offset="100%" stopColor="#065f46"/>
+        </radialGradient>
+      </defs>
+      <circle cx="12" cy="12" r="10.5" fill="url(#msk1)"/>
+      {/* Highlight */}
+      <ellipse cx="8.5" cy="7.5" rx="3.5" ry="2" fill="white" opacity="0.18"/>
+      {/* Left eye normal, right eye squinted */}
       <ellipse cx="9" cy="12" rx="1.4" ry="1.4" fill="white"/>
       <ellipse cx="15" cy="11.5" rx="1.4" ry="1" fill="white"/>
       {/* Right raised brow */}
-      <path d="M13 8.5 Q15 7.5 17 8.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.75"/>
-      {/* Mouth - skeptical lopsided */}
-      <path d="M8 16.5 Q10 15 12 15.5 Q14 16 15.5 15" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+      <path d="M13 8.5 Q15 7.5 17 8.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.78"/>
+      {/* Skeptical lopsided mouth */}
+      <path d="M8 16.5 Q10 15 12 15.5 Q14 16 15.5 15" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
     </svg>
   );
   if (id === "compass") return (
-    <svg width="22" height="22" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="10.5" fill="#10b981"/>
-      <ellipse cx="9" cy="7.5" rx="3.5" ry="2" fill="white" opacity="0.14"/>
-      {/* North needle: white (pointing slightly off-center = lost) */}
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <defs>
+        <radialGradient id="mco1" cx="38%" cy="32%" r="68%">
+          <stop offset="0%" stopColor="#6ee7b7"/>
+          <stop offset="55%" stopColor="#10b981"/>
+          <stop offset="100%" stopColor="#065f46"/>
+        </radialGradient>
+      </defs>
+      <circle cx="12" cy="12" r="10.5" fill="url(#mco1)"/>
+      {/* Highlight */}
+      <ellipse cx="8.5" cy="7.5" rx="3.5" ry="2" fill="white" opacity="0.18"/>
+      {/* North needle (white) — légèrement décalé = perdu */}
       <path d="M12 4 L14.2 12 L12 11 L9.8 12 Z" fill="white"/>
-      {/* South needle: transparent white */}
+      {/* South needle (transparent) */}
       <path d="M12 20 L9.8 12 L12 13 L14.2 12 Z" fill="white" opacity="0.35"/>
-      <circle cx="12" cy="12" r="1.8" fill="#10b981"/>
-      <circle cx="12" cy="12" r="0.8" fill="white" opacity="0.5"/>
+      {/* Hub */}
+      <circle cx="12" cy="12" r="1.8" fill="#065f46"/>
+      <circle cx="12" cy="12" r="0.75" fill="white" opacity="0.6"/>
     </svg>
   );
   if (id === "moon") return (
-    <svg width="22" height="22" viewBox="0 0 24 24">
-      <path fill="#10b981" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-      <circle cx="18" cy="6.5" r="1.4" fill="#10b981"/>
-      <circle cx="21" cy="11" r="0.9" fill="#10b981" opacity="0.7"/>
-      <circle cx="17.5" cy="3.5" r="0.7" fill="#10b981" opacity="0.5"/>
-      <ellipse cx="9" cy="7" rx="2.5" ry="1.5" fill="white" opacity="0.18"/>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+      <defs>
+        <radialGradient id="mm1" cx="38%" cy="32%" r="68%">
+          <stop offset="0%" stopColor="#6ee7b7"/>
+          <stop offset="55%" stopColor="#10b981"/>
+          <stop offset="100%" stopColor="#064e3b"/>
+        </radialGradient>
+      </defs>
+      {/* Crescent */}
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="url(#mm1)"/>
+      {/* Highlight on crescent */}
+      <ellipse cx="9" cy="7" rx="2.5" ry="1.5" fill="white" opacity="0.2"/>
+      {/* Stars */}
+      <circle cx="18.5" cy="5" r="1.4" fill="#6ee7b7" opacity="0.72"/>
+      <circle cx="21" cy="10" r="0.9" fill="#a7f3d0" opacity="0.55"/>
+      <circle cx="17.5" cy="2.5" r="0.7" fill="#d1fae5" opacity="0.5"/>
     </svg>
   );
   return null;
