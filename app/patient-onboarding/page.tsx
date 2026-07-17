@@ -827,36 +827,27 @@ export default function PatientOnboardingPage() {
                   { id: "routine",    label: "Avoir une routine stricte",        color: "#f59e0b" },
                   { id: "supervise",  label: "Savoir que je suis supervisé(e)", color: "#a78bfa" },
                   { id: "simplicite", label: "La simplicité des actions",        color: "#34d399" },
+                  { id: "autre",      label: "Autre",                            color: "#64748b" },
                 ].map(o => {
                   const sel = objectif === o.id;
                   return (
                     <button key={o.id} onClick={() => setObjectif(o.id)} style={{
-                      background: sel ? o.color + "12" : "transparent",
-                      border: sel ? `2px solid ${o.color}` : `1.5px solid ${o.color}44`,
+                      background: sel ? o.color + "0d" : "transparent",
+                      border: sel ? `1px solid ${o.color}55` : "1px solid rgba(255,255,255,0.08)",
                       borderRadius: 12, padding: "16px 12px", minHeight: 56,
                       cursor: "pointer", textAlign: "left", transition: "all 0.15s",
                       display: "flex", alignItems: "center", gap: 10,
                     }}>
-                      <div style={{ width: 9, height: 9, borderRadius: "50%", background: o.color, flexShrink: 0, opacity: sel ? 1 : 0.55 }} />
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 600 : 500, color: sel ? "#f1f5f9" : "#94a3b8", lineHeight: 1.4 }}>{o.label}</p>
+                      <div style={{ width: 9, height: 9, borderRadius: "50%", background: o.color, flexShrink: 0, opacity: sel ? 1 : 0.45 }} />
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 600 : 400, color: sel ? "#f1f5f9" : "#64748b", lineHeight: 1.4 }}>{o.label}</p>
                     </button>
                   );
                 })}
-                <button onClick={() => setObjectif("autre")} style={{
-                  background: objectif === "autre" ? "#64748b12" : "transparent",
-                  border: objectif === "autre" ? "2px solid #64748b" : "1.5px solid #64748b44",
-                  borderRadius: 12, padding: "16px 12px", minHeight: 56,
-                  cursor: "pointer", transition: "all 0.15s",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                }}>
-                  <div style={{ width: 9, height: 9, borderRadius: "50%", background: "#64748b", flexShrink: 0, opacity: objectif === "autre" ? 1 : 0.55 }} />
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: objectif === "autre" ? 600 : 500, color: objectif === "autre" ? "#f1f5f9" : "#94a3b8" }}>Autre</p>
-                </button>
               </div>
               {objectif === "autre" && (
                 <input type="text" value={objectifCustom} onChange={e => setObjectifCustom(e.target.value)}
                   placeholder="Décrivez votre levier..." style={{ ...inputStyle, marginTop: 8 }}
-                  onFocus={e => e.target.style.borderColor = "#10b981"}
+                  onFocus={e => e.target.style.borderColor = "#64748b"}
                   onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
               )}
             </div>
@@ -872,36 +863,27 @@ export default function PatientOnboardingPage() {
                   { id: "sceptique", label: "Un peu sceptique",             color: "#94a3b8" },
                   { id: "perdu",     label: "Complètement perdu(e)",        color: "#a78bfa" },
                   { id: "fatigue",   label: "Volontaire, mais fatigué(e)",  color: "#818cf8" },
+                  { id: "autre",     label: "Autre",                         color: "#64748b" },
                 ].map(m => {
                   const sel = mood === m.id;
                   return (
                     <button key={m.id} onClick={() => setMood(m.id)} style={{
-                      background: sel ? m.color + "12" : "transparent",
-                      border: sel ? `2px solid ${m.color}` : `1.5px solid ${m.color}44`,
+                      background: sel ? m.color + "0d" : "transparent",
+                      border: sel ? `1px solid ${m.color}55` : "1px solid rgba(255,255,255,0.08)",
                       borderRadius: 12, padding: "16px 12px", minHeight: 56,
                       cursor: "pointer", textAlign: "left", transition: "all 0.15s",
                       display: "flex", alignItems: "center", gap: 10,
                     }}>
-                      <div style={{ width: 9, height: 9, borderRadius: "50%", background: m.color, flexShrink: 0, opacity: sel ? 1 : 0.55 }} />
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 600 : 500, color: sel ? "#f1f5f9" : "#94a3b8", lineHeight: 1.4 }}>{m.label}</p>
+                      <div style={{ width: 9, height: 9, borderRadius: "50%", background: m.color, flexShrink: 0, opacity: sel ? 1 : 0.45 }} />
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 600 : 400, color: sel ? "#f1f5f9" : "#64748b", lineHeight: 1.4 }}>{m.label}</p>
                     </button>
                   );
                 })}
-                <button onClick={() => setMood("autre")} style={{
-                  background: mood === "autre" ? "#64748b12" : "transparent",
-                  border: mood === "autre" ? "2px solid #64748b" : "1.5px solid #64748b44",
-                  borderRadius: 12, padding: "16px 12px", minHeight: 56,
-                  cursor: "pointer", transition: "all 0.15s",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                }}>
-                  <div style={{ width: 9, height: 9, borderRadius: "50%", background: "#64748b", flexShrink: 0, opacity: mood === "autre" ? 1 : 0.55 }} />
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: mood === "autre" ? 600 : 500, color: mood === "autre" ? "#f1f5f9" : "#94a3b8" }}>Autre</p>
-                </button>
               </div>
               {mood === "autre" && (
                 <input type="text" value={moodCustom} onChange={e => setMoodCustom(e.target.value)}
                   placeholder="Décrivez comment vous vous sentez..." style={{ ...inputStyle, marginTop: 8 }}
-                  onFocus={e => e.target.style.borderColor = "#10b981"}
+                  onFocus={e => e.target.style.borderColor = "#64748b"}
                   onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
               )}
             </div>
@@ -917,36 +899,27 @@ export default function PatientOnboardingPage() {
                   { id: "motivation", label: "Manque de motivation",              color: "#94a3b8" },
                   { id: "cuisine",    label: "Manque d'organisation en cuisine",  color: "#60a5fa" },
                   { id: "stress",     label: "Manger sous le stress",             color: "#f87171" },
+                  { id: "autre",      label: "Autre",                              color: "#64748b" },
                 ].map(d => {
                   const sel = defi === d.id;
                   return (
                     <button key={d.id} onClick={() => setDefi(d.id)} style={{
-                      background: sel ? d.color + "12" : "transparent",
-                      border: sel ? `2px solid ${d.color}` : `1.5px solid ${d.color}44`,
+                      background: sel ? d.color + "0d" : "transparent",
+                      border: sel ? `1px solid ${d.color}55` : "1px solid rgba(255,255,255,0.08)",
                       borderRadius: 12, padding: "16px 12px", minHeight: 56,
                       cursor: "pointer", textAlign: "left", transition: "all 0.15s",
                       display: "flex", alignItems: "center", gap: 10,
                     }}>
-                      <div style={{ width: 9, height: 9, borderRadius: "50%", background: d.color, flexShrink: 0, opacity: sel ? 1 : 0.55 }} />
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 600 : 500, color: sel ? "#f1f5f9" : "#94a3b8", lineHeight: 1.4 }}>{d.label}</p>
+                      <div style={{ width: 9, height: 9, borderRadius: "50%", background: d.color, flexShrink: 0, opacity: sel ? 1 : 0.45 }} />
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 600 : 400, color: sel ? "#f1f5f9" : "#64748b", lineHeight: 1.4 }}>{d.label}</p>
                     </button>
                   );
                 })}
-                <button onClick={() => setDefi("autre")} style={{
-                  background: defi === "autre" ? "#64748b12" : "transparent",
-                  border: defi === "autre" ? "2px solid #64748b" : "1.5px solid #64748b44",
-                  borderRadius: 12, padding: "16px 12px", minHeight: 56,
-                  cursor: "pointer", transition: "all 0.15s",
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 10,
-                }}>
-                  <div style={{ width: 9, height: 9, borderRadius: "50%", background: "#64748b", flexShrink: 0, opacity: defi === "autre" ? 1 : 0.55 }} />
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: defi === "autre" ? 600 : 500, color: defi === "autre" ? "#f1f5f9" : "#94a3b8" }}>Autre</p>
-                </button>
               </div>
               {defi === "autre" && (
                 <input type="text" value={defiCustom} onChange={e => setDefiCustom(e.target.value)}
                   placeholder="Décrivez votre défi..." style={{ ...inputStyle, marginTop: 8 }}
-                  onFocus={e => e.target.style.borderColor = "#10b981"}
+                  onFocus={e => e.target.style.borderColor = "#64748b"}
                   onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
               )}
             </div>
