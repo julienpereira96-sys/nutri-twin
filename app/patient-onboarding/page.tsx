@@ -838,8 +838,8 @@ export default function PatientOnboardingPage() {
                       cursor: "pointer", textAlign: "left", transition: "all 0.15s",
                       display: "flex", alignItems: "center", gap: 10,
                     }}>
-                      <div style={{ width: 9, height: 9, borderRadius: "50%", background: o.color, flexShrink: 0, opacity: sel ? 1 : 0.45 }} />
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 600 : 400, color: sel ? "#f1f5f9" : "#64748b", lineHeight: 1.4 }}>{o.label}</p>
+                      <div style={{ width: 9, height: 9, borderRadius: "50%", background: o.color, flexShrink: 0, opacity: sel ? 1 : 0.6 }} />
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 500 : 400, color: sel ? "#e2e8f0" : "#94a3b8", lineHeight: 1.4 }}>{o.label}</p>
                     </button>
                   );
                 })}
@@ -875,7 +875,7 @@ export default function PatientOnboardingPage() {
                       display: "flex", alignItems: "center", gap: 10,
                     }}>
                       <div style={{ width: 9, height: 9, borderRadius: "50%", background: m.color, flexShrink: 0, opacity: sel ? 1 : 0.45 }} />
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 600 : 400, color: sel ? "#f1f5f9" : "#64748b", lineHeight: 1.4 }}>{m.label}</p>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 500 : 400, color: sel ? "#e2e8f0" : "#94a3b8", lineHeight: 1.4 }}>{m.label}</p>
                     </button>
                   );
                 })}
@@ -911,7 +911,7 @@ export default function PatientOnboardingPage() {
                       display: "flex", alignItems: "center", gap: 10,
                     }}>
                       <div style={{ width: 9, height: 9, borderRadius: "50%", background: d.color, flexShrink: 0, opacity: sel ? 1 : 0.45 }} />
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 600 : 400, color: sel ? "#f1f5f9" : "#64748b", lineHeight: 1.4 }}>{d.label}</p>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 500 : 400, color: sel ? "#e2e8f0" : "#94a3b8", lineHeight: 1.4 }}>{d.label}</p>
                     </button>
                   );
                 })}
