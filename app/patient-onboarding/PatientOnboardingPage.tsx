@@ -579,7 +579,6 @@ export default function PatientOnboardingPage() {
         ].filter(Boolean).join(" | ") || null,
         onboarding_completed: true,
         onboarding_status: "completed",
-        onboarding_done: true,
       }).eq("user_id", user.id);
 
       if (error) throw new Error(error.message);

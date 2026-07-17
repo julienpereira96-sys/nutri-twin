@@ -8,7 +8,6 @@ import AncrageExercise from "./AncrageExercise";
 import MindfulEating from "./MindfulEating";
 import RestructurationExercise from "./RestructurationExercise";
 import SOSExercise from "./SOSExercise";
-import PwaInstallPrompt from "./PwaInstallPrompt";
 import MicConsentOverlay from "./MicConsentOverlay";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 import { useMicPermission, hasMicConsent, markMicConsent } from "@/hooks/useMicPermission";
@@ -486,7 +485,7 @@ export default function ChatPage() {
   });
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [profileScreen, setProfileScreen] = useState<"main" | "victoires" | "voix" | "password" | "legal" | "erreur" | "preferences">("main");
+  const [profileScreen, setProfileScreen] = useState<"main" | "victoires" | "voix" | "password" | "legal" | "erreur" | "preferences" | "installer">("main");
   const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -1944,6 +1943,12 @@ export default function ChatPage() {
                   chevron
                   onClick={() => setProfileScreen("erreur")}
                 />
+                <Row
+                  icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18" strokeWidth="2.2"/></svg>}
+                  label="Installer l'application"
+                  chevron
+                  onClick={() => setProfileScreen("installer")}
+                />
               </div>
 
               {/* Se déconnecter */}
@@ -2376,6 +2381,68 @@ export default function ChatPage() {
             </div>
           </>
         )}
+
+        {/* ══════════════════ SOUS-ÉCRAN : INSTALLER L'APPLICATION ══════════════════ */}
+        {profileScreen === "installer" && (() => {
+          const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+          const isIOS = /iphone|ipad|ipod/i.test(ua);
+          const isAndroid = /android/i.test(ua);
+
+          const PwaStepIcon = ({ children }: { children: React.ReactNode }) => (
+            <div style={{ width: 32, height: 32, borderRadius: 9, background: "rgba(16,185,129,0.10)", border: "1px solid rgba(16,185,129,0.22)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {children}
+            </div>
+          );
+
+          return (
+            <>
+              <SubHeader title="Installer l'application" />
+              <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20 }}>
+                <p style={{ margin: 0, fontSize: 13.5, color: TEXT_SECONDARY, lineHeight: 1.7 }}>
+                  Ajoutez NutriTwin à votre écran d&apos;accueil pour y accéder en un clic, sans ouvrir votre navigateur.
+                </p>
+
+                {(isIOS || isAndroid) ? (
+                  <div style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "16px 14px 18px" }}>
+                    <p style={{ margin: "0 0 14px", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: "0.1em" }}>
+                      {isIOS ? "SUR IOS — SAFARI" : "SUR ANDROID — CHROME"}
+                    </p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {isIOS && (<>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <PwaStepIcon><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></PwaStepIcon>
+                          <span style={{ fontSize: 13, color: TEXT_SECONDARY }}>Appuyer sur <strong style={{ color: TEXT_PRIMARY }}>Partager</strong></span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <PwaStepIcon><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg></PwaStepIcon>
+                          <span style={{ fontSize: 13, color: TEXT_SECONDARY }}>Faire défiler vers le bas</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <PwaStepIcon><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></PwaStepIcon>
+                          <span style={{ fontSize: 13, color: TEXT_SECONDARY }}>Appuyer sur <strong style={{ color: TEXT_PRIMARY }}>Sur l&apos;écran d&apos;accueil</strong></span>
+                        </div>
+                      </>)}
+                      {isAndroid && (<>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <PwaStepIcon><svg width="14" height="14" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="5" r="1.3" fill="#10b981"/><circle cx="12" cy="12" r="1.3" fill="#10b981"/><circle cx="12" cy="19" r="1.3" fill="#10b981"/></svg></PwaStepIcon>
+                          <span style={{ fontSize: 13, color: TEXT_SECONDARY }}>Menu <strong style={{ color: TEXT_PRIMARY }}>⋮</strong> en haut à droite</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <PwaStepIcon><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></PwaStepIcon>
+                          <span style={{ fontSize: 13, color: TEXT_SECONDARY }}>Appuyer sur <strong style={{ color: TEXT_PRIMARY }}>Ajouter à l&apos;écran d&apos;accueil</strong></span>
+                        </div>
+                      </>)}
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, textAlign: "center", padding: "32px 0" }}>
+                    Cette fonctionnalité est disponible sur mobile (iOS ou Android).
+                  </p>
+                )}
+              </div>
+            </>
+          );
+        })()}
 
       </div>
     </div>
@@ -2832,6 +2899,9 @@ export default function ChatPage() {
                 <h1 style={{ margin: "0 0 8px", fontSize: isMobile ? 26 : 30, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.5px" }}>
                   {patientFirstName ? `Bonjour ${patientFirstName}` : "Bonjour"}
                 </h1>
+                <p style={{ margin: "0 0 6px", fontSize: 13, color: TEXT_MUTED, letterSpacing: "0.01em" }}>
+                  {practitionerTutoiement?.toLowerCase().includes("tutoiement") ? "Je suis ton compagnon de suivi nutritionnel" : "Je suis votre compagnon de suivi nutritionnel"}
+                </p>
                 <p style={{ margin: "0 0 28px", fontSize: isMobile ? 15 : 16, color: TEXT_SECONDARY, lineHeight: 1.7 }}>
                   {practitionerTutoiement?.toLowerCase().includes("tutoiement") ? "Comment puis-je t'aider aujourd'hui ?" : "Comment puis-je vous aider aujourd'hui ?"}
                 </p>
@@ -2850,10 +2920,6 @@ export default function ChatPage() {
                   ))}
                 </div>}
 
-                {/* ── Carte PWA — intégrée dans l'écran d'accueil, pas de popup ── */}
-                <div style={{ display: "flex", justifyContent: "center" }}>
-                  <PwaInstallPrompt />
-                </div>
               </div>
             </div>
           )}
