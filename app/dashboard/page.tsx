@@ -4571,9 +4571,9 @@ function DashboardInner() {
                   {/* Supprimer mon compte */}
                   <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.05)", textAlign: "center" }}>
                     <button onClick={() => setShowDeleteConfirm(true)}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#374151", textDecoration: "underline", padding: "4px 0" }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "rgba(255,255,255,0.28)", textDecoration: "underline", padding: "4px 0" }}
                       onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; }}
-                      onMouseLeave={e => { e.currentTarget.style.color = "#374151"; }}>
+                      onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.28)"; }}>
                       Supprimer mon compte
                     </button>
                   </div>

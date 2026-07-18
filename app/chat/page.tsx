@@ -536,6 +536,8 @@ export default function ChatPage() {
   const [prefDefiCustom, setPrefDefiCustom] = useState("");
   const [prefAlimentsAimes, setPrefAlimentsAimes] = useState<string[]>([]);
   const [prefAlimentsDetestes, setPrefAlimentsDetestes] = useState<string[]>([]);
+  const [prefAlimentsCustom, setPrefAlimentsCustom] = useState<string[]>([]);
+  const [prefAlimentInput, setPrefAlimentInput] = useState("");
   const [prefOpenSection, setPrefOpenSection] = useState<string | null>(null);
   const [prefSaving, setPrefSaving] = useState(false);
   const [prefSaved, setPrefSaved] = useState(false);
@@ -671,8 +673,13 @@ export default function ChatPage() {
             else { setPrefDefi(""); setPrefDefiCustom(""); }
             const aimesRaw = data.patient.aliments_aimes ?? "";
             const detestesRaw = data.patient.aliments_detestes ?? "";
-            setPrefAlimentsAimes(aimesRaw ? aimesRaw.split(", ").map((s: string) => s.trim()).filter(Boolean) : []);
-            setPrefAlimentsDetestes(detestesRaw ? detestesRaw.split(", ").map((s: string) => s.trim()).filter(Boolean) : []);
+            const aimesList = aimesRaw ? aimesRaw.split(", ").map((s: string) => s.trim()).filter(Boolean) : [];
+            const detestesList = detestesRaw ? detestesRaw.split(", ").map((s: string) => s.trim()).filter(Boolean) : [];
+            setPrefAlimentsAimes(aimesList);
+            setPrefAlimentsDetestes(detestesList);
+            // Reconstruire les aliments custom : tout ce qui est dans aimes/detestes mais pas dans ALIMENTS_PREF
+            const customFromData = [...new Set([...aimesList, ...detestesList])].filter(a => !ALIMENTS_PREF.includes(a));
+            setPrefAlimentsCustom(customFromData);
             setPrefLoaded(true);
           }
         });
@@ -2478,8 +2485,8 @@ export default function ChatPage() {
                           <p style={{ margin: "0 0 10px", fontSize: 11.5, color: "rgba(255,255,255,0.4)", lineHeight: 1.4 }}>
                             1× → aimé · 2× → évité · 3× → neutre
                           </p>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                            {ALIMENTS_PREF.map(item => {
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                            {[...ALIMENTS_PREF, ...prefAlimentsCustom].map(item => {
                               const st = getAlimentState(item);
                               return (
                                 <button key={item} onClick={() => toggleAliment(item)} style={{
@@ -2492,6 +2499,38 @@ export default function ChatPage() {
                                 </button>
                               );
                             })}
+                          </div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <input
+                              type="text"
+                              value={prefAlimentInput}
+                              onChange={e => setPrefAlimentInput(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === "Enter") {
+                                  const val = prefAlimentInput.trim();
+                                  if (val && !ALIMENTS_PREF.includes(val) && !prefAlimentsCustom.includes(val)) {
+                                    setPrefAlimentsCustom(prev => [...prev, val]);
+                                  }
+                                  setPrefAlimentInput("");
+                                }
+                              }}
+                              placeholder="Ajouter un aliment..."
+                              style={{ flex: 1, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, fontSize: 13, padding: "0 12px", fontFamily: "inherit", outline: "none" }}
+                              onFocus={e => { e.target.style.borderColor = "rgba(16,185,129,0.4)"; }}
+                              onBlur={e => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                            />
+                            <button
+                              onClick={() => {
+                                const val = prefAlimentInput.trim();
+                                if (val && !ALIMENTS_PREF.includes(val) && !prefAlimentsCustom.includes(val)) {
+                                  setPrefAlimentsCustom(prev => [...prev, val]);
+                                }
+                                setPrefAlimentInput("");
+                              }}
+                              style={{ height: 36, padding: "0 14px", borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.28)", color: ACCENT, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}
+                            >
+                              + Ajouter
+                            </button>
                           </div>
                         </div>
                       )}
