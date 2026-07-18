@@ -570,7 +570,7 @@ export default function ChatPage() {
   const typewriterRafRef = useRef<number | null>(null);
   // Supprime l'écho realtime du message assistant qu'on vient de streamer
   const blockRealtimeAssistantRef = useRef<boolean>(false);
-  const hasMessages = messages.filter(m => !m.hidden).length > 0;
+  const hasMessages = messages.filter(m => !m.hidden && m.role !== "widget").length > 0;
   const sidebarWidth = 305;
   const [showToast, setShowToast] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);

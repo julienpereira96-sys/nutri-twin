@@ -280,6 +280,10 @@ RÈGLES VICTORY (renseigner uniquement si TOUTES les conditions sont réunies) :
 - 1 phrase courte décrivant la réussite (ex : "A tenu ses apports cibles toute la semaine")
 - Si une condition manque : chaîne vide ""
 
+RÈGLES MURMURE :
+- Si level est "red_behavioral" ou "red_critical" : note clinique de 4 à 8 mots à la 3e personne, jamais une citation directe du patient (ex : "Stress aigu exprimé ce soir", "Perte de contrôle alimentaire", "Dégoût de soi exprimé", "Détresse émotionnelle active").
+- Si level est "none" : chaîne vide "".
+
 RÈGLES APAISEMENT :
 - true : soulagement physiologique ou émotionnel EXPLICITE et personnel ("je me sens mieux", "ça va mieux", "je suis plus calme maintenant")
 - false : messages courts de fermeture ("ok", "merci", "à bientôt"), politesse sans contenu émotionnel, amélioration relative vague

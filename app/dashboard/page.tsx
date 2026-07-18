@@ -3042,14 +3042,18 @@ function DashboardInner() {
                               Aller au message
                             </button>
                           )}
-                          {/* red_behavioral : "Aller au message" optionnel + "Marquer comme vu" */}
-                          {isBehavioralBanner && alerts.length > 0 && (
+                          {/* red_behavioral : "Aller au message" uniquement si ce n'est pas un intake SOS
+                              (behavioral_sos_intake n'a pas de message correspondant dans conversations) */}
+                          {isBehavioralBanner && alerts.length > 0 && alerts[0].alert_type !== "behavioral_sos_intake" && (
                             <button onClick={() => scrollToAlertMessage(alerts[0])}
                               style={{ fontSize: 11, fontWeight: 600, color: alertColor, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, whiteSpace: "nowrap" }}>
                               Aller au message
                             </button>
                           )}
-                          {isBehavioralBanner && alerts.length > 0 && <span style={{ color: "#4b5563", fontSize: 11 }}>·</span>}
+                          {isBehavioralBanner && alerts.length > 0 && alerts[0].alert_type === "behavioral_sos_intake" && (
+                            <span style={{ fontSize: 11, color: amber, whiteSpace: "nowrap" }}>· Détecté pendant l&apos;exercice SOS</span>
+                          )}
+                          {isBehavioralBanner && alerts.length > 0 && alerts[0].alert_type !== "behavioral_sos_intake" && <span style={{ color: "#4b5563", fontSize: 11 }}>·</span>}
                           {isBehavioralBanner && (
                             <button onClick={() => void dismissAlertFromHeader(selectedPatient.id)}
                               style={{ fontSize: 11, color: "#64748b", background: "none", border: "none", cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}

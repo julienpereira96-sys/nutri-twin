@@ -61,19 +61,10 @@ export default function PulseOrb({
       let target: number;
       let orbScale = 1.0;
 
-      if (spk) {
-        // ── Mode audio-réactif (Gemini parle) ──────────────────────────────
-        if (an) {
-          an.getByteFrequencyData(buf);
-          let sum = 0;
-          for (let i = 0; i < buf.length; i++) sum += buf[i];
-          target = Math.max(0.35, (sum / buf.length) / 255);
-        } else {
-          target = 0.55;
-        }
-        orbScale = 1.0; // corps statique en mode parole
-      } else if (bp) {
-        // ── Mode souffle (patient respire) ─────────────────────────────────
+      if (bp) {
+        // ── Mode souffle (prioritaire sur la parole) ───────────────────────
+        // Le rythme respiratoire ne doit jamais être interrompu par les
+        // murmures de Gemini — l'animation CSS de l'orb continue sans saccade.
         const elapsed = (performance.now() - breathStartRef.current.startedAt) / 1000;
         const dur     = bp === "inspire" ? 4 : 6;
         const p       = Math.min(1, elapsed / dur);
@@ -85,6 +76,17 @@ export default function PulseOrb({
           target   = 0.90 - 0.68 * eased;  // 0.90 → 0.22
           orbScale = 1.14 - 0.14 * eased;  // 1.14 → 1.00
         }
+      } else if (spk) {
+        // ── Mode audio-réactif (Gemini parle, hors breathing) ─────────────
+        if (an) {
+          an.getByteFrequencyData(buf);
+          let sum = 0;
+          for (let i = 0; i < buf.length; i++) sum += buf[i];
+          target = Math.max(0.35, (sum / buf.length) / 255);
+        } else {
+          target = 0.55;
+        }
+        orbScale = 1.0; // corps statique en mode parole
       } else {
         // ── Mode repos (sine doux) ─────────────────────────────────────────
         target   = 0.30 + 0.06 * Math.sin(t * 0.7);

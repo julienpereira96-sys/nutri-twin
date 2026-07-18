@@ -514,10 +514,25 @@ export default function BreathingExercise({
         `Je viens de faire un exercice de cohérence cardiaque (${blocs} bloc${blocs > 1 ? "s" : ""}), mais je ne me sens pas bien.`
       );
     } else if (lower.includes("on s'arrête")) {
-      // Arrêt propre
+      // Arrêt propre — Gemini a déjà conclu avec "On s'arrête là." dans le
+      // checkpoint. On ne renvoie PAS [CLOTURE] (évite une double conclusion).
+      // On attend que l'audio checkpoint soit entièrement joué, puis on ferme.
       micEnabledRef.current = false;
       outcomeRef.current = "positive";
-      setTimeout(() => handleClotureRef.current(), 1200);
+      // Marquer immédiatement comme "cloture" pour bloquer le hard stop.
+      statusRef.current = "cloture";
+      setStatus("cloture");
+      const waitAndClose = () => {
+        if (isPlayingRef.current) { setTimeout(waitAndClose, 150); return; }
+        if (!clotureHandledRef.current) {
+          clotureHandledRef.current = true;
+          if (clotureFallbackRef.current) clearTimeout(clotureFallbackRef.current);
+          void logBreathingSession(outcomeRef.current, blockCountRef.current);
+          setTimeout(() => { cleanup(); onCloseRef.current(); }, 500);
+        }
+      };
+      // Laisser 300ms pour que le premier chunk audio commence à jouer
+      setTimeout(waitAndClose, 300);
     }
   }, [logBreathingSession, cleanup]);
 
@@ -634,13 +649,18 @@ export default function BreathingExercise({
       }
 
       // Cloture terminée → log silencieux + fermeture (guard double-close)
+      // On attend la fin de l'audio Gemini pour ne pas couper le dernier mot.
       if (currentStatus === "cloture") {
         if (!clotureHandledRef.current) {
           clotureHandledRef.current = true;
           if (clotureFallbackRef.current) clearTimeout(clotureFallbackRef.current);
           const blocs = blockCountRef.current;
           void logBreathingSession(outcomeRef.current, blocs);
-          setTimeout(() => { cleanup(); onCloseRef.current(); }, 800);
+          const waitAndClose = () => {
+            if (isPlayingRef.current) { setTimeout(waitAndClose, 150); return; }
+            setTimeout(() => { cleanup(); onCloseRef.current(); }, 500);
+          };
+          waitAndClose();
         }
       }
     }

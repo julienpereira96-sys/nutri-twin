@@ -39,9 +39,9 @@ async function detectApaisementWithLLM(message: string): Promise<{ confirmed: bo
   try {
     const prompt = `Un patient vient de terminer un exercice de respiration/tracé guidé et a dit : "${message.trim().slice(0, 300)}"
 Réponds en JSON strict : {"confirmed": true/false, "murmure": "météo émotionnelle en 4-8 mots"}
-- confirmed: true UNIQUEMENT si la phrase exprime clairement un retour au calme (ex: "je me sens mieux", "ça va mieux", "je suis plus serein", "l'exercice m'a aidé").
-- murmure: description de l'état émotionnel final en 4-8 mots (ex: "Apaisée après l'exercice de tracé").
-- confirmed: false si le soulagement est partiel, incertain, ou si la phrase est neutre.`;
+- confirmed: true si la phrase exprime, à n'importe quel temps, que le patient ressent ou a ressenti un mieux-être, un apaisement ou un bénéfice de l'exercice — même formulé de façon indirecte ou atténuée.
+- murmure: description de l'état émotionnel final en 4-8 mots à la 3e personne, jamais une citation directe du patient.
+- confirmed: false si le soulagement est absent, incertain, purement rhétorique, ou si la phrase est neutre ou négative.`;
     const raw = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 60, temperature: 0 });
     const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as { confirmed?: boolean; murmure?: string };
     return { confirmed: !!parsed.confirmed, murmure: parsed.murmure?.trim() ?? "" };
