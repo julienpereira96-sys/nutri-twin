@@ -483,6 +483,7 @@ export default function ChatPage() {
     if (new URLSearchParams(window.location.search).get("test") === "true") return false;
     return window.innerWidth < 768;
   });
+  const [isPWA, setIsPWA] = useState(false);
   const [showUpsellModal, setShowUpsellModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [profileScreen, setProfileScreen] = useState<"main" | "victoires" | "voix" | "password" | "legal" | "erreur" | "preferences" | "installer">("main");
@@ -671,6 +672,7 @@ export default function ChatPage() {
     const check = () => { const m = window.innerWidth < 768; setIsMobile(m); if (m) setSidebarOpen(false); };
     check();
     window.addEventListener("resize", check);
+    setIsPWA(window.matchMedia("(display-mode: standalone)").matches);
     return () => window.removeEventListener("resize", check);
   }, []);
 
@@ -2606,8 +2608,8 @@ export default function ChatPage() {
           </div>
 
           {/* ═══ AIDE IMMÉDIATE ═══ */}
-          <p style={{ margin: "0 4px 8px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Aide immédiate</p>
-          <div style={{ marginBottom: 16 }}>
+          <p style={{ margin: "0 4px 6px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Aide immédiate</p>
+          <div style={{ marginBottom: 10 }}>
             <button
               onClick={() => {
                 if (emotionalStatus === "red_critical") return;
@@ -2628,7 +2630,7 @@ export default function ChatPage() {
                 if (isMobile) setSidebarOpen(false);
               }}
               disabled={sosLoading || emotionalStatus === "red_critical" || !patientId || !practitionerIdFromDb}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "5px 8px", borderRadius: 9, background: "transparent", border: "1px solid transparent", cursor: sosLoading ? "not-allowed" : "pointer", textAlign: "left", transition: "all 0.15s" }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "3px 8px", borderRadius: 9, background: "transparent", border: "1px solid transparent", cursor: sosLoading ? "not-allowed" : "pointer", textAlign: "left", transition: "all 0.15s" }}
               onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; } }}
               onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}>
               {sosLoading
@@ -2637,26 +2639,26 @@ export default function ChatPage() {
                     <IconActivity size={13} color={CYAN} />
                   </div>
               }
-              <p style={{ margin: 0, fontSize: 12.5, fontWeight: 500, color: TEXT_PRIMARY, flex: 1 }}>{sosLoading ? "En route..." : "Mon Soutien"}</p>
+              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: TEXT_PRIMARY, flex: 1 }}>{sosLoading ? "En route..." : "Mon Soutien"}</p>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.2 }}><path d="M9 18l6-6-6-6" stroke={TEXT_MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </div>
 
-          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 4px 14px" }} />
+          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 4px 10px" }} />
 
           {/* ═══ EXERCICES ═══ */}
-          <p style={{ margin: "0 4px 8px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Exercices</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 12 }}>
+          <p style={{ margin: "0 4px 6px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Exercices</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 8 }}>
             {LIBRARY_EXERCISES.map(ex => (
               <button key={ex.id}
                 onClick={() => { void handleToolSelect(ex.id, "Bibliothèque", emotionalStatus === "red_behavioral" ? undefined : "pratique"); if (isMobile) setSidebarOpen(false); }}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "5px 8px", borderRadius: 9, background: "transparent", border: "1px solid transparent", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}
+                style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "3px 8px", borderRadius: 9, background: "transparent", border: "1px solid transparent", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}>
                 <div style={{ width: 26, height: 26, borderRadius: 7, background: ex.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   {(LIBRARY_EXERCISE_ICONS[ex.id] ?? ((c: string) => <IconStar size={13} color={c} />))(ex.iconColor)}
                 </div>
-                <p style={{ margin: 0, fontSize: 12.5, fontWeight: 500, color: TEXT_PRIMARY, flex: 1 }}>{ex.label}</p>
+                <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: TEXT_PRIMARY, flex: 1 }}>{ex.label}</p>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.2 }}><path d="M9 18l6-6-6-6" stroke={TEXT_MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </button>
             ))}
@@ -2752,7 +2754,7 @@ export default function ChatPage() {
           </div>
 
           {/* ═══ SIDEBAR BOTTOM — Profil (masqué en mode test) ═══ */}
-          {!isTestMode && <div style={{ paddingBottom: isMobile ? "max(16px, env(safe-area-inset-bottom, 16px))" : 32, flexShrink: 0 }}>
+          {!isTestMode && <div style={{ paddingBottom: isMobile ? (isPWA ? "max(44px, env(safe-area-inset-bottom, 44px))" : 8) : 32, flexShrink: 0 }}>
           <button
             onClick={() => setShowProfileModal(true)}
             style={{ padding: "10px 8px", display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", cursor: "pointer", width: "100%", textAlign: "left", borderRadius: 12, transition: "background 0.15s" }}
