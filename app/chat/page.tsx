@@ -2405,7 +2405,7 @@ export default function ChatPage() {
                 {(isIOS || isAndroid) ? (
                   <div style={{ background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "16px 14px 18px" }}>
                     <p style={{ margin: "0 0 14px", fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.45)", letterSpacing: "0.1em" }}>
-                      {isIOS ? "SUR IOS — SAFARI" : "SUR ANDROID — CHROME"}
+                      {isIOS ? "SUR IOS · SAFARI" : "SUR ANDROID · CHROME"}
                     </p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                       {isIOS && (<>
