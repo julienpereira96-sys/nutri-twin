@@ -23,6 +23,8 @@ html,
 body {
   overscroll-behavior-x: none; /* Bloque le swipe-back iOS en PWA standalone */
   overscroll-behavior-y: none; /* Bloque le pull-to-refresh natif en PWA */
+  /* Fond sombre global — évite la barre blanche dans la safe-area-top iOS PWA */
+  background-color: #0b0f0d;
 }
 
 body {

@@ -221,6 +221,9 @@ export default function RestructurationExercise({
   const pendingAdvanceRef      = useRef<(() => void) | null>(null);
   const outputTransRef         = useRef("");
   const patientSpokeRef        = useRef(false);
+  // Bloque l'activation du micro entre la fin de l'intake et le 1er chunk
+  // audio de la réponse [ACCUEIL] — évite la fenêtre "Je t'écoute" prématurée.
+  const waitingForAccueilRef   = useRef(false);
   // Intake refs
   const intakeMessageRef       = useRef("");
   const intakePatientSpokeRef  = useRef(false);
@@ -284,10 +287,10 @@ export default function RestructurationExercise({
 
       // Ré-activer le mic selon la phase
       const st = statusRef.current;
-      if (st === "active" || st === "exploring") {
+      if ((st === "active" || st === "exploring") && !waitingForAccueilRef.current) {
         setTimeout(() => {
           const cur = statusRef.current;
-          if (cur === "active" || cur === "exploring") {
+          if ((cur === "active" || cur === "exploring") && !waitingForAccueilRef.current) {
             micEnabledRef.current = true;
             setIsListening(true);
           }
@@ -417,7 +420,7 @@ export default function RestructurationExercise({
                 id: fc.id,
                 response: {
                   output: isValid
-                    ? "ok — passe maintenant en phase d'exploration socratique."
+                    ? "ok — Avant de passer à l'exploration, accueille ce que le patient vient de partager en 1-2 phrases chaleureuses et empathiques (ex : reconnaître que cette pensée est lourde à porter, ou que c'est courageux de la regarder en face). Puis engage l'exploration socratique avec une première question ouverte, une seule."
                     : !inActivePhase
                       ? "Erreur : capturer_pensee a déjà été appelé. Passe directement à l'exploration."
                       : !patientSpokeRef.current
@@ -493,9 +496,8 @@ export default function RestructurationExercise({
             statusRef.current = "complete";
             micEnabledRef.current = false;
             setIsListening(false);
-            setTimeout(() => {
-              onTransitionRef.current(original, reformulated, closing);
-            }, 600);
+            // Le patient lit la nouvelle pensée à son rythme.
+            // La transition se déclenche uniquement via le bouton "Terminer".
           };
         }
       }
@@ -522,6 +524,12 @@ export default function RestructurationExercise({
           if (statusRef.current === "intake" && !intakeGeminiHasSpokenRef.current) {
             intakeGeminiHasSpokenRef.current = true;
             setIntakeGeminiHasSpoken(true);
+          }
+          // Lever le verrou "attente ACCUEIL" dès que Gemini commence à répondre
+          // à [ACCUEIL] en phase active — à partir de là le mic pourra s'activer
+          // normalement quand Gemini aura fini de parler.
+          if (statusRef.current === "active" && waitingForAccueilRef.current) {
+            waitingForAccueilRef.current = false;
           }
           enqueueAudio(inlineData.data as string, rate);
         }
@@ -563,6 +571,8 @@ export default function RestructurationExercise({
           pendingAdvanceRef.current = () => {
             setStatus("active");
             statusRef.current = "active";
+            // Bloquer le mic jusqu'au 1er chunk audio de la réponse [ACCUEIL]
+            waitingForAccueilRef.current = true;
             setTimeout(() => wsRef.current?.send(JSON.stringify({
               clientContent: { turns: [{ role: "user", parts: [{ text: "[ACCUEIL]" }] }], turnComplete: true },
             })), 200);
@@ -930,7 +940,10 @@ export default function RestructurationExercise({
                   </p>
                 </div>
 
-                <button onClick={handleClose} style={{
+                <button onClick={() => {
+                  cleanup();
+                  onTransitionRef.current(originalThought, reformulatedThought, closingMessageRef.current);
+                }} style={{
                   marginTop: 8, padding: "12px 32px", borderRadius: 12,
                   background: VIOLET_SFT, border: `1px solid ${VIOLET_BDR}`,
                   color: VIOLET, fontSize: 14, fontWeight: 500, cursor: "pointer",
