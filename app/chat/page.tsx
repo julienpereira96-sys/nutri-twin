@@ -74,21 +74,21 @@ const quickActions = [
 
 // ── Constantes Mon profil actuel ─────────────────────────────────────────────
 const MOOD_PREF = [
-  { id: "optimiste", label: "Optimiste", emoji: "😊" },
-  { id: "abloc",     label: "Bloqué(e)",  emoji: "🧱" },
-  { id: "anxieux",   label: "Anxieux(se)", emoji: "😰" },
-  { id: "sceptique", label: "Sceptique",  emoji: "🤔" },
-  { id: "perdu",     label: "Perdu(e)",   emoji: "🌀" },
-  { id: "fatigue",   label: "Épuisé(e)",  emoji: "😴" },
+  { id: "abloc",     label: "Très motivé(e)" },
+  { id: "optimiste", label: "Optimiste" },
+  { id: "anxieux",   label: "Un peu anxieux(se)" },
+  { id: "sceptique", label: "Un peu sceptique" },
+  { id: "perdu",     label: "Complètement perdu(e)" },
+  { id: "fatigue",   label: "Volontaire, mais fatigué(e)" },
 ];
 const ACTIVITE_PREF = ["Sédentaire", "Légère", "Modérée", "Intense", "Athlète"];
 const DEFIS_PREF = [
-  { id: "temps",      label: "Manque de temps",         emoji: "⏰" },
-  { id: "sucre",      label: "Pulsions sucrées",        emoji: "🍫" },
-  { id: "restaurant", label: "Repas au restaurant",     emoji: "🍽️" },
-  { id: "motivation", label: "Manque de motivation",    emoji: "😔" },
-  { id: "cuisine",    label: "Manque d'organisation",   emoji: "👨‍🍳" },
-  { id: "stress",     label: "Manger sous le stress",   emoji: "😤" },
+  { id: "temps",      label: "Manque de temps" },
+  { id: "sucre",      label: "Pulsions sucrées" },
+  { id: "restaurant", label: "Repas au restaurant" },
+  { id: "motivation", label: "Manque de motivation" },
+  { id: "cuisine",    label: "Manque d'organisation en cuisine" },
+  { id: "stress",     label: "Manger sous le stress" },
 ];
 const ALIMENTS_PREF = [
   "Poisson","Viande rouge","Poulet","Dinde","Œufs","Tofu","Légumineuses","Fruits de mer","Abats","Charcuterie",
@@ -233,12 +233,12 @@ const InputBar = ({ isCenter = false, message, setMessage, send, loading, pendin
 
   useEffect(() => {
     const el = inputRef.current;
-    if (!el || isCenter) return;
+    if (!el) return;
     el.style.height = "auto";
     const newHeight = Math.min(el.scrollHeight, 160);
     el.style.height = newHeight + "px";
     el.style.overflowY = el.scrollHeight > 160 ? "auto" : "hidden";
-  }, [message, isCenter, inputRef]);
+  }, [message, inputRef]);
 
   return (
     <div className="nt-inputbar" style={{
@@ -1999,8 +1999,8 @@ export default function ChatPage() {
               {/* Action destructive */}
               <div style={{ padding: "28px 20px 20px", display: "flex", justifyContent: "center" }}>
                 <button
-                  onClick={() => { closeModal(); setShowDeleteAccountModal(true); }}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: "#f87171", padding: 0, transition: "color 0.15s" }}
+                  onClick={() => setShowDeleteAccountModal(true)}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "#f87171", padding: 0, transition: "color 0.15s" }}
                   onMouseEnter={e => { e.currentTarget.style.color = "#fca5a5"; }}
                   onMouseLeave={e => { e.currentTarget.style.color = "#f87171"; }}
                 >
@@ -2032,7 +2032,7 @@ export default function ChatPage() {
                     <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                       <div style={{ flexShrink: 0, marginTop: 2 }}><IconAward size={15} color={ACCENT} strokeWidth={1.5} /></div>
                       <div style={{ flex: 1 }}>
-                        <p style={{ margin: 0, fontSize: 14, color: "rgba(255,255,255,0.72)", lineHeight: 1.55 }}>{v.text}</p>
+                        <p style={{ margin: 0, fontSize: 14, color: "rgba(255,255,255,0.68)", lineHeight: 1.55 }}>{v.text}</p>
                         {dateLabel && <p style={{ margin: "4px 0 0", fontSize: 11, color: TEXT_MUTED, opacity: 0.7 }}>{dateLabel}</p>}
                       </div>
                     </div>
@@ -2337,7 +2337,7 @@ export default function ChatPage() {
 
           // ── Résumés sections ──────────────────────────────────────────────
           const moodSel = MOOD_PREF.find(m => m.id === prefMotivation);
-          const moodSummary = moodSel ? `${moodSel.emoji} ${moodSel.label}` : "Non défini";
+          const moodSummary = moodSel ? moodSel.label : "Non défini";
           const defiSel = DEFIS_PREF.find(d => d.id === prefDefi);
           const defiSummary = prefDefi === "autre" ? (prefDefiCustom || "Personnalisé") : (defiSel?.label ?? "Non défini");
           const aimesN = prefAlimentsAimes.length;
@@ -2395,7 +2395,7 @@ export default function ChatPage() {
                               const sel = prefMotivation === m.id;
                               return (
                                 <button key={m.id} onClick={() => { setPrefMotivation(sel ? "" : m.id); setPrefSaved(false); }} style={pSel(sel)}>
-                                  <span>{m.emoji}</span><span>{m.label}</span>
+                                  {m.label}
                                 </button>
                               );
                             })}
@@ -2441,13 +2441,13 @@ export default function ChatPage() {
                               const sel = prefDefi === d.id;
                               return (
                                 <button key={d.id} onClick={() => { setPrefDefi(sel ? "" : d.id); if (sel) setPrefDefiCustom(""); setPrefSaved(false); }} style={pSel(sel)}>
-                                  <span>{d.emoji}</span><span>{d.label}</span>
+                                  {d.label}
                                 </button>
                               );
                             })}
                             {(() => { const sel = prefDefi === "autre"; return (
                               <button onClick={() => { setPrefDefi(sel ? "" : "autre"); if (sel) setPrefDefiCustom(""); setPrefSaved(false); }} style={pSel(sel)}>
-                                <span>✏️</span><span>Autre</span>
+                                Autre
                               </button>
                             ); })()}
                           </div>
@@ -2640,8 +2640,8 @@ export default function ChatPage() {
 {showDeleteAccountModal && (
   <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", zIndex: 110, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
     <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 360, border: "1px solid rgba(244,63,94,0.2)", textAlign: "center" }}>
-      <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       </div>
       <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 600, color: TEXT_PRIMARY }}>Clôturer mon accompagnement</h3>
       <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY, lineHeight: 1.6 }}>Cette action est irréversible. Toutes vos données seront supprimées conformément au RGPD.</p>
