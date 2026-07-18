@@ -437,7 +437,7 @@ const LIBRARY_EXERCISES: { id: string; label: string; desc: string; iconBg: stri
   { id: "breathing", label: "Retrouver mon calme",       desc: "Ralentir avec la respiration",              iconBg: "rgba(59,130,246,0.15)",  iconColor: "#60a5fa" },
   { id: "ancrage",   label: "Me reconnecter",            desc: "Revenir à ce qui m'entoure",                iconBg: "rgba(16,185,129,0.12)",  iconColor: ACCENT },
   { id: "defusion",  label: "Défier une pensée négative", desc: "Prendre du recul sur ce que je me dis",   iconBg: "rgba(245,158,11,0.12)",  iconColor: "#fbbf24" },
-  { id: "manger",    label: "Accompagner mon repas",     desc: "Manger avec plus de conscience",            iconBg: "rgba(139,92,246,0.12)",  iconColor: "#a78bfa" },
+  { id: "manger",    label: "Accompagner mon repas",     desc: "Manger en pleine conscience",               iconBg: "rgba(139,92,246,0.12)",  iconColor: "#a78bfa" },
 ];
 
 // ═══ CARTE DE NOTIFICATION "EXERCICE SOS TERMINÉ" ═══
@@ -627,7 +627,7 @@ export default function ChatPage() {
   const [showSasButtons, setShowSasButtons] = useState(false);
   const [showSOSExercise, setShowSOSExercise] = useState(false);
   const [sosSosContext, setSosSosContext] = useState("");
-  // showLibraryModal supprimé — exercices intégrés directement dans la sidebar
+  const [showExercisesSheet, setShowExercisesSheet] = useState(false);
   const [postExerciseStep, setPostExerciseStep] = useState<{ toolId: string; answer: string } | null>(null);
   const [chatSearch, setChatSearch] = useState("");
   const [chatSearchIdx, setChatSearchIdx] = useState(0);
@@ -1653,7 +1653,45 @@ export default function ChatPage() {
         />
       )}
 
-      {/* Modale bibliothèque supprimée — exercices intégrés dans la sidebar */}
+      {/* ═══ BOTTOM SHEET — MES EXERCICES ═══ */}
+      {showExercisesSheet && (
+        <div
+          onClick={() => setShowExercisesSheet(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", zIndex: 105, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: "#111816", borderRadius: "20px 20px 0 0", padding: "16px 20px 36px", width: "100%", maxWidth: 480, border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}
+          >
+            {/* Handle */}
+            <div style={{ width: 32, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.15)", margin: "0 auto 16px" }} />
+            {/* Header */}
+            <p style={{ textAlign: "center", fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.88)", margin: "0 0 4px" }}>Mes exercices</p>
+            <p style={{ textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.35)", margin: "0 0 18px", lineHeight: 1.5 }}>À utiliser quand vous en ressentez le besoin ou pour vous exercer.</p>
+            {/* Liste */}
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {LIBRARY_EXERCISES.map((ex, i) => (
+                <button
+                  key={ex.id}
+                  onClick={() => { void handleToolSelect(ex.id, "Bibliothèque", emotionalStatus === "red_behavioral" ? undefined : "pratique"); setShowExercisesSheet(false); }}
+                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 8px", background: "transparent", border: "none", borderBottom: i < LIBRARY_EXERCISES.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", cursor: "pointer", textAlign: "left", transition: "background 0.15s", borderRadius: 8, width: "100%" }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                >
+                  <div style={{ width: 32, height: 32, borderRadius: 9, background: ex.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {(LIBRARY_EXERCISE_ICONS[ex.id] ?? ((c: string) => <IconStar size={15} color={c} />))(ex.iconColor)}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.88)" }}>{ex.label}</p>
+                    <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{ex.desc}</p>
+                  </div>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.45 }}><path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ SAS DE DÉCOMPRESSION ═══ */}
       {showSasButtons && !activeTool && (
@@ -2845,7 +2883,7 @@ export default function ChatPage() {
               }}
               disabled={sosLoading || emotionalStatus === "red_critical" || !patientId || !practitionerIdFromDb}
               style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "3px 8px", borderRadius: 9, background: "transparent", border: "1px solid transparent", cursor: sosLoading ? "not-allowed" : "pointer", textAlign: "left", transition: "all 0.15s" }}
-              onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; } }}
+              onMouseEnter={e => { if (!sosLoading) { e.currentTarget.style.background = "rgba(6,182,212,0.06)"; e.currentTarget.style.borderColor = CYAN_BORDER; } }}
               onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}>
               {sosLoading
                 ? <div style={{ width: 14, height: 14, borderRadius: "50%", border: `2px solid ${CYAN_DIM}`, borderTop: `2px solid ${CYAN}`, animation: "spin 1s linear infinite", flexShrink: 0 }} />
@@ -2853,29 +2891,27 @@ export default function ChatPage() {
                     <IconActivity size={13} color={CYAN} />
                   </div>
               }
-              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: TEXT_PRIMARY, flex: 1 }}>{sosLoading ? "En route..." : "Mon Soutien"}</p>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.2 }}><path d="M9 18l6-6-6-6" stroke={TEXT_MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: CYAN }}>{sosLoading ? "En route..." : "Mon Soutien"}</p>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginLeft: 3, opacity: 0.7 }}><path d="M9 18l6-6-6-6" stroke={CYAN} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </button>
           </div>
 
           <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 4px 10px" }} />
 
-          {/* ═══ EXERCICES ═══ */}
-          <p style={{ margin: "0 4px 6px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Exercices</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 8 }}>
-            {LIBRARY_EXERCISES.map(ex => (
-              <button key={ex.id}
-                onClick={() => { void handleToolSelect(ex.id, "Bibliothèque", emotionalStatus === "red_behavioral" ? undefined : "pratique"); if (isMobile) setSidebarOpen(false); }}
-                style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "3px 8px", borderRadius: 9, background: "transparent", border: "1px solid transparent", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}>
-                <div style={{ width: 26, height: 26, borderRadius: 7, background: ex.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {(LIBRARY_EXERCISE_ICONS[ex.id] ?? ((c: string) => <IconStar size={13} color={c} />))(ex.iconColor)}
-                </div>
-                <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: TEXT_PRIMARY, flex: 1 }}>{ex.label}</p>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.2 }}><path d="M9 18l6-6-6-6" stroke={TEXT_MUTED} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </button>
-            ))}
+          {/* ═══ MES OUTILS ═══ */}
+          <p style={{ margin: "0 4px 6px", fontSize: 10, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.12em", textTransform: "uppercase" }}>Mes outils</p>
+          <div style={{ marginBottom: 8 }}>
+            <button
+              onClick={() => { setShowExercisesSheet(true); if (isMobile) setSidebarOpen(false); }}
+              style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "3px 8px", borderRadius: 9, background: "transparent", border: "1px solid transparent", cursor: "pointer", textAlign: "left", transition: "all 0.15s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "transparent"; }}>
+              <div style={{ width: 26, height: 26, borderRadius: 7, background: "rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.75)" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+              <p style={{ margin: 0, fontSize: 13.5, fontWeight: 500, color: TEXT_PRIMARY }}>Mes exercices</p>
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, marginLeft: 3, opacity: 0.65 }}><path d="M9 18l6-6-6-6" stroke="rgba(255,255,255,0.9)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
           </div>
 
           <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "0 4px 14px" }} />
