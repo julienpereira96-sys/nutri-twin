@@ -611,6 +611,8 @@ export default function ChatPage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteSuccess, setDeleteSuccess] = useState(false);
+  const [deleteCountdown, setDeleteCountdown] = useState(5);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [pinnedMessage, setPinnedMessage] = useState<{ text: string; sent_at: string; practitioner_id: string } | null>(null);
   const [editFirstName, setEditFirstName] = useState("");
@@ -1920,17 +1922,17 @@ export default function ChatPage() {
                     setPatientPhoto(null);
                     await supabase.from("patients").update({ avatar_updated_at: new Date().toISOString() }).eq("user_id", patientId);
                   }}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: TEXT_MUTED, textDecoration: "underline", textDecorationStyle: "dotted", padding: "0 0 8px", display: "block", margin: "0 auto" }}
-                  onMouseEnter={e => e.currentTarget.style.color = TEXT_SECONDARY}
-                  onMouseLeave={e => e.currentTarget.style.color = TEXT_MUTED}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: TEXT_SECONDARY, textDecoration: "underline", textDecorationStyle: "dotted", padding: "0 0 8px", display: "block", margin: "0 auto" }}
+                  onMouseEnter={e => e.currentTarget.style.color = TEXT_PRIMARY}
+                  onMouseLeave={e => e.currentTarget.style.color = TEXT_SECONDARY}
                 >Revenir aux initiales</button>
               )}
 
               <h3 style={{ margin: "0 0 2px", fontSize: 20, fontWeight: 700, color: TEXT_PRIMARY }}>{patientFirstName} {editLastName}</h3>
-              <p style={{ margin: "0 0 10px", fontSize: 13, color: TEXT_MUTED }}>{patientEmail}</p>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 20, padding: "3px 10px" }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke={ACCENT} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                <span style={{ fontSize: 10, color: ACCENT, fontWeight: 600 }}>Identité vérifiée par votre praticien</span>
+              <p style={{ margin: "0 0 10px", fontSize: 13, color: TEXT_SECONDARY }}>{patientEmail}</p>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 20, padding: "4px 12px" }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" stroke={ACCENT} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <span style={{ fontSize: 12, color: ACCENT, fontWeight: 600 }}>Identité vérifiée par votre praticien</span>
               </div>
             </div>
 
@@ -2000,7 +2002,7 @@ export default function ChatPage() {
               <div style={{ padding: "28px 20px 20px", display: "flex", justifyContent: "center" }}>
                 <button
                   onClick={() => setShowDeleteAccountModal(true)}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "#f87171", padding: 0, transition: "color 0.15s" }}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#f87171", padding: 0, transition: "color 0.15s" }}
                   onMouseEnter={e => { e.currentTarget.style.color = "#fca5a5"; }}
                   onMouseLeave={e => { e.currentTarget.style.color = "#f87171"; }}
                 >
@@ -2640,35 +2642,58 @@ export default function ChatPage() {
 {showDeleteAccountModal && (
   <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", zIndex: 110, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
     <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 360, border: "1px solid rgba(244,63,94,0.2)", textAlign: "center" }}>
-      <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-      </div>
-      <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 600, color: TEXT_PRIMARY }}>Clôturer mon accompagnement</h3>
-      <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY, lineHeight: 1.6 }}>Cette action est irréversible. Toutes vos données seront supprimées conformément au RGPD.</p>
-      <input type="password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} placeholder="Confirmez avec votre mot de passe"
-        style={{ width: "100%", height: 44, borderRadius: 10, border: `1px solid ${deleteError ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "rgba(255,255,255,0.03)", color: TEXT_PRIMARY, padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 8, fontFamily: "inherit" }}
-        onFocus={e => e.target.style.borderColor = "rgba(244,63,94,0.4)"}
-        onBlur={e => e.target.style.borderColor = deleteError ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"} />
-      {deleteError && <p style={{ margin: "0 0 12px", fontSize: 12, color: "#f87171" }}>{deleteError}</p>}
-      <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-        <button onClick={() => { setShowDeleteAccountModal(false); setDeletePassword(""); setDeleteError(""); }}
-          style={{ flex: 1, height: 44, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 14, cursor: "pointer", transition: "all 0.2s" }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = TEXT_SECONDARY; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_MUTED; }}>
-          Annuler
-        </button>
-        <button onClick={async () => {
-          if (!deletePassword || !patientId) return;
-          setDeletingAccount(true); setDeleteError("");
-          const res = await fetch("/api/delete-account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId, password: deletePassword, email: patientEmail }) });
-          const data = await res.json() as { error?: string };
-          if (!res.ok) { setDeleteError(data.error ?? "Erreur"); setDeletingAccount(false); return; }
-          window.location.href = "/patient-login";
-        }} disabled={deletingAccount || !deletePassword}
-          style={{ flex: 1, height: 44, borderRadius: 10, background: deletingAccount || !deletePassword ? "rgba(244,63,94,0.04)" : "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.3)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: deletingAccount || !deletePassword ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
-          {deletingAccount ? "Suppression..." : "Confirmer"}
-        </button>
-      </div>
+      {deleteSuccess ? (
+        <>
+          <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 600, color: TEXT_PRIMARY }}>Compte supprimé</h3>
+          <p style={{ margin: "0 0 24px", fontSize: 13, color: TEXT_SECONDARY, lineHeight: 1.6 }}>Toutes vos données ont été supprimées conformément au RGPD.<br/>Merci d'avoir utilisé NutriTwin.</p>
+          <p style={{ margin: "0 0 10px", fontSize: 12, color: TEXT_MUTED }}>Redirection dans <span style={{ color: TEXT_SECONDARY }}>{deleteCountdown}</span>s</p>
+          <div style={{ width: "100%", height: 2, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ height: "100%", background: "rgba(244,63,94,0.35)", borderRadius: 2, width: `${(deleteCountdown / 5) * 100}%`, transition: "width 1s linear" }} />
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 600, color: TEXT_PRIMARY }}>Clôturer mon accompagnement</h3>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY, lineHeight: 1.6 }}>Cette action est irréversible. Toutes vos données seront supprimées conformément au RGPD.</p>
+          <input type="password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} placeholder="Confirmez avec votre mot de passe"
+            style={{ width: "100%", height: 44, borderRadius: 10, border: `1px solid ${deleteError ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "rgba(255,255,255,0.03)", color: TEXT_PRIMARY, padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 8, fontFamily: "inherit" }}
+            onFocus={e => e.target.style.borderColor = "rgba(244,63,94,0.4)"}
+            onBlur={e => e.target.style.borderColor = deleteError ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"} />
+          {deleteError && <p style={{ margin: "0 0 12px", fontSize: 12, color: "#f87171" }}>{deleteError}</p>}
+          <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+            <button onClick={() => { setShowDeleteAccountModal(false); setDeletePassword(""); setDeleteError(""); }}
+              style={{ flex: 1, height: 44, borderRadius: 10, background: "transparent", border: `1px solid ${BORDER}`, color: TEXT_MUTED, fontSize: 14, cursor: "pointer", transition: "all 0.2s" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; e.currentTarget.style.color = TEXT_SECONDARY; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.color = TEXT_MUTED; }}>
+              Annuler
+            </button>
+            <button onClick={async () => {
+              if (!deletePassword) return;
+              setDeletingAccount(true); setDeleteError("");
+              const res = await fetch("/api/delete-account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: deletePassword }) });
+              const data = await res.json() as { error?: string };
+              if (!res.ok) { setDeleteError(data.error ?? "Erreur"); setDeletingAccount(false); return; }
+              setDeleteSuccess(true);
+              setDeleteCountdown(5);
+              let n = 5;
+              const iv = setInterval(() => {
+                n--;
+                setDeleteCountdown(n);
+                if (n <= 0) { clearInterval(iv); window.location.href = "/patient-login"; }
+              }, 1000);
+            }} disabled={deletingAccount || !deletePassword}
+              style={{ flex: 1, height: 44, borderRadius: 10, background: deletingAccount || !deletePassword ? "rgba(244,63,94,0.04)" : "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.3)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: deletingAccount || !deletePassword ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
+              {deletingAccount ? "Suppression..." : "Confirmer"}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   </div>
 )}
