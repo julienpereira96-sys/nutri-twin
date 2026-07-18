@@ -6,9 +6,9 @@ export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
 
-  const { objective, motivation, defi, aliments_aimes, aliments_detestes } = await request.json() as {
-    objective?: string | null;
+  const { motivation, niveau_activite, defi, aliments_aimes, aliments_detestes } = await request.json() as {
     motivation?: string | null;
+    niveau_activite?: string | null;
     defi?: string | null;
     aliments_aimes?: string | null;
     aliments_detestes?: string | null;
@@ -20,8 +20,8 @@ export async function POST(request: Request) {
   );
 
   const fields: Record<string, string | null> = {};
-  if (objective !== undefined) fields.objective = objective ?? null;
   if (motivation !== undefined) fields.motivation = motivation ?? null;
+  if (niveau_activite !== undefined) fields.niveau_activite = niveau_activite ?? null;
   if (defi !== undefined) fields.defi = defi ?? null;
   if (aliments_aimes !== undefined) fields.aliments_aimes = aliments_aimes ?? null;
   if (aliments_detestes !== undefined) fields.aliments_detestes = aliments_detestes ?? null;

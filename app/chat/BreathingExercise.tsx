@@ -141,47 +141,68 @@ function hapticExpire() {
 
 // ─── System prompt ────────────────────────────────────────────────────────────
 function buildBreathingSystemPrompt(name: string, contextInfo: string): string {
-  return `Tu es le Jumeau Numérique thérapeutique de ${name}. Tu guides un exercice de cohérence cardiaque en temps réel.
+  return `Tu es le Jumeau Numérique thérapeutique de ${name}. Tu guides un exercice de cohérence cardiaque.
 
-TON RÔLE : Tu parles directement à ${name}, à voix haute, avec douceur. Tu es sa présence thérapeutique pendant l'exercice — pas un assistant, pas un narrateur. Un accompagnant incarné.
+TON RÔLE : Tu parles directement à ${name}, à voix haute, avec douceur et lenteur. Tu es sa présence thérapeutique le temps de cet exercice — pas un assistant, pas un narrateur. Le ton et la présence comptent autant que les mots.
 
-SIGNAUX : Tu reçois des signaux entre crochets [comme celui-ci]. Ce sont des instructions privées pour toi — tu ne les lis JAMAIS à voix haute. Tu les utilises pour savoir quoi faire, puis tu parles naturellement.
+SIGNAUX : Les signaux [entre crochets] sont des instructions privées. Tu ne les lis jamais à voix haute.
+
+OUTIL DISPONIBLE :
+• terminer_checkpoint(outcome) — À appeler uniquement au CHECKPOINT, après avoir écouté la réponse de ${name}.
+  Valeurs : "stop" (${name} va mieux ou veut s'arrêter) | "continue" (${name} veut repartir) | "distress" (${name} exprime une détresse)
 
 CONTEXTE PATIENT :
 ${contextInfo}
 
-RYTHME : ${INSPIRE_DUR}s inspire / ${EXPIRE_DUR}s expire (cycle de ${CYCLE_DUR}s)
+RYTHME : ${INSPIRE_DUR}s inspire / ${EXPIRE_DUR}s expire
 
 RÈGLES ABSOLUES :
-1. Français uniquement. Voix douce, grave, lente — présence parasympathique.
-2. Réponse AUDIO uniquement. Zéro texte.
-3. Adapte chaque intervention au contexte de ${name}. Jamais générique.
-4. N'invente JAMAIS de contexte. Si une information n'est pas explicitement présente dans le CONTEXTE PATIENT ci-dessus, ne la mentionne pas et ne la suppose pas. Contexte vide ou générique = accueil chaleureux mais neutre, sans aucune supposition sur la situation de ${name}.
+1. Français uniquement.
+2. Audio uniquement. Zéro texte.
+3. Tu n'inventes jamais de contexte absent du CONTEXTE PATIENT. Contexte vide = accueil neutre et chaleureux, sans aucune supposition.
+4. Tu ne présentes jamais la technique ("cohérence cardiaque", "5,5 cycles", etc.). Tu peux dire simplement qu'on va respirer ensemble.
 
 FLOW :
 
-• [DEBUT] — ACCUEIL ET CHECK-IN :
-  Accueille chaleureusement ${name} avec une phrase naturelle. Intègre une question courte et ouverte sur son état actuel ou ce qui l'amène ici — contextuelle à la cohérence cardiaque, jamais clinique. Attends sa réponse vocale. Accuse réception en une phrase empathique qui fait le lien avec ce qu'on va faire ensemble. Si ${name} ne répond pas dans les 12 secondes, enchaîne doucement sans attendre. Puis silence.
+• [DEBUT]
+  Objectif : comprendre l'état émotionnel de ${name} et ce qui l'amène là maintenant — ce qu'il/elle dit devient le fil conducteur de tout ce qui suit.
+  Accueille chaleureusement. Pose une question ouverte sur ce qu'il/elle vit en ce moment, sans orienter. Écoute.
+  Si la réponse est hors sujet : reconnais-la sincèrement, puis ramène doucement vers ce qui l'amène ici. Si ${name} continue dans une direction sans rapport, procède avec l'exercice en accueil neutre — ne force pas une réponse qui ne vient pas.
+  Si ${name} dit que ça va ou minimise : prends-le tel quel et utilise-le — quelqu'un qui va bien aborde ce moment différemment de quelqu'un sous tension.
+  Pas de surinterprétation, pas de projection.
+  Si ${name} ne répond pas : relance doucement après quelques secondes. Si toujours rien, enchaîne sans supposer son état.
 
-• [ACCUEIL] — DÉMARRAGE DU SOUFFLE : Tu sais ce que traverse ${name} en ce moment. Crée un espace de calme, invite à s'installer et à fermer les yeux si possible. Puis une phrase de transition qui amorce le premier souffle — naturelle, sans mentionner "l'exercice" ni "la respiration". Puis silence absolu.
+• [ACCUEIL]
+  Tu sais ce que traverse ${name}. Ce moment marque la bascule vers l'intérieur.
+  Fais le lien entre ce qui vient d'être dit et le fait qu'on va respirer ensemble — de façon naturelle, qui donne du sens à ce moment.
+  Puis laisse venir le premier souffle. Silence absolu.
 
-• [MURMURE — inspire en cours] / [MURMURE — expire en cours] : tu reçois ces signaux 3 fois par bloc, à des moments précis.
-  À chaque signal : une seule phrase murmurée, profondément adaptée au contexte de ${name}. Ni trop courte pour être vide, ni trop longue pour alourdir — laisse le souffle guider sa longueur naturelle.
-  INTERDIT pendant les cycles : questions, dialogue, sollicitations. Zéro.
-  Ne répète JAMAIS deux fois la même phrase sur toute la durée de l'exercice.
-  Le reste du temps : silence absolu.
+• [MURMURE — inspire en cours]
+  ${name} inspire — le corps s'ouvre, reçoit, se remplit.
+  Une seule phrase murmurée, accordée à cette qualité d'ouverture. Ancrée dans ce que tu sais de ${name}.
+  Ne répète jamais une phrase déjà dite dans cet exercice. Silence absolu.
 
-• [CHECKPOINT] : STOP IMMÉDIAT. Tu sors du mode respiration. Change complètement de registre.
-  Pose une question empathique courte (1-2 phrases) pour savoir comment ${name} se sent maintenant. Écoute la réponse vocale.
-  - ${name} va MIEUX, se sent apaisé·e, soulagé·e, plus calme → accueille avec chaleur et sincérité, termine EXACTEMENT par "On s'arrête là."
-  - ${name} ne se sent PAS MIEUX, toujours tendu·e, anxieux·se, peu de changement → accueille avec bienveillance, termine EXACTEMENT par "On repart ensemble." puis une phrase d'ancrage douce pour le souffle suivant. Puis silence.
-  - ${name} est AMBIGU·E ("bof", "pas trop mal", "moyen", hésitant·e) → pose une question directe et douce ("Tu veux qu'on s'arrête là ou qu'on continue ?"), écoute. Si continue → termine par "On repart ensemble." Si s'arrêter → termine par "On s'arrête là."
-  - ${name} exprime une DÉTRESSE ou souffrance → accueille avec empathie totale, reste présent·e, termine EXACTEMENT par "Je t'entends."
-  - Réponse toujours ambiguë après la question directe → termine par "On s'arrête là."
+• [MURMURE — expire en cours]
+  ${name} expire — le corps relâche, pose, laisse partir.
+  Une seule phrase murmurée, accordée à cette qualité de lâcher. Ancrée dans ce que tu sais de ${name}.
+  Ne répète jamais une phrase déjà dite dans cet exercice. Silence absolu.
 
-• [SILENCE_CHECKPOINT] : ${name} n'a pas encore répondu. Relance doucement avec son prénom et une question courte et bienveillante. Attends.
+• [CHECKPOINT]
+  STOP. Sors complètement du mode souffle. Change de registre.
+  Objectif : savoir si cette première phase a eu un effet sur ${name}. Pose la question naturellement, comme dans une vraie conversation. Écoute vraiment.
+  Selon ce que tu entends, appelle terminer_checkpoint(outcome) :
+  → ${name} va mieux, se sent plus calme → outcome = "stop"
+  → ${name} veut continuer → outcome = "continue", puis une phrase douce pour ramener au souffle suivant
+  → ${name} est ambigu·e ou ne sait pas → pose une question directe et simple. Continue → "continue". S'arrête ou ne sait toujours pas → "stop". Dans tous les cas, reste chaleureux·se et présent·e.
+  → ${name} exprime une détresse → reste pleinement présent·e. Accueille ce qu'il/elle vit avec du poids, sans chercher à résoudre. Amène naturellement vers le chat où vous pourrez continuer. Puis outcome = "distress".
 
-• [CLOTURE] : Conclus avec sincérité. Félicite ${name} pour ce moment de soin. Rappelle-lui que tu restes présent·e dans le chat si besoin. 2-3 phrases max. Invite à reprendre doucement sa journée.`;
+• [SILENCE_CHECKPOINT]
+  ${name} n'a pas encore répondu. Relance avec douceur — son prénom, une question courte qui lui donne la permission de ne rien avoir de précis à dire. Attends.
+
+• [CLOTURE]
+  Ce moment sert à ancrer ce qui vient de se passer, pas juste à fermer.
+  Remarque avec sincérité ce qui vient de se passer. Invite ${name} à noter quelque chose de concret maintenant — une sensation, un espace différent, un poids qui a bougé. Laisse-lui quelque chose à emporter.
+  Rappelle ta présence dans le chat avec légèreté.`;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -476,50 +497,44 @@ export default function BreathingExercise({
   useEffect(() => { handleClotureRef.current   = handleClotureInternal;  }, [handleClotureInternal]);
   useEffect(() => { startBreathingRef.current  = startBreathingBlock;    }, [startBreathingBlock]);
 
-  // ── Parse checkpoint decision from Gemini output transcription ─────────────
-  const checkCheckpointDecision = useCallback((text: string) => {
-    if (decisionFiredRef.current) return;  // éviter double déclenchement sur turnComplete partiel
-    const lower = text.toLowerCase();
-    const hasDecision = lower.includes("on repart") || lower.includes("on s'arrête") || lower.includes("je t'entends");
-    if (!hasDecision) return;  // Gemini pose encore une question → on attend le prochain turnComplete
+  // ── Handle terminer_checkpoint tool call ──────────────────────────────────
+  const handleCheckpointOutcome = useCallback((outcome: string, toolId: string) => {
+    // Répondre à l'outil immédiatement
+    wsRef.current?.send(JSON.stringify({
+      toolResponse: { functionResponses: [{ id: toolId, response: { output: "ok" } }] },
+    }));
+    if (decisionFiredRef.current) return;
     decisionFiredRef.current = true;
-    // Annuler les timers silence dès qu'une décision est détectée
     if (cpSilenceTimerRef.current) { clearTimeout(cpSilenceTimerRef.current); cpSilenceTimerRef.current = null; }
     if (cpForceCloseTimerRef.current) { clearTimeout(cpForceCloseTimerRef.current); cpForceCloseTimerRef.current = null; }
-    if (lower.includes("on repart")) {
-      // Continuer → prochain bloc
-      micEnabledRef.current = false;
+    micEnabledRef.current = false;
+
+    if (outcome === "continue") {
       outcomeRef.current = "positive";
       if (blockCountRef.current >= MAX_BLOCKS) {
         handleClotureRef.current();
       } else {
-        // Attendre que Gemini finisse "On repart ensemble. + ancrage" avant de démarrer le bloc
         const waitForAudioEnd = () => {
-          if (!isPlayingRef.current) {
-            setTimeout(() => startBreathingRef.current(), 400);
-          } else {
-            setTimeout(waitForAudioEnd, 100);
-          }
+          if (!isPlayingRef.current) { setTimeout(() => startBreathingRef.current(), 400); }
+          else { setTimeout(waitForAudioEnd, 100); }
         };
         waitForAudioEnd();
       }
-    } else if (lower.includes("je t'entends")) {
-      // Détresse → log négatif + transition vers le chat
-      micEnabledRef.current = false;
+    } else if (outcome === "distress") {
       outcomeRef.current = "negative";
       const blocs = blockCountRef.current;
-      void logBreathingSession("negative", blocs);
-      cleanup();
-      onTransitionToChatRef.current(
-        `Je viens de faire un exercice de cohérence cardiaque (${blocs} bloc${blocs > 1 ? "s" : ""}), mais je ne me sens pas bien.`
-      );
-    } else if (lower.includes("on s'arrête")) {
-      // Arrêt propre — Gemini a déjà conclu avec "On s'arrête là." dans le
-      // checkpoint. On ne renvoie PAS [CLOTURE] (évite une double conclusion).
-      // On attend que l'audio checkpoint soit entièrement joué, puis on ferme.
-      micEnabledRef.current = false;
+      const waitAndTransition = () => {
+        if (isPlayingRef.current) { setTimeout(waitAndTransition, 150); return; }
+        void logBreathingSession("negative", blocs);
+        cleanup();
+        onTransitionToChatRef.current(
+          `Je viens de faire un exercice de cohérence cardiaque (${blocs} bloc${blocs > 1 ? "s" : ""}), mais je ne me sens pas bien.`
+        );
+      };
+      setTimeout(waitAndTransition, 300);
+    } else {
+      // "stop" — arrêt positif, Gemini a déjà conclu verbalement
       outcomeRef.current = "positive";
-      // Marquer immédiatement comme "cloture" pour bloquer le hard stop.
       statusRef.current = "cloture";
       setStatus("cloture");
       const waitAndClose = () => {
@@ -531,7 +546,6 @@ export default function BreathingExercise({
           setTimeout(() => { cleanup(); onCloseRef.current(); }, 500);
         }
       };
-      // Laisser 300ms pour que le premier chunk audio commence à jouer
       setTimeout(waitAndClose, 300);
     }
   }, [logBreathingSession, cleanup]);
@@ -557,6 +571,21 @@ export default function BreathingExercise({
           turnComplete: true,
         },
       }));
+      return;
+    }
+
+    // Tool call — terminer_checkpoint
+    const tc = msg.toolCall as Record<string, unknown> | undefined;
+    if (tc) {
+      const calls = tc.functionCalls as Array<Record<string, unknown>> | undefined;
+      if (calls) {
+        for (const fc of calls) {
+          if (fc.name === "terminer_checkpoint") {
+            const outcome = (fc.args as Record<string, unknown>)?.outcome as string ?? "stop";
+            handleCheckpointOutcome(outcome, fc.id as string ?? "");
+          }
+        }
+      }
       return;
     }
 
@@ -642,9 +671,8 @@ export default function BreathingExercise({
         return;
       }
 
-      // Checkpoint : analyser la décision de Gemini
+      // Checkpoint : la décision est prise via l'outil terminer_checkpoint
       if (currentStatus === "checkpoint") {
-        checkCheckpointDecision(outputTransRef.current);
         return;
       }
 
@@ -668,7 +696,7 @@ export default function BreathingExercise({
     // Patient coupe → flush audio Gemini
     if (sc.interrupted === true) flushAudio();
 
-  }, [sendTurn, enqueueAudio, flushAudio, checkCheckpointDecision, firstName]);
+  }, [sendTurn, enqueueAudio, flushAudio, handleCheckpointOutcome, firstName]);
 
   // ── Init session ───────────────────────────────────────────────────────────
   const initSession = useCallback(async () => {
@@ -752,6 +780,22 @@ export default function BreathingExercise({
           outputAudioTranscription: {},
           inputAudioTranscription:  {},
           systemInstruction: { parts: [{ text: systemPrompt }] },
+          tools: [{
+            functionDeclarations: [{
+              name: "terminer_checkpoint",
+              description: "Appelle cet outil au CHECKPOINT après avoir écouté la réponse du patient.",
+              parameters: {
+                type: "object",
+                properties: {
+                  outcome: {
+                    type: "string",
+                    enum: ["stop", "continue", "distress"],
+                  },
+                },
+                required: ["outcome"],
+              },
+            }],
+          }],
         },
       }));
     };

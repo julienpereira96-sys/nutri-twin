@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyboardEvent, useState, useEffect, useRef, useCallback } from "react";
+import React, { KeyboardEvent, useState, useEffect, useRef, useCallback, type CSSProperties } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import JournalModal from "./JournalModal";
 import BreathingExercise from "./BreathingExercise";
@@ -70,6 +70,32 @@ const quickActions = [
   "Comment résister à une fringale ?",
   "Comment rester motivé ?",
   "Pourquoi je ne vois pas de résultats ?",
+];
+
+// ── Constantes Mon profil actuel ─────────────────────────────────────────────
+const MOOD_PREF = [
+  { id: "optimiste", label: "Optimiste", emoji: "😊" },
+  { id: "abloc",     label: "Bloqué(e)",  emoji: "🧱" },
+  { id: "anxieux",   label: "Anxieux(se)", emoji: "😰" },
+  { id: "sceptique", label: "Sceptique",  emoji: "🤔" },
+  { id: "perdu",     label: "Perdu(e)",   emoji: "🌀" },
+  { id: "fatigue",   label: "Épuisé(e)",  emoji: "😴" },
+];
+const ACTIVITE_PREF = ["Sédentaire", "Légère", "Modérée", "Intense", "Athlète"];
+const DEFIS_PREF = [
+  { id: "temps",      label: "Manque de temps",         emoji: "⏰" },
+  { id: "sucre",      label: "Pulsions sucrées",        emoji: "🍫" },
+  { id: "restaurant", label: "Repas au restaurant",     emoji: "🍽️" },
+  { id: "motivation", label: "Manque de motivation",    emoji: "😔" },
+  { id: "cuisine",    label: "Manque d'organisation",   emoji: "👨‍🍳" },
+  { id: "stress",     label: "Manger sous le stress",   emoji: "😤" },
+];
+const ALIMENTS_PREF = [
+  "Poisson","Viande rouge","Poulet","Dinde","Œufs","Tofu","Légumineuses","Fruits de mer","Abats","Charcuterie",
+  "Brocoli","Épinards","Courgette","Tomate","Avocat","Champignons","Betterave","Céleri","Chou","Carottes","Poivron","Aubergine","Artichaut",
+  "Pâtes","Riz","Pain","Quinoa","Pomme de terre","Patate douce",
+  "Fromage","Yaourt","Lait","Beurre",
+  "Fruits","Chocolat","Noix","Graines",
 ];
 
 async function compressImage(file: File): Promise<{ base64: string; mimeType: string }> {
@@ -504,11 +530,13 @@ export default function ChatPage() {
     objectif_clinique?: string | null; niveau_activite?: string | null; regime_specifique?: string | null;
     objective?: string | null; motivation?: string | null; defi?: string | null; aliments_aimes?: string | null; aliments_detestes?: string | null;
   } | null>(null);
-  const [prefObjectif, setPrefObjectif] = useState("");
   const [prefMotivation, setPrefMotivation] = useState("");
+  const [prefNiveauActivite, setPrefNiveauActivite] = useState("");
   const [prefDefi, setPrefDefi] = useState("");
-  const [prefAliments, setPrefAliments] = useState("");
-  const [prefEvite, setPrefEvite] = useState("");
+  const [prefDefiCustom, setPrefDefiCustom] = useState("");
+  const [prefAlimentsAimes, setPrefAlimentsAimes] = useState<string[]>([]);
+  const [prefAlimentsDetestes, setPrefAlimentsDetestes] = useState<string[]>([]);
+  const [prefOpenSection, setPrefOpenSection] = useState<string | null>(null);
   const [prefSaving, setPrefSaving] = useState(false);
   const [prefSaved, setPrefSaved] = useState(false);
   const [prefLoaded, setPrefLoaded] = useState(false);
@@ -632,11 +660,17 @@ export default function ChatPage() {
         .then((data: { patient?: { age?: number | null; sexe?: string | null; taille?: number | null; poids?: number | null; pathologies?: string | null; allergies?: string | null; traitements?: string | null; objectif_clinique?: string | null; niveau_activite?: string | null; regime_specifique?: string | null; objective?: string | null; motivation?: string | null; defi?: string | null; aliments_aimes?: string | null; aliments_detestes?: string | null } }) => {
           if (data.patient) {
             setProfileData(data.patient);
-            setPrefObjectif(data.patient.objective ?? "");
             setPrefMotivation(data.patient.motivation ?? "");
-            setPrefDefi(data.patient.defi ?? "");
-            setPrefAliments(data.patient.aliments_aimes ?? "");
-            setPrefEvite(data.patient.aliments_detestes ?? "");
+            setPrefNiveauActivite(data.patient.niveau_activite ?? "");
+            const defiVal = data.patient.defi ?? "";
+            const knownDefiIds = ["temps", "sucre", "restaurant", "motivation", "cuisine", "stress"];
+            if (knownDefiIds.includes(defiVal)) { setPrefDefi(defiVal); setPrefDefiCustom(""); }
+            else if (defiVal) { setPrefDefi("autre"); setPrefDefiCustom(defiVal); }
+            else { setPrefDefi(""); setPrefDefiCustom(""); }
+            const aimesRaw = data.patient.aliments_aimes ?? "";
+            const detestesRaw = data.patient.aliments_detestes ?? "";
+            setPrefAlimentsAimes(aimesRaw ? aimesRaw.split(", ").map((s: string) => s.trim()).filter(Boolean) : []);
+            setPrefAlimentsDetestes(detestesRaw ? detestesRaw.split(", ").map((s: string) => s.trim()).filter(Boolean) : []);
             setPrefLoaded(true);
           }
         });
@@ -1737,7 +1771,7 @@ export default function ChatPage() {
 
      {/* Modale profil — design moderne (sous-écrans) */}
 {showProfileModal && (() => {
-  const closeModal = () => { setShowProfileModal(false); setProfileScreen("main"); setPrefLoaded(false); setPrefSaved(false); setErrorSubmitted(false); };
+  const closeModal = () => { setShowProfileModal(false); setProfileScreen("main"); setPrefLoaded(false); setPrefSaved(false); setErrorSubmitted(false); setPrefMotivation(""); setPrefNiveauActivite(""); setPrefDefi(""); setPrefDefiCustom(""); setPrefAlimentsAimes([]); setPrefAlimentsDetestes([]); setPrefOpenSection(null); };
 
   // ── Rangée générique ─────────────────────────────────────────────────────
   const Row = ({
@@ -1775,7 +1809,7 @@ export default function ChatPage() {
   );
 
   // ── En-tête des sous-écrans ───────────────────────────────────────────────
-  const btnStyle: React.CSSProperties = { width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", flexShrink: 0, transition: "all 0.15s" };
+  const btnStyle: CSSProperties = { width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", flexShrink: 0, transition: "all 0.15s" };
   const btnEnter = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; };
   const btnLeave = (e: React.MouseEvent<HTMLButtonElement>) => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#64748b"; };
 
@@ -1919,7 +1953,7 @@ export default function ChatPage() {
                 />
                 <Row
                   icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h7v7H3z"/><path d="M14 3h7v7h-7z"/><path d="M14 14h7v7h-7z"/><path d="M3 14h7v7H3z"/></svg>}
-                  label="Mes préférences alimentaires"
+                  label="Mon profil actuel"
                   chevron
                   onClick={() => setProfileScreen("preferences")}
                 />
@@ -1958,7 +1992,7 @@ export default function ChatPage() {
                 <Row
                   icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>}
                   label="Se déconnecter"
-                  onClick={() => { closeModal(); setShowLogoutPatientModal(true); }}
+                  onClick={() => setShowLogoutPatientModal(true)}
                 />
               </div>
 
@@ -1998,7 +2032,7 @@ export default function ChatPage() {
                     <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 20px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                       <div style={{ flexShrink: 0, marginTop: 2 }}><IconAward size={15} color={ACCENT} strokeWidth={1.5} /></div>
                       <div style={{ flex: 1 }}>
-                        <p style={{ margin: 0, fontSize: 14, color: TEXT_SECONDARY, lineHeight: 1.55 }}>{v.text}</p>
+                        <p style={{ margin: 0, fontSize: 14, color: "rgba(255,255,255,0.72)", lineHeight: 1.55 }}>{v.text}</p>
                         {dateLabel && <p style={{ margin: "4px 0 0", fontSize: 11, color: TEXT_MUTED, opacity: 0.7 }}>{dateLabel}</p>}
                       </div>
                     </div>
@@ -2077,7 +2111,7 @@ export default function ChatPage() {
             <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px" }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Nouveau mot de passe</label>
+                  <label style={{ display: "block", fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Nouveau mot de passe</label>
                   <input
                     type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••"
                     style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "0 14px", fontSize: 15, outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
@@ -2086,7 +2120,7 @@ export default function ChatPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Confirmer le nouveau mot de passe</label>
+                  <label style={{ display: "block", fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Confirmer le nouveau mot de passe</label>
                   <input
                     type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="••••••••"
                     style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "0 14px", fontSize: 15, outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
@@ -2209,8 +2243,8 @@ export default function ChatPage() {
                   <>
                     {/* Instruction en haut */}
                     <div style={{ padding: "16px 20px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                      <p style={{ margin: 0, fontSize: 13, color: TEXT_MUTED, lineHeight: 1.6 }}>
-                        Cliquez sur l&apos;information incorrecte pour signaler une erreur à votre praticien.
+                      <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.68)", lineHeight: 1.6 }}>
+                        Appuyez sur l&apos;information incorrecte pour signaler une erreur à votre praticien.
                       </p>
                     </div>
                     {/* Loading */}
@@ -2242,12 +2276,11 @@ export default function ChatPage() {
                               {/* Zone de correction inline */}
                               {isOpen && (
                                 <div style={{ padding: "0 20px 14px", background: "rgba(16,185,129,0.04)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                                  <p style={{ margin: "0 0 8px", fontSize: 12, color: TEXT_MUTED }}>Quelle correction souhaitez-vous apporter ?</p>
                                   <textarea
                                     autoFocus
                                     value={errorCorrection}
                                     onChange={e => setErrorCorrection(e.target.value)}
-                                    placeholder={`Valeur correcte pour ${f.label.toLowerCase()}…`}
+                                    placeholder={`Correction pour ${f.label.toLowerCase()}…`}
                                     rows={2}
                                     style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: `1px solid rgba(16,185,129,0.25)`, color: TEXT_PRIMARY, padding: "9px 12px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5, transition: "border-color 0.15s" }}
                                     onFocus={e => { e.currentTarget.style.borderColor = `rgba(16,185,129,0.5)`; }}
@@ -2286,103 +2319,220 @@ export default function ChatPage() {
           );
         })()}
 
-        {/* ══════════════════ SOUS-ÉCRAN : PRÉFÉRENCES ALIMENTAIRES ══════════════════ */}
-        {profileScreen === "preferences" && (
-          <>
-            <SubHeader title="Mes préférences alimentaires" />
-            <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px 32px" }}>
-              {!prefLoaded ? (
-                <div style={{ display: "flex", justifyContent: "center", padding: "48px 0" }}>
-                  <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.08)", borderTop: `2px solid ${ACCENT}`, animation: "spin 1s linear infinite" }} />
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Mon objectif principal</label>
-                    <input
-                      type="text" value={prefObjectif} onChange={e => { setPrefObjectif(e.target.value); setPrefSaved(false); }}
-                      placeholder="Perdre du poids, avoir plus d'énergie…"
-                      style={{ width: "100%", height: 44, borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", transition: "border-color 0.15s" }}
-                      onFocus={e => { e.currentTarget.style.borderColor = `rgba(16,185,129,0.4)`; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
-                    />
+        {/* ══════════════════ SOUS-ÉCRAN : MON PROFIL ACTUEL ══════════════════ */}
+        {profileScreen === "preferences" && (() => {
+          // ── Helpers aliments ──────────────────────────────────────────────
+          const getAlimentState = (item: string) => {
+            if (prefAlimentsAimes.includes(item)) return "aime";
+            if (prefAlimentsDetestes.includes(item)) return "evite";
+            return "neutral";
+          };
+          const toggleAliment = (item: string) => {
+            setPrefSaved(false);
+            const st = getAlimentState(item);
+            if (st === "neutral") { setPrefAlimentsAimes(prev => [...prev, item]); }
+            else if (st === "aime") { setPrefAlimentsAimes(prev => prev.filter(a => a !== item)); setPrefAlimentsDetestes(prev => [...prev, item]); }
+            else { setPrefAlimentsDetestes(prev => prev.filter(a => a !== item)); }
+          };
+
+          // ── Résumés sections ──────────────────────────────────────────────
+          const moodSel = MOOD_PREF.find(m => m.id === prefMotivation);
+          const moodSummary = moodSel ? `${moodSel.emoji} ${moodSel.label}` : "Non défini";
+          const defiSel = DEFIS_PREF.find(d => d.id === prefDefi);
+          const defiSummary = prefDefi === "autre" ? (prefDefiCustom || "Personnalisé") : (defiSel?.label ?? "Non défini");
+          const aimesN = prefAlimentsAimes.length;
+          const detestesN = prefAlimentsDetestes.length;
+          const alimentsSummary = (aimesN + detestesN) > 0
+            ? `${aimesN} aimé${aimesN > 1 ? "s" : ""}, ${detestesN} évité${detestesN > 1 ? "s" : ""}`
+            : "Non défini";
+
+          // ── Pill sélectionnable ───────────────────────────────────────────
+          const pSel = (sel: boolean) => ({
+            display: "flex" as const, alignItems: "center" as const, gap: 5,
+            padding: "6px 12px", borderRadius: 20, fontSize: 13,
+            cursor: "pointer" as const, transition: "all 0.15s", fontFamily: "inherit",
+            background: sel ? "rgba(16,185,129,0.14)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${sel ? "rgba(16,185,129,0.45)" : "rgba(255,255,255,0.1)"}`,
+            color: sel ? ACCENT : TEXT_SECONDARY,
+          });
+
+          // ── Chevron ───────────────────────────────────────────────────────
+          const Chev = ({ open }: { open: boolean }) => (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+              style={{ color: "rgba(255,255,255,0.35)", transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s", flexShrink: 0 }}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          );
+
+          const sBox: CSSProperties = { marginBottom: 10, borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" };
+          const sHead: CSSProperties = { display: "flex", alignItems: "center", padding: "13px 16px", cursor: "pointer", background: "rgba(255,255,255,0.03)", userSelect: "none" };
+          const sBody: CSSProperties = { padding: "12px 14px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(0,0,0,0.1)" };
+          const pWrap: CSSProperties = { display: "flex", flexWrap: "wrap", gap: 7 };
+          const sumText: CSSProperties = { fontSize: 12, color: "rgba(255,255,255,0.42)", marginRight: 10, maxWidth: "48%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
+
+          return (
+            <>
+              <SubHeader title="Mon profil actuel" />
+              <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 32px" }}>
+                {!prefLoaded ? (
+                  <div style={{ display: "flex", justifyContent: "center", padding: "48px 0" }}>
+                    <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.08)", borderTop: `2px solid ${ACCENT}`, animation: "spin 1s linear infinite" }} />
                   </div>
+                ) : (
                   <div>
-                    <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Ma motivation</label>
-                    <textarea
-                      value={prefMotivation} onChange={e => { setPrefMotivation(e.target.value); setPrefSaved(false); }}
-                      placeholder="Ce qui me pousse à prendre soin de moi…" rows={2}
-                      style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5, transition: "border-color 0.15s" }}
-                      onFocus={e => { e.currentTarget.style.borderColor = `rgba(16,185,129,0.4)`; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
-                    />
+
+                    {/* ── 1. État d'esprit ──────────────────────────────── */}
+                    <div style={sBox}>
+                      <div style={sHead} onClick={() => setPrefOpenSection(prefOpenSection === "mood" ? null : "mood")}>
+                        <span style={{ fontSize: 13.5, fontWeight: 600, color: TEXT_PRIMARY, flex: 1 }}>État d&apos;esprit</span>
+                        <span style={sumText}>{moodSummary}</span>
+                        <Chev open={prefOpenSection === "mood"} />
+                      </div>
+                      {prefOpenSection === "mood" && (
+                        <div style={sBody}>
+                          <div style={pWrap}>
+                            {MOOD_PREF.map(m => {
+                              const sel = prefMotivation === m.id;
+                              return (
+                                <button key={m.id} onClick={() => { setPrefMotivation(sel ? "" : m.id); setPrefSaved(false); }} style={pSel(sel)}>
+                                  <span>{m.emoji}</span><span>{m.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── 2. Niveau d'activité ──────────────────────────── */}
+                    <div style={sBox}>
+                      <div style={sHead} onClick={() => setPrefOpenSection(prefOpenSection === "activite" ? null : "activite")}>
+                        <span style={{ fontSize: 13.5, fontWeight: 600, color: TEXT_PRIMARY, flex: 1 }}>Niveau d&apos;activité</span>
+                        <span style={sumText}>{prefNiveauActivite || "Non défini"}</span>
+                        <Chev open={prefOpenSection === "activite"} />
+                      </div>
+                      {prefOpenSection === "activite" && (
+                        <div style={sBody}>
+                          <div style={pWrap}>
+                            {ACTIVITE_PREF.map(a => {
+                              const sel = prefNiveauActivite === a;
+                              return (
+                                <button key={a} onClick={() => { setPrefNiveauActivite(sel ? "" : a); setPrefSaved(false); }} style={pSel(sel)}>
+                                  {a}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── 3. Mon défi principal ─────────────────────────── */}
+                    <div style={sBox}>
+                      <div style={sHead} onClick={() => setPrefOpenSection(prefOpenSection === "defi" ? null : "defi")}>
+                        <span style={{ fontSize: 13.5, fontWeight: 600, color: TEXT_PRIMARY, flex: 1 }}>Mon défi principal</span>
+                        <span style={sumText}>{defiSummary}</span>
+                        <Chev open={prefOpenSection === "defi"} />
+                      </div>
+                      {prefOpenSection === "defi" && (
+                        <div style={sBody}>
+                          <div style={{ ...pWrap, marginBottom: prefDefi === "autre" ? 12 : 0 }}>
+                            {DEFIS_PREF.map(d => {
+                              const sel = prefDefi === d.id;
+                              return (
+                                <button key={d.id} onClick={() => { setPrefDefi(sel ? "" : d.id); if (sel) setPrefDefiCustom(""); setPrefSaved(false); }} style={pSel(sel)}>
+                                  <span>{d.emoji}</span><span>{d.label}</span>
+                                </button>
+                              );
+                            })}
+                            {(() => { const sel = prefDefi === "autre"; return (
+                              <button onClick={() => { setPrefDefi(sel ? "" : "autre"); if (sel) setPrefDefiCustom(""); setPrefSaved(false); }} style={pSel(sel)}>
+                                <span>✏️</span><span>Autre</span>
+                              </button>
+                            ); })()}
+                          </div>
+                          {prefDefi === "autre" && (
+                            <input type="text" value={prefDefiCustom}
+                              onChange={e => { setPrefDefiCustom(e.target.value); setPrefSaved(false); }}
+                              placeholder="Décrivez votre défi…"
+                              style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: TEXT_PRIMARY, padding: "9px 13px", fontSize: 13.5, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }}
+                              onFocus={e => { e.currentTarget.style.borderColor = "rgba(16,185,129,0.4)"; }}
+                              onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── 4. Mes aliments ────────────────────────────────── */}
+                    <div style={{ ...sBox, marginBottom: 16 }}>
+                      <div style={sHead} onClick={() => setPrefOpenSection(prefOpenSection === "aliments" ? null : "aliments")}>
+                        <span style={{ fontSize: 13.5, fontWeight: 600, color: TEXT_PRIMARY, flex: 1 }}>Mes aliments</span>
+                        <span style={sumText}>{alimentsSummary}</span>
+                        <Chev open={prefOpenSection === "aliments"} />
+                      </div>
+                      {prefOpenSection === "aliments" && (
+                        <div style={sBody}>
+                          <p style={{ margin: "0 0 10px", fontSize: 11.5, color: "rgba(255,255,255,0.4)", lineHeight: 1.4 }}>
+                            1× → aimé · 2× → évité · 3× → neutre
+                          </p>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {ALIMENTS_PREF.map(item => {
+                              const st = getAlimentState(item);
+                              return (
+                                <button key={item} onClick={() => toggleAliment(item)} style={{
+                                  padding: "5px 10px", borderRadius: 20, fontSize: 12.5, cursor: "pointer", transition: "all 0.15s", fontFamily: "inherit",
+                                  background: st === "aime" ? "rgba(16,185,129,0.13)" : st === "evite" ? "rgba(239,68,68,0.11)" : "rgba(255,255,255,0.04)",
+                                  border: `1px solid ${st === "aime" ? "rgba(16,185,129,0.42)" : st === "evite" ? "rgba(239,68,68,0.38)" : "rgba(255,255,255,0.1)"}`,
+                                  color: st === "aime" ? ACCENT : st === "evite" ? "#f87171" : TEXT_SECONDARY,
+                                }}>
+                                  {st === "aime" ? "✓ " : st === "evite" ? "✕ " : ""}{item}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── Enregistrer ──────────────────────────────────────── */}
+                    {prefSaved && (
+                      <p style={{ margin: "0 0 10px", fontSize: 13, color: ACCENT, textAlign: "center" }}>✓ Profil enregistré</p>
+                    )}
+                    <button
+                      disabled={prefSaving}
+                      onClick={async () => {
+                        setPrefSaving(true);
+                        setPrefSaved(false);
+                        try {
+                          await fetch("/api/patient/update-preferences", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              motivation: prefMotivation || null,
+                              niveau_activite: prefNiveauActivite || null,
+                              defi: prefDefi === "autre" ? (prefDefiCustom || null) : (prefDefi || null),
+                              aliments_aimes: prefAlimentsAimes.length > 0 ? prefAlimentsAimes.join(", ") : null,
+                              aliments_detestes: prefAlimentsDetestes.length > 0 ? prefAlimentsDetestes.join(", ") : null,
+                            }),
+                          });
+                          setPrefSaved(true);
+                        } finally {
+                          setPrefSaving(false);
+                        }
+                      }}
+                      style={{ width: "100%", height: 44, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: prefSaving ? "not-allowed" : "pointer", opacity: prefSaving ? 0.6 : 1, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.28)", color: ACCENT, transition: "all 0.15s" }}
+                      onMouseEnter={e => { if (!prefSaving) e.currentTarget.style.background = "rgba(16,185,129,0.18)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}
+                    >
+                      {prefSaving ? "Enregistrement…" : "Enregistrer mon profil"}
+                    </button>
                   </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Mon principal défi</label>
-                    <textarea
-                      value={prefDefi} onChange={e => { setPrefDefi(e.target.value); setPrefSaved(false); }}
-                      placeholder="Grignotages, manque de temps, stress…" rows={2}
-                      style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5, transition: "border-color 0.15s" }}
-                      onFocus={e => { e.currentTarget.style.borderColor = `rgba(16,185,129,0.4)`; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Aliments que j&apos;aime</label>
-                    <textarea
-                      value={prefAliments} onChange={e => { setPrefAliments(e.target.value); setPrefSaved(false); }}
-                      placeholder="Poulet, légumes, riz, fruits…" rows={2}
-                      style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5, transition: "border-color 0.15s" }}
-                      onFocus={e => { e.currentTarget.style.borderColor = `rgba(16,185,129,0.4)`; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: 12, color: TEXT_MUTED, marginBottom: 6, fontWeight: 500, letterSpacing: "0.02em" }}>Aliments que j&apos;évite</label>
-                    <textarea
-                      value={prefEvite} onChange={e => { setPrefEvite(e.target.value); setPrefSaved(false); }}
-                      placeholder="Gluten, lactose, viande rouge…" rows={2}
-                      style={{ width: "100%", borderRadius: 10, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: TEXT_PRIMARY, padding: "10px 14px", fontSize: 14, outline: "none", boxSizing: "border-box", resize: "none", fontFamily: "inherit", lineHeight: 1.5, transition: "border-color 0.15s" }}
-                      onFocus={e => { e.currentTarget.style.borderColor = `rgba(16,185,129,0.4)`; }}
-                      onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
-                    />
-                  </div>
-                  {prefSaved && (
-                    <p style={{ margin: 0, fontSize: 13, color: ACCENT }}>✓ Préférences enregistrées</p>
-                  )}
-                  <button
-                    disabled={prefSaving}
-                    onClick={async () => {
-                      setPrefSaving(true);
-                      setPrefSaved(false);
-                      try {
-                        await fetch("/api/patient/update-preferences", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            objective: prefObjectif || null,
-                            motivation: prefMotivation || null,
-                            defi: prefDefi || null,
-                            aliments_aimes: prefAliments || null,
-                            aliments_detestes: prefEvite || null,
-                          }),
-                        });
-                        setPrefSaved(true);
-                      } finally {
-                        setPrefSaving(false);
-                      }
-                    }}
-                    style={{ width: "100%", height: 44, borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: prefSaving ? "not-allowed" : "pointer", opacity: prefSaving ? 0.6 : 1, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.28)", color: ACCENT, transition: "all 0.15s", marginTop: 4 }}
-                    onMouseEnter={e => { if (!prefSaving) e.currentTarget.style.background = "rgba(16,185,129,0.18)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.1)"; }}
-                  >
-                    {prefSaving ? "Enregistrement…" : "Enregistrer mes préférences"}
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        )}
+                )}
+              </div>
+            </>
+          );
+        })()}
 
         {/* ══════════════════ SOUS-ÉCRAN : INSTALLER L'APPLICATION ══════════════════ */}
         {profileScreen === "installer" && (() => {
@@ -2400,7 +2550,7 @@ export default function ChatPage() {
             <>
               <SubHeader title="Installer l'application" />
               <div style={{ flex: 1, overflowY: "auto", padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20 }}>
-                <p style={{ margin: 0, fontSize: 13.5, color: TEXT_SECONDARY, lineHeight: 1.7 }}>
+                <p style={{ margin: 0, fontSize: 13.5, color: "rgba(255,255,255,0.68)", lineHeight: 1.7, textAlign: "center" }}>
                   Ajoutez NutriTwin à votre écran d&apos;accueil pour y accéder en un clic, sans ouvrir votre navigateur.
                 </p>
 
@@ -2454,7 +2604,7 @@ export default function ChatPage() {
 {/* Modale déconnexion patient */}
 {showLogoutPatientModal && (
   <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", zIndex: 110, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-    <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 340, border: `1px solid ${BORDER}`, textAlign: "center" }}>
+    <div style={{ background: "#0a0f0c", borderRadius: 24, padding: 28, width: "100%", maxWidth: 340, border: "1px solid rgba(244,63,94,0.28)", textAlign: "center" }}>
       <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round"/><polyline points="16,17 21,12 16,7" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><line x1="21" y1="12" x2="9" y2="12" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round"/></svg>
       </div>
