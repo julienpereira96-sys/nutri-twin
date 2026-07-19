@@ -434,10 +434,10 @@ const OnboardingTour = ({ firstName, onDone }: OnboardingProps) => {
 // Les 5 exercices retravaillés (Gemini Live). Lancés en dehors de toute triage SOS,
 // toujours en origin "pratique" (Exercices pratiqués côté Dashboard, jamais "[Non résolu]").
 const LIBRARY_EXERCISES: { id: string; label: string; desc: string; iconBg: string; iconColor: string }[] = [
-  { id: "breathing", label: "Retrouver mon calme",       desc: "Ralentir avec la respiration",              iconBg: "rgba(59,130,246,0.15)",  iconColor: "#60a5fa" },
-  { id: "ancrage",   label: "Me reconnecter",            desc: "Revenir à ce qui m'entoure",                iconBg: "rgba(16,185,129,0.12)",  iconColor: ACCENT },
-  { id: "defusion",  label: "Défier une pensée négative", desc: "Prendre du recul sur ce que je me dis",   iconBg: "rgba(245,158,11,0.12)",  iconColor: "#fbbf24" },
-  { id: "manger",    label: "Accompagner mon repas",     desc: "Manger en pleine conscience",               iconBg: "rgba(139,92,246,0.12)",  iconColor: "#a78bfa" },
+  { id: "breathing", label: "Retrouver mon calme",       desc: "Ralentir avec la respiration",              iconBg: "rgba(59,130,246,0.08)",  iconColor: "#60a5fa" },
+  { id: "ancrage",   label: "Me reconnecter",            desc: "Revenir à ce qui m'entoure",                iconBg: "rgba(16,185,129,0.08)",  iconColor: ACCENT },
+  { id: "defusion",  label: "Défier une pensée négative", desc: "Prendre du recul sur ce que je me dis",   iconBg: "rgba(245,158,11,0.08)",  iconColor: "#fbbf24" },
+  { id: "manger",    label: "Accompagner mon repas",     desc: "Manger en pleine conscience",               iconBg: "rgba(139,92,246,0.08)",  iconColor: "#a78bfa" },
 ];
 
 // ═══ CARTE DE NOTIFICATION "EXERCICE SOS TERMINÉ" ═══
