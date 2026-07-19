@@ -442,7 +442,7 @@ function MonSoutienSection() {
   return (
     <section className="py-16 sm:py-24" style={{ background: "#070707" }}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid items-center gap-12 lg:gap-20" style={{ gridTemplateColumns: "3fr 2fr" }}>
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
 
           {/* Colonne copy */}
           <div>
@@ -453,8 +453,8 @@ function MonSoutienSection() {
               </span>
             </div>
 
-            <h2 className="font-black tracking-tight" style={{ fontSize: "clamp(22px, 2.8vw, 36px)" }}>
-              <span className="block text-white whitespace-nowrap">Quand une crise survient à 22h,</span>
+            <h2 className="font-black tracking-tight" style={{ fontSize: "clamp(28px, 4vw, 44px)" }}>
+              <span className="block text-white">Quand une crise survient à 22h,</span>
               <span className="block" style={{ color: emerald }}>le compagnon est là.</span>
             </h2>
 
@@ -509,7 +509,7 @@ function MonSoutienSection() {
 
           {/* Colonne téléphone */}
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <div style={{ width: 230, borderRadius: 36, border: "7px solid rgba(16,185,129,0.35)", overflow: "hidden", boxShadow: "0 0 0 1px rgba(16,185,129,0.12), 0 0 48px rgba(16,185,129,0.14)" }}>
+            <div style={{ width: 230, borderRadius: 36, border: "7px solid #161616", overflow: "hidden", boxShadow: "0 0 0 1px rgba(16,185,129,0.25), 0 0 40px rgba(16,185,129,0.15)" }}>
               {/* Notch */}
               <div style={{ height: 26, background: "#060810", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <div style={{ width: 64, height: 12, background: "#111", borderRadius: 8 }} />
