@@ -1663,8 +1663,10 @@ export default function ChatPage() {
             onClick={e => e.stopPropagation()}
             style={{ background: "#060908", borderRadius: 20, width: "100%", maxWidth: 390, maxHeight: "90dvh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 0 0 1px rgba(255,255,255,0.10), 0 24px 64px rgba(0,0,0,0.60), 0 0 52px rgba(16,185,129,0.07)" }}
           >
-            {/* Bouton fermeture */}
-            <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 14px 0", flexShrink: 0 }}>
+            {/* En-tête fusionné : titre centré + × à droite */}
+            <div style={{ display: "flex", alignItems: "center", padding: "16px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+              <div style={{ width: 36, flexShrink: 0 }} />
+              <span style={{ flex: 1, textAlign: "center", fontSize: 17, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.01em" }}>Mes exercices</span>
               <button
                 onClick={() => setShowExercisesSheet(false)}
                 style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", flexShrink: 0, transition: "all 0.15s" }}
@@ -1673,11 +1675,6 @@ export default function ChatPage() {
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
-            </div>
-            {/* Titre */}
-            <div style={{ textAlign: "center", padding: "6px 20px 16px", flexShrink: 0 }}>
-              <p style={{ fontSize: 17, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.01em", margin: 0 }}>Mes exercices</p>
-              <p style={{ fontSize: 12, color: TEXT_MUTED, margin: "6px 0 0", lineHeight: 1.5 }}>À utiliser quand vous en ressentez le besoin ou pour vous exercer.</p>
             </div>
             {/* Liste */}
             <div style={{ overflowY: "auto", flexShrink: 1 }}>
