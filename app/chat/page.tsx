@@ -1657,44 +1657,50 @@ export default function ChatPage() {
       {showExercisesSheet && (
         <div
           onClick={() => setShowExercisesSheet(false)}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)", zIndex: 105, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(16px)", zIndex: 105, display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? "20px 14px" : 20 }}
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: "#111816", borderRadius: "20px 20px 0 0", padding: "20px 16px 40px", width: "100%", maxWidth: 420, border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}
+            style={{ background: "#060908", borderRadius: 20, width: "100%", maxWidth: 390, maxHeight: "90dvh", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "0 0 0 1px rgba(255,255,255,0.10), 0 24px 64px rgba(0,0,0,0.60), 0 0 52px rgba(16,185,129,0.07)" }}
           >
-            {/* Header avec fermeture */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", position: "relative", marginBottom: 6 }}>
-              <p style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.88)", margin: 0 }}>Mes exercices</p>
+            {/* Bouton fermeture */}
+            <div style={{ display: "flex", justifyContent: "flex-end", padding: "10px 14px 0", flexShrink: 0 }}>
               <button
                 onClick={() => setShowExercisesSheet(false)}
-                style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.07)", border: "none", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b", flexShrink: 0, transition: "all 0.15s" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.13)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#64748b"; }}
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-            <p style={{ textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.35)", margin: "0 0 18px", lineHeight: 1.5 }}>À utiliser quand vous en ressentez le besoin ou pour vous exercer.</p>
+            {/* Titre */}
+            <div style={{ textAlign: "center", padding: "6px 20px 16px", flexShrink: 0 }}>
+              <p style={{ fontSize: 17, fontWeight: 700, color: TEXT_PRIMARY, letterSpacing: "-0.01em", margin: 0 }}>Mes exercices</p>
+              <p style={{ fontSize: 12, color: TEXT_MUTED, margin: "6px 0 0", lineHeight: 1.5 }}>À utiliser quand vous en ressentez le besoin ou pour vous exercer.</p>
+            </div>
             {/* Liste */}
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ overflowY: "auto", flexShrink: 1 }}>
               {LIBRARY_EXERCISES.map((ex, i) => (
                 <button
                   key={ex.id}
                   onClick={() => { void handleToolSelect(ex.id, "Bibliothèque", emotionalStatus === "red_behavioral" ? undefined : "pratique"); setShowExercisesSheet(false); }}
-                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 8px", background: "transparent", border: "none", borderBottom: i < LIBRARY_EXERCISES.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", cursor: "pointer", textAlign: "left", transition: "background 0.15s", borderRadius: 8, width: "100%" }}
+                  style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: "12px 20px", minHeight: 52, background: "none", border: "none", borderBottom: i < LIBRARY_EXERCISES.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none", cursor: "pointer", textAlign: "left", transition: "background 0.12s" }}
                   onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
                 >
-                  <div style={{ width: 32, height: 32, borderRadius: 9, background: ex.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: ex.iconBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     {(LIBRARY_EXERCISE_ICONS[ex.id] ?? ((c: string) => <IconStar size={15} color={c} />))(ex.iconColor)}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.88)" }}>{ex.label}</p>
-                    <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{ex.desc}</p>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 500, color: TEXT_PRIMARY }}>{ex.label}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED, marginTop: 2 }}>{ex.desc}</p>
                   </div>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0, opacity: 0.45 }}><path d="M9 18l6-6-6-6" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M9 18l6-6-6-6"/></svg>
                 </button>
               ))}
             </div>
+            <div style={{ height: 16, flexShrink: 0 }} />
           </div>
         </div>
       )}
