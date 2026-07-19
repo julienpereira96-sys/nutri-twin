@@ -5,10 +5,29 @@ import { useState, useEffect, useRef } from "react";
 
 const emerald = "#10b981";
 
+const GEMINI_LIVE_ENABLED = true;
+
+const MS_LETTER_COLORS = ["#00e5b4", "#818cf8", "#f472b6", "#fbbf24", "#38bdf8"];
+const MS_DEMO_WORD = "FORCE";
+const MS_PARTICLES: { left: number; bottom: number; size: number; color: string; dur: number; delay: number }[] = [
+  { left: 12, bottom: 8,  size: 2,   color: "#00e5b4", dur: 6.2, delay: 0.4 },
+  { left: 25, bottom: 15, size: 3,   color: "#818cf8", dur: 7.8, delay: 1.5 },
+  { left: 38, bottom: 5,  size: 2.5, color: "#f472b6", dur: 5.5, delay: 0.8 },
+  { left: 52, bottom: 20, size: 2,   color: "#fbbf24", dur: 8.5, delay: 2.1 },
+  { left: 67, bottom: 10, size: 3,   color: "#38bdf8", dur: 6.8, delay: 0.2 },
+  { left: 78, bottom: 6,  size: 2,   color: "#00e5b4", dur: 7.2, delay: 3.0 },
+  { left: 88, bottom: 18, size: 2.5, color: "#818cf8", dur: 9.0, delay: 1.8 },
+  { left: 20, bottom: 25, size: 2,   color: "#f472b6", dur: 6.5, delay: 4.2 },
+  { left: 45, bottom: 12, size: 1.5, color: "#fbbf24", dur: 8.0, delay: 0.9 },
+  { left: 60, bottom: 22, size: 2.5, color: "#38bdf8", dur: 7.5, delay: 2.8 },
+  { left: 72, bottom: 8,  size: 2,   color: "#00e5b4", dur: 5.8, delay: 1.2 },
+  { left: 85, bottom: 30, size: 3,   color: "#818cf8", dur: 9.5, delay: 3.5 },
+];
+
 function AnimatedChat() {
   const messages = [
     { role: "patient", text: "Bonsoir, j'ai encore craqué sur du chocolat. Je me sens vraiment nulle 😔", delay: 1500 },
-    { role: "ai", text: "Bonsoir Justine. Un écart, ça fait partie du chemin, ça ne remet pas en cause tout ce que vous avez construit. Vous avez mangé quoi aujourd'hui ?", delay: 4500 },
+    { role: "ai", text: "Bonsoir Justine. Un moment de craquage, ça ne remet pas en cause tout ce que vous construisez. Qu'est-ce qui s'est passé aujourd'hui ?", delay: 4500 },
     { role: "patient", text: "Un café le matin, un sandwich à midi... pas grand chose.", delay: 7500 },
     { role: "ai", text: "Tout s'explique. Ces fringales du soir ont presque toujours une cause en début de journée.", delay: 11500 },
     { role: "patient", text: "J'ai rarement faim le matin. C'est grave ?", delay: 14500 },
@@ -115,9 +134,9 @@ function StaticDashboard() {
     { role: "patient", text: "Un sandwich froid en réunion... et là je grignote devant mon écran." },
     { role: "ai", text: "C'est votre corps qui cherche de l'énergie, pas un manque de volonté. Ce que vous portez en ce moment, c'est beaucoup." },
     { role: "patient", text: "Oui. Et je culpabilise en plus de tout ça." },
-    { role: "ai", text: "Ne rajoutez pas ça. Vous gérez énormément, et vous êtes là quand même. Demain, on commence par un vrai petit-déjeuner, même 15 minutes, c'est un signal fort envoyé à votre corps." },
-    { role: "patient", text: "J'ai des œufs je crois. Je peux faire quelque chose de rapide." },
-    { role: "ai", text: "Parfait. Deux œufs brouillés et une tranche de pain, c'est déjà une vraie base. Votre corps vous remerciera dès midi." },
+    { role: "ai", text: "Ne rajoutez pas ça. Ce que vous traversez est lourd, mais vous êtes là quand même. C'est déjà beaucoup." },
+    { role: "patient", text: "J'ai du mal à m'en convaincre parfois." },
+    { role: "ai", text: "C'est normal. On ne ressent pas toujours ce qu'on mérite. Mais ce soir, le simple fait d'en parler, c'est un pas." },
     { role: "patient", text: "Merci d'être là 💚" },
     { role: "ai", text: "Toujours. Bonne nuit Julie, prenez soin de vous." },
   ];
@@ -397,7 +416,7 @@ function StaticDashboard() {
 
       <div className="mx-auto mt-10 max-w-xl text-center px-4">
         <p className="text-[15px] leading-relaxed" style={{ color: "#9ca3af" }}>
-          NutriTwin répond à votre place, vous supervisez.<br />
+          Votre présence, prolongée entre les séances.<br />
           <span className="text-white font-semibold">Gardez le contrôle total sur chaque conseil délivré.</span>
         </p>
       </div>
@@ -409,6 +428,164 @@ function StaticDashboard() {
         }
       `}</style>
     </div>
+  );
+}
+
+function MonSoutienSection() {
+  const [showReveal, setShowReveal] = useState(false);
+
+  useEffect(() => {
+    const id = setInterval(() => setShowReveal(v => !v), 4000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <section className="py-16 sm:py-24" style={{ background: "#070707" }}>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
+
+          {/* Colonne copy */}
+          <div>
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-1.5 ring-1 ring-emerald-500/20">
+              <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              <span className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: emerald }}>
+                Mon Soutien
+              </span>
+            </div>
+
+            <h2 className="font-black tracking-tight" style={{ fontSize: "clamp(28px, 4vw, 44px)" }}>
+              <span className="block text-white">Quand la crise arrive à 22h,</span>
+              <span className="block" style={{ color: emerald }}>quelqu'un répond.</span>
+            </h2>
+
+            <div className="mt-3 h-px w-10 rounded-full" style={{ backgroundColor: emerald }} />
+
+            <div className="mt-8 flex flex-col gap-6">
+              {[
+                {
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                      <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                  ),
+                  title: "L'écoute en temps réel",
+                  desc: "Le compagnon écoute, accompagne, creuse, sans jugement.",
+                },
+                {
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                  ),
+                  title: "Un accompagnement structuré",
+                  desc: "Conçu pour guider vos patients dans les moments difficiles.",
+                },
+                {
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                      <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                    </svg>
+                  ),
+                  title: "La trace clinique",
+                  desc: "Chaque échange est résumé dans votre dashboard, prêt pour la prochaine séance.",
+                },
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-4">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ background: "rgba(16,185,129,0.10)", boxShadow: "0 0 0 1px rgba(16,185,129,0.25)" }}>
+                    {item.icon}
+                  </div>
+                  <div>
+                    <p className="mb-0.5 text-[15px] font-bold text-white">{item.title}</p>
+                    <p className="text-[13px] leading-relaxed" style={{ color: "#9ca3af" }}>{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Colonne téléphone */}
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <div style={{ width: 230, borderRadius: 36, border: "7px solid #111", overflow: "hidden" }}>
+              {/* Notch */}
+              <div style={{ height: 26, background: "#060810", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 64, height: 12, background: "#111", borderRadius: 8 }} />
+              </div>
+              {/* Screen */}
+              <div style={{ background: "#060810", minHeight: 440, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                {/* Particules */}
+                {MS_PARTICLES.map((p, i) => (
+                  <div key={i} style={{ position: "absolute", left: `${p.left}%`, bottom: `${p.bottom}%`, width: p.size, height: p.size, borderRadius: "50%", background: p.color, opacity: 0, animation: `msParticle ${p.dur}s ${p.delay}s linear infinite` }} />
+                ))}
+
+                {/* Bouton fermer */}
+                <div style={{ position: "absolute", top: 14, right: 14, width: 30, height: 30, borderRadius: "50%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.38)", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</div>
+
+                {/* Phase intake — orbe 3 cercles */}
+                {!showReveal && (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 32 }}>
+                    <div style={{ width: 120, height: 120, borderRadius: "50%", border: "1px solid rgba(6,182,212,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ width: 96, height: 96, borderRadius: "50%", border: "1px solid rgba(6,182,212,0.14)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ width: 72, height: 72, borderRadius: "50%", border: "1.5px solid rgba(6,182,212,0.30)", background: "rgba(6,182,212,0.06)", display: "flex", alignItems: "center", justifyContent: "center", animation: "msOrbPulse 2.8s ease-in-out infinite" }}>
+                          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(6,182,212,0.12)", border: "1.5px solid rgba(6,182,212,0.45)", animation: "msOrbCore 2.8s ease-in-out infinite" }} />
+                        </div>
+                      </div>
+                    </div>
+                    <p style={{ color: "#06B6D4", fontSize: 13, letterSpacing: "0.10em", animation: "msBlink 2s ease-in-out infinite", margin: 0 }}>Je t'écoute…</p>
+                  </div>
+                )}
+
+                {/* Phase reveal — mot multicolore */}
+                {showReveal && (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 22 }}>
+                    <div style={{ display: "flex", gap: 5 }}>
+                      {MS_DEMO_WORD.split("").map((letter, i) => (
+                        <span key={i} style={{ fontSize: 30, fontWeight: 700, letterSpacing: "0.12em", color: MS_LETTER_COLORS[i], animation: `msLetterGlow 2.2s ${i * 0.2}s ease-in-out infinite alternate` }}>
+                          {letter}
+                        </span>
+                      ))}
+                    </div>
+                    <p style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, letterSpacing: "0.10em", margin: 0 }}>Tu l'as tracé toi-même</p>
+                    <div style={{ width: 44, height: 1, background: "rgba(255,255,255,0.07)" }} />
+                    <p style={{ color: "rgba(255,255,255,0.80)", fontSize: 12, textAlign: "center", lineHeight: 1.75, maxWidth: 168, margin: 0 }}>
+                      Comment vous sentez-vous maintenant, par rapport à tout à l'heure ?
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes msOrbPulse {
+          0%,100% { border-color: rgba(6,182,212,0.30); background: rgba(6,182,212,0.06); }
+          50%      { border-color: rgba(6,182,212,0.55); background: rgba(6,182,212,0.10); }
+        }
+        @keyframes msOrbCore {
+          0%,100% { transform: scale(1); }
+          50%      { transform: scale(1.12); }
+        }
+        @keyframes msBlink {
+          0%,100% { opacity: 1; }
+          50%      { opacity: 0.4; }
+        }
+        @keyframes msLetterGlow {
+          from { opacity: 0.7; }
+          to   { opacity: 1; }
+        }
+        @keyframes msParticle {
+          0%   { opacity: 0; transform: translateY(0); }
+          20%  { opacity: 0.5; }
+          80%  { opacity: 0.15; }
+          100% { opacity: 0; transform: translateY(-110px); }
+        }
+      `}</style>
+    </section>
   );
 }
 
@@ -514,7 +691,7 @@ export default function Home() {
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-1.5 ring-1 ring-emerald-500/20">
                 <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: emerald }}>
-                  Votre jumeau numérique
+                  Le compagnon de suivi de vos patients entre les séances
                 </span>
               </div>
 
@@ -529,8 +706,8 @@ export default function Home() {
               <div className="mt-3 h-px w-10 rounded-full mx-auto lg:mx-0" style={{ backgroundColor: emerald }} />
 
               <p className="mt-5 lg:mt-5 mt-8 text-[15px] leading-relaxed text-zinc-400">
-  <span className="hidden lg:inline">NutriTwin crée votre jumeau numérique, une IA<br />entraînée sur vos méthodes qui conseille vos patients,<br />avec votre style,{" "}</span>
-  <span className="lg:hidden">NutriTwin crée votre jumeau numérique, une IA<br />entraînée sur vos méthodes qui conseille<br />vos patients, avec votre style,<br /></span>
+  <span className="hidden lg:inline">NutriTwin crée votre jumeau numérique, une IA<br />entraînée sur vos méthodes qui soutient vos patients<br />dans leurs moments difficiles, avec votre voix,{" "}</span>
+  <span className="lg:hidden">NutriTwin crée votre jumeau numérique, une IA<br />entraînée sur vos méthodes qui soutient<br />vos patients dans leurs moments difficiles,<br />avec votre voix,{" "}</span>
   <span className="text-white font-medium">disponible 24h/24.</span>
 </p>
 
@@ -593,9 +770,9 @@ export default function Home() {
                 <h3 className="text-[20px] font-bold mb-6" style={{ color: "#ef4444" }}>c'est le silence.</h3>
                 <div className="space-y-5">
                   {[
-                    { title: "L'isolement", desc: "Entre deux séances, l'isolement s'installe. Le patient est seul face à ses doutes." },
+                    { title: "L'impulsion du moment", desc: "Une compulsion qui arrive le soir, sans personne à qui écrire. Un moment difficile suffit à balayer des semaines de progrès." },
                     { title: "La perte d'élan", desc: "Sans réponse immédiate, l'élan se brise et la motivation s'effrite." },
-                    { title: "Le point de rupture", desc: "Le silence est le premier pas vers l'abandon." },
+                    { title: "Le doute qui grossit", desc: "Sans réponse entre les séances, le doute s'installe, le patient décroche et revient au cabinet en ayant l'impression de repartir de zéro." },
                   ].map((item, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <div className="mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500/10 ring-1 ring-red-500/20">
@@ -739,6 +916,15 @@ export default function Home() {
         <div className="relative h-px w-full">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
         </div>
+
+        {GEMINI_LIVE_ENABLED && (
+          <>
+            <MonSoutienSection />
+            <div className="relative h-px w-full">
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+            </div>
+          </>
+        )}
 
         <section id="securite" className="py-16 sm:py-24" style={{ background: "#070707" }}>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
