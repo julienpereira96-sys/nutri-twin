@@ -1661,12 +1661,18 @@ export default function ChatPage() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: "#111816", borderRadius: "20px 20px 0 0", padding: "16px 20px 36px", width: "100%", maxWidth: 480, border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}
+            style={{ background: "#111816", borderRadius: "20px 20px 0 0", padding: "20px 16px 40px", width: "100%", maxWidth: 420, border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}
           >
-            {/* Handle */}
-            <div style={{ width: 32, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.15)", margin: "0 auto 16px" }} />
-            {/* Header */}
-            <p style={{ textAlign: "center", fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.88)", margin: "0 0 4px" }}>Mes exercices</p>
+            {/* Header avec fermeture */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", position: "relative", marginBottom: 6 }}>
+              <p style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.88)", margin: 0 }}>Mes exercices</p>
+              <button
+                onClick={() => setShowExercisesSheet(false)}
+                style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", background: "rgba(255,255,255,0.07)", border: "none", borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
             <p style={{ textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.35)", margin: "0 0 18px", lineHeight: 1.5 }}>À utiliser quand vous en ressentez le besoin ou pour vous exercer.</p>
             {/* Liste */}
             <div style={{ display: "flex", flexDirection: "column" }}>
