@@ -442,7 +442,7 @@ function MonSoutienSection() {
   return (
     <section className="py-16 sm:py-24" style={{ background: "#070707" }}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
+        <div className="grid items-center gap-12 lg:gap-20" style={{ gridTemplateColumns: "3fr 2fr" }}>
 
           {/* Colonne copy */}
           <div>
@@ -453,9 +453,9 @@ function MonSoutienSection() {
               </span>
             </div>
 
-            <h2 className="font-black tracking-tight" style={{ fontSize: "clamp(28px, 4vw, 44px)" }}>
-              <span className="block text-white">Quand la crise arrive à 22h,</span>
-              <span className="block" style={{ color: emerald }}>quelqu'un répond.</span>
+            <h2 className="font-black tracking-tight" style={{ fontSize: "clamp(22px, 2.8vw, 36px)" }}>
+              <span className="block text-white whitespace-nowrap">Quand une crise survient à 22h,</span>
+              <span className="block" style={{ color: emerald }}>le compagnon est là.</span>
             </h2>
 
             <div className="mt-3 h-px w-10 rounded-full" style={{ backgroundColor: emerald }} />
@@ -509,7 +509,7 @@ function MonSoutienSection() {
 
           {/* Colonne téléphone */}
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <div style={{ width: 230, borderRadius: 36, border: "7px solid #111", overflow: "hidden" }}>
+            <div style={{ width: 230, borderRadius: 36, border: "7px solid rgba(16,185,129,0.35)", overflow: "hidden", boxShadow: "0 0 0 1px rgba(16,185,129,0.12), 0 0 48px rgba(16,185,129,0.14)" }}>
               {/* Notch */}
               <div style={{ height: 26, background: "#060810", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <div style={{ width: 64, height: 12, background: "#111", borderRadius: 8 }} />
@@ -691,7 +691,7 @@ export default function Home() {
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-1.5 ring-1 ring-emerald-500/20">
                 <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: emerald }}>
-                  Le compagnon de suivi de vos patients entre les séances
+                  Le compagnon de suivi de vos patients
                 </span>
               </div>
 
