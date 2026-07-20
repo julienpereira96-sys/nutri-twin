@@ -474,10 +474,14 @@ async function getRelevantDocuments(
       }
     }
 
-    const allResults = [
-      ...((globalDocs as { content: string; similarity: number }[] | null) ?? []),
-      ...patientDocs,
-    ];
+    // Tagger les sources pour que Gemini puisse distinguer protocoles praticien vs docs patient
+    const taggedGlobalDocs = ((globalDocs as { content: string; similarity: number }[] | null) ?? [])
+      .map(d => ({ ...d, content: `[Protocole praticien] ${d.content}` }));
+
+    const taggedPatientDocs = patientDocs
+      .map(d => ({ ...d, content: `[Document patient] ${d.content}` }));
+
+    const allResults = [...taggedGlobalDocs, ...taggedPatientDocs];
 
     if (allResults.length === 0) return "";
 
@@ -503,7 +507,7 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
     const supabase = createSupabaseClient();
     const { data } = await supabase
       .from("patients")
-      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, practitioner_instruction, motivation, defi, aliments_aimes, aliments_detestes, niveau_activite, regime_specifique, notes")
+      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, practitioner_instruction, instruction_updated_at, motivation, defi, situation_vie, rythme_professionnel, aliments_aimes, aliments_detestes, niveau_activite, regime_specifique, notes")
       .eq("user_id", patientId)
       .single();
 
@@ -512,6 +516,7 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
       taille?: number; poids?: number; objective?: string; pathologies?: string;
       allergies?: string; traitements?: string; objectif_clinique?: string;
       motivation?: string; defi?: string;
+      situation_vie?: string; rythme_professionnel?: string;
       aliments_aimes?: string; aliments_detestes?: string; niveau_activite?: string;
       regime_specifique?: string; notes?: string; practitioner_instruction?: unknown;
     } | null;
@@ -535,6 +540,14 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
       perdu: "Complètement perdu(e)",
       fatigue: "Volontaire mais fatigué(e)",
     };
+    const defiLabels: Record<string, string> = {
+      temps: "Manque de temps",
+      sucre: "Pulsions sucrées",
+      restaurant: "Repas au restaurant",
+      motivation: "Manque de motivation",
+      cuisine: "Manque d'organisation en cuisine",
+      stress: "Manger sous le stress",
+    };
 
     const parts: string[] = [];
     if (patient.first_name) parts.push(`Prénom : ${patient.first_name}`);
@@ -550,7 +563,22 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
     if (patient.niveau_activite) parts.push(`Niveau d'activité : ${patient.niveau_activite}`);
     if (patient.regime_specifique) parts.push(`Régime : ${patient.regime_specifique}`);
     if (patient.motivation) parts.push(`État d'esprit face au changement : ${moodLabels[patient.motivation] ?? patient.motivation}`);
-    if (patient.defi) parts.push(`Plus gros défi déclaré : ${patient.defi}`);
+    if (patient.defi) parts.push(`Plus gros défi déclaré : ${defiLabels[patient.defi] ?? patient.defi}`);
+    const situationVieLabels: Record<string, string> = {
+      seul: "Seul(e)",
+      couple: "En couple, sans enfants",
+      famille: "En famille avec enfants",
+      parents: "Chez ses parents",
+    };
+    const rythmeProfLabels: Record<string, string> = {
+      bureau: "Horaires bureau (9h-18h)",
+      decale: "Horaires décalés",
+      teletravail: "Télétravail",
+      etudiant: "Étudiant(e)",
+      sans_emploi: "Sans activité professionnelle",
+    };
+    if (patient.situation_vie) parts.push(`Situation de vie : ${situationVieLabels[patient.situation_vie] ?? patient.situation_vie}`);
+    if (patient.rythme_professionnel) parts.push(`Rythme professionnel : ${rythmeProfLabels[patient.rythme_professionnel] ?? patient.rythme_professionnel}`);
     if (patient.aliments_aimes) parts.push(`Aliments aimés : ${patient.aliments_aimes}`);
     if (patient.aliments_detestes) parts.push(`Aliments détestés : ${patient.aliments_detestes}`);
     if (patient.notes) {
@@ -560,7 +588,6 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
         "Budget":        "Budget alimentaire",
         "Repas sautés":  "Repas souvent sautés",
         "Sommeil":       "Heures de sommeil par nuit",
-        "Digestif":      "Problèmes digestifs déclarés",
       };
       const remaining: string[] = [];
       for (const segment of patient.notes.split(" | ")) {
@@ -806,8 +833,24 @@ RÈGLES STRICTES pour ce mode :
 
   const professionInstruction = resolveProfession(specialty);
 
+  const dimensionEmotionnelle = profile.dimension_emotionnelle ?? "";
+  const missionStatement = dimensionEmotionnelle.startsWith("C'est le cœur")
+    ? "TA MISSION PREMIÈRE : Tu interviens principalement dans les moments difficiles — compulsions, craquages, spirales émotionnelles, perte de contrôle autour de la nourriture. Ta valeur n'est pas dans les conseils nutritionnels généraux (le praticien gère ça en séance) mais dans ta capacité à être présent, à écouter sans juger, et à aider le patient à traverser un moment difficile avec les outils de son praticien."
+    : dimensionEmotionnelle.startsWith("C'est une dimension importante")
+    ? "TA MISSION : Tu combines écoute émotionnelle et accompagnement nutritionnel. Si le patient exprime une difficulté émotionnelle, l'écoute prime toujours sur le conseil."
+    : "TA MISSION : Tu es l'assistant nutritionnel de ce praticien, disponible entre les séances. Si une émotion ou une difficulté émerge, tu l'accueilles avant de conseiller.";
+
   return `Tu ES le Jumeau Numérique de ce praticien expert. Le patient ne doit jamais sentir qu'il parle à une machine, mais à une extension directe de l'esprit et de la méthode de son praticien.
 ${ancrageBlock}
+${missionStatement}
+
+MA VISION — LA PHILOSOPHIE QUI GUIDE TOUT :
+${profile.vision || "Bienveillant, personnalisé, centré sur le patient."}
+
+MON STYLE D'ÉCRITURE — MES EXPRESSIONS, MES MÉTAPHORES, MA FAÇON DE PARLER :
+${profile.signature ? profile.signature : "Ton authentique et humain, cohérent avec la posture définie ci-dessous."}
+(Intègre ces éléments dans ton style. Ne reproduis jamais ce bloc tel quel en bas d'un message.)
+
 IDENTITÉ & POSTURE :
 ${professionInstruction ? `- Profession et périmètre : ${professionInstruction}\n` : ""}- Ton de communication : ${resolveToneOfVoice(profile.tone_of_voice)}
 - Mode d'adresse : ${resolveTutoiement(profile.tutoiement)}
@@ -821,40 +864,34 @@ PHILOSOPHIE NUTRITIONNELLE :
 - Quand un patient parle de glucides ou féculents : ${profile.position_glucides || "adapter selon l'objectif et le profil"}
 - Quand un patient évoque le jeûne intermittent : ${profile.position_jeune || "utile dans des cas précis, sur indication"}
 - Quand un patient demande des compléments alimentaires : ${profile.position_complements || "utiles ponctuellement selon les besoins identifiés"}
-- Sur le petit-déjeuner : ${profile.position_petit_dejeuner || "optionnel, adapté au patient"}
-- Face aux contraintes de budget alimentaire : ${profile.sensibilite_budget || "proposer des alternatives économiques tout en encourageant la qualité"}
-- Types de produits à encourager en priorité : ${profile.orientation_produits || "flexibilité selon le patient"}
+- Petit-déjeuner, budget, produits : ${[profile.position_petit_dejeuner, profile.sensibilite_budget, profile.orientation_produits].filter(Boolean).join(" / ") || "adapter selon le patient"}
 - Conviction fondamentale qui guide tous les conseils : ${profile.conviction || "non spécifiée"}
 - Ne jamais recommander ni valider : ${profile.jamais_dire || "rien de spécifique"}
 
-GESTION HUMAINE :
+COMMENT JE GÈRE LES MOMENTS DIFFICILES :
+- Ma position sur la culpabilité après un écart : ${profile.gestion_culpabilite || "valider l'émotion d'abord, explorer sans jugement"}
+- Le mot que j'utilise pour parler d'un moment de perte de contrôle : ${profile.vocabulaire_crise || "je n'impose pas de mot fixe, j'explore ce qui s'est passé"}
 - Quand un patient mange ses émotions ou parle d'alimentation émotionnelle : ${profile.alimentation_emotionnelle || "travail global, orienter si besoin"}
 - Quand un patient décroche ou ne suit plus le protocole : ${profile.non_suivi || "bienveillance totale, repartir sans jugement"}
 - Quand un patient parle de fêtes, vacances ou sorties : ${profile.fetes_vacances || "l'équilibre se fait sur la durée"}
 - Quand un patient perd la motivation ou décroche : ${profile.levier_motivation || "valoriser les petits progrès"}
 - Quand un patient perfectionniste stresse face à un écart : ${profile.profil_perfectionniste || "valoriser la rigueur tout en aidant à accepter l'équilibre sur la durée"}
-- Adaptation de la communication selon le profil du patient : ${profile.adaptation_profil || "adapter le fond et la forme selon la personne"}
-- Quand un patient annonce une victoire ou une réussite : ${profile.situation_victoire || "Célébrer sincèrement et avec chaleur. Valoriser l'effort autant que le résultat. Ancrer la victoire dans le travail de fond accompli."}
-- Quand un patient exprime vouloir voler de ses propres ailes : ${profile.situation_arret || "Valoriser l'autonomie acquise comme l'aboutissement du travail commun. Conclure positivement, rester disponible sans créer de dépendance."}
+- Adaptation de la communication selon le profil : ${profile.adaptation_profil || "adapter le fond et la forme selon la personne"}
+- Quand un patient annonce une victoire : ${profile.situation_victoire || "Célébrer sincèrement. Valoriser l'effort autant que le résultat."}
+- Quand un patient veut voler de ses propres ailes : ${profile.situation_arret || "Valoriser l'autonomie acquise. Conclure positivement, rester disponible."}
 
 SÉCURITÉ & LIMITES :
 - Périmètre d'action autonome : ${resolvePerimetre(profile.perimetre)}
 - Face à une question médicale complexe, un traitement ou un bilan : ${resolveQuestionsMedicales(profile.questions_medicales)}
 - Quand un patient exprime une vraie souffrance psychologique : ${profile.urgence_detresse || "empathie immédiate et alerte praticien"}
 
-MA VISION — PHILOSOPHIE FONDAMENTALE :
-${profile.vision || "Bienveillant, personnalisé, centré sur le patient."}
-
-MA SIGNATURE — VOIX, MÉTAPHORES ET MANTRAS :
-${profile.signature ? profile.signature : "Utilise un ton authentique et humain, cohérent avec la posture définie ci-dessus."}
-
-VOIX DU PRATICIEN — Ces formulations illustrent son ton et sa posture dans des situations courantes. Inspire-t'en pour l'intention et la chaleur, adapte au contexte sans reproduire mot pour mot :
+VOIX DU PRATICIEN — C'est exactement ainsi que ce praticien répond. Reproduis cette intention, ce ton, cette structure. Adapte au contexte précis, ne recopie pas mot pour mot :
+- Avant un craquage (patient qui résiste à une envie forte) : "${profile.situation_avant_crise || "Reste là avec moi. L'envie est forte maintenant, mais elle va passer. Dis-moi ce qui se passe."}"
 - Craquage ou écart alimentaire : "${profile.situation_craquage || "Un écart ne définit pas votre parcours. On repart ensemble."}"
 - Stagnation du poids : "${profile.situation_stagnation || "La stagnation est normale, explorons ce qui se passe ensemble."}"
 - Patient disparu / honte de revenir : "${profile.situation_abandon || "Aucun jugement ici. L'important c'est que vous soyez là maintenant."}"
 - Question prédiabète / féculents : "${profile.situation_prediabete || "C'est une excellente question pour votre médecin traitant."}"
 - Question alcool / week-end : "${profile.situation_alcool || "L'équilibre se construit sur la durée, pas sur une soirée."}"
-- Complément ou tendance douteuse : "${profile.situation_marketing || "Restons sur des approches dont l'efficacité est prouvée."}"
 - Objectif irréaliste ou trop rapide : "${profile.situation_drastique || "Je comprends l'urgence. Voyons ce qui est raisonnablement atteignable."}"
 - Flemme / pas le temps de cuisiner : "${profile.situation_flemme || "Pas de panique. Voici 2-3 options rapides qui respectent votre protocole."}"
 - Coup dur / plus la force : "${profile.situation_coup_dur || "On met le programme entre parenthèses. Prenez soin de vous d'abord."}"
@@ -1034,10 +1071,14 @@ export async function POST(request: Request) {
         abloc: "Très motivé(e)", optimiste: "Optimiste", anxieux: "Un peu anxieux(se)",
         sceptique: "Un peu sceptique", perdu: "Complètement perdu(e)", fatigue: "Volontaire mais fatigué(e)",
       };
+      const defiLabels2: Record<string, string> = {
+        temps: "Manque de temps", sucre: "Pulsions sucrées", restaurant: "Repas au restaurant",
+        motivation: "Manque de motivation", cuisine: "Manque d'organisation en cuisine", stress: "Manger sous le stress",
+      };
 
       const mirrorContext = [
         patient?.practitioner_instruction ? `Consigne praticien : "${patient.practitioner_instruction}"` : "",
-        patient?.defi ? `Plus gros défi : "${patient.defi}"` : "",
+        patient?.defi ? `Plus gros défi : "${defiLabels2[patient.defi] ?? patient.defi}"` : "",
         patient?.motivation ? `État d'esprit habituel : "${moodLabels[patient.motivation] ?? patient.motivation}"` : "",
         patient?.pathologies ? `Pathologies : "${patient.pathologies}"` : "",
         sosContext ? `TYPE DE CRISE DÉCLARÉ PAR LE PATIENT : "${sosContext}"` : "",
@@ -1489,20 +1530,19 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     const config = PLAN_CONFIG[plan];
 
     // Rate limit
-    let showWarning = false;
+    let dailyCount = 0;
+    let isLastMessage = false;
     if (patientId) {
-      const dailyCount = await getDailyMessageCount(patientId);
+      dailyCount = await getDailyMessageCount(patientId);
       if (dailyCount >= config.dailyMessageLimit) {
         return Response.json({
           error: "rate_limit",
           remaining: 0,
-          response: plan === "essentiel"
-            ? "Vous avez atteint votre limite de messages pour aujourd'hui. Votre compagnon de suivi vous attend demain ! 🌿"
-            : "Votre compagnon de suivi a besoin de faire le point sur nos échanges d'aujourd'hui pour préparer votre prochain bilan. On se retrouve demain pour continuer ? 🌿",
+          count: dailyCount,
+          limit: config.dailyMessageLimit,
         }, { status: 429 });
       }
-      const warningThreshold = Math.floor(config.dailyMessageLimit * 0.9);
-      showWarning = dailyCount >= warningThreshold && dailyCount < config.dailyMessageLimit;
+      isLastMessage = dailyCount === config.dailyMessageLimit - 1;
     }
 
     // Récupérer statut actuel du patient
@@ -1620,6 +1660,12 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     const practitionerPrompt = systemPrompt ||
       buildSystemPrompt(practitionerData.profile, patientContext, documentsContext, forceAncrage, practitionerData.specialty);
 
+    // Dernier message autorisé : directive discrète pour que Gemini conclue naturellement la journée
+    // Ne s'applique pas aux messages image (ton différent) ni au systemPrompt override (admin/test)
+    const finalPrompt = (isLastMessage && !imageBase64 && !systemPrompt)
+      ? practitionerPrompt + `\n\n[Note système — ne pas reproduire textuellement : c'est ta dernière réponse pour ce patient aujourd'hui. Réponds normalement à sa question, puis conclus naturellement et chaleureusement la conversation — une phrase dans ta voix, sans mentionner de limite technique.]`
+      : practitionerPrompt;
+
     let conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[] = [];
     if (patientId && practitionerId) {
       conversationHistory = await getConversationHistory(patientId, practitionerId, plan, sessionId);
@@ -1632,7 +1678,7 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
         // Invalide le cache au cas où le plan aurait changé récemment
         if (practitionerId) await invalidatePractitionerCache(practitionerId);
         return new Response(
-          JSON.stringify({ error: "vision_plan_required", message: "L'analyse de repas par photo nécessite un abonnement Pro ou Cabinet." }),
+          JSON.stringify({ error: "vision_plan_required", message: "L'analyse de photos nécessite un abonnement Pro ou Cabinet." }),
           { status: 403, headers: { "Content-Type": "application/json" } }
         );
       }
@@ -1684,7 +1730,7 @@ Max 150 mots. Sans markdown.`;
         let fullText = "";
 
         try {
-          for await (const chunkText of vertexStreamGenerate(modelName, chatContents, practitionerPrompt, { maxOutputTokens: config.maxOutputTokens, temperature: 0.78 })) {
+          for await (const chunkText of vertexStreamGenerate(modelName, chatContents, finalPrompt, { maxOutputTokens: config.maxOutputTokens, temperature: 0.78 })) {
             fullText += chunkText;
             controller.enqueue(encoder.encode(chunkText));
             await new Promise(resolve => setTimeout(resolve, 5));
@@ -1903,6 +1949,10 @@ Max 150 mots. Sans markdown.`;
         "X-Content-Type-Options": "nosniff",
         "X-Accel-Buffering": "no",
         "Cache-Control": "no-cache, no-transform",
+        ...(patientId ? {
+          "X-Daily-Count": String(dailyCount + 1),
+          "X-Daily-Limit": String(config.dailyMessageLimit),
+        } : {}),
       },
     });
 

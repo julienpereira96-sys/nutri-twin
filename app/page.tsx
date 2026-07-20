@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 
 const emerald = "#10b981";
 
-const GEMINI_LIVE_ENABLED = true;
+const GEMINI_LIVE_ENABLED = false;
 
 const MS_LETTER_COLORS = ["#00e5b4", "#818cf8", "#f472b6", "#fbbf24", "#38bdf8"];
 const MS_DEMO_WORD = "FORCE";
@@ -442,10 +442,10 @@ function MonSoutienSection() {
   return (
     <section className="py-16 sm:py-24" style={{ background: "#070707" }}>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-0">
 
           {/* Colonne copy */}
-          <div>
+          <div style={{ paddingLeft: 160 }}>
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/[0.06] px-3 py-1.5 ring-1 ring-emerald-500/20">
               <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
               <span className="text-[10px] font-semibold uppercase tracking-[0.15em]" style={{ color: emerald }}>
@@ -509,7 +509,7 @@ function MonSoutienSection() {
 
           {/* Colonne téléphone */}
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <div style={{ width: 230, borderRadius: 36, border: "7px solid #161616", overflow: "hidden", boxShadow: "0 0 0 1px rgba(16,185,129,0.25), 0 0 40px rgba(16,185,129,0.15)" }}>
+            <div style={{ width: 230, borderRadius: 36, border: "7px solid #161616", overflow: "hidden", boxShadow: "0 0 0 1px rgba(56,189,248,0.30), 0 0 40px rgba(56,189,248,0.15)" }}>
               {/* Notch */}
               <div style={{ height: 26, background: "#060810", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <div style={{ width: 64, height: 12, background: "#111", borderRadius: 8 }} />
@@ -524,15 +524,28 @@ function MonSoutienSection() {
                 {/* Bouton fermer */}
                 <div style={{ position: "absolute", top: 14, right: 14, width: 30, height: 30, borderRadius: "50%", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.38)", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>×</div>
 
-                {/* Phase intake — orbe 3 cercles */}
+                {/* Phase intake — PulseOrb fidèle */}
                 {!showReveal && (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 32 }}>
-                    <div style={{ width: 120, height: 120, borderRadius: "50%", border: "1px solid rgba(6,182,212,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <div style={{ width: 96, height: 96, borderRadius: "50%", border: "1px solid rgba(6,182,212,0.14)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <div style={{ width: 72, height: 72, borderRadius: "50%", border: "1.5px solid rgba(6,182,212,0.30)", background: "rgba(6,182,212,0.06)", display: "flex", alignItems: "center", justifyContent: "center", animation: "msOrbPulse 2.8s ease-in-out infinite" }}>
-                          <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(6,182,212,0.12)", border: "1.5px solid rgba(6,182,212,0.45)", animation: "msOrbCore 2.8s ease-in-out infinite" }} />
-                        </div>
-                      </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 28 }}>
+                    {/* Conteneur relatif pour superposer halo + corps */}
+                    <div style={{ position: "relative", width: 110, height: 110, flexShrink: 0 }}>
+                      {/* Halo externe — pulse scale + opacity */}
+                      <div style={{
+                        position: "absolute",
+                        inset: -26,
+                        borderRadius: "50%",
+                        background: "radial-gradient(circle, rgba(6,182,212,0.16) 0%, rgba(6,182,212,0.04) 50%, transparent 72%)",
+                        animation: "msHalo 3s ease-in-out infinite",
+                        pointerEvents: "none",
+                      }} />
+                      {/* Corps orb — radial-gradient + border fidèles à PulseOrb */}
+                      <div style={{
+                        width: 110, height: 110,
+                        borderRadius: "50%",
+                        background: "radial-gradient(circle at 42% 42%, rgba(6,182,212,0.33) 0%, rgba(6,182,212,0.10) 55%, transparent 100%)",
+                        border: "1.5px solid rgba(6,182,212,0.31)",
+                        animation: "msOrbBreath 3s ease-in-out infinite",
+                      }} />
                     </div>
                     <p style={{ color: "#06B6D4", fontSize: 13, letterSpacing: "0.10em", animation: "msBlink 2s ease-in-out infinite", margin: 0 }}>Je t'écoute…</p>
                   </div>
@@ -562,13 +575,13 @@ function MonSoutienSection() {
       </div>
 
       <style>{`
-        @keyframes msOrbPulse {
-          0%,100% { border-color: rgba(6,182,212,0.30); background: rgba(6,182,212,0.06); }
-          50%      { border-color: rgba(6,182,212,0.55); background: rgba(6,182,212,0.10); }
+        @keyframes msHalo {
+          0%,100% { transform: scale(1.0); opacity: 0.55; }
+          50%      { transform: scale(1.25); opacity: 0.90; }
         }
-        @keyframes msOrbCore {
-          0%,100% { transform: scale(1); }
-          50%      { transform: scale(1.12); }
+        @keyframes msOrbBreath {
+          0%,100% { transform: scale(1.0); }
+          50%      { transform: scale(1.05); }
         }
         @keyframes msBlink {
           0%,100% { opacity: 1; }
@@ -1025,7 +1038,7 @@ export default function Home() {
                   { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
                   { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
                   { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
-                  { text: "Vision IA : Analyse et décodage des photos de repas", included: false, exclusive: true },
+                  { text: "Vision IA : Analyse de photos (repas, étiquettes, bilans…)", included: false, exclusive: true },
                   { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: false, exclusive: true },
                 ]}
                 plan="essentiel"
@@ -1042,7 +1055,7 @@ export default function Home() {
                   { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
                   { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
                   { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
-                  { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true, exclusive: true },
+                  { text: "Vision IA : Analyse de photos envoyées par vos patients (repas, étiquettes, bilans…)", included: true, exclusive: true },
                   { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true, exclusive: true },
                   { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true, exclusive: true },
                 ]}
@@ -1059,7 +1072,7 @@ export default function Home() {
                   { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
                   { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
                   { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
-                  { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true, exclusive: true },
+                  { text: "Vision IA : Analyse de photos envoyées par vos patients (repas, étiquettes, bilans…)", included: true, exclusive: true },
                   { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true, exclusive: true },
                   { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true, exclusive: true },
                   { text: "Espace collaboratif : possibilité de transférer ou de partager un dossier entre confrères", included: true, exclusive: true },

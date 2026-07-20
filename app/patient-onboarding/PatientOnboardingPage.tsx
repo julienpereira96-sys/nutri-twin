@@ -54,12 +54,19 @@ const SOMMEIL = [
   { id: "plus8", label: "Plus de 8h" },
 ];
 
-const DIGESTIF = [
-  { id: "ballonnements", label: "Ballonnements fréquents" },
-  { id: "transit_lent", label: "Transit lent" },
-  { id: "transit_rapide", label: "Transit rapide" },
-  { id: "reflux", label: "Reflux / brûlures" },
-  { id: "aucun", label: "Aucun inconfort" },
+const SITUATION_VIE = [
+  { id: "seul", label: "Seul(e)" },
+  { id: "couple", label: "En couple, sans enfants" },
+  { id: "famille", label: "En famille avec enfants" },
+  { id: "parents", label: "Chez mes parents" },
+];
+
+const RYTHME_PRO = [
+  { id: "bureau", label: "Horaires bureau (9h-18h)" },
+  { id: "decale", label: "Horaires décalés" },
+  { id: "teletravail", label: "Télétravail" },
+  { id: "etudiant", label: "Étudiant(e)" },
+  { id: "sans_emploi", label: "Sans activité professionnelle" },
 ];
 
 const LS_KEY = "patient_onboarding";
@@ -407,6 +414,7 @@ export default function PatientOnboardingPage() {
   const [moodCustom, setMoodCustom] = useState("");
   const [defi, setDefi] = useState("");
   const [defiCustom, setDefiCustom] = useState("");
+  const [situationVie, setSituationVie] = useState("");
 
   // Étape 3
   const [equipement, setEquipement] = useState<string[]>([]);
@@ -414,7 +422,7 @@ export default function PatientOnboardingPage() {
   const [budget, setBudget] = useState("");
   const [repasSautes, setRepasSautes] = useState<string[]>([]);
   const [sommeil, setSommeil] = useState("");
-  const [digestif, setDigestif] = useState<string[]>([]);
+  const [rythmePro, setRythmePro] = useState("");
 
   // Étape 4
   const [alimentsAimes, setAlimentsAimes] = useState<string[]>([]);
@@ -456,12 +464,13 @@ export default function PatientOnboardingPage() {
           if (typeof p.moodCustom === "string") setMoodCustom(p.moodCustom);
           if (typeof p.defi === "string") setDefi(p.defi);
           if (typeof p.defiCustom === "string") setDefiCustom(p.defiCustom);
+          if (typeof p.situationVie === "string") setSituationVie(p.situationVie);
           if (Array.isArray(p.equipement)) setEquipement(p.equipement as string[]);
           if (typeof p.tempsCuisine === "string") setTempsCuisine(p.tempsCuisine);
           if (typeof p.budget === "string") setBudget(p.budget);
           if (Array.isArray(p.repasSautes)) setRepasSautes(p.repasSautes as string[]);
           if (typeof p.sommeil === "string") setSommeil(p.sommeil);
-          if (Array.isArray(p.digestif)) setDigestif(p.digestif as string[]);
+          if (typeof p.rythmePro === "string") setRythmePro(p.rythmePro);
           if (Array.isArray(p.alimentsAimes)) setAlimentsAimes(p.alimentsAimes as string[]);
           if (Array.isArray(p.alimentsDetestes)) setAlimentsDetestes(p.alimentsDetestes as string[]);
           if (Array.isArray(p.customAliments)) setCustomAliments(p.customAliments as string[]);
@@ -502,8 +511,8 @@ export default function PatientOnboardingPage() {
         confirmAge, confirmSexe, confirmTaille, confirmPoids,
         confirmPathologies, confirmAllergies, confirmTraitements,
         confirmObjectifClinique, confirmNiveauActivite, confirmRegime,
-        objectif, objectifCustom, mood, moodCustom, defi, defiCustom,
-        equipement, tempsCuisine, budget, repasSautes, sommeil, digestif,
+        objectif, objectifCustom, mood, moodCustom, defi, defiCustom, situationVie,
+        equipement, tempsCuisine, budget, repasSautes, sommeil, rythmePro,
         alimentsAimes, alimentsDetestes, customAliments,
       }));
     } catch { /* ignore quota errors */ }
@@ -511,8 +520,8 @@ export default function PatientOnboardingPage() {
     step, confirmAge, confirmSexe, confirmTaille, confirmPoids,
     confirmPathologies, confirmAllergies, confirmTraitements,
     confirmObjectifClinique, confirmNiveauActivite, confirmRegime,
-    objectif, objectifCustom, mood, moodCustom, defi, defiCustom,
-    equipement, tempsCuisine, budget, repasSautes, sommeil, digestif,
+    objectif, objectifCustom, mood, moodCustom, defi, defiCustom, situationVie,
+    equipement, tempsCuisine, budget, repasSautes, sommeil, rythmePro,
     alimentsAimes, alimentsDetestes, customAliments,
   ]);
 
@@ -567,6 +576,8 @@ export default function PatientOnboardingPage() {
         objective: finalObjectif || null,
         motivation: finalMood || null,
         defi: finalDefi || null,
+        situation_vie: situationVie || null,
+        rythme_professionnel: rythmePro || null,
         aliments_aimes: alimentsAimes.join(", ") || null,
         aliments_detestes: alimentsDetestes.join(", ") || null,
         notes: [
@@ -575,7 +586,6 @@ export default function PatientOnboardingPage() {
           budget ? `Budget: ${budget}` : "",
           repasSautes.length > 0 ? `Repas sautés: ${repasSautes.join(", ")}` : "",
           sommeil ? `Sommeil: ${sommeil}` : "",
-          digestif.length > 0 ? `Digestif: ${digestif.join(", ")}` : "",
         ].filter(Boolean).join(" | ") || null,
         onboarding_completed: true,
         onboarding_status: "completed",
@@ -941,12 +951,27 @@ export default function PatientOnboardingPage() {
               )}
             </div>
 
+            {/* Situation de vie */}
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Quelle est votre situation de vie actuelle ?</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {SITUATION_VIE.map(s => {
+                  const sel = situationVie === s.id;
+                  return (
+                    <button key={s.id} onClick={() => setSituationVie(sel ? "" : s.id)} style={cardBtn(sel)}>
+                      <p style={{ ...cardBtnText(sel), textAlign: "center" }}>{s.label}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div style={{ display: "flex", gap: 10 }}>
               <button onClick={() => setStep(1)} style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, transition: "all 0.2s" }}
                 onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>← Retour</button>
               {(() => {
-                const step2Disabled = !objectif || !mood || !defi || (objectif === "autre" && !objectifCustom.trim()) || (mood === "autre" && !moodCustom.trim()) || (defi === "autre" && !defiCustom.trim());
+                const step2Disabled = !objectif || !mood || !defi || !situationVie || (objectif === "autre" && !objectifCustom.trim()) || (mood === "autre" && !moodCustom.trim()) || (defi === "autre" && !defiCustom.trim());
                 return (
                   <button onClick={() => setStep(3)} disabled={step2Disabled}
                     style={{ flex: 2, height: 44, borderRadius: 10, background: step2Disabled ? "rgba(255,255,255,0.05)" : "rgba(16,185,129,0.12)", border: `1px solid ${step2Disabled ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: step2Disabled ? "#374151" : "#10b981", fontSize: 14, fontWeight: 600, cursor: step2Disabled ? "not-allowed" : "pointer", transition: "all 0.2s" }}
@@ -1043,6 +1068,21 @@ export default function PatientOnboardingPage() {
                   return (
                     <button key={s.id} onClick={() => setSommeil(s.id)} style={cardBtn(active)}>
                       <p style={{ ...cardBtnText(active), textAlign: "center" }}>{s.label}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Rythme professionnel */}
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700, color: "#f1f5f9", borderLeft: "2px solid rgba(16,185,129,0.5)", paddingLeft: 10 }}>Quel est votre rythme professionnel ?</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {RYTHME_PRO.map(r => {
+                  const active = rythmePro === r.id;
+                  return (
+                    <button key={r.id} onClick={() => setRythmePro(active ? "" : r.id)} style={cardBtn(active)}>
+                      <p style={{ ...cardBtnText(active), textAlign: "center" }}>{r.label}</p>
                     </button>
                   );
                 })}

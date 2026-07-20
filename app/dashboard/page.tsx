@@ -945,14 +945,14 @@ function DashboardInner() {
   const [inviteSexe, setInviteSexe] = useState("");
   const [inviteTaille, setInviteTaille] = useState("");
   const [invitePoids, setInvitePoids] = useState("");
-  const [invitePathologies, setInvitePathologies] = useState("");
-  const [inviteAllergies, setInviteAllergies] = useState("");
-  const [inviteTraitements, setInviteTraitements] = useState("");
-  const [inviteObjectifClinique, setInviteObjectifClinique] = useState("");
+  const [invitePathologies, setInvitePathologies] = useState<string[]>([]);
+  const [inviteAllergies, setInviteAllergies] = useState<string[]>([]);
+  const [inviteTraitements, setInviteTraitements] = useState<string[]>([]);
+  const [inviteObjectifClinique, setInviteObjectifClinique] = useState<string[]>([]);
   const [inviteBriefJumeau, setInviteBriefJumeau] = useState("");
   const [inviteNotes, setInviteNotes] = useState("");
   const [inviteNiveauActivite, setInviteNiveauActivite] = useState("");
-  const [inviteRegime, setInviteRegime] = useState("");
+  const [inviteRegime, setInviteRegime] = useState<string[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -2594,8 +2594,8 @@ function DashboardInner() {
 
   const resetInviteForm = () => {
     setInviteEmail(""); setInviteFirstName(""); setInviteLastName(""); setInviteAge(""); setInviteSexe(""); setInviteTaille(""); setInvitePoids("");
-    setInvitePathologies(""); setInviteAllergies(""); setInviteTraitements(""); setInviteObjectifClinique("");
-    setInviteBriefJumeau(""); setInviteNotes(""); setInviteNiveauActivite(""); setInviteRegime(""); setInviteError("");
+    setInvitePathologies([]); setInviteAllergies([]); setInviteTraitements([]); setInviteObjectifClinique([]);
+    setInviteBriefJumeau(""); setInviteNotes(""); setInviteNiveauActivite(""); setInviteRegime([]); setInviteError("");
     setInviteMurmureDuration("permanent");
     setInviteExistingUnactivated(false); setInviteResentLoading(false); setInviteResentSuccess(false);
     setInviteStep(1);
@@ -2624,7 +2624,7 @@ function DashboardInner() {
     if (!inviteEmail.trim()) return;
     setInviting(true); setInviteError("");
     try {
-      const res = await fetch("/api/invite-patient", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId: practitionerId ?? "", first_name: inviteFirstName || null, last_name: inviteLastName || null, age: inviteAge ? parseInt(inviteAge) : null, sexe: inviteSexe || null, taille: inviteTaille ? parseInt(inviteTaille) : null, poids: invitePoids ? parseFloat(invitePoids) : null, pathologies: invitePathologies || null, allergies: inviteAllergies || null, traitements: inviteTraitements || null, objectif_clinique: inviteObjectifClinique || null, brief_jumeau: inviteBriefJumeau || null, notes: inviteNotes || null, niveau_activite: inviteNiveauActivite || null, regime_specifique: inviteRegime || null, murmure_duration: inviteMurmureDuration }) });
+      const res = await fetch("/api/invite-patient", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId: practitionerId ?? "", first_name: inviteFirstName || null, last_name: inviteLastName || null, age: inviteAge ? parseInt(inviteAge) : null, sexe: inviteSexe || null, taille: inviteTaille ? parseInt(inviteTaille) : null, poids: invitePoids ? parseFloat(invitePoids) : null, pathologies: invitePathologies.length > 0 ? invitePathologies.join(", ") : null, allergies: inviteAllergies.length > 0 ? inviteAllergies.join(", ") : null, traitements: inviteTraitements.length > 0 ? inviteTraitements.join(", ") : null, objectif_clinique: inviteObjectifClinique.length > 0 ? inviteObjectifClinique.join(", ") : null, brief_jumeau: inviteBriefJumeau || null, notes: inviteNotes || null, niveau_activite: inviteNiveauActivite || null, regime_specifique: inviteRegime.length > 0 ? inviteRegime.join(", ") : null, murmure_duration: inviteMurmureDuration }) });
       const data = await res.json() as { error?: string };
       if (!res.ok) setInviteError(data.error ?? "Une erreur est survenue.");
       else { const savedFirstName = inviteFirstName; resetInviteForm(); setInviteFirstName(savedFirstName); setInviteSuccess(true); if (practitionerId) { await new Promise(r => setTimeout(r, 500)); await loadPatients(practitionerId); } }
@@ -5077,7 +5077,7 @@ function DashboardInner() {
                     { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true },
                     { text: "Préparation automatisée de vos consultations et bilans", included: true },
                     { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true },
-                    { text: "Vision IA : Analyse et décodage des photos de repas", included: false },
+                    { text: "Vision IA : Analyse de photos (repas, étiquettes, bilans…)", included: false },
                     { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: false },
                   ],
                   badge: null as string | null,
@@ -5092,7 +5092,7 @@ function DashboardInner() {
                     { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true },
                     { text: "Préparation automatisée de vos consultations et bilans", included: true },
                     { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true },
-                    { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true },
+                    { text: "Vision IA : Analyse de photos envoyées par vos patients (repas, étiquettes, bilans…)", included: true },
                     { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true },
                     { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true },
                   ],
@@ -5108,7 +5108,7 @@ function DashboardInner() {
                     { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true },
                     { text: "Préparation automatisée de vos consultations et bilans", included: true },
                     { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true },
-                    { text: "Vision IA : Analyse et décodage des photos de repas envoyées par vos patients", included: true },
+                    { text: "Vision IA : Analyse de photos envoyées par vos patients (repas, étiquettes, bilans…)", included: true },
                     { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true },
                     { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true },
                     { text: "Espace collaboratif : Possibilité de transférer ou de partager un dossier entre confrères", included: true },
@@ -6127,7 +6127,7 @@ function DashboardInner() {
                           </div>
                         ))}
                         <div>
-                          <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe</p>
+                          <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Sexe <span style={{ color: "#f87171" }}>*</span></p>
                           <select value={inviteSexe} onChange={e => setInviteSexe(e.target.value)}
                             style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" }}>
                             <option value="">Choisir</option>
@@ -6150,6 +6150,7 @@ function DashboardInner() {
                         if (!inviteEmail.trim()) { setInviteError("L'email est requis."); return; }
                         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inviteEmail.trim())) { setInviteError("Veuillez entrer un email valide."); return; }
                         if (!inviteFirstName.trim()) { setInviteError("Le prénom est requis."); return; }
+                        if (!inviteSexe) { setInviteError("Le sexe est requis."); return; }
                         setCheckingEmail(true); setInviteError("");
                         const res = await fetch("/api/check-patient-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId }) });
                         const data = await res.json() as { exists: boolean; canResend?: boolean };
@@ -6171,49 +6172,63 @@ function DashboardInner() {
               <>
                 <p style={{ margin: "0 0 4px", fontSize: 13, color: "#94a3b8" }}>Pour que le jumeau ne donne jamais un conseil inadapté.</p>
                 <p style={{ margin: "0 0 20px", fontSize: 12, color: "#4b5563" }}>Vous pourrez compléter depuis la fiche patient.</p>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-                  {[
-                    { label: "Pathologies", value: invitePathologies, setter: setInvitePathologies, id: "path", options: ["Diabète type 2", "Hypertension", "Hypothyroïdie", "SOPK", "Cholestérol", "TCA", "Surpoids"] },
-                    { label: "Allergies", value: inviteAllergies, setter: setInviteAllergies, id: "allerg", options: ["Gluten", "Lactose", "Fruits à coque", "Œufs", "Fruits de mer"] },
-                    { label: "Traitements", value: inviteTraitements, setter: setInviteTraitements, id: "trait", options: ["Metformine", "Lévothyrox", "Pilule contraceptive", "Antidépresseurs", "Insuline"] },
-                    { label: "Objectif", value: inviteObjectifClinique, setter: setInviteObjectifClinique, id: "obj", options: ["Perte de poids", "Prise de masse", "Équilibre glycémique", "Bien-être général", "Grossesse"] },
-                    { label: "Activité", value: inviteNiveauActivite, setter: setInviteNiveauActivite, id: "activ", options: ["Sédentaire", "Légère", "Modérée", "Intense", "Athlète"] },
-                    { label: "Régime", value: inviteRegime, setter: setInviteRegime, id: "regime", options: ["Végétarien", "Vegan", "Sans gluten", "Halal", "Méditerranéen"] },
-                  ].map(({ label, value, setter, id, options }) => {
-                    const isAutre = value !== "" && !options.includes(value) && value !== "Aucune" && value !== "Aucun";
-                    return (
-                      <div key={id}>
-                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{label}</p>
-                        <select value={isAutre ? "Autre" : value} onChange={e => { if (e.target.value === "Autre") setter("__autre__"); else setter(e.target.value); }}
-                          style={{ width: "100%", height: 40, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", cursor: "pointer" }}>
-                          <option value="">Choisir</option>
-                          <option value="Aucune">{["Pathologies", "Allergies", "Activité"].includes(label) ? "Aucune" : "Aucun"}</option>
-                          {options.map(o => <option key={o} value={o}>{o}</option>)}
-                          <option value="Autre">Autre</option>
-                        </select>
-                        {(value === "__autre__" || isAutre) && (
-                          <input type="text" value={value === "__autre__" ? "" : value} onChange={e => setter(e.target.value)} placeholder="Précisez..." autoFocus
-                            style={{ width: "100%", height: 38, borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box", marginTop: 6 }}
-                            onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(16,185,129,0.3)"} />
-                        )}
+                {/* Multi-select chips */}
+                {(() => {
+                  const chipToggle = (opt: string, vals: string[], setVals: (v: string[]) => void, none: string) => {
+                    if (opt === none) { setVals(vals.includes(none) ? [] : [none]); }
+                    else { const without = vals.filter(v => v !== none); setVals(without.includes(opt) ? without.filter(v => v !== opt) : [...without, opt]); }
+                  };
+                  const chipStyle = (active: boolean): React.CSSProperties => ({ padding: "4px 10px", borderRadius: 20, fontSize: 12, fontWeight: active ? 600 : 400, cursor: "pointer", border: active ? "1px solid rgba(16,185,129,0.4)" : "1px solid rgba(255,255,255,0.08)", background: active ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.03)", color: active ? "#10b981" : "#64748b", transition: "all 0.15s" });
+                  const multiFields: { label: string; values: string[]; setVals: (v: string[]) => void; options: string[]; none: string; required?: boolean }[] = [
+                    { label: "Pathologies", values: invitePathologies, setVals: setInvitePathologies, options: ["Diabète type 2", "Hypertension", "Hypothyroïdie", "SOPK", "Cholestérol", "TCA", "Surpoids"], none: "Aucune", required: true },
+                    { label: "Allergies", values: inviteAllergies, setVals: setInviteAllergies, options: ["Gluten", "Lactose", "Fruits à coque", "Œufs", "Fruits de mer"], none: "Aucune" },
+                    { label: "Traitements", values: inviteTraitements, setVals: setInviteTraitements, options: ["Metformine", "Lévothyrox", "Pilule contraceptive", "Antidépresseurs", "Insuline"], none: "Aucun" },
+                    { label: "Objectif clinique", values: inviteObjectifClinique, setVals: setInviteObjectifClinique, options: ["Perte de poids", "Prise de masse", "Équilibre glycémique", "Bien-être général", "Grossesse"], none: "Aucun", required: true },
+                    { label: "Régime alimentaire", values: inviteRegime, setVals: setInviteRegime, options: ["Végétarien", "Vegan", "Sans gluten", "Halal", "Méditerranéen"], none: "Aucun" },
+                  ];
+                  return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>
+                      {multiFields.map(f => (
+                        <div key={f.label}>
+                          <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{f.label}{f.required && <span style={{ color: "#f87171" }}> *</span>}</p>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                            {[f.none, ...f.options].map(opt => (
+                              <button key={opt} type="button" onClick={() => chipToggle(opt, f.values, f.setVals, f.none)} style={chipStyle(f.values.includes(opt))}>{opt}</button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                      {/* Activité — single select */}
+                      <div>
+                        <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Activité physique</p>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                          {["Aucune", "Sédentaire", "Légère", "Modérée", "Intense", "Athlète"].map(opt => (
+                            <button key={opt} type="button" onClick={() => setInviteNiveauActivite(inviteNiveauActivite === opt ? "" : opt)} style={chipStyle(inviteNiveauActivite === opt)}>{opt}</button>
+                          ))}
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-                <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-                <button onClick={() => setInviteStep(1)}
-                    style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
-                    Retour
-                  </button>
-                  <button onClick={() => setInviteStep(3)}
-                    style={{ flex: 2, height: 44, borderRadius: 10, background: "rgba(16,185,129,0.12)", border: "1px solid rgba(16,185,129,0.3)", color: emerald, cursor: "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; }}>
-                    Suivant
-                  </button>
-                </div>
+                    </div>
+                  );
+                })()}
+                {(() => {
+                  const step2Disabled = invitePathologies.length === 0 || inviteObjectifClinique.length === 0;
+                  return (
+                    <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                      <button onClick={() => setInviteStep(1)}
+                        style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#94a3b8"; }}>
+                        Retour
+                      </button>
+                      <button onClick={() => { if (!step2Disabled) setInviteStep(3); }} disabled={step2Disabled}
+                        style={{ flex: 2, height: 44, borderRadius: 10, background: step2Disabled ? "rgba(255,255,255,0.05)" : "rgba(16,185,129,0.12)", border: `1px solid ${step2Disabled ? "rgba(255,255,255,0.06)" : "rgba(16,185,129,0.3)"}`, color: step2Disabled ? "#374151" : emerald, cursor: step2Disabled ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, transition: "all 0.2s" }}
+                        onMouseEnter={e => { if (!step2Disabled) { e.currentTarget.style.background = "rgba(16,185,129,0.2)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.5)"; } }}
+                        onMouseLeave={e => { if (!step2Disabled) { e.currentTarget.style.background = "rgba(16,185,129,0.12)"; e.currentTarget.style.borderColor = "rgba(16,185,129,0.3)"; } }}>
+                        Suivant
+                      </button>
+                    </div>
+                  );
+                })()}
               </>
             ) : (
               <>

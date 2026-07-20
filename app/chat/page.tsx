@@ -545,6 +545,8 @@ export default function ChatPage() {
   const [imageCompressing, setImageCompressing] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
   const [pendingImage, setPendingImage] = useState<{ base64: string; mimeType: string; previewUrl: string } | null>(null);
+  const [dailyCount, setDailyCount] = useState(0);
+  const [dailyLimit, setDailyLimit] = useState(0);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [filteredSessions, setFilteredSessions] = useState<Session[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1464,9 +1466,28 @@ export default function ChatPage() {
             setLoading(false); return;
           }
         }
+        if (res.status === 429) {
+          const errData = await res.json().catch(() => ({})) as { count?: number; limit?: number };
+          // Annuler le message utilisateur + placeholder assistant
+          setMessages(prev => prev.slice(0, -2));
+          // Forcer le verrouillage visuel via les compteurs
+          if (errData.limit) {
+            setDailyCount(errData.count ?? errData.limit);
+            setDailyLimit(errData.limit);
+          }
+          setLoading(false); return;
+        }
         throw new Error("Erreur");
       }
       if (!res.body) throw new Error("Erreur");
+
+      // ─── Lecture headers rate limit ───
+      const countHdr = res.headers.get("X-Daily-Count");
+      const limitHdr = res.headers.get("X-Daily-Limit");
+      if (countHdr && limitHdr) {
+        setDailyCount(parseInt(countHdr, 10));
+        setDailyLimit(parseInt(limitHdr, 10));
+      }
 
       // ─── Stream : RAF typewriter — découple réception et affichage ───
       const reader = res.body.getReader(); const decoder = new TextDecoder(); let fullText = "";
@@ -1573,6 +1594,10 @@ export default function ChatPage() {
   const breathingColor: Record<BreathingStep, string> = { idle: ACCENT, inhale: ACCENT, hold: "#6366f1", exhale: "#34d399", done: ACCENT };
   const breathingLabel: Record<BreathingStep, string> = { idle: "", inhale: "Inspirez...", hold: "Retenez...", exhale: "Expirez...", done: "Bravo !" };
   const visibleMessages = messages.filter(m => !m.hidden && !m.content.startsWith("[INFO SYSTÈME") && !m.content.startsWith("[POST_EXERCICE"));
+  const dailyProgress = dailyLimit > 0 ? dailyCount / dailyLimit : 0;
+  const isRateLimited = dailyProgress >= 1;
+  const showProgressBar = dailyProgress >= 0.9;
+  const progressPct = Math.min(Math.round(dailyProgress * 100), 100);
 
   // Modale plein écran pour tous les outils Mon Soutien
   const renderTool = () => {
@@ -3169,7 +3194,34 @@ export default function ChatPage() {
                     : <>{`Je suis votre compagnon de suivi nutritionnel.`}<br />{`Comment puis-je vous aider aujourd'hui ?`}</>}
                 </p>
                 <div style={{ marginBottom: 40 }}>
-                  <InputBar isCenter={true} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} isMobile={isMobile} />
+                  {pendingImage && (
+                    <div style={{ marginBottom: 10, padding: "10px 12px", borderRadius: 12, background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", gap: 10 }}>
+                      <img src={pendingImage.previewUrl} alt="Aperçu" style={{ width: 52, height: 52, borderRadius: 8, objectFit: "cover", border: "1px solid rgba(255,255,255,0.1)", flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: TEXT_PRIMARY, lineHeight: 1.3 }}>Photo prête à l&apos;envoi</p>
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: TEXT_SECONDARY }}>Ajoutez un message pour préciser votre question</p>
+                      </div>
+                      <button onClick={() => setPendingImage(null)} style={{ width: 28, height: 28, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: TEXT_SECONDARY, fontSize: 14, flexShrink: 0 }}>×</button>
+                    </div>
+                  )}
+                  {showProgressBar && (
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                        <span style={{ fontSize: 10, color: "#f59e0b" }}>Échanges du jour</span>
+                        <span style={{ fontSize: 10, color: "#f59e0b", fontVariantNumeric: "tabular-nums" }}>{progressPct}%</span>
+                      </div>
+                      <div style={{ height: 2, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${progressPct}%`, background: "#f59e0b", borderRadius: 2, transition: "width 0.4s ease" }} />
+                      </div>
+                    </div>
+                  )}
+                  {isRateLimited ? (
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(245,158,11,0.08)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderRadius: 26, border: "0.5px solid rgba(245,158,11,0.25)", padding: "12px 18px", minHeight: 80 }}>
+                      <span style={{ fontSize: 16, color: "#f59e0b", textAlign: "center" }}>Votre compagnon vous retrouve dès demain.</span>
+                    </div>
+                  ) : (
+                    <InputBar isCenter={true} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} isMobile={isMobile} />
+                  )}
                 </div>
                 {!isMobile && <p style={{ margin: "0 0 16px", fontSize: 11, fontWeight: 600, color: TEXT_MUTED, letterSpacing: "0.1em", textTransform: "uppercase" }}>Questions fréquentes</p>}
                 {!isMobile && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center" }}>
@@ -3321,7 +3373,24 @@ export default function ChatPage() {
                   </div>
                 </div>
               )}
-              <InputBar isCenter={false} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} isMobile={isMobile} />
+              {showProgressBar && (
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                    <span style={{ fontSize: 10, color: "#f59e0b" }}>Échanges du jour</span>
+                    <span style={{ fontSize: 10, color: "#f59e0b", fontVariantNumeric: "tabular-nums" }}>{progressPct}%</span>
+                  </div>
+                  <div style={{ height: 2, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${progressPct}%`, background: "#f59e0b", borderRadius: 2, transition: "width 0.4s ease" }} />
+                  </div>
+                </div>
+              )}
+              {isRateLimited ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(245,158,11,0.08)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderRadius: 26, border: "0.5px solid rgba(245,158,11,0.25)", padding: "10px 18px", minHeight: 70 }}>
+                  <span style={{ fontSize: 16, color: "#f59e0b", textAlign: "center" }}>Votre compagnon vous retrouve dès demain.</span>
+                </div>
+              ) : (
+                <InputBar isCenter={false} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} isMobile={isMobile} />
+              )}
               <p style={{ margin: "10px 0 0", fontSize: 10, color: TEXT_MUTED, textAlign: "center", whiteSpace: "nowrap" }}>
                 NutriTwin est une IA · En cas de doute, consultez votre praticien
               </p>

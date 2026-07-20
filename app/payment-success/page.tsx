@@ -132,18 +132,18 @@ function PaymentSuccessContent() {
                 {[
                   {
                     icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-                    label: "15 minutes",
-                    desc: "suffisent pour calibrer votre jumeau.",
+                    label: "Votre pratique est unique, son double doit l'être aussi.",
+                    desc: "Prévoyez 45 minutes sans interruption pour programmer un double numérique à la hauteur de votre expertise.",
                   },
                   {
                     icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
-                    label: "Répondez naturellement,",
-                    desc: "comme si vous parliez à un confrère.",
+                    label: "Le niveau de précision de votre jumeau dépend directement de cette étape.",
+                    desc: "Chaque détail partagé aujourd'hui détermine la fidélité de ses interventions de demain.",
                   },
                   {
-                    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
-                    label: "Plus vous êtes précis,",
-                    desc: "meilleur sera le résultat final.",
+                    icon: <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v14a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+                    label: "Vos réponses sont sauvegardées en temps réel.",
+                    desc: "Commencez maintenant et finalisez à votre rythme, entre deux consultations.",
                   },
                 ].map((item, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>

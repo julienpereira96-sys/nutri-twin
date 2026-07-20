@@ -28,6 +28,7 @@ const questions: Question[] = [
   // BLOC 2 — PHILOSOPHIE NUTRITIONNELLE
   { id: "approche_generale", block: "Philosophie Nutritionnelle", label: "Quelle est votre philosophie principale ?", type: "single_with_free", options: ["Rééquilibrage alimentaire progressif", "Alimentation intuitive et anti-régime strict", "Micronutrition fonctionnelle", "Contrôle des macros (déficit calorique mesuré)", "Autre (Précisez...)"] },
   { id: "pathologies", block: "Philosophie Nutritionnelle", label: "Quel est votre cœur de métier ?", sublabel: "Vous pouvez en sélectionner plusieurs", type: "multiple_with_free", options: ["Perte de poids / obésité", "TCA (troubles du comportement alimentaire)", "Diabète / glycémie / métabolisme", "Performance sportive", "Inconfort digestif / FODMAP", "Fatigue / micronutrition", "Femme enceinte / post-partum", "Enfants / adolescents", "Autre (Précisez...)"] },
+  { id: "dimension_emotionnelle", block: "Philosophie Nutritionnelle", label: "Quelle place occupe la dimension émotionnelle et comportementale dans votre pratique ?", type: "single", options: ["C'est le cœur de mon travail : la majorité de mes patients ont une relation chargée et complexe avec la nourriture", "C'est une dimension importante que j'intègre systématiquement à l'accompagnement nutritionnel", "Je l'aborde si elle émerge, mais mon approche reste principalement centrée sur le volet nutritionnel"] },
   { id: "position_regimes", block: "Philosophie Nutritionnelle", label: "Votre avis sur les régimes restrictifs ?", type: "single", options: ["Je les déconseille systématiquement", "Je les étudie cas par cas", "Certains sont utiles dans mon protocole", "Je reste neutre et m'adapte"] },
   { id: "position_glucides", block: "Philosophie Nutritionnelle", label: "Votre position sur les glucides ?", type: "single", options: ["Indispensables à chaque repas", "À moduler selon l'objectif et le profil", "Je les limite en général", "Dépend du patient et du moment"] },
   { id: "position_jeune", block: "Philosophie Nutritionnelle", label: "Votre position sur le jeûne intermittent ?", type: "single", options: ["Je le déconseille", "Utile dans des cas précis, sur indication", "Outil intéressant si bien adapté à la personne", "Je le pratique moi-même et l'intègre souvent"] },
@@ -36,7 +37,7 @@ const questions: Question[] = [
   { id: "sensibilite_budget", block: "Philosophie Nutritionnelle", label: "Quelle est votre approche face au budget alimentaire de vos patients ?", type: "single", options: ["Priorité absolue à l'accessibilité : je m'adapte toujours au budget et valide les marques distributeurs ou le surgelé.", "Équilibre souple : je propose des alternatives économiques tout en encourageant la qualité quand c'est possible.", "Priorité à la qualité brute : je pousse vers le moins transformé, quitte à ce que le panier d'achat soit plus sélectif."] },
   { id: "orientation_produits", block: "Philosophie Nutritionnelle", label: "Quels types de produits encouragez-vous en priorité ?", sublabel: "Vous pouvez en sélectionner plusieurs", type: "multiple_with_free", options: ["Le bio, le local et les circuits courts", "Le fait-maison et les produits bruts / non transformés", "La flexibilité totale : l'important c'est l'équilibre et les portions, peu importe la provenance", "L'alimentation à dominante végétale (végétarien / flexitarien)", "Autre (Précisez...)"] },
   { id: "jamais_dire", block: "Philosophie Nutritionnelle", label: "Y a-t-il des pratiques que vous refusez catégoriquement ?", sublabel: "Exemple : régimes très hypocaloriques, détox, jeûne prolongé de plus de 24h...", type: "free", placeholder: "Décrivez ce que votre jumeau ne doit jamais recommander..." },
-  { id: "conviction", block: "Philosophie Nutritionnelle", label: "Quelle est votre règle d'or ?", sublabel: "Votre conviction la plus forte en tant que praticien, celle qui guide tout le reste", type: "free", placeholder: "Exemple : Pas d'aliment interdit, le plaisir avant tout. Ou : la régularité prime toujours sur la perfection..." },
+  { id: "conviction", block: "Philosophie Nutritionnelle", label: "Quelle est votre règle d'or ?", sublabel: "Votre conviction la plus forte en tant que praticien, celle qui guide tout le reste", type: "free", placeholder: "Exemple : La relation à la nourriture se construit dans la durée, pas dans la perfection. Ou : mon rôle, c'est d'être présent dans les moments difficiles autant que dans les progrès..." },
 
   // BLOC 3 — GESTION HUMAINE & ÉMOTIONS
   { id: "alimentation_emotionnelle", block: "Gestion Humaine & Émotions", label: "Un patient mange ses émotions. Votre approche ?", type: "single_with_free", options: ["Je travaille uniquement l'alimentation, c'est mon périmètre", "Je reconnais la dimension émotionnelle et j'oriente vers un psy si besoin", "Je travaille les deux en parallèle dans mon suivi", "Autre (Précisez...)"] },
@@ -45,6 +46,8 @@ const questions: Question[] = [
   { id: "levier_motivation", block: "Gestion Humaine & Émotions", label: "Comment remotivez-vous un patient qui décroche ?", type: "single", options: ["Je lui rappelle ses objectifs initiaux et ses raisons profondes", "Je valorise chaque petit progrès, même minime", "Je propose d'ajuster le protocole ensemble", "Je lui laisse de l'espace et attends son retour"] },
   { id: "profil_perfectionniste", block: "Gestion Humaine & Émotions", label: "Un patient ultra-perfectionniste stresse dès qu'il s'éloigne du plan. Votre approche ?", type: "single", options: ["Je pousse au lâcher-prise", "Je valorise sa rigueur tout en l'aidant à accepter que l'équilibre se fait sur la durée", "Je valide son niveau d'exigence et l'aide à recalibrer pour tenir sur le long terme"] },
   { id: "adaptation_profil", block: "Gestion Humaine & Émotions", label: "Comment adaptez-vous votre communication selon le profil du patient ?", type: "single", options: ["Je reste moi-même avec tout le monde, c'est ma force", "J'adapte le ton mais pas le fond de mes conseils", "J'adapte à la fois le fond et la forme selon la personne", "Je laisse le patient me guider vers ce dont il a besoin"] },
+  { id: "gestion_culpabilite", block: "Gestion Humaine & Émotions", label: "Un patient vient de craquer. Votre position sur la culpabilité qu'il ressent ?", type: "single_with_free", options: ["Je la désamorce immédiatement : la culpabilité est contre-productive et amplifie le problème", "Je valide d'abord l'émotion, puis on explore ensemble ce qui s'est passé, sans jugement", "Je reste factuel : un écart s'analyse, pas se juge. On repart de là.", "Autre (Précisez...)"] },
+  { id: "vocabulaire_crise", block: "Gestion Humaine & Émotions", label: "Quand un patient perd le contrôle autour de la nourriture, comment vous en parlez-vous ensemble ?", type: "single_with_free", options: ["Un écart : neutre et factuel, pour éviter de dramatiser", "Une compulsion : pour nommer le mécanisme et pouvoir le travailler", "Un moment difficile : pour valider sans étiqueter", "Je n'utilise pas de mot fixe, j'explore ce qui s'est passé", "Autre (Précisez...)"] },
 
   // BLOC 4 — SÉCURITÉ & LIMITES
   { id: "perimetre", block: "Sécurité & Limites", label: "Jusqu'où peut aller votre jumeau de manière autonome ?", type: "single", options: ["Autonomie totale", "Prudent sur les pathologies, il me redirige", "Questions simples uniquement, il m'alerte pour tout le reste"] },
@@ -54,11 +57,11 @@ const questions: Question[] = [
 
   // MISES EN SITUATION
   { id: "situation_craquage", block: "Mises en situation", label: "Il est 22h. Un patient vous écrit :", sublabel: '"J\'ai craqué sur tout le frigo ce soir, je me déteste, je suis nul(le). Je vais jamais y arriver."', type: "free", placeholder: "Vous auriez répondu quoi ?" },
+  { id: "situation_avant_crise", block: "Mises en situation", label: "Un patient vous écrit à 22h30 :", sublabel: '"L\'envie est trop forte ce soir. J\'ai peur de craquer. Je suis seul et je sais que j\'ai des biscuits dans le placard."', type: "free", placeholder: "Vous auriez répondu quoi ?" },
   { id: "situation_stagnation", block: "Mises en situation", label: "Un patient vous écrit :", sublabel: '"La balance n\'a pas bougé d\'un gramme cette semaine alors que j\'ai été irréprochable. Ça m\'énerve, j\'ai envie de tout arrêter."', type: "free", placeholder: "Vous auriez répondu quoi ?" },
   { id: "situation_abandon", block: "Mises en situation", label: "Un patient disparu revient après 3 semaines de silence :", sublabel: '"J\'ai honte de revenir. J\'ai tout sabordé ces dernières semaines, j\'ai même pas osé vous écrire tellement c\'était mauvais."', type: "free", placeholder: "Vous auriez répondu quoi ?" },
   { id: "situation_prediabete", block: "Mises en situation", label: "Un patient sort de chez son médecin :", sublabel: '"Mon médecin m\'a dit que j\'ai un prédiabète. Est-ce que je dois arrêter les féculents complètement ?"', type: "free", placeholder: "Vous auriez répondu quoi ?" },
   { id: "situation_alcool", block: "Mises en situation", label: "Un patient vous pose LA question du week-end :", sublabel: '"Est-ce que j\'ai le droit de boire mes 3 verres de vin ou mes bières le week-end avec mes amis, ou ça ruine tout ?"', type: "free", placeholder: "Vous auriez répondu quoi ?" },
-  { id: "situation_marketing", block: "Mises en situation", label: "Un patient a vu une pub en ligne :", sublabel: '"J\'ai vu un complément qui promet de brûler les graisses sans rien changer à l\'alimentation. Ça marche vraiment ou c\'est du marketing ?"', type: "free", placeholder: "Vous auriez répondu quoi ?" },
   { id: "situation_drastique", block: "Mises en situation", label: "Un patient vous demande quelque chose d'irréaliste :", sublabel: '"Je veux perdre 8 kilos en 3 semaines pour mon mariage. On fait comment ?"', type: "free", placeholder: "Vous auriez répondu quoi ?" },
   { id: "situation_flemme", block: "Mises en situation", label: "Le classique du soir de semaine :", sublabel: '"Je rentre du boulot à 19h, je suis crevé(e), j\'ai rien à cuisiner et zéro motivation. Qu\'est-ce que je peux faire de rapide sans tout ruiner ?"', type: "free", placeholder: "Vous auriez répondu quoi ?" },
   { id: "situation_coup_dur", block: "Mises en situation", label: "Un patient traverse quelque chose de difficile :", sublabel: '"J\'ai appris une très mauvaise nouvelle aujourd\'hui. Je n\'ai plus la force de cuisiner ni de suivre le programme."', type: "free", placeholder: "Vous auriez répondu quoi ?" },
@@ -792,8 +795,8 @@ export default function OnboardingPage() {
                   </div>
                   <p className="mt-3 text-sm leading-relaxed" style={{ color: identityColor }}>
                     {identityFilled === 0 && "La structure de votre Jumeau est prête ! Vos réponses lui ont transmis votre logique clinique complète : positions scientifiques, règles de sécurité et réflexes face aux situations difficiles. Il sait désormais quoi répondre sur le fond. Il ne lui manque plus que votre style unique : complétez votre Vision et votre Signature pour que l'IA s'approprie votre identité professionnelle et devienne votre véritable double virtuel."}
-                    {identityFilled === 1 && visionSaved && "Votre Jumeau possède désormais votre philosophie profonde ! Il ne lui reste plus qu'à capturer votre Signature pour analyser votre style d'écriture, vos expressions fétiches et le rythme de vos phrases. C'est la dernière étape pour atteindre une fidélité à 100 %."}
-                    {identityFilled === 1 && signatureSaved && "Votre Jumeau possède désormais votre ton et votre style d'écriture ! Il ne lui reste plus qu'à prendre en compte votre Vision pour que ses conseils reflètent fidèlement votre positionnement et vos valeurs de praticien. C'est la dernière étape pour atteindre une fidélité à 100 %."}
+                    {identityFilled === 1 && visionSaved && "Votre Jumeau possède désormais votre philosophie profonde ! Il ne lui reste plus qu'à capturer votre style d'écriture : vos expressions fétiches, vos métaphores, le rythme de vos phrases. C'est la dernière étape pour atteindre une fidélité à 100 %."}
+                    {identityFilled === 1 && signatureSaved && "Votre Jumeau possède désormais votre style d'écriture ! Il ne lui reste plus qu'à intégrer votre Vision pour que ses conseils reflètent fidèlement votre positionnement et vos valeurs. C'est la dernière étape pour atteindre une fidélité à 100 %."}
                     {identityFilled === 2 && "Configuration réussie. Votre Jumeau possède toute votre identité. Il est désormais prêt à vous épauler et à interagir de manière ultra-sécurisée avec vos patients. Rendez-vous sur votre tableau de bord pour inviter vos premiers patients et laisser votre Jumeau prolonger votre accompagnement."}
                   </p>
                 </div>
@@ -853,7 +856,7 @@ export default function OnboardingPage() {
                         <textarea
                           value={visionText}
                           onChange={e => { setVisionText(e.target.value); if (visionError) setVisionError(""); }}
-                          placeholder="Je crois que la santé commence dans l'intestin et que l'alimentation doit être un levier de vitalité, jamais une source d'anxiété. Pour moi, aucun aliment n'est à diaboliser..."
+                          placeholder="Je crois que l'alimentation est d'abord une relation, avec soi, avec son corps, avec les autres. Aucun protocole ne tient si la personne ne s'y sent pas en sécurité avec ce qu'elle mange. Pour moi, être présent dans les moments difficiles compte autant que donner les bons conseils..."
                           rows={6}
                           className="w-full rounded-2xl bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition-all placeholder:text-zinc-600"
                           style={{ border: `1px solid ${visionSaved && visionText.trim() ? `rgba(${visionRgb},${visionEditing ? "0.5" : "0.35"})` : "rgba(255,255,255,0.1)"}` }}
@@ -901,19 +904,19 @@ export default function OnboardingPage() {
                         borderColor: signatureSaved ? `${signatureColor}60` : "rgba(255,255,255,0.1)",
                       }}>2</div>
                     <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>
-                      MA SIGNATURE
+                      MON STYLE D'ÉCRITURE
                     </p>
                     {signatureSaved && (
                       <span className="text-xs font-semibold transition-colors duration-500" style={{ color: signatureColor }}>
-                        ✓ Renseignée
+                        ✓ Renseigné
                       </span>
                     )}
                   </div>
 
                   <div className="ml-10">
-                    <p className="text-sm font-bold text-white mb-1">L'étape finale pour passer de l'intelligence artificielle à votre intelligence émotionnelle</p>
+                    <p className="text-sm font-bold text-white mb-1">L'étape finale pour que votre Jumeau parle vraiment comme vous</p>
                     <p className="text-sm text-zinc-400 mb-4 leading-relaxed">
-                      Partagez ici vos métaphores favorites, vos expressions fétiches pour dédramatiser un écart et vos mantras de motivation. C'est ici que votre Jumeau capture votre intuition et ces nuances uniques qui font votre voix.
+                      Partagez ici vos expressions fétiches, vos métaphores favorites, les mots que vous n'utilisez jamais, votre façon de dédramatiser un écart ou de remotiver quelqu'un. Votre Jumeau va intégrer ces éléments dans son style, pas les recopier.
                     </p>
 
                     {signatureSaved && !signatureEditing ? (
@@ -946,7 +949,7 @@ export default function OnboardingPage() {
                         <textarea
                           value={signatureText}
                           onChange={e => { setSignatureText(e.target.value); if (signatureError) setSignatureError(""); }}
-                          placeholder={"Je compare souvent le métabolisme à un feu de camp. Mon expression fétiche pour relancer la machine c'est : \"Un repas ne fait pas le moine, on tourne la page\". Mon mantra : \"La régularité bat la perfection\"..."}
+                          placeholder={"Mon expression fétiche quand un patient culpabilise : \"...\". Je n'utilise jamais le mot \"craquer\", je dis plutôt \"moment difficile\". Quand quelqu'un revient après une longue absence, je commence toujours par rassurer avant tout conseil. Mes métaphores favorites : ..."}
                           rows={6}
                           className="w-full rounded-2xl bg-[#1a1a1a] px-4 py-4 text-[15px] text-white outline-none transition-all placeholder:text-zinc-600"
                           style={{ border: `1px solid ${signatureSaved && signatureText.trim() ? `rgba(${signatureRgb},${signatureEditing ? "0.5" : "0.35"})` : "rgba(255,255,255,0.1)"}` }}

@@ -199,10 +199,10 @@ export async function POST(request: Request) {
       }
     }));
 
-    // Invalider le cache has_docs
-    try {
-      await redis.del(`has_docs:${practitionerId}`);
-    } catch { /* silencieux */ }
+    // Invalider le cache has_docs (format : has_docs:{practitionerId}:{patientId|"global"})
+    const keysToDelete = [`has_docs:${practitionerId}:global`];
+    if (patientId) keysToDelete.push(`has_docs:${practitionerId}:${patientId}`);
+    await Promise.all(keysToDelete.map(k => redis.del(k).catch(() => {})));
 
     return Response.json({ success: true });
   } catch (error: unknown) {

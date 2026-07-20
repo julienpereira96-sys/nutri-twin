@@ -1,6 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { Redis } from "@upstash/redis";
 import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
 
 type Murmure = { id: string; text: string; expires_at?: string | null; created_at: string };
 
@@ -31,6 +37,9 @@ export async function POST(request: Request) {
     .eq("user_id", patientId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Invalider le cache profil patient — le Murmure doit être actif au prochain message
+  await redis.del(`patient_profile_v2:${patientId}`).catch(() => {});
 
   return NextResponse.json({ success: true });
 }

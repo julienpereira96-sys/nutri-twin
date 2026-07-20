@@ -57,10 +57,11 @@ export default function ConfidentialitePage() {
           Les données patient constituent des données de santé au sens de l'article 9 du RGPD et
           bénéficient à ce titre d'une protection renforcée.
           <br /><br />
-          <strong style={{ color: "white" }}>Analyse visuelle des repas :</strong> Les photographies
-          transmises par le Patient sont traitées en temps réel par l'intelligence artificielle pour
-          en extraire les informations nutritionnelles. NutriTwin ne procède à aucun stockage persistant
-          de ces images — elles sont supprimées immédiatement après analyse.
+          <strong style={{ color: "white" }}>Analyse visuelle de photos :</strong> Les photographies
+          transmises par le Patient (repas, étiquettes alimentaires, bilans biologiques, etc.) sont
+          traitées en temps réel par l'intelligence artificielle à des fins d'analyse et d'interprétation.
+          NutriTwin ne procède à aucun stockage persistant de ces images — elles sont supprimées
+          immédiatement après analyse.
           <br /><br />
           <strong style={{ color: "white" }}>Exercices vocaux (Gemini Live) :</strong> Certains
           exercices de régulation émotionnelle utilisent la voix du Patient via un flux audio en
