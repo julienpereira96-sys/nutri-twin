@@ -98,6 +98,7 @@ export async function POST(request: Request) {
         });
         await redis.del(`practitioner:${userId}`);
         await redis.del(`patient_profile:${userId}`);
+        await redis.incr(`pract_v:${userId}`);
       } catch {
         // Silencieux
       }

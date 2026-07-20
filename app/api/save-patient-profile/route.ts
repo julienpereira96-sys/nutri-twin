@@ -67,6 +67,7 @@ export async function POST(request: Request) {
 
   // Invalider le cache profil IA pour que le jumeau voie les changements immédiatement
   await redis.del(`patient_profile_v2:${patientId}`).catch(() => {});
+  await redis.incr(`patient_v:${patientId}`).catch(() => {});
 
   // Supprimer les alertes de correction d'identité ET de rectification si demandé
   if (clearIdentityAlert) {

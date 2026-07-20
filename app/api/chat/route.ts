@@ -9,6 +9,7 @@ import { getSessionUser } from "@/lib/api-auth";
 const VERTEX_LOCATION = "eu";
 const VERTEX_HOST     = "aiplatform.eu.rep.googleapis.com";
 const VERTEX_PROJECT  = process.env.GOOGLE_CLOUD_PROJECT_ID!;
+const PROMPT_VERSION  = "v1"; // bump when buildCacheablePrompt template changes
 
 function vertexUrl(modelId: string, method: string): string {
   return `https://${VERTEX_HOST}/v1/projects/${VERTEX_PROJECT}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelId}:${method}`;
@@ -51,19 +52,19 @@ async function vertexGenerate(
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
-/** Streaming Vertex AI generateContent — yields text chunks via SSE */
+/** Streaming Vertex AI generateContent — yields text chunks via SSE.
+ *  systemOrCache: pass { type:"system", text } for a plain system instruction,
+ *  or { type:"cache", name } to use a pre-created Vertex cachedContent resource. */
 async function* vertexStreamGenerate(
   modelId: string,
   contents: { role: string; parts: unknown[] }[],
-  systemInstruction: string,
+  systemOrCache: { type: "system"; text: string } | { type: "cache"; name: string },
   generationConfig: { maxOutputTokens?: number; temperature?: number }
 ): AsyncGenerator<string> {
   const token = await getVertexToken();
-  const body = {
-    contents,
-    systemInstruction: { parts: [{ text: systemInstruction }] },
-    generationConfig,
-  };
+  const body = systemOrCache.type === "cache"
+    ? { cachedContent: systemOrCache.name, contents, generationConfig }
+    : { contents, systemInstruction: { parts: [{ text: systemOrCache.text }] }, generationConfig };
   const res = await fetch(vertexUrl(modelId, "streamGenerateContent") + "?alt=sse", {
     method: "POST",
     headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
@@ -96,6 +97,43 @@ const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 });
+
+/** Creates (or retrieves from Redis) a Vertex AI cachedContent resource.
+ *  Returns the resource name, e.g. "projects/.../cachedContents/123".
+ *  Cache key is versioned so any profile change invalidates it automatically. */
+async function getOrCreateVertexCache(
+  practitionerId: string,
+  patientId: string,
+  modelName: string,
+  cacheablePrompt: string
+): Promise<string> {
+  const practVersion = (await redis.get<string>(`pract_v:${practitionerId}`)) ?? "0";
+  const patientVersion = (await redis.get<string>(`patient_v:${patientId}`)) ?? "0";
+  const redisKey = `vertex_cache:${PROMPT_VERSION}:${practitionerId}:${patientId}:${practVersion}:${patientVersion}`;
+
+  const cached = await redis.get<string>(redisKey);
+  if (cached) return cached;
+
+  const token = await getVertexToken();
+  const modelPath = `projects/${VERTEX_PROJECT}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelName}`;
+  const res = await fetch(
+    `https://${VERTEX_HOST}/v1beta1/projects/${VERTEX_PROJECT}/locations/${VERTEX_LOCATION}/cachedContents`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: modelPath,
+        systemInstruction: { parts: [{ text: cacheablePrompt }] },
+        ttl: "3600s",
+      }),
+    }
+  );
+  if (!res.ok) throw new Error(`Vertex cache creation failed: ${res.status} ${await res.text()}`);
+  const { name } = (await res.json()) as { name: string };
+  // Store for 55 min — refresh well before the Vertex 1h TTL expires
+  await redis.set(redisKey, name, { ex: 3300 });
+  return name;
+}
 
 // ═══ CONFIGURATION DES PLANS ═══
 // Modèle chat : gemini-3.1-flash-lite pour tous les textes (tous plans confondus)
@@ -806,17 +844,18 @@ function resolveQuestionsMedicales(qm?: string): string {
   return qm;
 }
 
-function buildSystemPrompt(
+/** Builds the cacheable portion of the system prompt (everything except documentsContext).
+ *  documentsContext (RAG) is dynamic per query — injected into userParts at call time. */
+function buildCacheablePrompt(
   profile: Record<string, string> | null,
   patientContext: string,
-  documentsContext: string,
   forceAncrage = false,
   specialty?: string
 ): string {
   // Sans profil praticien, on reste simple mais on inclut quand même le contexte patient
   // (prénom, objectif, etc.) pour que Gemini connaisse la personne à qui il parle.
   if (!profile) {
-    return `Tu es un assistant nutritionniste bienveillant. Réponds sans markdown, en phrases simples, max 150 mots.${patientContext ? `\n\n${patientContext}` : ""}${documentsContext ? `\n${documentsContext}` : ""}`;
+    return `Tu es un assistant nutritionniste bienveillant. Réponds sans markdown, en phrases simples, max 150 mots.${patientContext ? `\n\n${patientContext}` : ""}`;
   }
 
   const isAutonomieTotal = profile.perimetre?.startsWith("Autonomie totale");
@@ -902,7 +941,7 @@ Tu dois respecter cet ordre de priorité strict, du plus important au moins impo
 2. DOCUMENTS RAG (protocoles et expertise indexés) - ta base de connaissance métier
 3. PERSONNALITÉ (les paramètres ci-dessus) - ton style et ta posture
 
-${patientContext}${documentsContext}
+${patientContext}
 
 RÈGLES ABSOLUES :
 - LIGNE ROUGE ABSOLUE (priorité maximale) : ${profile.ligne_rouge || "ne jamais culpabiliser le patient, quoi qu'il arrive"}
@@ -1605,14 +1644,26 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
         .then(([p, recent]) => analyzeCrisisWithLLM(message, p.context, recent, patientStateForClassifier))
       : Promise.resolve<CrisisAnalysis>({ level: "none", murmure: "", victory: "", apaisement: false });
 
-    const [{ context: patientContext, pathologies: patientPathologies }, crisisAnalysis] = await Promise.all([
+    // Lancer RAG en parallèle du classificateur de crise : dès que profileResult
+    // est résolu on connaît les pathologies nécessaires à l'embedding, et on peut
+    // commencer la recherche vectorielle pendant que le LLM analyse la crise.
+    // Si le résultat révèle le mode ancrage, on écarte simplement le résultat RAG.
+    const ragPromise: Promise<string> = practitionerId
+      ? profileResult.then(({ pathologies }) =>
+          getRelevantDocuments(message, practitionerId, config.ragChunks, patientId, pathologies)
+        )
+      : Promise.resolve("");
+
+    const [{ context: patientContext, pathologies: patientPathologies }, crisisAnalysis, documentsContextRaw] = await Promise.all([
       profileResult,
       crisisPromise,
+      ragPromise,
     ]);
 
-    const documentsContext = practitionerId
-      ? await getRelevantDocuments(message, practitionerId, config.ragChunks, patientId, patientPathologies)
-      : "";
+    // Skip RAG en mode ancrage : le jumeau ne doit donner aucun conseil nutritionnel.
+    const isAncrageMode = crisisAnalysis.level === "red_behavioral"
+      || currentEmotionalStatus === "red_behavioral";
+    const documentsContext = isAncrageMode ? "" : documentsContextRaw;
 
     // Gérer crise LLM détectée
     if (crisisAnalysis.level === "red_critical" && patientId && practitionerId) {
@@ -1657,14 +1708,35 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     const forceAncrage = crisisAnalysis.level === "red_behavioral"
       || currentEmotionalStatus === "red_behavioral";
 
-    const practitionerPrompt = systemPrompt ||
-      buildSystemPrompt(practitionerData.profile, patientContext, documentsContext, forceAncrage, practitionerData.specialty);
+    // Routage modèle — déclaré ici pour que getOrCreateVertexCache puisse l'utiliser
+    const modelName = "gemini-3.5-flash";
 
-    // Dernier message autorisé : directive discrète pour que Gemini conclue naturellement la journée
-    // Ne s'applique pas aux messages image (ton différent) ni au systemPrompt override (admin/test)
-    const finalPrompt = (isLastMessage && !imageBase64 && !systemPrompt)
-      ? practitionerPrompt + `\n\n[Note système — ne pas reproduire textuellement : c'est ta dernière réponse pour ce patient aujourd'hui. Réponds normalement à sa question, puis conclus naturellement et chaleureusement la conversation — une phrase dans ta voix, sans mentionner de limite technique.]`
-      : practitionerPrompt;
+    // Build the cacheable portion of the system prompt (template + profile + patientContext).
+    // documentsContext (RAG) is dynamic — it will be injected into userParts below.
+    const cacheablePrompt = systemPrompt ||
+      buildCacheablePrompt(practitionerData.profile, patientContext, forceAncrage, practitionerData.specialty);
+
+    const lastMessageNote = `\n\n[Note système — ne pas reproduire textuellement : c'est ta dernière réponse pour ce patient aujourd'hui. Réponds normalement à sa question, puis conclus naturellement et chaleureusement la conversation — une phrase dans ta voix, sans mentionner de limite technique.]`;
+
+    // Determine whether to use a Vertex cachedContent resource or a plain systemInstruction.
+    // Cache is skipped for: admin/test overrides, missing IDs, and the rare "last message" case
+    // that needs a dynamic suffix appended to the system instruction.
+    let systemOrCache: { type: "system"; text: string } | { type: "cache"; name: string };
+
+    if (systemPrompt || !patientId || !practitionerId || (isLastMessage && !imageBase64)) {
+      const finalText = (isLastMessage && !imageBase64 && !systemPrompt)
+        ? cacheablePrompt + lastMessageNote
+        : cacheablePrompt;
+      systemOrCache = { type: "system", text: finalText };
+    } else {
+      try {
+        const cacheName = await getOrCreateVertexCache(practitionerId, patientId, modelName, cacheablePrompt);
+        systemOrCache = { type: "cache", name: cacheName };
+      } catch {
+        // Vertex cache unavailable — fall back to plain system instruction silently
+        systemOrCache = { type: "system", text: cacheablePrompt };
+      }
+    }
 
     let conversationHistory: { role: "user" | "model"; parts: { text: string }[] }[] = [];
     if (patientId && practitionerId) {
@@ -1683,13 +1755,6 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
         );
       }
     }
-
-    // Routage modèle :
-    // - gemini-3.5-flash pour tout le chat principal (meilleure nuance clinique, ~$2/cabinet/mois de plus)
-    // - gemini-3.5-flash aussi si image Base64 présente (déjà le cas, inchangé)
-    // - gemini-3.1-flash-lite conservé pour les tâches de fond : analyzeCrisisWithLLM,
-    //   detectApaisementWithLLM, summarizeOldMessages, vertexGenerate SOS/post-exercice
-    const modelName = "gemini-3.5-flash";
 
     // Build Vertex AI content array: history + current user turn
     let userParts: unknown[];
@@ -1714,8 +1779,13 @@ Max 150 mots. Sans markdown.`;
         { text: visionPrompt },
       ];
     } else {
-      // Tronquer à 5000 chars pour Gemini — le message complet est toujours stocké en DB
-      userParts = [{ text: message.slice(0, 5000) }];
+      // Tronquer à 5000 chars pour Gemini — le message complet est toujours stocké en DB.
+      // documentsContext (RAG) est injecté ici dans le tour utilisateur (pas dans le system prompt
+      // caché) pour respecter l'alternance user/model imposée par l'API Vertex.
+      const baseText = message.slice(0, 5000);
+      userParts = documentsContext
+        ? [{ text: `[Contexte documentaire]:\n${documentsContext}\n\n${baseText}` }]
+        : [{ text: baseText }];
     }
     const chatContents = [
       ...conversationHistory,
@@ -1730,7 +1800,7 @@ Max 150 mots. Sans markdown.`;
         let fullText = "";
 
         try {
-          for await (const chunkText of vertexStreamGenerate(modelName, chatContents, finalPrompt, { maxOutputTokens: config.maxOutputTokens, temperature: 0.78 })) {
+          for await (const chunkText of vertexStreamGenerate(modelName, chatContents, systemOrCache, { maxOutputTokens: config.maxOutputTokens, temperature: 0.78 })) {
             fullText += chunkText;
             controller.enqueue(encoder.encode(chunkText));
             await new Promise(resolve => setTimeout(resolve, 5));

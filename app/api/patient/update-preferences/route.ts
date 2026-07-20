@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/api-auth";
+import { Redis } from "@upstash/redis";
 
 export async function POST(request: Request) {
   const user = await getSessionUser();
@@ -36,6 +37,15 @@ export async function POST(request: Request) {
     .eq("user_id", user.id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Invalider le cache Vertex AI pour que le jumeau intègre les nouvelles préférences
+  try {
+    const redis = new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    });
+    await redis.incr(`patient_v:${user.id}`);
+  } catch { /* silencieux */ }
 
   return NextResponse.json({ success: true });
 }
