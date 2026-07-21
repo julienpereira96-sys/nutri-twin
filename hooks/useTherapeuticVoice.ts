@@ -20,6 +20,11 @@ import {
   VOICE_STORAGE_KEY,
 } from "@/lib/therapeuticVoice";
 import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
+import {
+  PreviewChunk,
+  loadAllPreviews,
+  savePreview,
+} from "@/lib/voicePreviewCache";
 
 // Model name — same as SOSExercise (validated in prod)
 const GEMINI_MODEL = "models/gemini-live-2.5-flash-native-audio";
@@ -80,10 +85,16 @@ export interface UseTherapeuticVoiceReturn {
   setSelectedVoice: (voice: TherapeuticVoice) => void;
   /** Speak text with therapeutic voice via Gemini Live. */
   speakTherapeutic: (text: string, opts?: TherapeuticVoiceOptions) => void;
-  /** Preview a voice. Reuses existing WS if same voice already connected. */
+  /** Preview a voice — serves from IndexedDB cache if available, falls back to live WS. */
   previewVoice: (voice: TherapeuticVoice, text: string) => void;
   /** Pre-warm the WebSocket for voiceId so preview is instant. */
   warmUp: (voiceId: string) => void;
+  /**
+   * Sequentially generate preview audio for all voices not yet cached.
+   * Each voice opens its own temporary WS (independent of the playback WS).
+   * Results are stored in IndexedDB for zero-latency future previews.
+   */
+  generatePreviews: (voices: TherapeuticVoice[]) => Promise<void>;
   /** Stop all audio playback and clear the queue. */
   cancelSpeech: () => void;
   /** Unlock AudioContext on iOS (call on first user gesture). */
@@ -117,6 +128,18 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
   const pendingTextRef     = useRef<string | null>(null);
   const setupTimeoutRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentWsVoiceRef  = useRef<string | null>(null);
+
+  // ── Preview cache (IndexedDB → in-memory) ─────────────────────────────────
+  const previewCacheRef  = useRef<Map<string, PreviewChunk[]>>(new Map());
+  const isGeneratingRef  = useRef(false);
+
+  // Load persisted previews from IndexedDB on mount
+  useEffect(() => {
+    const ids = GEMINI_LIVE_VOICES.map(v => v.id);
+    loadAllPreviews(ids).then(cached => {
+      previewCacheRef.current = cached;
+    });
+  }, []);
 
   // ── Audio playback queue ───────────────────────────────────────────────────
 
@@ -317,6 +340,115 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     openWs(voiceId);
   }, [openWs]);
 
+  /**
+   * Sequentially generate & cache preview audio for every voice not yet in IndexedDB.
+   * Opens one independent WebSocket per voice (never touches wsRef).
+   * Safe to call multiple times — guards with isGeneratingRef.
+   */
+  const generatePreviews = useCallback(async (voices: TherapeuticVoice[]) => {
+    if (isGeneratingRef.current) return;
+    const toGenerate = voices.filter(v => !previewCacheRef.current.has(v.id));
+    if (toGenerate.length === 0) return;
+
+    isGeneratingRef.current = true;
+    const PREVIEW_TEXT =
+      "Bonjour, je suis à vos côtés pour vous accompagner aujourd'hui.";
+
+    for (const voice of toGenerate) {
+      await new Promise<void>((resolve) => {
+        const chunks: PreviewChunk[] = [];
+        const ws = new GeminiLiveClient();
+        const timeout = setTimeout(() => {
+          try { ws.close(); } catch { /* no-op */ }
+          resolve();
+        }, 15000);
+
+        ws.onopen = () => {
+          ws.send(JSON.stringify({
+            setup: {
+              model: toVertexModelPath(GEMINI_MODEL),
+              generationConfig: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                  voiceConfig: {
+                    prebuiltVoiceConfig: { voiceName: voice.id },
+                  },
+                },
+              },
+              systemInstruction: {
+                parts: [{
+                  text: "Prononce exactement le texte reçu, avec une voix douce et posée.",
+                }],
+              },
+            },
+          }));
+        };
+
+        let setupDone = false;
+        ws.onmessage = (evt) => {
+          let msg: Record<string, unknown>;
+          try { msg = JSON.parse(evt.data as string); } catch { return; }
+
+          if (msg.error) {
+            clearTimeout(timeout);
+            try { ws.close(); } catch { /* no-op */ }
+            resolve();
+            return;
+          }
+
+          if (msg.setupComplete) {
+            setupDone = true;
+            ws.send(JSON.stringify({
+              clientContent: {
+                turns: [{ role: "user", parts: [{ text: PREVIEW_TEXT }] }],
+                turnComplete: true,
+              },
+            }));
+            return;
+          }
+
+          if (!setupDone) return;
+
+          const sc = msg.serverContent as Record<string, unknown> | undefined;
+          if (!sc) return;
+
+          const parts =
+            ((sc.modelTurn as Record<string, unknown> | undefined)?.parts as unknown[]) ?? [];
+          for (const p of parts) {
+            const part       = p as Record<string, unknown>;
+            const inlineData = part.inlineData as Record<string, unknown> | undefined;
+            if (
+              inlineData?.mimeType &&
+              typeof inlineData.mimeType === "string" &&
+              inlineData.mimeType.startsWith("audio/pcm")
+            ) {
+              const rate = parseInt(
+                (inlineData.mimeType.match(/rate=(\d+)/)?.[1]) ?? "24000",
+                10,
+              );
+              chunks.push({ data: inlineData.data as string, rate });
+            }
+          }
+
+          if (sc.turnComplete === true) {
+            clearTimeout(timeout);
+            try { ws.close(); } catch { /* no-op */ }
+            if (chunks.length > 0) {
+              previewCacheRef.current.set(voice.id, chunks);
+              void savePreview(voice.id, chunks);
+            }
+            resolve();
+          }
+        };
+
+        ws.onerror = () => { clearTimeout(timeout); resolve(); };
+        ws.onclose = () => { clearTimeout(timeout); resolve(); };
+      });
+    }
+
+    isGeneratingRef.current = false;
+  }, []);
+
   const setSelectedVoice = useCallback((voice: TherapeuticVoice) => {
     setSelectedVoiceState(voice);
     try { localStorage.setItem(VOICE_STORAGE_KEY, voice.id); } catch { /* no-op */ }
@@ -376,6 +508,16 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     flushAudio();
     onEndRef.current = null;
 
+    // ── Cache hit → play from IndexedDB buffer (0 ms latency) ────────────────
+    const cached = previewCacheRef.current.get(voice.id);
+    if (cached && cached.length > 0) {
+      for (const chunk of cached) {
+        enqueueAudio(chunk.data, chunk.rate);
+      }
+      return;
+    }
+
+    // ── Cache miss → fall back to live WebSocket ──────────────────────────────
     const ws = wsRef.current;
 
     // Reuse existing connection if same voice is warmed up and ready
@@ -397,7 +539,7 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     // Different voice or not yet connected → open fresh connection
     pendingTextRef.current = text;
     openWs(voice.id);
-  }, [openWs, flushAudio]);
+  }, [openWs, flushAudio, enqueueAudio]);
 
   return {
     voices,
@@ -406,6 +548,7 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     speakTherapeutic,
     previewVoice,
     warmUp,
+    generatePreviews,
     cancelSpeech,
     unlockAudio,
     isPlaying,

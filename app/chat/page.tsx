@@ -647,13 +647,14 @@ export default function ChatPage() {
   }, [testToken]);
 
   // ─── Voix thérapeutique ────────────────────────────────────────────────────
-  const { voices: therapeuticVoices, selectedVoice: selectedTherapeuticVoice, setSelectedVoice: setTherapeuticVoice, previewVoice: previewTherapeuticVoice, warmUp: warmUpVoice, isPlaying: isVoicePlaying } = useTherapeuticVoice();
+  const { voices: therapeuticVoices, selectedVoice: selectedTherapeuticVoice, setSelectedVoice: setTherapeuticVoice, previewVoice: previewTherapeuticVoice, warmUp: warmUpVoice, generatePreviews, isPlaying: isVoicePlaying } = useTherapeuticVoice();
 
   // Préchauffage du WebSocket quand l'écran voix s'ouvre
   // + chargement profil pour "erreur" et "preferences"
   useEffect(() => {
     if (profileScreen === "voix" && selectedTherapeuticVoice) {
       warmUpVoice(selectedTherapeuticVoice.id);
+      void generatePreviews(therapeuticVoices);
     }
     if (profileScreen === "erreur") {
       setErrorField("");
