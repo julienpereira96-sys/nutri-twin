@@ -37,7 +37,7 @@ export const GEMINI_LIVE_VOICES: TherapeuticVoice[] = [
     name: "Aoede",
     lang: "fr-FR",
     gender: "FEMALE",
-    description: "Douce et posée — recommandée",
+    description: "Douce et posée",
   },
   {
     id: "Kore",

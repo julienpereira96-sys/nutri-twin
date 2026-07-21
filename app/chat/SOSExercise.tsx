@@ -16,6 +16,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
+import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
 import ParticleCanvas from "./ParticleCanvas";
 import PulseOrb from "./PulseOrb";
 
@@ -1481,6 +1482,11 @@ export default function SOSExercise({
           model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: getSelectedGeminiVoice() },
+              },
+            },
           },
           // VAD manuel : on gère nous-mêmes activityStart / activityEnd
           // → évite que la respiration ou les sons ambiants déclenchent un tour Gemini

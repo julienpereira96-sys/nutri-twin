@@ -5115,7 +5115,7 @@ function DashboardInner() {
                       <span style={{ fontSize: 12, color: "#64748b", marginLeft: 2 }}>/mois</span>
                     </div>
                     {/* Description */}
-                    <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b", lineHeight: 1.5 }}>{desc}</p>
+                    <p style={{ margin: "0 0 12px", fontSize: 12, color: "#64748b", lineHeight: 1.5, minHeight: 36 }}>{desc}</p>
                     {/* Features */}
                     <ul style={{ margin: "0 0 16px", padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 5, flex: 1 }}>
                       {features.map((f, i) => (

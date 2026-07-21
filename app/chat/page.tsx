@@ -2167,7 +2167,6 @@ export default function ChatPage() {
                       <div style={{ flex: 1 }}>
                         <p style={{ margin: "0 0 2px", fontSize: 15, color: isSelected ? ACCENT : TEXT_PRIMARY, fontWeight: isSelected ? 600 : 400 }}>
                           {v.name}
-                          <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.4, fontWeight: 400 }}>{v.gender === "FEMALE" ? "♀" : "♂"}</span>
                         </p>
                         <p style={{ margin: 0, fontSize: 12, color: TEXT_MUTED }}>{v.description}</p>
                       </div>

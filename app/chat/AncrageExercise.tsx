@@ -21,6 +21,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
+import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
 import PulseOrb from "./PulseOrb";
 
 // ─── Design tokens — Terre / Ocre ─────────────────────────────────────────────
@@ -807,6 +808,11 @@ export default function AncrageExercise({
           model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: getSelectedGeminiVoice() },
+              },
+            },
           },
           outputAudioTranscription: {},
           inputAudioTranscription:  {},

@@ -23,6 +23,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
+import { getSelectedGeminiVoice } from "@/lib/therapeuticVoice";
 import PulseOrb from "./PulseOrb";
 
 // ─── Design tokens — Violet ───────────────────────────────────────────────────
@@ -657,7 +658,14 @@ export default function RestructurationExercise({
       ws.send(JSON.stringify({
         setup: {
           model: toVertexModelPath(GEMINI_MODEL),
-          generationConfig: { responseModalities: ["AUDIO"] },
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: getSelectedGeminiVoice() },
+              },
+            },
+          },
           outputAudioTranscription: {},
           inputAudioTranscription:  {},
           systemInstruction: { parts: [{ text: systemPrompt }] },

@@ -776,6 +776,11 @@ export default function BreathingExercise({
           model: toVertexModelPath(GEMINI_MODEL),
           generationConfig: {
             responseModalities: ["AUDIO"],
+            speechConfig: {
+              voiceConfig: {
+                prebuiltVoiceConfig: { voiceName: getSelectedGeminiVoice() },
+              },
+            },
           },
           outputAudioTranscription: {},
           inputAudioTranscription:  {},
