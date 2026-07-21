@@ -144,7 +144,7 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
 
   // ── Audio playback queue ───────────────────────────────────────────────────
 
-  const playNextChunk = useCallback(() => {
+  const playNextChunk = useCallback(async () => {
     const ctx = audioCtxRef.current;
     if (!ctx || audioQueueRef.current.length === 0) {
       isPlayingRef.current = false;
@@ -158,6 +158,10 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
       }
       return;
     }
+    // iOS: ensure AudioContext is running before starting playback
+    if (ctx.state !== "running") {
+      try { await ctx.resume(); } catch { /* no-op */ }
+    }
     isPlayingRef.current = true;
     setIsPlaying(true);
     const { data, rate } = audioQueueRef.current.shift()!;
@@ -166,7 +170,7 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.connect(ctx.destination);
-    src.onended = playNextChunk;
+    src.onended = () => { void playNextChunk(); };
     src.start(0);
   }, []);
 
