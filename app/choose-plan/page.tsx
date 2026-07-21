@@ -34,29 +34,10 @@ const PLANS: { name: string; price: string; badge?: string; description: string;
       { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
       { text: "Vision IA : Analyse de photos envoyées par vos patients (repas, étiquettes, bilans…)", included: true, exclusive: true },
       { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true, exclusive: true },
-      { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true, exclusive: true },
+      { text: "Plafond d'échanges quotidien étendu par patient (1)", included: true, exclusive: true },
     ],
     plan: "pro",
     featured: true,
-  },
-  {
-    name: "Cabinet",
-    price: "499€",
-    description: "Pour les cabinets multi-praticiens et centres de santé.",
-    features: [
-      { text: "Jusqu'à 80 patients suivis en simultané (2)", included: true, exclusive: false },
-      { text: "Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)", included: true, exclusive: false },
-      { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true, exclusive: false },
-      { text: "Préparation automatisée de vos consultations et bilans", included: true, exclusive: false },
-      { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true, exclusive: false },
-      { text: "Vision IA : Analyse de photos envoyées par vos patients (repas, étiquettes, bilans…)", included: true, exclusive: true },
-      { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true, exclusive: true },
-      { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true, exclusive: true },
-      { text: "Espace collaboratif : possibilité de transférer ou de partager un dossier entre confrères", included: true, exclusive: true },
-    ],
-    plan: "cabinet",
-    featured: false,
-    footnoteMark: "1",
   },
 ];
 
@@ -217,9 +198,7 @@ export default function ChoosePlanPage() {
       </div>
 
       <div style={{ marginTop: 24, maxWidth: 768, width: "100%", margin: "24px auto 0", display: "flex", flexDirection: "column", gap: 6, textAlign: "left" }}>
-        <p style={{ margin: 0, fontSize: 11, lineHeight: 1.6, color: "#52525b" }}><sup>(1)</sup> Le plan Cabinet inclut 3 comptes praticiens indépendants. Chaque praticien supplémentaire est facturé 149&nbsp;€/mois et ouvre 25 patients additionnels.</p>
-        <p style={{ margin: 0, fontSize: 11, lineHeight: 1.6, color: "#52525b" }}><sup>(2)</sup> 80 patients inclus pour les 3 praticiens du plan Cabinet. Chaque praticien supplémentaire bénéficie de 25 patients additionnels.</p>
-        <p style={{ margin: 0, fontSize: 11, lineHeight: 1.6, color: "#52525b" }}><sup>(3)</sup> Gestion des volumes et sécurité : l&apos;enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel et élargie à 100 messages/jour sur les plans Professionnel et Cabinet afin de garantir la stabilité technique de la plateforme et de maintenir un cadre d&apos;échange structuré pour le patient. Conformément à la réglementation, toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais utilisées pour entraîner des modèles d&apos;IA publics.</p>
+        <p style={{ margin: 0, fontSize: 11, lineHeight: 1.6, color: "#52525b" }}><sup>(1)</sup> Gestion des volumes et sécurité : l&apos;enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel et élargie à 100 messages/jour sur le plan Professionnel afin de garantir la stabilité technique de la plateforme et de maintenir un cadre d&apos;échange structuré pour le patient. Conformément à la réglementation, toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais utilisées pour entraîner des modèles d&apos;IA publics.</p>
       </div>
 
       <p style={{ marginTop: 16, fontSize: 12, color: "#52525b", textAlign: "center" }}>

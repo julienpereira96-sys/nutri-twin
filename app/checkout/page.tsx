@@ -49,24 +49,6 @@ const PLANS: Record<string, {
     ],
     color: emerald,
   },
-  cabinet: {
-    name: "Cabinet",
-    price: "499€",
-    description: "Pour les cabinets multi-praticiens et centres de santé.",
-    features: [
-      "Jusqu'à 80 patients suivis en simultané (3 praticiens inclus)",
-      "Jumeau personnalisé par praticien (calqué sur l'approche de chacun)",
-      "Analyse en temps réel (détection des comportements et alertes de crises)",
-      "Préparation automatisée de vos consultations et bilans",
-      "Espace de stockage sécurisé pour vos protocoles et documents",
-      "Vision IA : Analyse de photos (repas, étiquettes, bilans…)",
-      "Mémoire clinique long terme (synthèse permanente de tout le parcours)",
-      "Plafond d'échanges quotidien étendu par patient",
-      "Espace collaboratif : transfert et partage de dossiers entre confrères",
-      "+149 €/mois par praticien supplémentaire (+25 patients)",
-    ],
-    color: emerald,
-  },
 };
 
 const stripeAppearance = {

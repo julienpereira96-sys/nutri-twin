@@ -3895,13 +3895,6 @@ function DashboardInner() {
                     {f.label}
                   </button>
                 ))}
-                {!onboardingDemoMode && practitionerCabinetId && (
-                  <button onClick={() => setVueEnsembleFilter("partages")}
-                    style={{ height: 28, borderRadius: 20, padding: "0 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", border: vueEnsembleFilter === "partages" ? "1px solid rgba(99,102,241,0.5)" : "1px solid rgba(99,102,241,0.15)", background: vueEnsembleFilter === "partages" ? "rgba(99,102,241,0.15)" : "transparent", color: vueEnsembleFilter === "partages" ? "#818cf8" : "#64748b", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 5 }}>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                    Cabinet
-                  </button>
-                )}
               </div>
             </div>
 
@@ -4445,7 +4438,7 @@ function DashboardInner() {
                 badge={savedPin ? <span style={{ fontSize: 10, fontWeight: 600, color: amber, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, padding: "2px 8px", marginRight: 4 }}>PIN actif</span> : undefined}
                 onClick={() => setSettingsScreen("discret")} />
               <Row icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>} label="Abonnement"
-                badge={<span style={{ fontSize: 12, color: practitionerPlan ? emerald : "#64748b", marginRight: 4 }}>{practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Pro" : practitionerPlan === "cabinet" ? "Cabinet" : "–"}</span>}
+                badge={<span style={{ fontSize: 12, color: practitionerPlan ? emerald : "#64748b", marginRight: 4 }}>{practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Pro" : "–"}</span>}
                 onClick={() => setSettingsScreen("abonnement")} />
               <Row icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>} label="Notifications" onClick={() => setSettingsScreen("notifications")} />
             </div>
@@ -4697,7 +4690,7 @@ function DashboardInner() {
               ? new Date(billingSubscription.current_period_end * 1000).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
               : null;
             const isCancelling = billingSubscription?.cancel_at_period_end === true;
-            const planLabel = practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Professionnel" : practitionerPlan === "cabinet" ? "Cabinet" : "–";
+            const planLabel = practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Professionnel" : "–";
             return (
             <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
               <SubHeader title="Abonnement" />
@@ -5056,7 +5049,7 @@ function DashboardInner() {
               <div style={{ position: "absolute", left: "50%", transform: "translateX(-50%)", textAlign: "center", pointerEvents: "none" }}>
                 <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "white" }}>Choisissez votre plan</h2>
                 <p style={{ margin: "3px 0 0", fontSize: 13, color: "#64748b" }}>
-                  Plan actuel&nbsp;:&nbsp;<span style={{ color: emerald, fontWeight: 600 }}>{practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Professionnel" : practitionerPlan === "cabinet" ? "Cabinet" : "–"}</span>
+                  Plan actuel&nbsp;:&nbsp;<span style={{ color: emerald, fontWeight: 600 }}>{practitionerPlan === "essentiel" ? "Essentiel" : practitionerPlan === "pro" ? "Professionnel" : "–"}</span>
                 </p>
               </div>
               <button onClick={() => setShowBillingModal(false)} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", cursor: "pointer", color: "#94a3b8", width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.15s" }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#e2e8f0"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; e.currentTarget.style.color = "#94a3b8"; }}>
@@ -5094,26 +5087,9 @@ function DashboardInner() {
                     { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true },
                     { text: "Vision IA : Analyse de photos envoyées par vos patients (repas, étiquettes, bilans…)", included: true },
                     { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true },
-                    { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true },
+                    { text: "Plafond d'échanges quotidien étendu par patient (1)", included: true },
                   ],
                   badge: "Recommandé" as string | null,
-                },
-                {
-                  plan: "cabinet", label: "Cabinet", price: "499€",
-                  desc: "Pour les cabinets multi-praticiens et centres de santé.",
-                  footnoteMark: "1" as string | null,
-                  features: [
-                    { text: "Jusqu'à 80 patients suivis en simultané (2)", included: true },
-                    { text: "Jumeau personnalisé (calqué sur l'approche et les consignes de chaque praticien)", included: true },
-                    { text: "Analyse en temps réel (détection des comportements et alertes de crises)", included: true },
-                    { text: "Préparation automatisée de vos consultations et bilans", included: true },
-                    { text: "Espace de stockage sécurisé pour vos protocoles et documents", included: true },
-                    { text: "Vision IA : Analyse de photos envoyées par vos patients (repas, étiquettes, bilans…)", included: true },
-                    { text: "Mémoire clinique long terme (synthèse permanente de tout le parcours)", included: true },
-                    { text: "Plafond d'échanges quotidien étendu par patient (3)", included: true },
-                    { text: "Espace collaboratif : Possibilité de transférer ou de partager un dossier entre confrères", included: true },
-                  ],
-                  badge: null as string | null,
                 },
               ]).map(({ plan, label, price, desc, features, badge, footnoteMark }) => {
                 const isCurrent = plan === practitionerPlan;
@@ -5250,9 +5226,7 @@ function DashboardInner() {
               </p>
               <div style={{ marginTop: 6, borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 5 }}>
                 {[
-                  "(1) Le plan Cabinet inclut 3 comptes praticiens indépendants. Chaque praticien supplémentaire est facturé 149 €/mois et ouvre 25 patients additionnels.",
-                  "(2) 80 patients inclus pour les 3 praticiens du plan Cabinet ; chaque praticien supplémentaire bénéficie de 25 patients additionnels.",
-                  "(3) L'enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel et élargie à 100 messages/jour sur les plans Professionnel et Cabinet. Conformément à la réglementation, toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais utilisées pour entraîner des modèles d'IA publics.",
+                  "(1) L'enveloppe de messages est fixée à 30 messages/jour sur le plan Essentiel et élargie à 100 messages/jour sur le plan Professionnel. Conformément à la réglementation, toutes vos données cliniques sont chiffrées, hébergées sur des serveurs sécurisés en Europe, et ne sont jamais utilisées pour entraîner des modèles d'IA publics.",
                 ].map((note, i) => (
                   <p key={i} style={{ margin: 0, fontSize: 10, color: "#64748b", lineHeight: 1.6 }}>{note}</p>
                 ))}
