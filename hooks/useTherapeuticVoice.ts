@@ -42,6 +42,55 @@ function pcm16Base64ToFloat32(base64: string): Float32Array {
   return f32;
 }
 
+// ─── iOS detection ────────────────────────────────────────────────────────────
+//
+// On iOS Safari, Web Audio API (AudioContext) is ALWAYS muted by the hardware
+// ringer/silent switch — no workaround exists at the Web Audio layer.
+// For preview audio we instead encode PCM chunks into a WAV Blob and play via
+// an HTML <audio> element, which uses the AVAudioSession "Playback" category
+// and is NOT affected by the silent switch (same as video/music apps).
+
+const IS_IOS =
+  typeof navigator !== "undefined" &&
+  /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+/**
+ * Encode decoded Float32 PCM chunks into a WAV Blob suitable for
+ * HTMLAudioElement playback. Works with any sample rate.
+ */
+function chunksToWavBlob(
+  chunks: Array<{ data: Float32Array; rate: number }>,
+): Blob | null {
+  if (!chunks.length) return null;
+  const rate = chunks[0].rate;
+  const totalLen = chunks.reduce((s, c) => s + c.data.length, 0);
+  const pcm16 = new Int16Array(totalLen);
+  let off = 0;
+  for (const { data } of chunks) {
+    for (let i = 0; i < data.length; i++) {
+      pcm16[off++] = Math.max(-32768, Math.min(32767, Math.round(data[i] * 32767)));
+    }
+  }
+  const dataSize = pcm16.byteLength;
+  const ab = new ArrayBuffer(44 + dataSize);
+  const v = new DataView(ab);
+  const str = (s: string, o: number) => {
+    for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i));
+  };
+  str("RIFF", 0); v.setUint32(4, 36 + dataSize, true);
+  str("WAVE", 8); str("fmt ", 12);
+  v.setUint32(16, 16, true);       // PCM subchunk size
+  v.setUint16(20, 1,  true);       // PCM format
+  v.setUint16(22, 1,  true);       // mono
+  v.setUint32(24, rate, true);     // sample rate
+  v.setUint32(28, rate * 2, true); // byte rate
+  v.setUint16(32, 2,  true);       // block align
+  v.setUint16(34, 16, true);       // bits per sample
+  str("data", 36); v.setUint32(40, dataSize, true);
+  new Int16Array(ab, 44).set(pcm16);
+  return new Blob([ab], { type: "audio/wav" });
+}
+
 // ─── Voice helpers ────────────────────────────────────────────────────────────
 
 function resolveVoice(id: string): TherapeuticVoice {
@@ -87,7 +136,7 @@ export interface UseTherapeuticVoiceReturn {
   /** Speak text with therapeutic voice via Gemini Live. */
   speakTherapeutic: (text: string, opts?: TherapeuticVoiceOptions) => void;
   /** Preview a voice — serves from IndexedDB cache if available, falls back to live WS. */
-  previewVoice: (voice: TherapeuticVoice, text: string) => void;
+  previewVoice: (voice: TherapeuticVoice, text: string) => Promise<void>;
   /** Pre-warm the WebSocket for voiceId so preview is instant. */
   warmUp: (voiceId: string) => void;
   /**
@@ -131,8 +180,15 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
   const currentWsVoiceRef  = useRef<string | null>(null);
 
   // ── Preview cache (IndexedDB → in-memory) ─────────────────────────────────
-  const previewCacheRef  = useRef<Map<string, PreviewChunk[]>>(new Map());
-  const isGeneratingRef  = useRef(false);
+  const previewCacheRef    = useRef<Map<string, PreviewChunk[]>>(new Map());
+  const isGeneratingRef    = useRef(false);
+
+  // ── iOS audio element (replaces Web Audio for preview on iOS) ─────────────
+  // HTMLAudioElement bypasses the ringer/silent switch; Web Audio API does not.
+  const iosAudioRef        = useRef<HTMLAudioElement | null>(null);
+  // Tracks which voice the current iOS preview is for; cleared by flushAudio
+  // so a stale WS callback doesn't play audio after the user switched voices.
+  const previewVoiceIdRef  = useRef<string | null>(null);
 
   // Load persisted previews from IndexedDB on mount
   useEffect(() => {
@@ -144,10 +200,15 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
 
   // ── Audio playback queue ───────────────────────────────────────────────────
 
+  // Tracks the AudioBufferSourceNode currently playing so flushAudio() can
+  // stop it immediately (prevents overlap when switching voices mid-playback).
+  const currentSrcRef = useRef<AudioBufferSourceNode | null>(null);
+
   const playNextChunk = useCallback(async () => {
     const ctx = audioCtxRef.current;
     if (!ctx || audioQueueRef.current.length === 0) {
       isPlayingRef.current = false;
+      currentSrcRef.current = null;
       setIsPlaying(false);
       // Fire onEnd once queue drains after turnComplete
       if (turnCompleteRef.current) {
@@ -164,18 +225,21 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     if (isPlayingRef.current) return;
     isPlayingRef.current = true;
     setIsPlaying(true);
-    // iOS: ensure AudioContext is running before starting playback.
-    // resume() was already called within the user gesture in previewVoice;
-    // this await simply waits for it to complete before src.start().
+    // Safety net: previewVoice now awaits ctx.resume() before calling enqueueAudio,
+    // so the context should already be "running" here. This guard covers the WS
+    // fallback path where audio arrives asynchronously after the gesture.
     if (ctx.state !== "running") {
       try { await ctx.resume(); } catch { /* no-op */ }
     }
+    // Re-check after any await: flushAudio() may have been called while we waited.
+    if (!isPlayingRef.current) return;
     const { data, rate } = audioQueueRef.current.shift()!;
     const buf = ctx.createBuffer(1, data.length, rate);
     buf.getChannelData(0).set(data);
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.connect(ctx.destination);
+    currentSrcRef.current = src;
     src.onended = () => { void playNextChunk(); };
     src.start(0);
   }, []);
@@ -191,7 +255,54 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     if (!isPlayingRef.current) playNextChunk();
   }, [playNextChunk]);
 
+  // ── iOS playback via HTMLAudioElement ─────────────────────────────────────
+
+  const playViaAudioElement = useCallback(
+    (chunks: Array<{ data: Float32Array; rate: number }>) => {
+      const blob = chunksToWavBlob(chunks);
+      if (!blob) return;
+      // Stop any previous preview
+      if (iosAudioRef.current) {
+        iosAudioRef.current.pause();
+        try { URL.revokeObjectURL(iosAudioRef.current.src); } catch { /* no-op */ }
+      }
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      iosAudioRef.current = audio;
+      isPlayingRef.current = true;
+      setIsPlaying(true);
+      audio.onended = () => {
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+        URL.revokeObjectURL(url);
+        if (iosAudioRef.current === audio) iosAudioRef.current = null;
+      };
+      audio.onerror = () => {
+        isPlayingRef.current = false;
+        setIsPlaying(false);
+      };
+      void audio.play();
+    },
+    [],
+  );
+
   const flushAudio = useCallback(() => {
+    // Stop the currently playing source node immediately to prevent overlap
+    // (e.g. when the user taps a different voice before the current one ends).
+    if (currentSrcRef.current) {
+      try {
+        currentSrcRef.current.onended = null; // prevent onended → playNextChunk
+        currentSrcRef.current.stop();
+      } catch { /* no-op — already stopped */ }
+      currentSrcRef.current = null;
+    }
+    // Stop iOS audio element and cancel any pending iOS preview WS
+    previewVoiceIdRef.current = null;
+    if (iosAudioRef.current) {
+      iosAudioRef.current.pause();
+      try { URL.revokeObjectURL(iosAudioRef.current.src); } catch { /* no-op */ }
+      iosAudioRef.current = null;
+    }
     audioQueueRef.current   = [];
     isPlayingRef.current    = false;
     turnCompleteRef.current = false;
@@ -494,28 +605,145 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     }));
   }, [selectedVoice, openWs, flushAudio]);
 
-  const previewVoice = useCallback((voice: TherapeuticVoice, text: string) => {
-    // ── iOS AudioContext unlock ────────────────────────────────────────────────
-    // Must happen synchronously in the user gesture (button click).
+  const previewVoice = useCallback(async (voice: TherapeuticVoice, text: string) => {
+    flushAudio(); // stops any current preview (Web Audio or <audio>)
+    onEndRef.current = null;
+    previewVoiceIdRef.current = voice.id; // mark active preview
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // iOS path — Web Audio API is always silenced by the ringer switch on iOS.
+    // We use HTMLAudioElement instead: encode PCM chunks → WAV Blob → <audio>.
+    // Cache hit:  immediate (all chunks already in memory)
+    // Cache miss: open an independent WS, buffer all chunks, play on complete
+    //             (same approach as generatePreviews but plays instead of only saving)
+    // ══════════════════════════════════════════════════════════════════════════
+    if (IS_IOS) {
+      const cached = previewCacheRef.current.get(voice.id);
+      if (cached && cached.length > 0) {
+        const decoded = cached.map(c => ({ data: pcm16Base64ToFloat32(c.data), rate: c.rate }));
+        playViaAudioElement(decoded);
+        return;
+      }
+
+      // Cache miss on iOS: open independent WS, buffer, then play via <audio>
+      // Show loading state during generation
+      isPlayingRef.current = true;
+      setIsPlaying(true);
+
+      const voiceId = voice.id; // capture for async closure safety
+      await new Promise<void>((resolve) => {
+        const chunks: PreviewChunk[] = [];
+        const ws = new GeminiLiveClient();
+        const timeout = setTimeout(() => {
+          try { ws.close(); } catch { /* no-op */ }
+          isPlayingRef.current = false;
+          setIsPlaying(false);
+          resolve();
+        }, 15000);
+
+        ws.onopen = () => {
+          ws.send(JSON.stringify({
+            setup: {
+              model: toVertexModelPath(GEMINI_MODEL),
+              generationConfig: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                  voiceConfig: { prebuiltVoiceConfig: { voiceName: voiceId } },
+                },
+              },
+              systemInstruction: {
+                parts: [{ text: "Prononce exactement le texte reçu, avec une voix douce et posée." }],
+              },
+            },
+          }));
+        };
+
+        let setupDone = false;
+        ws.onmessage = (evt) => {
+          let msg: Record<string, unknown>;
+          try { msg = JSON.parse(evt.data as string); } catch { return; }
+          if (msg.setupComplete) {
+            setupDone = true;
+            ws.send(JSON.stringify({
+              clientContent: {
+                turns: [{ role: "user", parts: [{ text }] }],
+                turnComplete: true,
+              },
+            }));
+            return;
+          }
+          if (!setupDone) return;
+          const sc = msg.serverContent as Record<string, unknown> | undefined;
+          if (!sc) return;
+          const modelTurn = sc.modelTurn as Record<string, unknown> | undefined;
+          const parts = (modelTurn?.parts as unknown[]) ?? [];
+          for (const p of parts) {
+            const part = p as Record<string, unknown>;
+            const inlineData = part.inlineData as Record<string, unknown> | undefined;
+            if (
+              inlineData?.mimeType &&
+              typeof inlineData.mimeType === "string" &&
+              inlineData.mimeType.startsWith("audio/pcm")
+            ) {
+              const rate = parseInt(
+                (inlineData.mimeType.match(/rate=(\d+)/)?.[1]) ?? "24000", 10,
+              );
+              chunks.push({ data: inlineData.data as string, rate });
+            }
+          }
+          if (sc.turnComplete === true) {
+            clearTimeout(timeout);
+            try { ws.close(); } catch { /* no-op */ }
+            // Save to IndexedDB cache for future visits
+            if (chunks.length) {
+              previewCacheRef.current.set(voiceId, chunks);
+              void savePreview(voiceId, chunks);
+            }
+            // Only play if this preview is still the active one
+            if (previewVoiceIdRef.current === voiceId && chunks.length) {
+              isPlayingRef.current = false;
+              setIsPlaying(false);
+              const decoded = chunks.map(c => ({ data: pcm16Base64ToFloat32(c.data), rate: c.rate }));
+              playViaAudioElement(decoded);
+            } else {
+              isPlayingRef.current = false;
+              setIsPlaying(false);
+            }
+            resolve();
+          }
+        };
+        ws.onerror = () => {
+          clearTimeout(timeout);
+          isPlayingRef.current = false;
+          setIsPlaying(false);
+          resolve();
+        };
+        ws.onclose = () => { clearTimeout(timeout); resolve(); };
+      });
+      return;
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // Non-iOS path — Web Audio API with AudioContext
+    // ══════════════════════════════════════════════════════════════════════════
+
+    // Unlock AudioContext within the user gesture (button click)
     if (!audioCtxRef.current) {
       audioCtxRef.current = new AudioContext();
     }
-    // Play a 1-sample silent buffer to fully activate AudioContext on iOS Safari.
-    // Without this, async audio (arriving ~500ms later) may be silenced.
+    const ctx = audioCtxRef.current;
+
+    // Play a 1-sample silent buffer to unlock AudioContext on iOS-like browsers.
     try {
-      const ctx = audioCtxRef.current;
       const silentBuf = ctx.createBuffer(1, 1, 22050);
       const silentSrc = ctx.createBufferSource();
       silentSrc.buffer = silentBuf;
       silentSrc.connect(ctx.destination);
       silentSrc.start(0);
     } catch { /* no-op */ }
-    if (audioCtxRef.current.state === "suspended") {
-      void audioCtxRef.current.resume();
-    }
 
-    flushAudio();
-    onEndRef.current = null;
+    // Await resume() within the gesture frame before enqueuing any audio.
+    try { await ctx.resume(); } catch { /* no-op */ }
 
     // ── Cache hit → play from IndexedDB buffer (0 ms latency) ────────────────
     const cached = previewCacheRef.current.get(voice.id);
@@ -548,7 +776,7 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     // Different voice or not yet connected → open fresh connection
     pendingTextRef.current = text;
     openWs(voice.id);
-  }, [openWs, flushAudio, enqueueAudio]);
+  }, [openWs, flushAudio, enqueueAudio, playViaAudioElement]);
 
   return {
     voices,

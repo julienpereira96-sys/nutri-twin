@@ -1027,7 +1027,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3 max-w-5xl mx-auto">
+            <div className="grid gap-4 sm:grid-cols-2 max-w-3xl mx-auto">
               <PricingCard
                 name="Essentiel"
                 price="89€"
