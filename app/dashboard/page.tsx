@@ -5058,7 +5058,7 @@ function DashboardInner() {
             </div>
 
             {/* Cards plans */}
-            <div style={{ display: "flex", flexDirection: "row", gap: 12, alignItems: "stretch", flexWrap: "wrap", marginTop: 32 }}>
+            <div style={{ display: "flex", flexDirection: "row", gap: 12, alignItems: "stretch", flexWrap: "wrap", marginTop: 32, justifyContent: "center" }}>
               {([
                 {
                   plan: "essentiel", label: "Essentiel", price: "89€",

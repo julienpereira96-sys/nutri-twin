@@ -2033,7 +2033,7 @@ export default function ChatPage() {
                 />
                 <Row
                   icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>}
-                  label="Ma voix de suivi"
+                  label="Voix du Compagnon"
                   chevron
                   onClick={() => setProfileScreen("voix")}
                 />
@@ -2135,7 +2135,7 @@ export default function ChatPage() {
             <style>{`
               @keyframes vp-bar { 0% { transform: scaleY(0.12); } 40% { transform: scaleY(1); } 65% { transform: scaleY(0.55); } 100% { transform: scaleY(0.12); } }
             `}</style>
-            <SubHeader title="Ma voix de suivi" />
+            <SubHeader title="Voix du Compagnon" />
             <div style={{ flex: 1, overflowY: "auto", paddingBottom: 24, paddingTop: 8 }}>
               {therapeuticVoices.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "48px 24px", color: TEXT_MUTED, fontSize: 14 }}>
