@@ -22,6 +22,7 @@ import {
 import { GeminiLiveClient, toVertexModelPath } from "@/lib/geminiLiveClient";
 import {
   PreviewChunk,
+  PREVIEW_TEXT,
   loadAllPreviews,
   savePreview,
 } from "@/lib/voicePreviewCache";
@@ -351,8 +352,6 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
     if (toGenerate.length === 0) return;
 
     isGeneratingRef.current = true;
-    const PREVIEW_TEXT =
-      "Bonjour, je suis à vos côtés pour vous accompagner aujourd'hui.";
 
     for (const voice of toGenerate) {
       await new Promise<void>((resolve) => {

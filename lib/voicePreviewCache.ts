@@ -20,6 +20,9 @@ const DB_VERSION = 1;
  */
 export const CACHE_VERSION = "v1";
 
+/** Phrase utilisée pour générer et lire le cache — ne pas modifier sans bumper CACHE_VERSION. */
+export const PREVIEW_TEXT = "Bonjour, je suis à vos côtés pour vous accompagner aujourd'hui.";
+
 export type PreviewChunk = { data: string; rate: number };
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────

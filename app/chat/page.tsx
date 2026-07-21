@@ -12,6 +12,7 @@ import MicConsentOverlay from "./MicConsentOverlay";
 import { useTherapeuticVoice } from "@/hooks/useTherapeuticVoice";
 import { useMicPermission, hasMicConsent, markMicConsent } from "@/hooks/useMicPermission";
 import { mergeSosClosures, type SosClosureEvent, type SosSummary } from "@/lib/sosClosures";
+import { PREVIEW_TEXT } from "@/lib/voicePreviewCache";
 import {
   IconCheckRing,
   IconWave,
@@ -2150,7 +2151,7 @@ export default function ChatPage() {
                       onClick={() => {
                         setTherapeuticVoice(v);
                         setPreviewingVoiceId(v.id);
-                        previewTherapeuticVoice(v, `Bonjour ${patientFirstName || "toi"}, je suis là pour t'accompagner.`);
+                        previewTherapeuticVoice(v, PREVIEW_TEXT);
                       }}
                       style={{ width: "100%", display: "flex", alignItems: "center", padding: "14px 20px", background: "none", border: "none", borderBottom: "1px solid rgba(255,255,255,0.04)", cursor: "pointer", gap: 14, transition: "background 0.12s", textAlign: "left" }}
                       onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
