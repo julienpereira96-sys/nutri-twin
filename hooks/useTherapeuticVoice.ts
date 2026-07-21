@@ -158,12 +158,18 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
       }
       return;
     }
-    // iOS: ensure AudioContext is running before starting playback
+    // Guard against concurrent calls (e.g. when enqueueAudio is called
+    // in a tight loop for cached chunks — each call sees isPlayingRef===false
+    // before the first async tick, causing multiple simultaneous dequeues).
+    if (isPlayingRef.current) return;
+    isPlayingRef.current = true;
+    setIsPlaying(true);
+    // iOS: ensure AudioContext is running before starting playback.
+    // resume() was already called within the user gesture in previewVoice;
+    // this await simply waits for it to complete before src.start().
     if (ctx.state !== "running") {
       try { await ctx.resume(); } catch { /* no-op */ }
     }
-    isPlayingRef.current = true;
-    setIsPlaying(true);
     const { data, rate } = audioQueueRef.current.shift()!;
     const buf = ctx.createBuffer(1, data.length, rate);
     buf.getChannelData(0).set(data);

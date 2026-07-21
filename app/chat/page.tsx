@@ -2169,15 +2169,14 @@ export default function ChatPage() {
                       {/* Indicateur de lecture / sélection */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                         {isPreviewing && isVoicePlaying && (
-                          /* Spectre organique — 12 barres, hauteurs et durées variées */
-                          <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 22, flexShrink: 0 }}>
+                          /* Spectre organique — 8 barres, hauteurs et durées variées */
+                          <div style={{ display: "flex", alignItems: "flex-end", gap: 2.5, height: 22, flexShrink: 0 }}>
                             {([
-                              [6,0.82,0.00],[9,0.71,0.08],[13,0.88,0.03],
-                              [18,0.67,0.12],[22,0.76,0.16],[19,0.83,0.05],
-                              [21,0.70,0.10],[17,0.80,0.14],[12,0.87,0.02],
-                              [9,0.74,0.18],[6,0.81,0.07],[4,0.68,0.11],
+                              [7,0.82,0.00],[12,0.70,0.09],[20,0.88,0.04],
+                              [22,0.75,0.14],[18,0.83,0.06],[13,0.71,0.11],
+                              [9,0.79,0.17],[5,0.68,0.02],
                             ] as [number, number, number][]).map(([h, dur, delay], i) => (
-                              <div key={i} style={{ width: 2.5, height: h, borderRadius: 2, background: ACCENT, transformOrigin: "bottom", animation: `vp-bar ${dur}s ease-in-out ${delay}s infinite` }} />
+                              <div key={i} style={{ width: 3, height: h, borderRadius: 2, background: ACCENT, transformOrigin: "bottom", animation: `vp-bar ${dur}s ease-in-out ${delay}s infinite` }} />
                             ))}
                           </div>
                         )}
