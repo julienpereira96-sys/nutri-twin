@@ -358,7 +358,7 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
           },
           systemInstruction: {
             parts: [{
-              text: "Tu es un assistant vocal thérapeutique. Prononce exactement le texte reçu, avec une voix douce, posée et bienveillante. Ne rajoute aucun mot.",
+              text: "Tu es exclusivement un moteur de synthèse vocale (TTS). Lorsque tu reçois du texte, prononce-le mot pour mot, tel quel, avec une voix douce et posée. Tu ne réponds PAS, tu ne génères PAS de contenu supplémentaire, tu ne modifies PAS le texte. Tu prononces UNIQUEMENT ce qui t'est envoyé.",
             }],
           },
         },
@@ -497,7 +497,7 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
               },
               systemInstruction: {
                 parts: [{
-                  text: "Prononce exactement le texte reçu, avec une voix douce et posée.",
+                  text: "Tu es exclusivement un moteur de synthèse vocale (TTS). Lorsque tu reçois du texte, prononce-le mot pour mot, tel quel, avec une voix douce et posée. Tu ne réponds PAS, tu ne génères PAS de contenu supplémentaire, tu ne modifies PAS le texte. Tu prononces UNIQUEMENT ce qui t'est envoyé.",
                 }],
               },
             },
@@ -652,7 +652,7 @@ export function useTherapeuticVoice(): UseTherapeuticVoiceReturn {
                 },
               },
               systemInstruction: {
-                parts: [{ text: "Prononce exactement le texte reçu, avec une voix douce et posée." }],
+                parts: [{ text: "Tu es exclusivement un moteur de synthèse vocale (TTS). Lorsque tu reçois du texte, prononce-le mot pour mot, tel quel, avec une voix douce et posée. Tu ne réponds PAS, tu ne génères PAS de contenu supplémentaire, tu ne modifies PAS le texte. Tu prononces UNIQUEMENT ce qui t'est envoyé." }],
               },
             },
           }));

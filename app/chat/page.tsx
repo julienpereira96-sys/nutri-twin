@@ -648,7 +648,12 @@ export default function ChatPage() {
   }, [testToken]);
 
   // ─── Voix thérapeutique ────────────────────────────────────────────────────
-  const { voices: therapeuticVoices, selectedVoice: selectedTherapeuticVoice, setSelectedVoice: setTherapeuticVoice, previewVoice: previewTherapeuticVoice, warmUp: warmUpVoice, generatePreviews, isPlaying: isVoicePlaying } = useTherapeuticVoice();
+  const { voices: therapeuticVoices, selectedVoice: selectedTherapeuticVoice, setSelectedVoice: setTherapeuticVoice, previewVoice: previewTherapeuticVoice, warmUp: warmUpVoice, generatePreviews, isPlaying: isVoicePlaying, cancelSpeech: cancelVoicePreview } = useTherapeuticVoice();
+
+  // Couper la voix immédiatement quand on quitte l'écran voix
+  useEffect(() => {
+    if (profileScreen !== "voix") cancelVoicePreview();
+  }, [profileScreen, cancelVoicePreview]);
 
   // Préchauffage du WebSocket quand l'écran voix s'ouvre
   // + chargement profil pour "erreur" et "preferences"

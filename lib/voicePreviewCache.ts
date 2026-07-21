@@ -18,7 +18,7 @@ const DB_VERSION = 1;
  * keyed differently, so they become unreachable dead weight until the user
  * clears browser data).
  */
-export const CACHE_VERSION = "v3";
+export const CACHE_VERSION = "v4";
 
 /** Phrase utilisée pour générer et lire le cache — ne pas modifier sans bumper CACHE_VERSION. */
 export const PREVIEW_TEXT = "Bonjour, je suis à vos côtés pour vous accompagner aujourd'hui.";
