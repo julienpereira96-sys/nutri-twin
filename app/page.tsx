@@ -1140,7 +1140,7 @@ function PricingCard({ name, price, badge, description, features, plan, featured
         {footnoteMark && <sup className="text-[13px] font-normal text-zinc-500 ml-0.5">({footnoteMark})</sup>}
         <span className="text-[12px] text-zinc-600">/mois</span>
       </div>
-      <p className="mb-5 text-[12px] leading-relaxed text-zinc-500">{description}</p>
+      <p className="mb-5 text-[12px] leading-relaxed text-zinc-500" style={{ minHeight: "40px" }}>{description}</p>
       <ul className="mb-6 flex flex-1 flex-col gap-2.5">
         {features.map((f, i) => (
           <li key={i} className="flex items-start gap-2">
