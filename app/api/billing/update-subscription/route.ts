@@ -76,16 +76,18 @@ const newPriceId = PLAN_PRICES[newPlan as SwitchablePlan];
       stripe.subscriptions.list({
         customer: practitioner.stripe_customer_id,
         status: "active",
-        limit: 1,
+        limit: 100,
       }),
       stripe.subscriptions.list({
         customer: practitioner.stripe_customer_id,
         status: "trialing",
-        limit: 1,
+        limit: 100,
       }),
     ]);
 
-    const subscription = activeSubs.data[0] ?? trialSubs.data[0] ?? null;
+    // Exclure les souscriptions pack — le changement de plan ne vise que le principal.
+    const notPack = (s: Stripe.Subscription) => s.metadata?.type !== "pack";
+    const subscription = activeSubs.data.find(notPack) ?? trialSubs.data.find(notPack) ?? null;
 
     if (!subscription) {
       return NextResponse.json({ error: "Aucun abonnement actif trouvé pour ce customer." }, { status: 404 });

@@ -27,6 +27,18 @@ export async function POST(request: Request) {
     return Response.json({ error: "Identifiants invalides." }, { status: 401 });
   }
 
+  // L1 — ne pas rétrograder l'état d'un compte déjà activé (anti-tampering).
+  // La route valide déjà userId+email, mais on refuse en plus de toucher un
+  // patient dont l'onboarding est terminé.
+  const { data: currentPatient } = await supabase
+    .from("patients")
+    .select("onboarding_completed")
+    .eq("user_id", userId)
+    .single();
+  if ((currentPatient as { onboarding_completed?: boolean } | null)?.onboarding_completed) {
+    return Response.json({ success: true, alreadyCompleted: true });
+  }
+
   const now = new Date().toISOString();
 
   const { error } = await supabase.from("patients")

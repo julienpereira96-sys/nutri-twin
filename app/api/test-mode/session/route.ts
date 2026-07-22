@@ -41,7 +41,7 @@ export async function GET() {
   // Récupérer l'email du patient test depuis la table patients
   const { data: testPatient } = await supabase
     .from("patients")
-    .select("email")
+    .select("email, is_test")
     .eq("user_id", testUserId)
     .single();
 
@@ -49,6 +49,16 @@ export async function GET() {
     return NextResponse.json(
       { error: "Patient test introuvable dans la table patients." },
       { status: 404 }
+    );
+  }
+
+  // Garde de sécurité — le reset de mot de passe ci-dessous est une action
+  // destructrice. On ne l'autorise QUE sur un vrai compte test (is_test) dont
+  // l'email est interne. Empêche de verrouiller / d'usurper un patient réel.
+  if (!testPatient.is_test || !testPatient.email.endsWith("@nutri-twin.internal")) {
+    return NextResponse.json(
+      { error: "Session test non autorisée pour ce compte." },
+      { status: 403 }
     );
   }
 

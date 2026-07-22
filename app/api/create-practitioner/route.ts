@@ -31,6 +31,18 @@ export async function POST(request: Request) {
     return Response.json({ error: "Email non concordant." }, { status: 403 });
   }
 
+  // L1 — ne pas écraser un profil praticien déjà pleinement onboardé (anti-tampering).
+  // Create one-shot post-signup : on tolère les ré-appels tant que l'onboarding
+  // n'est pas terminé (mise à jour du pending_plan), mais on protège un compte établi.
+  const { data: existingPract } = await supabase
+    .from("practitioners")
+    .select("onboarding_done")
+    .eq("user_id", userId)
+    .single();
+  if ((existingPract as { onboarding_done?: boolean } | null)?.onboarding_done) {
+    return Response.json({ success: true, alreadyOnboarded: true });
+  }
+
   const now = new Date().toISOString();
 
   const { error } = await supabase.from("practitioners").upsert({

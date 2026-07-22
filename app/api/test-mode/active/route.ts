@@ -43,6 +43,19 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Patient test introuvable." }, { status: 404 });
   }
 
+  // Garde is_test — refuser tout patient réel comme "patient test actif".
+  // Sans ce contrôle, /api/test-mode/session réinitialiserait le mot de passe
+  // d'un vrai patient (lockout) et ouvrirait une session complète en son nom.
+  const { data: testPatient } = await supabase
+    .from("patients")
+    .select("is_test")
+    .eq("user_id", testPatientUserId)
+    .single();
+
+  if (!(testPatient as { is_test?: boolean } | null)?.is_test) {
+    return NextResponse.json({ error: "Ce patient n'est pas un compte test." }, { status: 403 });
+  }
+
   // Mettre à jour le patient test actif
   await supabase
     .from("practitioners")

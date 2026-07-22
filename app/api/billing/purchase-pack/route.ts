@@ -100,6 +100,17 @@ export async function POST(request: Request) {
         userId: user.id,
         plan,
       },
+      // ⬇️ Propager le tag "pack" sur la SOUSCRIPTION créée (pas seulement la
+      // session). Indispensable pour que le webhook et les routes cancel/update/
+      // resume distinguent le pack de l'abonnement principal (approche A).
+      subscription_data: {
+        metadata: {
+          type: "pack",
+          packSize: String(pack.size),
+          userId: user.id,
+          plan,
+        },
+      },
       success_url: `${appUrl}/dashboard?pack=success`,
       cancel_url: `${appUrl}/dashboard?pack=cancelled`,
     });

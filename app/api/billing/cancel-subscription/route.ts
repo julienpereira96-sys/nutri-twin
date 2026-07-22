@@ -26,10 +26,12 @@ export async function POST() {
   const customerId = practitioner.stripe_customer_id;
 
   const [activeSubs, trialSubs] = await Promise.all([
-    stripe.subscriptions.list({ customer: customerId, status: "active", limit: 1 }),
-    stripe.subscriptions.list({ customer: customerId, status: "trialing", limit: 1 }),
+    stripe.subscriptions.list({ customer: customerId, status: "active", limit: 100 }),
+    stripe.subscriptions.list({ customer: customerId, status: "trialing", limit: 100 }),
   ]);
-  const subscription = activeSubs.data[0] ?? trialSubs.data[0] ?? null;
+  // Exclure les souscriptions pack — on ne doit agir que sur l'abonnement principal.
+  const notPack = (s: Stripe.Subscription) => s.metadata?.type !== "pack";
+  const subscription = activeSubs.data.find(notPack) ?? trialSubs.data.find(notPack) ?? null;
 
   if (!subscription) {
     return Response.json({ error: "Aucun abonnement actif trouvé." }, { status: 404 });

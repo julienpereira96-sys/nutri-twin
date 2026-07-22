@@ -26,12 +26,14 @@ export async function GET() {
 
   // Récupérer abonnement actif + infos carte
   const [activeSubs, trialSubs, invoicesList] = await Promise.all([
-    stripe.subscriptions.list({ customer: customerId, status: "active", limit: 1, expand: ["data.default_payment_method"] }),
-    stripe.subscriptions.list({ customer: customerId, status: "trialing", limit: 1, expand: ["data.default_payment_method"] }),
+    stripe.subscriptions.list({ customer: customerId, status: "active", limit: 100, expand: ["data.default_payment_method"] }),
+    stripe.subscriptions.list({ customer: customerId, status: "trialing", limit: 100, expand: ["data.default_payment_method"] }),
     stripe.invoices.list({ customer: customerId, limit: 12 }),
   ]);
 
-  const subscription = activeSubs.data[0] ?? trialSubs.data[0] ?? null;
+  // Exclure les souscriptions pack — l'encart abonnement affiche le principal.
+  const notPack = (s: Stripe.Subscription) => s.metadata?.type !== "pack";
+  const subscription = activeSubs.data.find(notPack) ?? trialSubs.data.find(notPack) ?? null;
 
   // Infos carte (depuis PM de l'abonnement ou du customer)
   let cardLast4: string | null = null;

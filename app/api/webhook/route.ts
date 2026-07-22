@@ -3,9 +3,8 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { buildEmailHtml, sendEmail } from "@/lib/email";
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getPractitionerInfo(
-  supabase: SupabaseClient<any, any, any>,
+  supabase: SupabaseClient,
   customerId: string
 ): Promise<{ email: string; firstName: string | null } | null> {
   const { data } = await supabase
@@ -51,6 +50,22 @@ export async function POST(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
+  // ── M1 — Idempotence. Stripe livre les events at-least-once. On enregistre
+  // event.id AVANT traitement ; un doublon (unique_violation 23505) est ignoré
+  // (empêche notamment le double-crédit de slots pack). Si le traitement échoue
+  // plus bas, le marqueur est retiré (catch) pour autoriser le retry Stripe.
+  const { error: idemErr } = await supabase
+    .from("processed_stripe_events")
+    .insert({ event_id: event.id });
+  if (idemErr) {
+    if (idemErr.code === "23505") {
+      return new Response("OK (event déjà traité)", { status: 200 });
+    }
+    console.error("[webhook] garde idempotence:", idemErr.message);
+    // On continue : ne pas perdre un event pour une erreur de garde.
+  }
+
+  try {
   // Ancien flow - Checkout Sessions
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
@@ -102,21 +117,29 @@ export async function POST(request: Request) {
   // Nouveau flow - SetupIntent + Subscription
   if (event.type === "customer.subscription.created") {
     const subscription = event.data.object as Stripe.Subscription;
+    // M2 — Ignorer les souscriptions pack : elles ne doivent JAMAIS toucher
+    // plan / subscription_status du praticien (slots gérés ailleurs).
+    if (subscription.metadata?.type === "pack") return new Response("OK", { status: 200 });
     const customerId = subscription.customer as string;
-    const plan = subscription.metadata?.plan ?? "pro";
     const status = subscription.status;
+
+    // M2 — ne pas forcer le plan à "pro" par défaut : on ne met à jour le plan
+    // que si la souscription porte réellement un plan en metadata.
+    const payload: Record<string, string> = { subscription_status: status };
+    const plan = subscription.metadata?.plan;
+    if (plan) payload.plan = plan;
 
     await supabase
       .from("practitioners")
-      .update({
-        plan,
-        subscription_status: status,
-      })
+      .update(payload)
       .eq("stripe_customer_id", customerId);
   }
 
   if (event.type === "customer.subscription.updated") {
     const subscription = event.data.object as Stripe.Subscription;
+    // M2 — Ignorer les souscriptions pack : un event pack ne doit pas écraser
+    // le plan / statut de l'abonnement principal.
+    if (subscription.metadata?.type === "pack") return new Response("OK", { status: 200 });
     const customerId = subscription.customer as string;
     const status = subscription.status;
 
@@ -158,22 +181,44 @@ export async function POST(request: Request) {
       .eq("stripe_customer_id", customerId)
       .single();
 
-    if (practitioner?.pack_subscription_id === subscription.id) {
+    // M2/M3 — Détecter le pack via metadata (fiable même sur livraison dupliquée),
+    // avec repli sur pack_subscription_id pour les packs legacy sans metadata.
+    const isPack =
+      subscription.metadata?.type === "pack" ||
+      practitioner?.pack_subscription_id === subscription.id;
+
+    if (isPack) {
       // Identifier la taille du pack annulé selon le plan
       const packSizes: Record<string, number> = { essentiel: 5, pro: 10 };
-      const packSize = packSizes[practitioner.plan ?? ""] ?? 0;
-      const newTotal = Math.max(0, (practitioner.extra_patients ?? 0) - packSize);
+      const packSize = packSizes[practitioner?.plan ?? ""] ?? 0;
+      const newTotal = Math.max(0, (practitioner?.extra_patients ?? 0) - packSize);
+
+      const patch: { extra_patients: number; pack_subscription_id?: null } = { extra_patients: newTotal };
+      if (practitioner?.pack_subscription_id === subscription.id) patch.pack_subscription_id = null;
 
       await supabase
         .from("practitioners")
-        .update({ extra_patients: newTotal, pack_subscription_id: null })
+        .update(patch)
         .eq("stripe_customer_id", customerId);
     } else {
-      // Annulation de l'abonnement principal
+      // Annulation de l'abonnement PRINCIPAL
       await supabase
         .from("practitioners")
-        .update({ subscription_status: "cancelled", plan: null })
+        .update({ subscription_status: "cancelled", plan: null, pack_subscription_id: null })
         .eq("stripe_customer_id", customerId);
+
+      // M3 — Résilier les souscriptions pack encore actives pour stopper la
+      // facturation orpheline (le pack ne doit pas survivre au principal).
+      try {
+        const allSubs = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 100 });
+        for (const s of allSubs.data) {
+          if (s.metadata?.type === "pack" && ["active", "trialing", "past_due", "unpaid"].includes(s.status)) {
+            await stripe.subscriptions.cancel(s.id);
+          }
+        }
+      } catch (e) {
+        console.error("[webhook] annulation packs orphelins:", e);
+      }
 
       const info = await getPractitionerInfo(supabase, customerId);
       if (info) {
@@ -202,6 +247,9 @@ export async function POST(request: Request) {
 
   if (event.type === "invoice.payment_failed") {
     const invoice = event.data.object as Stripe.Invoice;
+    // M2 — Un échec de paiement d'un PACK ne doit pas basculer tout le compte en
+    // past_due. On ne traite que les factures de l'abonnement principal.
+    if (invoice.parent?.subscription_details?.metadata?.type === "pack") return new Response("OK", { status: 200 });
     const customerId = invoice.customer as string;
 
     await supabase
@@ -281,14 +329,16 @@ export async function POST(request: Request) {
     const invoice = event.data.object as Stripe.Invoice;
     const billingReason = invoice.billing_reason;
 
+    // L5 — un achat de pack ne doit PAS déclencher l'email "abonnement activé".
+    // subscription_details.metadata est un snapshot immuable des metadata de la
+    // souscription au moment de la facture (type: "pack" posé par confirm-pack).
+    const isPackInvoice = invoice.parent?.subscription_details?.metadata?.type === "pack";
+
     // amount_paid === 0 = démarrage d'essai gratuit → pas d'email (trial_will_end s'en charge)
-    if ((billingReason === "subscription_create" || billingReason === "subscription_update") && invoice.amount_paid > 0) {
+    if (!isPackInvoice && (billingReason === "subscription_create" || billingReason === "subscription_update") && invoice.amount_paid > 0) {
       const customerId = invoice.customer as string;
       const info = await getPractitionerInfo(supabase, customerId);
       if (info) {
-        const amount = invoice.amount_paid
-          ? `${(invoice.amount_paid / 100).toFixed(2)} €`
-          : null;
         await sendEmail({
           to: info.email,
           subject: "Votre abonnement NutriTwin est activé",
@@ -313,4 +363,10 @@ export async function POST(request: Request) {
   }
 
   return new Response("OK", { status: 200 });
+  } catch (err) {
+    // Le traitement a échoué → retirer le marqueur pour autoriser le retry Stripe.
+    await supabase.from("processed_stripe_events").delete().eq("event_id", event.id);
+    console.error("[webhook] échec de traitement (event rejoué au prochain retry):", err);
+    return new Response("Erreur de traitement webhook", { status: 500 });
+  }
 }

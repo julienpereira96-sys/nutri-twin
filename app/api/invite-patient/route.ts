@@ -50,6 +50,17 @@ export async function POST(request: Request) {
     .eq("user_id", practitionerId)
     .single();
 
+  // M5 — Un praticien dont l'abonnement est résilié / impayé ne peut plus inviter
+  // de patients (la route API n'est pas protégée par le middleware des pages).
+  const BLOCKED_SUB_STATUSES = ["canceled", "cancelled", "unpaid", "incomplete_expired"];
+  const subStatus = practitioner?.subscription_status as string | undefined;
+  if (subStatus && BLOCKED_SUB_STATUSES.includes(subStatus)) {
+    return Response.json(
+      { error: "Votre abonnement n'est pas actif. Réactivez-le pour inviter de nouveaux patients." },
+      { status: 403 }
+    );
+  }
+
   const plan = practitioner?.plan ?? "essentiel";
   const baseLimit = PLAN_LIMITS[plan] ?? 10;
   const limit = baseLimit + (practitioner?.extra_patients ?? 0);

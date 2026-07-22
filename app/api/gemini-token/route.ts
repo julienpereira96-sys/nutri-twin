@@ -24,6 +24,15 @@ export async function GET() {
 
   try {
     const credentials = JSON.parse(raw) as object;
+    // ⚠️ M4 — Ce token OAuth est renvoyé au navigateur (WebSocket Vertex / Gemini Live).
+    // `cloud-platform` est le SEUL scope accepté par l'API Vertex AI : il n'existe pas
+    // de scope OAuth plus étroit côté Google. La réduction du risque se fait donc au
+    // niveau IAM, PAS dans ce code :
+    //   • Le compte de service GOOGLE_SERVICE_ACCOUNT_JSON doit porter UNIQUEMENT le
+    //     rôle `roles/aiplatform.user` (aucun autre droit GCP) : ainsi, même exposé
+    //     ~1h, le token ne peut faire que des appels Vertex AI.
+    //   • Amélioration future : migrer vers les ephemeral tokens Gemini Live (portée
+    //     et durée restreintes par session) une fois la feature stabilisée.
     const auth = new GoogleAuth({
       credentials,
       scopes: ["https://www.googleapis.com/auth/cloud-platform"],

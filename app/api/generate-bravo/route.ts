@@ -20,6 +20,16 @@ export async function POST(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
+  // L3 — guard IDOR : vérifier que ce patient appartient bien à ce praticien
+  // (sinon fuite du prénom d'un patient arbitraire).
+  const { data: relation } = await supabase
+    .from("patient_practitioner")
+    .select("patient_id")
+    .eq("patient_id", patientId)
+    .eq("practitioner_id", practitionerId)
+    .single();
+  if (!relation) return forbidden();
+
   const { data: patient } = await supabase
     .from("patients")
     .select("first_name")

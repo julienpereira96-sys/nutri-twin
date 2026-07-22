@@ -1005,7 +1005,7 @@ export async function POST(request: Request) {
       message,
       systemPrompt,
       patientId,
-      practitionerId,
+      practitionerId: bodyPractitionerId, // ⚠️ hint client uniquement — validé server-side ci-dessous
       sessionId,
       imageBase64,
       imageMimeType,
@@ -1022,6 +1022,26 @@ export async function POST(request: Request) {
     const user = await getSessionUser();
     if (!user) return Response.json({ error: "Non autorisé." }, { status: 401 });
     if (patientId && user.id !== patientId) return Response.json({ error: "Accès refusé." }, { status: 403 });
+
+    // ── H2 — practitioner_id résolu SERVER-SIDE, jamais pris du body seul ──
+    // La relation patient↔praticien (patient_practitioner) fait autorité. Le body ne
+    // sert que d'indice pour désambiguïser un patient multi-praticien (cabinet) : une
+    // valeur non liée au patient est ignorée (anti-IDOR). Fail-safe : si rien ne se
+    // résout, practitionerId reste undefined — les blocs aval sont déjà gardés par
+    // `if (patientId && practitionerId)`.
+    let practitionerId: string | undefined;
+    if (patientId) {
+      const { data: rels } = await createSupabaseClient()
+        .from("patient_practitioner")
+        .select("practitioner_id")
+        .eq("patient_id", patientId);
+      const linked = (rels ?? []).map((r) => (r as { practitioner_id: string }).practitioner_id);
+      practitionerId = bodyPractitionerId && linked.includes(bodyPractitionerId)
+        ? bodyPractitionerId
+        : linked.length === 1
+          ? linked[0]
+          : undefined;
+    }
 
     // ═══ BYPASS IMMÉDIAT — mots-clés urgences vitales ═══
     if (message && isCriticalKeyword(message) && patientId && practitionerId) {
