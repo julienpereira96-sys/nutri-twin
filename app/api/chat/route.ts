@@ -67,7 +67,7 @@ async function* vertexStreamGenerate(
   modelId: string,
   contents: { role: string; parts: unknown[] }[],
   systemOrCache: { type: "system"; text: string } | { type: "cache"; name: string },
-  generationConfig: { maxOutputTokens?: number; temperature?: number }
+  generationConfig: { maxOutputTokens?: number; temperature?: number; thinkingConfig?: { thinkingBudget: number } }
 ): AsyncGenerator<string> {
   const token = await getVertexToken();
   const body = systemOrCache.type === "cache"
@@ -318,15 +318,11 @@ RÈGLES APAISEMENT :
     let lastErr: unknown = null;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        // CD-3 — modèle FORT avec THINKING DÉSACTIVÉ (thinkingBudget: 0) : on obtient le
-        // jugement de gemini-3.5-flash sans qu'il consomme le budget de tokens en raisonnement
-        // (ce qui, avec thinking actif, produisait un JSON vide → faux "none").
-        // ⚠️ À VALIDER de ton côté : (1) que ta version d'API accepte thinkingConfig.thinkingBudget=0
-        //    pour ce modèle (sinon l'appel peut échouer → le retry + fail-safe couvrent, mais la
-        //    détection retomberait sur le filet) ; (2) par une petite éval (euphémismes, négations,
-        //    3e personne), qu'il fait mieux que flash-lite. Si l'un des deux cloche, reviens à
-        //    "gemini-3.1-flash-lite" + { maxOutputTokens: 150, temperature: 0 } (sans thinkingBudget).
-        const raw = await vertexGenerate("gemini-3.5-flash", prompt, { maxOutputTokens: 256, temperature: 0, thinkingBudget: 0 });
+        // Classifieur de crise sur gemini-3.1-flash-lite (léger, non-"thinking", quota
+        // SÉPARÉ du chat). L'upgrade CD-3 vers gemini-3.5-flash a été ANNULÉ : il concentrait
+        // la charge sur le même modèle que le chat → 429 RESOURCE_EXHAUSTED. Fiabilité assurée
+        // par le retry + fail-safe (CD-1/CD-4), pas par un modèle plus lourd.
+        const raw = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 150, temperature: 0 });
         const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as CrisisAnalysis;
         return {
           level: parsed.level ?? "none",
@@ -1840,7 +1836,9 @@ Max 150 mots. Sans markdown.`;
         let fullText = "";
 
         try {
-          for await (const chunkText of vertexStreamGenerate(modelName, chatContents, systemOrCache, { maxOutputTokens: config.maxOutputTokens, temperature: 0.78 })) {
+          // thinkingConfig.thinkingBudget:0 → thinking DÉSACTIVÉ sur le chat : (1) plus de
+          // fuite de raisonnement dans la réponse, (2) moins de tokens consommés (aide le quota 429).
+          for await (const chunkText of vertexStreamGenerate(modelName, chatContents, systemOrCache, { maxOutputTokens: config.maxOutputTokens, temperature: 0.78, thinkingConfig: { thinkingBudget: 0 } })) {
             fullText += chunkText;
             controller.enqueue(encoder.encode(chunkText));
             await new Promise(resolve => setTimeout(resolve, 5));
