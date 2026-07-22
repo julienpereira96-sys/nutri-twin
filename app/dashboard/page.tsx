@@ -3020,8 +3020,9 @@ function DashboardInner() {
                         ) : selectedPatient.emotional_insight || "Comportement sensible détecté"
                       ) : selectedPatient.emotional_insight || "Comportement sensible détecté";
                       const alertColor = isRed ? coral : amber;
-                      const alertBg = isRed ? "rgba(244,63,94,0.08)" : "rgba(245,158,11,0.06)";
-                      const alertBorder = isRed ? "rgba(244,63,94,0.25)" : "rgba(245,158,11,0.2)";
+                      // red_critical : fond nettement rouge "action requise" (SVG attention déjà présent).
+                      const alertBg = isRed ? "rgba(244,63,94,0.16)" : "rgba(245,158,11,0.06)";
+                      const alertBorder = isRed ? "rgba(244,63,94,0.45)" : "rgba(245,158,11,0.2)";
                       return (
                         <div style={{ background: alertBg, borderTop: `1px solid ${alertBorder}`, padding: "8px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                           <AlertIcon size={13} color={alertColor} />
@@ -3192,20 +3193,18 @@ function DashboardInner() {
                     })}
                   </div>
                   {/* Bloc Action — intervention bubble */}
-                  {(showInterventionBubble || (
-                    !alertBannerDismissed[selectedPatient.id] && (
-                      selectedPatient.emotional_status === "red_critical" ||
-                      selectedPatient.emotional_status === "red_behavioral"
-                    )
-                  )) && !replyMode && (() => {
-                    const patIsRed = selectedPatient.emotional_status === "red_critical";
-                    const patIsBehavioral = selectedPatient.emotional_status === "red_behavioral";
-                    // Behavioral → orange, critical/red → rouge, sinon amber
-                    const actionColor = patIsRed ? coral : patIsBehavioral ? ORANGE_BEHAVIORAL : amber;
-                    const actionBorder = patIsRed ? "rgba(244,63,94,0.2)" : patIsBehavioral ? "rgba(245,158,11,0.2)" : "rgba(245,158,11,0.18)";
-                    const actionBtnBorder = patIsRed ? "rgba(244,63,94,0.35)" : patIsBehavioral ? "rgba(245,158,11,0.35)" : "rgba(245,158,11,0.3)";
-                    const actionBtnHover = patIsRed ? "rgba(244,63,94,0.22)" : patIsBehavioral ? "rgba(245,158,11,0.22)" : "rgba(245,158,11,0.2)";
-                    const actionBtnSolidBg = patIsRed ? "rgba(244,63,94,0.18)" : patIsBehavioral ? "rgba(245,158,11,0.14)" : "rgba(245,158,11,0.14)";
+                  {/* Footer "Accompagner … / Écrire un message" — réservé à red_behavioral.
+                      red_critical n'a QUE le header "Aller au message" (résolution formelle
+                      via LeverAlerteCritique). */}
+                  {selectedPatient.emotional_status === "red_behavioral"
+                    && (showInterventionBubble || !alertBannerDismissed[selectedPatient.id])
+                    && !replyMode && (() => {
+                    // Footer réservé à red_behavioral → palette orange uniquement.
+                    const actionColor = ORANGE_BEHAVIORAL;
+                    const actionBorder = "rgba(245,158,11,0.2)";
+                    const actionBtnBorder = "rgba(245,158,11,0.35)";
+                    const actionBtnHover = "rgba(245,158,11,0.22)";
+                    const actionBtnSolidBg = "rgba(245,158,11,0.14)";
                     return (
                       <div style={{ borderTop: `1px solid ${actionBorder}`, background: "rgba(10,10,12,0.97)", backdropFilter: "blur(12px)", padding: "12px 20px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 12, color: "#64748b", flex: 1, minWidth: 140 }}>
