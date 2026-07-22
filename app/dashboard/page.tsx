@@ -3020,9 +3020,8 @@ function DashboardInner() {
                         ) : selectedPatient.emotional_insight || "Comportement sensible détecté"
                       ) : selectedPatient.emotional_insight || "Comportement sensible détecté";
                       const alertColor = isRed ? coral : amber;
-                      // red_critical : fond nettement rouge "action requise" (SVG attention déjà présent).
-                      const alertBg = isRed ? "rgba(244,63,94,0.16)" : "rgba(245,158,11,0.06)";
-                      const alertBorder = isRed ? "rgba(244,63,94,0.45)" : "rgba(245,158,11,0.2)";
+                      const alertBg = isRed ? "rgba(244,63,94,0.08)" : "rgba(245,158,11,0.06)";
+                      const alertBorder = isRed ? "rgba(244,63,94,0.25)" : "rgba(245,158,11,0.2)";
                       return (
                         <div style={{ background: alertBg, borderTop: `1px solid ${alertBorder}`, padding: "8px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                           <AlertIcon size={13} color={alertColor} />
@@ -3481,12 +3480,12 @@ function DashboardInner() {
                         - type "admin_alert" + alert_type "behavioral_sos_intake" → détection comportementale intake vocal SOS,
                           signalée par la couleur ambre de la colonne gauche (pas besoin d'action manuelle supplémentaire)
                       Inclure : type "crisis" et type "admin_alert" + alert_type "identity_correction" / "critical_llm" / "rectification_request" */}
-                  {/* ── Bloc amber : alertes cliniques critiques ── */}
+                  {/* ── Bloc rouge : alertes cliniques critiques (red_critical / critical_llm) ── */}
                   {(selectedPatient.admin_alerts?.filter(a => !a.seen && (a.type === "crisis" || (a.type === "admin_alert" && a.alert_type === "critical_llm"))).length ?? 0) > 0 && !onboardingDemoMode && (
-                    <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
+                    <div style={{ background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.25)", borderRadius: 10, padding: "10px 12px", marginBottom: 10 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-                        <AlertIcon size={13} color={amber} />
-                        <span style={{ fontSize: 11, fontWeight: 700, color: amber }}>Action requise</span>
+                        <AlertIcon size={13} color={coral} />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: coral }}>Action requise</span>
                       </div>
                       {selectedPatient.admin_alerts?.filter(a => !a.seen && (a.type === "crisis" || (a.type === "admin_alert" && a.alert_type === "critical_llm"))).map((alert, i) => (
                         <div key={i} style={{ marginBottom: 8 }}>
