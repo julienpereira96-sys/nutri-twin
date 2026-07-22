@@ -13,6 +13,30 @@ const securityHeaders = [
   { key: "X-XSS-Protection", value: "0" },
   // Limite les APIs du navigateur accessibles (géoloc, caméra non requises)
   { key: "Permissions-Policy", value: "camera=(), geolocation=(), microphone=(self)" },
+  // INFRA-1 — Content-Security-Policy en Report-Only d'abord : il N'ENFORCE PAS
+  // (aucun risque de casser le WebSocket Gemini Live, Stripe, Supabase realtime…),
+  // il remonte juste les violations dans la console du navigateur. Une fois vérifié
+  // qu'il n'y a pas de violation légitime en usage réel, renommer la clé en
+  // "Content-Security-Policy" (sans -Report-Only) pour passer en mode enforce.
+  {
+    key: "Content-Security-Policy-Report-Only",
+    value: [
+      "default-src 'self'",
+      // Next.js nécessite inline/eval ; Stripe.js pour le paiement
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://*.supabase.co",
+      "font-src 'self' data:",
+      // Supabase (REST+realtime), Vertex AI (Gemini Live WS), Google APIs (TTS/token), Stripe, Upstash
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.aiplatform.googleapis.com wss://*.aiplatform.googleapis.com https://*.googleapis.com https://api.stripe.com https://*.upstash.io",
+      "frame-src https://js.stripe.com https://hooks.stripe.com",
+      "worker-src 'self' blob:",
+      "manifest-src 'self'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; "),
+  },
 ];
 
 const nextConfig: NextConfig = {

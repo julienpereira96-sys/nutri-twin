@@ -151,3 +151,59 @@
 | RLS-1 (patient_practitioner forgeable) | B6 |
 | RLS-2 (statut clinique patient) | B6 |
 | match_documents (RAG cross-patient) | B6 |
+
+---
+---
+
+# PARTIE 2 — Audit approfondi & correctifs produit
+
+> Ajouts postérieurs à la Partie 1 : détection de crise, flux comportemental, RGPD, infra, UI.
+> Ces changements sont surtout du **code** (à déployer). Aucune nouvelle migration (LEGACY-1 réutilise `red_behavioral_until`).
+
+## G. Détection de crise (CD-1 → CD-4) — sécurité patient
+
+- [ ] **CD-4 fail-safe** : envoyer un message avec un mot-clé critique explicite (« je veux mourir ») → **alerte + blocage** du chat, avec le **3114** dans la réponse. Le déclenchement ne doit plus dépendre d'un « oui » du modèle.
+- [ ] **CD-4 faux positif** : envoyer une figure de style bénigne (« je vais mourir de rire ») → **pas** d'alerte (le modèle répond « non » franc).
+- [ ] **CD-2 ressource homogène** : envoyer une détresse critique **sans mot-clé exact** (euphémisme, ex. « je voudrais juste que tout s'arrête ») → le classifieur LLM détecte, et la réponse au patient contient bien le **3114/15** (avant, la ressource n'apparaissait que sur le chemin mot-clé).
+- [ ] **CD-3 modèle** : vérifier que la détection fonctionne toujours et que la **latence de réponse** du chat reste acceptable (le classifieur tourne en parallèle, mais surveiller).
+- [ ] **CD-1 log** (optionnel) : si tu peux provoquer une erreur du classifieur (ex. couper Vertex un instant), vérifier qu'un `console.error` « analyzeCrisisWithLLM — ÉCHEC après retry » apparaît dans les logs.
+
+## H. Flux comportemental / mode ancrage (LEGACY-1) — À TESTER EN PRIORITÉ
+
+- [ ] Déclencher un **`red_behavioral`** → le Jumeau passe en **mode ancrage** (empathie, **aucun** conseil nutrition).
+- [ ] **Le statut reste rouge au-delà de 12h** côté dashboard — il ne repasse **plus** au vert tout seul (c'était le bug).
+- [ ] **Fenêtre d'ancrage** : après 12h sans apaisement, envoyer un message neutre (« je mange quoi ce midi ? ») → le Jumeau **redonne des conseils nutrition** alors que le statut praticien est **toujours rouge**.
+- [ ] **Apaisement** : exprimer un mieux-être (« je me sens mieux ») → statut **vert** + **insight vidé** (pas de note « détresse » résiduelle) + fenêtre fermée.
+- [ ] **Insight sur tous les retours au vert** : vérifier qu'après apaisement, **OU** lever alerte critique, **OU** marquer alerte vue → le dashboard n'affiche **aucun** `emotional_insight` de crise résiduel.
+- [ ] **Non-régression faux positif** : lever une alerte critique → envoyer une question anodine → **pas** de nouvelle alerte.
+
+## I. RGPD export / suppression (RGPD-1 → RGPD-4)
+
+- [ ] **Export (RGPD-2)** : télécharger l'export patient → il ne contient **NI** `private_notes` **NI** `practitioner_instruction` (murmures) **NI** `admin_alerts`/`archived_alerts`.
+- [ ] **Export (RGPD-1)** : l'export contient bien `crisis_events` et `documents`.
+- [ ] **Suppression (RGPD-3)** : supprimer un compte patient → toutes les données parties **et l'avatar purgé** du Storage.
+- [ ] **Suppression non-régression (RGPD-4)** : la suppression réussit même si une table vestigiale (`exercise_logs`/`sos_closures`) n'existe pas (pas de 500).
+
+## J. Infra (INFRA-1, INFRA-2)
+
+- [ ] **CSP (INFRA-1)** : DevTools → **Console**, utiliser l'app à fond (chat, SOS vocal, paiement Stripe, dashboard, PWA) → relever toute violation « Content Security Policy … [Report Only] ». Si aucune sur une ressource légitime → passer la clé en `Content-Security-Policy` (enforce) dans `next.config.ts`.
+- [ ] **Rate limit (INFRA-2)** : marteler une route LLM (générer un rapport en boucle) → au-delà du quota horaire → **429**. Usage normal → jamais bloqué. Idem TTS (quota plus haut).
+
+## K. UI alerte critique
+
+- [ ] **`red_critical`** : le bloc « Action requise » (conteneur + SVG + label) est **rouge uniforme**, cohérent avec la boîte « Je certifie… » + le bouton.
+- [ ] Le footer « Accompagner {prénom} / Écrire un message de soutien » **n'apparaît pas** en `red_critical` (réservé à `red_behavioral`).
+
+### Récapitulatif Partie 2
+
+| Finding | Section |
+|---|---|
+| CD-1 (log/retry classifieur) | G |
+| CD-2 (ressource 3114 homogène) | G |
+| CD-3 (modèle plus fort) | G |
+| CD-4 (verify fail-safe) | G |
+| LEGACY-1 (découplage ancrage/statut) + insight vidé | H |
+| RGPD-1/2 (export complet + fuite fermée) | I |
+| RGPD-3/4 (avatar purgé, delete robuste) | I |
+| INFRA-1 (CSP) / INFRA-2 (rate limit) | J |
+| UI alerte critique | K |

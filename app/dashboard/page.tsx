@@ -1243,26 +1243,11 @@ function DashboardInner() {
         cabinet_id: (p as { cabinet_id?: string | null }).cabinet_id ?? undefined,
       };
     });
-    // Expiration auto red_behavioral : mettre à jour en BDD les patients dont le verrou a expiré
-    const expiredPatients = patientsWithStats.filter(p =>
-      p.emotional_status === "red_behavioral" &&
-      p.red_behavioral_until != null &&
-      new Date(p.red_behavioral_until) <= now
-    );
-    if (expiredPatients.length > 0) {
-      for (const ep of expiredPatients) {
-        // Mettre à jour le statut en BDD silencieusement (fire-and-forget)
-        void supabase.from("patients").update({ emotional_status: "green", red_behavioral_until: null, emotional_insight: null })
-          .eq("user_id", ep.id).then(() => {}, () => {});
-        // Marquer les sos_events pending comme expired
-        void supabase.from("sos_events").update({ status: "expired" })
-          .eq("patient_id", ep.id).eq("status", "pending")
-          .then(() => {}, () => {});
-        // Mettre à jour localement
-        ep.emotional_status = "green";
-        ep.red_behavioral_until = null;
-      }
-    }
+    // LEGACY-1 — SUPPRIMÉ : l'auto-expiry qui repassait le statut au vert après 12h.
+    // Le statut praticien ne s'auto-clear PLUS : il reste red_behavioral jusqu'à apaisement
+    // réel (piloté par Gemini) ou action manuelle du praticien. Le champ red_behavioral_until
+    // ne sert désormais qu'à borner le mode ancrage du Jumeau côté serveur (voir /api/chat).
+    // Le "Sans nouvelles depuis Xh" gère déjà le cas du patient silencieux.
     // Si le mode test a été activé pendant le chargement, ne pas écraser l'état test.
     // On stocke les vrais patients dans realPatientsRef pour la restauration à la sortie.
     if (testModeRef.current) {

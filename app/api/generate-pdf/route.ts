@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
+import { checkRateLimit, tooManyRequests } from "@/lib/rateLimit";
 
 const SECTIONS = [
   { key: "synthese",       label: "Synthèse",               accent: "#6366f1", bg: "#eef2ff", border: "#c7d2fe" },
@@ -11,6 +12,7 @@ const SECTIONS = [
 export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user) return unauthorized();
+  if (!(await checkRateLimit("generate-pdf", user.id, 30, 3600))) return tooManyRequests();
 
   const { practitionerId, reportContent, patientName, practitionerName } = await request.json() as {
     patientId: string;

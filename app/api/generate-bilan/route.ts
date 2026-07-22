@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { vertexGenerate } from "@/lib/vertexai";
 import { NextResponse } from "next/server";
 import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
+import { checkRateLimit, tooManyRequests } from "@/lib/rateLimit";
 
 const MOTIVATION_LABELS: Record<string, string> = {
   abloc: "Très motivé(e) en ce moment",
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
   try {
     const user = await getSessionUser();
     if (!user) return unauthorized();
+    if (!(await checkRateLimit("generate-bilan", user.id, 30, 3600))) return tooManyRequests();
 
     const { patientId, practitionerId } = await request.json() as {
       patientId: string;

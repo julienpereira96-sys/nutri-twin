@@ -11,6 +11,7 @@
 
 import { NextRequest } from "next/server";
 import { getSessionUser, unauthorized } from "@/lib/api-auth";
+import { checkRateLimit, tooManyRequests } from "@/lib/rateLimit";
 
 const TTS_ENDPOINT =
   "https://texttospeech.googleapis.com/v1/text:synthesize";
@@ -49,6 +50,7 @@ function langFromVoiceId(voiceId: string): string {
 export async function POST(request: NextRequest) {
   const user = await getSessionUser();
   if (!user) return unauthorized();
+  if (!(await checkRateLimit("tts", user.id, 120, 3600))) return tooManyRequests();
 
   const apiKey = process.env.GOOGLE_CLOUD_TTS_API_KEY;
 

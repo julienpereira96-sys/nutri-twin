@@ -48,8 +48,13 @@ async function vertexGenerate(
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Vertex AI ${res.status}: ${await res.text()}`);
-  const data = await res.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  const data = await res.json() as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
+  // Concaténer TOUTES les parts sauf le raisonnement (`thought`) — cf. vertexStreamGenerate.
+  // Ne prendre que parts[0] renvoyait la pensée du modèle au lieu de la réponse/JSON.
+  return (data.candidates?.[0]?.content?.parts ?? [])
+    .filter((p) => !p.thought)
+    .map((p) => p.text ?? "")
+    .join("");
 }
 
 /** Streaming Vertex AI generateContent — yields text chunks via SSE.
@@ -85,9 +90,15 @@ async function* vertexStreamGenerate(
       const json = line.slice(6).trim();
       if (!json || json === "[DONE]") continue;
       try {
-        const parsed = JSON.parse(json) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-        const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) yield text;
+        const parsed = JSON.parse(json) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
+        // Itérer TOUTES les parts et ignorer les parts de raisonnement (`thought`).
+        // gemini-3.5-flash est un modèle "thinking" : il renvoie une/des part(s) de pensée
+        // AVANT la réponse. Ne lire que parts[0] faisait (1) FUITER le raisonnement dans le
+        // chat et (2) TRONQUER la vraie réponse, souvent située en parts[1+].
+        for (const p of parsed.candidates?.[0]?.content?.parts ?? []) {
+          if (p.thought) continue;
+          if (p.text) yield p.text;
+        }
       } catch { /* ignore malformed SSE line */ }
     }
   }
@@ -328,14 +339,29 @@ RÈGLES APAISEMENT :
 
 {"level":"none","murmure":"","victory":"","apaisement":false}`;
 
-    const raw = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 150, temperature: 0 });
-    const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as CrisisAnalysis;
-    return {
-      level: parsed.level ?? "none",
-      murmure: parsed.murmure ?? "",
-      victory: parsed.victory ?? "",
-      apaisement: !!parsed.apaisement,
-    };
+    // CD-1 — retry 1× + log : la détection de crise ne doit PAS fail-open en silence.
+    let lastErr: unknown = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        // Classifieur de crise sur gemini-3.1-flash-lite (NON-"thinking") : un modèle
+        // thinking consommerait le budget de 150 tokens en raisonnement avant le JSON →
+        // parse échoue → faux "none". Fiabilité assurée par le retry + log (CD-1) plutôt
+        // que par un modèle plus lourd. (Un vrai upgrade nécessiterait thinking désactivé
+        // + budget élargi — à évaluer séparément avec mesure.)
+        const raw = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 150, temperature: 0 });
+        const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as CrisisAnalysis;
+        return {
+          level: parsed.level ?? "none",
+          murmure: parsed.murmure ?? "",
+          victory: parsed.victory ?? "",
+          apaisement: !!parsed.apaisement,
+        };
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    console.error("[NutriTwin] analyzeCrisisWithLLM — ÉCHEC après retry, crise potentiellement NON détectée:", lastErr instanceof Error ? lastErr.message : lastErr);
+    return { level: "none", murmure: "", victory: "", apaisement: false };
   } catch {
     return { level: "none", murmure: "", victory: "", apaisement: false };
   }
@@ -1049,14 +1075,21 @@ export async function POST(request: Request) {
       const responseType = getCriticalResponseType(message);
       const criticalResponse = CRISIS_CRITICAL_RESPONSES[responseType];
 
-      // Vérification via modèle lourd — urgences vitales absolues (zéro faux négatif acceptable)
-      const verifyText = (await vertexGenerate(
-        "gemini-3.1-flash-lite",
-        `Ce message exprime-t-il un danger de mort immédiat pour le patient ou pour autrui ? Réponds uniquement par "oui" ou "non". Message : "${message}"`,
-        { maxOutputTokens: 10, temperature: 0 }
-      )).trim().toLowerCase();
+      // CD-4 — vérification FAIL-SAFE. flash-lite (non-"thinking") pour tenir dans un budget
+      // de 10 tokens. Le mot-clé critique a déjà matché (signal fort) : on ne suppresse
+      // l'alerte QUE si le modèle répond un "non" franc (ex : "mourir de rire"). Erreur /
+      // réponse vide / ambiguë → on ALERTE.
+      let verifyText = "";
+      try {
+        verifyText = (await vertexGenerate(
+          "gemini-3.1-flash-lite",
+          `Ce message exprime-t-il un danger de mort immédiat pour le patient ou pour autrui ? Réponds uniquement par "oui" ou "non". Message : "${message}"`,
+          { maxOutputTokens: 10, temperature: 0 }
+        )).trim().toLowerCase();
+      } catch { verifyText = ""; } // erreur → non-bénin → on alerte
 
-      if (verifyText.includes("oui")) {
+      const clearlyBenign = verifyText.includes("non") && !verifyText.includes("oui");
+      if (!clearlyBenign) {
         await supabase.from("patients").update({ emotional_status: "red_critical", emotional_insight: `Urgence vitale — ${message.slice(0, 80)}` }).eq("user_id", patientId);
         const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
         const alerts = (current as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
@@ -1305,6 +1338,7 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
           await supabase.from("patients").update({
             emotional_status: "red_behavioral",
             emotional_insight: crisisAnalysis.murmure || "Alerte comportementale détectée en fin d'exercice",
+            red_behavioral_until: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), // LEGACY-1 : fenêtre de mode ancrage (12h) — n'affecte PLUS le statut
           }).eq("user_id", patientId);
           const { data: cur } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
           const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
@@ -1492,6 +1526,7 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       if (level === "red_behavioral") {
         await supabase.from("patients").update({
           emotional_status: "red_behavioral",
+          red_behavioral_until: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), // LEGACY-1 : fenêtre de mode ancrage
           // emotional_insight uniquement sur la synthèse finale — pas sur les
           // fragments intermédiaires (scintillement météo côté praticien)
           ...(isFinalIntake ? { emotional_insight: sosIntakeCrisisAnalysis.murmure || "Alerte comportementale détectée pendant l'exercice SOS" } : {}),
@@ -1607,6 +1642,7 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     // Récupérer statut actuel du patient
     const supabaseMain = createSupabaseClient();
     let currentEmotionalStatus = "green";
+    let redBehavioralUntil: string | null = null; // LEGACY-1 : fin de fenêtre de mode ancrage
     let patientStateForClassifier: PatientStateContext = {
       emotional_status: "green",
       emotional_insight: "",
@@ -1617,12 +1653,13 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     if (patientId) {
       const { data: patientStatus } = await supabaseMain
         .from("patients")
-        .select("emotional_status, emotional_insight, latest_victory, victory_detected_at")
+        .select("emotional_status, emotional_insight, latest_victory, victory_detected_at, red_behavioral_until")
         .eq("user_id", patientId)
         .single();
       if (patientStatus) {
-        const ps = patientStatus as { emotional_status?: string; emotional_insight?: string; latest_victory?: string; victory_detected_at?: string };
+        const ps = patientStatus as { emotional_status?: string; emotional_insight?: string; latest_victory?: string; victory_detected_at?: string; red_behavioral_until?: string | null };
         currentEmotionalStatus = ps.emotional_status ?? "green";
+        redBehavioralUntil = ps.red_behavioral_until ?? null;
         patientStateForClassifier = {
           emotional_status: currentEmotionalStatus,
           emotional_insight: ps.emotional_insight ?? "",
@@ -1680,9 +1717,14 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       ragPromise,
     ]);
 
+    // LEGACY-1 — mode ancrage piloté par la RÉCENCE de la détresse (fenêtre 12h), pas
+    // par le statut persistant : le statut praticien peut rester red_behavioral longtemps
+    // (jusqu'à apaisement réel ou action praticien), mais le Jumeau ressort du mode ancrage
+    // une fois la fenêtre écoulée — un patient qui revient plus tard retrouve un Jumeau normal.
+    const ancrageWindowActive = !!redBehavioralUntil && new Date(redBehavioralUntil).getTime() > Date.now();
+    const inBehavioralAncrage = currentEmotionalStatus === "red_behavioral" && ancrageWindowActive;
     // Skip RAG en mode ancrage : le jumeau ne doit donner aucun conseil nutritionnel.
-    const isAncrageMode = crisisAnalysis.level === "red_behavioral"
-      || currentEmotionalStatus === "red_behavioral";
+    const isAncrageMode = crisisAnalysis.level === "red_behavioral" || inBehavioralAncrage;
     const documentsContext = isAncrageMode ? "" : documentsContextRaw;
 
     // Gérer crise LLM détectée
@@ -1707,6 +1749,7 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       await supabaseMain.from("patients").update({
         emotional_status: "red_behavioral",
         emotional_insight: crisisAnalysis.murmure || "Alerte comportementale détectée",
+        red_behavioral_until: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), // LEGACY-1 : fenêtre de mode ancrage
       }).eq("user_id", patientId);
       // Alerte discrète sur le Dashboard uniquement (pas d'email pour éviter le spam praticien)
       const { data: cur } = await supabaseMain.from("patients").select("admin_alerts").eq("user_id", patientId).single();
@@ -1725,8 +1768,7 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       } catch { /* silencieux */ }
     }
 
-    const forceAncrage = crisisAnalysis.level === "red_behavioral"
-      || currentEmotionalStatus === "red_behavioral";
+    const forceAncrage = crisisAnalysis.level === "red_behavioral" || inBehavioralAncrage;
 
     // Routage modèle — déclaré ici pour que getOrCreateVertexCache puisse l'utiliser
     const modelName = "gemini-3.5-flash";
@@ -1892,6 +1934,16 @@ Max 150 mots. Sans markdown.`;
           emotionalStatus = "green";
         }
 
+        // CD-2 — garantir la ressource d'urgence sur TOUTE bascule red_critical détectée
+        // hors fast-path mots-clés (le fast-path, lui, renvoie déjà CRISIS_CRITICAL_RESPONSES).
+        // On couvre les deux sources : le JSON principal (emotionalStatus) ET le classifieur
+        // parallèle (crisisAnalysis.level), qui peuvent diverger.
+        if ((emotionalStatus === "red_critical" || crisisAnalysis.level === "red_critical") && !fullText.includes("3114")) {
+          const resource = "\n\n—\nSi tu es en danger immédiat, appelle le 3114 (numéro national de prévention du suicide, 24h/24, gratuit et confidentiel) ou le 15. Ton praticien est informé et va prendre contact avec toi.";
+          controller.enqueue(encoder.encode(resource));
+          fullText += resource;
+        }
+
         if (patientId) {
           await supabase.from("conversations").insert([
             {
@@ -1974,6 +2026,13 @@ Max 150 mots. Sans markdown.`;
           // emotional_status uniquement sur changements majeurs
           if (isSignificantStatusChange) {
             patientStatusUpdate.emotional_status = emotionalStatus;
+            // Retour au vert (apaisement) → vider la note clinique ET la fenêtre d'ancrage.
+            // Sinon l'ancien insight de crise reste collé sur un patient vert et réamorce le
+            // classifieur au message suivant (même bug que celui corrigé sur LeverAlerteCritique).
+            if (emotionalStatus === "green") {
+              patientStatusUpdate.emotional_insight = null;
+              patientStatusUpdate.red_behavioral_until = null;
+            }
           }
           // Mettre à jour le timestamp du dernier message patient (pour indicateur silence 24h)
           patientStatusUpdate.last_patient_message_at = new Date().toISOString();

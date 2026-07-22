@@ -2,10 +2,12 @@ import { createClient } from "@supabase/supabase-js";
 import { vertexGenerate } from "@/lib/vertexai";
 import { NextResponse } from "next/server";
 import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
+import { checkRateLimit, tooManyRequests } from "@/lib/rateLimit";
 
 export async function POST(request: Request) {
   const user = await getSessionUser();
   if (!user) return unauthorized();
+  if (!(await checkRateLimit("generate-soutien", user.id, 40, 3600))) return tooManyRequests();
 
   const { patientId, practitionerId, emotionalInsight, lastMessages, murmures } = await request.json() as {
     patientId: string;
