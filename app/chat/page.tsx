@@ -1584,8 +1584,13 @@ export default function ChatPage() {
 
   const handleSasReprendreFile = async () => {
     if (!patientId) return;
-    const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-    await supabase.from("patients").update({ emotional_status: "green", red_behavioral_until: null }).eq("user_id", patientId);
+    // RLS-2 : le statut clinique est écrit côté serveur (service_role). Le client
+    // patient ne peut plus modifier emotional_status en direct (trigger DB).
+    await fetch("/api/patient/calm-return", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ patientId }),
+    });
     setEmotionalStatus("green");
     setShowSasButtons(false);
   };

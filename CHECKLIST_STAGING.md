@@ -9,6 +9,8 @@
 ## A. Pré-requis (à faire AVANT de tester)
 
 - [ ] **Migration** `supabase/migrations/add_processed_stripe_events.sql` appliquée sur la base staging. Vérifier : `SELECT * FROM processed_stripe_events LIMIT 1;` ne renvoie pas d'erreur « relation does not exist ».
+- [ ] **Migration RLS** `supabase/migrations/fix_rls_and_match_documents.sql` appliquée (RLS-1 patient_practitioner lecture seule + fix `match_documents`).
+- [ ] **Migration trigger** `supabase/migrations/protect_patient_clinical_fields.sql` appliquée (RLS-2 statut clinique server-side).
 - [ ] **IAM Google (M4)** : le compte de service `GOOGLE_SERVICE_ACCOUNT_JSON` de staging porte **uniquement** `roles/aiplatform.user`. Vérifier dans la console GCP → IAM qu'il n'a aucun autre rôle (surtout pas Editor/Owner).
 - [ ] **Stripe test mode** : clés de test configurées, endpoint webhook staging enregistré dans le dashboard Stripe, `STRIPE_WEBHOOK_SECRET` de staging à jour.
 - [ ] **Env vars packs** présents : `STRIPE_PRICE_PACK_ESSENTIEL`, `STRIPE_PRICE_PACK_PRO` (sinon l'achat de pack renvoie 500).
@@ -45,6 +47,17 @@
 ### B5 · generate-bravo / generate-soutien (L3)
 - [ ] **Bloqué** : A appelle `generate-bravo` / `generate-soutien` avec un patient de B → **403** (plus de fuite du prénom).
 - [ ] **Happy path** : sur un patient de A → message généré correctement.
+
+### B6 · RLS niveau base (RLS-1 + RLS-2)
+> Tests via PostgREST direct (curl / Supabase REST) avec un JWT de session, pour valider la couche RLS/trigger indépendamment de l'app.
+- [ ] **RLS-1 — patient ne peut plus forger de relation** : avec un JWT patient, `POST /rest/v1/patient_practitioner` `{patient_id: soi, practitioner_id: <victime>}` → **refusé** (plus de policy INSERT).
+- [ ] **RLS-1 — praticien ne peut plus forger de relation** : avec un JWT praticien, insérer `{patient_id: <patient d'un autre>, practitioner_id: soi}` → **refusé**.
+- [ ] **RLS-1 — non-régression** : l'invitation d'un patient (`invite-patient`, service_role) crée toujours la relation ; le patient/praticien lit toujours ses relations.
+- [ ] **RLS-2 — patient ne peut plus masquer sa crise** : avec un JWT patient, `PATCH /rest/v1/patients?user_id=eq.<soi>` `{emotional_status:"green"}` → **refusé** (exception trigger).
+- [ ] **RLS-2 — happy path patient** : le bouton SAS « reprendre le fil » dans le chat → passe désormais par `/api/patient/calm-return` → statut repasse au vert. Vérifier qu'un `red_critical` n'est PAS levé par cette route (réservé praticien).
+- [ ] **RLS-2 — non-régression praticien** : le dashboard (lever alerte critique, dismiss, marquer vue) modifie toujours `emotional_status`/`admin_alerts` sans erreur (praticien lié = autorisé par le trigger).
+- [ ] **RLS-2 — non-régression serveur** : la détection de crise du chat (`/api/chat`, service_role) écrit toujours `red_critical`/`red_behavioral` (le trigger bypasse le service_role).
+- [ ] **match_documents** : dans le chat d'un patient, le RAG ne remonte que les documents globaux du praticien, pas ceux rattachés à un autre patient.
 
 ---
 
@@ -135,3 +148,6 @@
 | L3 (generate-bravo/soutien) | B5 |
 | L4 (delete-account) | D3 |
 | M4 (IAM gemini-token) | A, E (SOS) |
+| RLS-1 (patient_practitioner forgeable) | B6 |
+| RLS-2 (statut clinique patient) | B6 |
+| match_documents (RAG cross-patient) | B6 |
