@@ -1847,14 +1847,42 @@ Max 150 mots. Sans markdown.`;
           // Propager une erreur lisible via le stream plutôt que silencieusement fermer
           const errMsg = err instanceof Error ? err.message : "Erreur inconnue";
           console.error("[NutriTwin] chat stream — échec Vertex:", errMsg);
-          const isVisionError = errMsg.includes("400") || errMsg.includes("INVALID_ARGUMENT");
-          const userMsg = isVisionError
-            ? "L'analyse de cette image n'a pas abouti. Vérifiez que l'image est lisible et réessayez."
-            : "Le service est temporairement indisponible. Réessayez dans un instant.";
-          controller.enqueue(encoder.encode(userMsg));
-          fullText = userMsg;
-          controller.close();
-          return;
+
+          // Si on utilisait un cachedContent Vertex qui a expiré (404) ou est invalide,
+          // retry transparent avec un system instruction plain — évite le "service indisponible"
+          // causé par un cache Redis périmé pointant vers une ressource Vertex supprimée.
+          if (systemOrCache.type === "cache" && !errMsg.includes("400") && !errMsg.includes("INVALID_ARGUMENT")) {
+            console.warn("[NutriTwin] cachedContent Vertex expiré/invalide, retry sans cache");
+            try {
+              const fallbackSystem: { type: "system"; text: string } = { type: "system", text: cacheablePrompt };
+              for await (const chunkText of vertexStreamGenerate(modelName, chatContents, fallbackSystem, { maxOutputTokens: config.maxOutputTokens, temperature: 0.78, thinkingConfig: { thinkingBudget: 0 } })) {
+                fullText += chunkText;
+                controller.enqueue(encoder.encode(chunkText));
+                await new Promise(resolve => setTimeout(resolve, 5));
+              }
+              // Retry réussi — on continue vers le post-stream normalement
+            } catch (retryErr) {
+              const retryMsg = retryErr instanceof Error ? retryErr.message : "Erreur inconnue";
+              console.error("[NutriTwin] retry sans cache échoué:", retryMsg);
+              const isVisionErrorRetry = retryMsg.includes("400") || retryMsg.includes("INVALID_ARGUMENT");
+              const userMsg = isVisionErrorRetry
+                ? "L'analyse de cette image n'a pas abouti. Vérifiez que l'image est lisible et réessayez."
+                : "Le service est temporairement indisponible. Réessayez dans un instant.";
+              controller.enqueue(encoder.encode(userMsg));
+              fullText = userMsg;
+              controller.close();
+              return;
+            }
+          } else {
+            const isVisionError = errMsg.includes("400") || errMsg.includes("INVALID_ARGUMENT");
+            const userMsg = isVisionError
+              ? "L'analyse de cette image n'a pas abouti. Vérifiez que l'image est lisible et réessayez."
+              : "Le service est temporairement indisponible. Réessayez dans un instant.";
+            controller.enqueue(encoder.encode(userMsg));
+            fullText = userMsg;
+            controller.close();
+            return;
+          }
         }
 
         let emotionalStatus = "green";
