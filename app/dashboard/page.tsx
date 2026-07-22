@@ -553,6 +553,7 @@ function LeverAlerteCritique({ alert, patientId, practitionerId, onResolved }: {
       emotional_status: "green",
       admin_alerts: updatedAlerts,
       red_behavioral_until: null,
+      emotional_insight: null, // vider la note clinique — sinon réinjectée au classifieur de crise (faux positif au message suivant)
       archived_alerts: [...existingArchived, auditEntry],
     }).eq("user_id", patientId);
     await fetch("/api/invalidate-cache", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId }) });
@@ -3497,7 +3498,7 @@ function DashboardInner() {
                             {alert.type === "admin_alert" && alert.alert_type === "critical_llm" && "Détresse critique détectée par analyse IA, vérification recommandée."}
                           </p>
                           <LeverAlerteCritique alert={alert} patientId={selectedPatient.id} practitionerId={practitionerId ?? undefined} onResolved={() => {
-                            setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a) } : p));
+                            setPatients(prev => prev.map(p => p.id === selectedPatient.id ? { ...p, emotional_status: "green", emotional_insight: undefined, admin_alerts: p.admin_alerts?.map(a => a === alert ? { ...a, seen: true } : a) } : p));
                           }} />
                         </div>
                       ))}
