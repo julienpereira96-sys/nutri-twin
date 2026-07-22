@@ -2,6 +2,7 @@ import { GoogleAuth } from "google-auth-library";
 import { createClient } from "@supabase/supabase-js";
 import { Redis } from "@upstash/redis";
 import { getSessionUser } from "@/lib/api-auth";
+import { reportCriticalEvent } from "@/lib/observability";
 
 // ─── Vertex AI ────────────────────────────────────────────────────────────────
 // REST API hard-coded to EU multi-region — independent of any env var.
@@ -32,7 +33,7 @@ async function getVertexToken(): Promise<string> {
 async function vertexGenerate(
   modelId: string,
   prompt: string,
-  opts?: { maxOutputTokens?: number; temperature?: number }
+  opts?: { maxOutputTokens?: number; temperature?: number; thinkingBudget?: number }
 ): Promise<string> {
   const token = await getVertexToken();
   const body = {
@@ -40,6 +41,8 @@ async function vertexGenerate(
     generationConfig: {
       ...(opts?.maxOutputTokens ? { maxOutputTokens: opts.maxOutputTokens } : {}),
       ...(opts?.temperature !== undefined ? { temperature: opts.temperature } : {}),
+      // thinkingBudget: 0 = désactive le raisonnement (modèle fort sans overhead thinking).
+      ...(opts?.thinkingBudget !== undefined ? { thinkingConfig: { thinkingBudget: opts.thinkingBudget } } : {}),
     },
   };
   const res = await fetch(vertexUrl(modelId, "generateContent"), {
@@ -223,36 +226,8 @@ function isCriticalKeyword(message: string): boolean {
 }
 
 // ═══ PRE-FILTRE REGEX — signaux comportementaux / TCA ═══
-// Première barrière locale (O(n) string scan) avant tout appel LLM.
-// Si aucun signal détecté → bypass de analyzeCrisisWithLLM.
-function hasBehavioralSignal(message: string): boolean {
-  const lower = message.toLowerCase();
-  return [
-    // Détresse émotionnelle active — racines courtes pour attraper toutes les variantes
-    "j'en peux plus", "je n'en peux plus", "je craque", "j'ai craqué", "craqué ce soir",
-    "c'est trop dur", "à bout", "plus la force", "trop difficile",
-    "j'ai tout foiré", "j'ai échoué", "je me dégoûte", "honte de moi",
-    "j'arrive plus", "je n'arrive plus", "déprimée", "déprimé",
-    "je pleure", "j'ai pleuré",
-    // TCA / perte de contrôle alimentaire — on capture la racine du verbe
-    "crise de boulimie", "binge", "hyperphagie",
-    "j'ai tout mangé", "j'ai mangé tout", "mangé tout ce que",
-    "dévalisé", "vidé le frigo", "tout le frigo", "le frigo entier",
-    "mangé sans m'arrêter", "pu m'arrêter", "plus m'arrêter", "pas pu résister",
-    "perte de contrôle", "je contrôle plus", "j'ai perdu le contrôle",
-    "j'ai mangé en cachette", "compulsion", "compulsif", "compulsive",
-    "j'ai vomi", "j'ai tout vomi", "je me purge", "laxatif",
-    "je veux pas manger", "j'arrive pas à manger",
-    "je mange plus", "je mange rien", "je mange pas", "je ne mange pas",
-    "grosse crise", "mauvaise soirée", "horrible soirée",
-    // Automutilation / comportemental
-    "je me fais du mal", "me couper", "me blesser",
-    // Désespoir / abandon
-    "à quoi ça sert", "rien ne sert", "aucun espoir",
-    "tout abandonner", "j'abandonne", "je renonce",
-    "dégoût de moi", "je suis nulle", "je suis nul", "nulle à rien",
-  ].some(kw => lower.includes(kw));
-}
+// (hasBehavioralSignal supprimé — code mort : le classifieur LLM tourne toujours,
+//  sans pré-filtre regex. Cf. analyzeCrisisWithLLM.)
 
 function getCriticalResponseType(message: string): string {
   const lower = message.toLowerCase();
@@ -343,12 +318,15 @@ RÈGLES APAISEMENT :
     let lastErr: unknown = null;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        // Classifieur de crise sur gemini-3.1-flash-lite (NON-"thinking") : un modèle
-        // thinking consommerait le budget de 150 tokens en raisonnement avant le JSON →
-        // parse échoue → faux "none". Fiabilité assurée par le retry + log (CD-1) plutôt
-        // que par un modèle plus lourd. (Un vrai upgrade nécessiterait thinking désactivé
-        // + budget élargi — à évaluer séparément avec mesure.)
-        const raw = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 150, temperature: 0 });
+        // CD-3 — modèle FORT avec THINKING DÉSACTIVÉ (thinkingBudget: 0) : on obtient le
+        // jugement de gemini-3.5-flash sans qu'il consomme le budget de tokens en raisonnement
+        // (ce qui, avec thinking actif, produisait un JSON vide → faux "none").
+        // ⚠️ À VALIDER de ton côté : (1) que ta version d'API accepte thinkingConfig.thinkingBudget=0
+        //    pour ce modèle (sinon l'appel peut échouer → le retry + fail-safe couvrent, mais la
+        //    détection retomberait sur le filet) ; (2) par une petite éval (euphémismes, négations,
+        //    3e personne), qu'il fait mieux que flash-lite. Si l'un des deux cloche, reviens à
+        //    "gemini-3.1-flash-lite" + { maxOutputTokens: 150, temperature: 0 } (sans thinkingBudget).
+        const raw = await vertexGenerate("gemini-3.5-flash", prompt, { maxOutputTokens: 256, temperature: 0, thinkingBudget: 0 });
         const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as CrisisAnalysis;
         return {
           level: parsed.level ?? "none",
@@ -360,7 +338,7 @@ RÈGLES APAISEMENT :
         lastErr = err;
       }
     }
-    console.error("[NutriTwin] analyzeCrisisWithLLM — ÉCHEC après retry, crise potentiellement NON détectée:", lastErr instanceof Error ? lastErr.message : lastErr);
+    void reportCriticalEvent("Classifieur de crise en échec après retry — crise potentiellement NON détectée", { error: lastErr instanceof Error ? lastErr.message : String(lastErr) });
     return { level: "none", murmure: "", victory: "", apaisement: false };
   } catch {
     return { level: "none", murmure: "", victory: "", apaisement: false };
@@ -1001,10 +979,6 @@ JSON TECHNIQUE OBLIGATOIRE - À ajouter en toute fin de réponse, après le text
 - apaisement : "oui" UNIQUEMENT si le patient exprime un retour au calme réel après une détresse exprimée dans cette même conversation (ex : "je me sens mieux", "ça va mieux", "j'ai soufflé", "je suis plus calme", "ça m'a aidé"). Ne jamais mettre "oui" si aucune détresse n'a été exprimée avant dans la conversation, ni sur un simple "ça va" sans contexte de crise, ni si l'amélioration reste incertaine ou partielle. "non" par défaut.`;
 }
 
-function getDefaultPrompt(): string {
-  return "Tu es un assistant nutritionniste. Réponds sans markdown, en phrases simples, max 150 mots.";
-}
-
 async function getDailyMessageCount(patientId: string): Promise<number> {
   const today = new Date().toISOString().split("T")[0];
   const key = `msg_count:${patientId}:${today}`;
@@ -1099,12 +1073,13 @@ export async function POST(request: Request) {
         }).eq("user_id", patientId);
 
         try {
-          await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
+          const alertRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "" },
             body: JSON.stringify({ patientId, practitionerId, alertType: responseType, message }),
           });
-        } catch { /* silencieux */ }
+          if (!alertRes.ok) void reportCriticalEvent("Alerte crise NON envoyée (HTTP)", { patientId, status: alertRes.status });
+        } catch (e) { void reportCriticalEvent("Alerte crise NON envoyée (réseau)", { patientId, error: String(e) }); }
 
         // Persiste la paire patient/IA dans le fil de discussion — avant, ce bypass
         // retournait directement la réponse sans jamais sauvegarder le message du
@@ -1318,12 +1293,13 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
             admin_alerts: [...alerts, { type: "admin_alert", alert_type: "critical_llm", date: new Date().toISOString(), seen: false, murmure: crisisAnalysis.murmure, trigger_message_id: savedMessageId }],
           }).eq("user_id", patientId);
           try {
-            await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
+            const alertRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
               method: "POST",
               headers: { "Content-Type": "application/json", "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "" },
               body: JSON.stringify({ patientId, practitionerId, alertType: "implicit_critical", message: trimmedMessage }),
             });
-          } catch { /* silencieux */ }
+            if (!alertRes.ok) void reportCriticalEvent("Alerte crise NON envoyée (HTTP)", { patientId, status: alertRes.status });
+          } catch (e) { void reportCriticalEvent("Alerte crise NON envoyée (réseau)", { patientId, error: String(e) }); }
 
           // On remplace le message chaleureux générique par la réponse de sécurité —
           // valider le ressenti serait inapproprié face à une urgence vitale.
@@ -1509,12 +1485,13 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
         }).eq("user_id", patientId);
 
         try {
-          await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
+          const alertRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "" },
             body: JSON.stringify({ patientId, practitionerId, alertType: "sos_intake_critical", message: trimmedMessage }),
           });
-        } catch { /* silencieux */ }
+          if (!alertRes.ok) void reportCriticalEvent("Alerte crise NON envoyée (HTTP)", { patientId, status: alertRes.status });
+        } catch (e) { void reportCriticalEvent("Alerte crise NON envoyée (réseau)", { patientId, error: String(e) }); }
 
         await supabase.from("conversations").insert({
           patient_id: patientId, practitioner_id: practitionerId, role: "assistant", content: safetyText, session_id: null,
@@ -1736,12 +1713,13 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
         admin_alerts: [...alerts, { type: "admin_alert", alert_type: "critical_llm", date: new Date().toISOString(), seen: false, murmure: crisisAnalysis.murmure, trigger_message_id: userMsgId }]
       }).eq("user_id", patientId);
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
+        const alertRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "" },
           body: JSON.stringify({ patientId, practitionerId, alertType: "implicit_critical", message }),
         });
-      } catch { /* silencieux */ }
+        if (!alertRes.ok) void reportCriticalEvent("Alerte crise NON envoyée (HTTP)", { patientId, status: alertRes.status });
+      } catch (e) { void reportCriticalEvent("Alerte crise NON envoyée (réseau)", { patientId, error: String(e) }); }
     }
 
     if (crisisAnalysis.level === "red_behavioral" && patientId && practitionerId) {
