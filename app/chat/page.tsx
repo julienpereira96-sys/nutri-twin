@@ -1541,7 +1541,7 @@ export default function ChatPage() {
         const target = targetTextRef.current;
         const cur = displayedLenRef.current;
         if (cur < target.length) {
-          const speed = streamDoneRef.current ? 2 : 1;
+          const speed = streamDoneRef.current ? 8 : 4;
           const next = Math.min(cur + speed, target.length);
           displayedLenRef.current = next;
           setMessages(prev => {
@@ -1565,8 +1565,24 @@ export default function ChatPage() {
           .replace(/\|\|\|[\s\S]*?\|\|\|/g, "") // signal complet
           .replace(/\|\|\|[\s\S]*$/, "")          // signal partiel (en cours de réception)
           .trim();
-        targetTextRef.current = visible;
+        // Buffer par phrase : révéler uniquement jusqu'au dernier boundary
+        // pour éviter le reflow mid-phrase (les lignes ne bougent plus).
+        const lastBoundary = Math.max(
+          visible.lastIndexOf('. '),
+          visible.lastIndexOf('! '),
+          visible.lastIndexOf('? '),
+          visible.lastIndexOf('.\n'),
+          visible.lastIndexOf('!\n'),
+          visible.lastIndexOf('?\n'),
+          visible.lastIndexOf('\n'),
+        );
+        targetTextRef.current = lastBoundary >= 0 ? visible.slice(0, lastBoundary + 1) : "";
       }
+      // Stream terminé : révéler tout le texte restant (dont la dernière phrase sans boundary)
+      targetTextRef.current = fullText
+        .replace(/\|\|\|[\s\S]*?\|\|\|/g, "")
+        .replace(/\|\|\|[\s\S]*$/, "")
+        .trim();
       streamDoneRef.current = true;
 
       // ─── Stream vide = erreur silencieuse côté Vertex AI ───
