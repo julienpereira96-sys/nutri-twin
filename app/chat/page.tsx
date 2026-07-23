@@ -1545,12 +1545,22 @@ export default function ChatPage() {
       // ─── Signaux post-stream ───
       if (fullText.includes("|||SAS|||")) { setShowSasButtons(true); }
       const statusMatch = fullText.match(/\|\|\|([\s\S]*?)\|\|\|/);
+      let detectedCritical = false;
       if (statusMatch) {
         try {
           const parsed = JSON.parse(statusMatch[1]) as { status: string };
-          if (parsed.status === "red_critical") { setEmotionalStatus("red_critical"); }
+          if (parsed.status === "red_critical") { setEmotionalStatus("red_critical"); detectedCritical = true; }
           else if (parsed.status === "red_behavioral") { setEmotionalStatus("red_behavioral"); }
         } catch { /* silencieux */ }
+      }
+      // Fallback sécurité : si Gemini n'a écrit aucun texte visible mais a émis red_critical,
+      // afficher le message de crise standard plutôt qu'une bulle vide.
+      if (detectedCritical && !fullText.replace(/\|\|\|[\s\S]*?\|\|\|/g, "").trim()) {
+        setMessages(prev => {
+          const u = [...prev];
+          if (u[assistantIndex]) u[assistantIndex] = { role: "assistant", content: "Je t'entends, et ce que tu ressens est réel. Tu n'es pas seul(e). Appelle maintenant le 3114 - c'est le numéro national de prévention du suicide, disponible 24h/24, gratuit et confidentiel. Ton praticien sera également informé immédiatement." };
+          return u;
+        });
       }
 
       // ─── Test mode : notifier le dashboard parent du nouveau message IA ───

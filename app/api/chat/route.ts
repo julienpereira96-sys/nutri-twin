@@ -215,7 +215,7 @@ const CRISIS_CRITICAL_KEYWORDS = [
 ];
 
 const CRISIS_CRITICAL_RESPONSES: Record<string, string> = {
-  suicide: "Je t'entends, et ce que tu ressens est réel. Tu n'es pas seul(e). Appelle maintenant le 3114 - c'est le numéro national de prévention du suicide, disponible 24h/24, gratuit et confidentiel. Ton praticien sera également informé immédiatement. 🌿",
+  suicide: "Je t'entends, et ce que tu ressens est réel. Tu n'es pas seul(e). Appelle maintenant le 3114 - c'est le numéro national de prévention du suicide, disponible 24h/24, gratuit et confidentiel. Ton praticien sera également informé immédiatement.",
   medical: "Ce que tu décris nécessite une attention médicale immédiate. Appelle le 15 (SAMU) ou le 112 maintenant. Ne reste pas seul(e). Ton praticien sera informé.",
   threat: "Je prends note de ce que tu exprimes. Si tu te sens en danger ou si tu risques de faire du mal à quelqu'un, appelle le 17 (Police) ou le 112 immédiatement.",
 };
@@ -961,6 +961,7 @@ Si le message commence par [ADMIN:identity_correction] :
 JSON TECHNIQUE OBLIGATOIRE - À ajouter en toute fin de réponse, après le texte visible :
 |||{"status":"green","reason":"météo émotionnelle en 4-8 mots","notable":false,"victory":"","apaisement":"non"}|||
 - status : "red_critical" si urgence vitale implicite détectée, "red_behavioral" si détresse comportementale/TCA/psychologique sévère, "green" si tout va bien
+- RÈGLE ABSOLUE si status = "red_critical" : tu DOIS écrire une réponse humaine et empathique AVANT ce JSON. Ne jamais émettre le signal JSON seul sans texte visible — le patient doit toujours recevoir une réponse, même courte.
 - reason : TOUJOURS rempli — météo émotionnelle du patient en 4-8 mots, dynamique et précise. Accorde les adjectifs au genre du patient (voir "Sexe" dans le profil) — jamais de forme neutre entre parenthèses comme "Anxieux(se)".
   Exemples (homme) : "En confiance", "Motivé malgré la fatigue", "Serein et régulier", "Curieux de progresser", "Anxieux mais motivé", "Frustré face aux écarts"
   Exemples (femme) : "En confiance", "Motivée malgré la fatigue", "Sereine et régulière", "Curieuse de progresser", "Anxieuse mais motivée", "Frustrée face aux écarts"
@@ -1830,11 +1831,18 @@ Max 150 mots. Sans markdown.`;
           ? `[Rappel profil patient — à utiliser mais ne pas reproduire textuellement]\n${patientContext}\n\n`
           : "";
 
+      // Si la détection pré-stream (voie 2) a identifié une crise red_critical, Gemini
+      // ne le sait pas encore (le system prompt a été construit avant). On le lui signale
+      // dans le tour utilisateur pour qu'il réponde de façon appropriée — empathie + 3114.
+      const crisisNote = crisisAnalysis.level === "red_critical"
+        ? `[Note système confidentielle — ne pas reproduire : une urgence psychologique a été détectée dans ce message. Réponds avec empathie et bienveillance, mentionne le 3114 naturellement, et positionne status="red_critical" dans le JSON de fin.]\n\n`
+        : "";
+
       userParts = documentsContext
-        ? [{ text: `${profileInUserTurn}[Contexte documentaire]:\n${documentsContext}\n\n${baseText}` }]
+        ? [{ text: `${crisisNote}${profileInUserTurn}[Contexte documentaire]:\n${documentsContext}\n\n${baseText}` }]
         : profileInUserTurn
-          ? [{ text: `${profileInUserTurn}${baseText}` }]
-          : [{ text: baseText }];
+          ? [{ text: `${crisisNote}${profileInUserTurn}${baseText}` }]
+          : [{ text: `${crisisNote}${baseText}` }];
     }
     const chatContents = [
       ...conversationHistory,
