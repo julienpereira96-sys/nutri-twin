@@ -1819,9 +1819,24 @@ Max 150 mots. Sans markdown.`;
       // documentsContext (RAG) est injecté ici dans le tour utilisateur (pas dans le system prompt
       // caché) pour respecter l'alternance user/model imposée par l'API Vertex.
       const baseText = message.slice(0, 5000);
+
+      // Injecter le patientContext dans chaque tour utilisateur quand on utilise un
+      // cachedContent Vertex. Le cachedContent n'est créé qu'UNE seule fois (puis réutilisé
+      // 55 min). Si ce cache a été créé à un moment où le profil patient n'était pas encore
+      // disponible (erreur Redis transitoire, profil incomplet), Gemini ne verrait jamais le
+      // prénom et les infos du patient — phénomène constaté : "je ne connais pas ton nom".
+      // En l'injectant côté user turn (jamais caché), on garantit que Gemini a toujours
+      // accès au profil dans la fenêtre de contexte active, indépendamment du cache.
+      const profileInUserTurn =
+        systemOrCache.type === "cache" && patientContext
+          ? `[Rappel profil patient — à utiliser mais ne pas reproduire textuellement]\n${patientContext}\n\n`
+          : "";
+
       userParts = documentsContext
-        ? [{ text: `[Contexte documentaire]:\n${documentsContext}\n\n${baseText}` }]
-        : [{ text: baseText }];
+        ? [{ text: `${profileInUserTurn}[Contexte documentaire]:\n${documentsContext}\n\n${baseText}` }]
+        : profileInUserTurn
+          ? [{ text: `${profileInUserTurn}${baseText}` }]
+          : [{ text: baseText }];
     }
     const chatContents = [
       ...conversationHistory,
