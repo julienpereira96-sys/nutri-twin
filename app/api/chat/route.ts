@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Redis } from "@upstash/redis";
 import { getSessionUser } from "@/lib/api-auth";
 import { reportCriticalEvent } from "@/lib/observability";
+import { buildEmailHtml, sendEmail } from "@/lib/email";
 
 // ─── Vertex AI ────────────────────────────────────────────────────────────────
 // REST API hard-coded to EU multi-region — independent of any env var.
@@ -396,6 +397,81 @@ type CachedPractitioner = {
   profile: Record<string, string> | null;
   specialty?: string;
 };
+
+// ─── Email alerte comportementale immédiate ───────────────────────────────────
+// Envoyé depuis le flux chat dès que red_behavioral est détecté, sans délai.
+// Fire-and-forget : ne bloque jamais le stream patient.
+// Garde dédup Redis 1h pour éviter les doubles envois en cas de retry.
+async function sendBehavioralAlertEmailImmediate({
+  patientId,
+  practitionerId,
+  murmure,
+  supabase,
+}: {
+  patientId: string;
+  practitionerId: string;
+  murmure: string;
+  supabase: ReturnType<typeof createSupabaseClient>;
+}): Promise<void> {
+  try {
+    // Dédup : ne pas renvoyer si déjà envoyé dans la dernière heure
+    const dedupKey = `behavioral_email:${patientId}:${practitionerId}`;
+    const alreadySent = await redis.get(dedupKey);
+    if (alreadySent) return;
+
+    const [practResult, patResult] = await Promise.all([
+      supabase.from("practitioners").select("email, first_name, last_name, notify_behavioral").eq("user_id", practitionerId).single(),
+      supabase.from("patients").select("first_name, last_name").eq("user_id", patientId).single(),
+    ]);
+    const pract = practResult.data as { email?: string; first_name?: string; last_name?: string; notify_behavioral?: boolean } | null;
+    if (!pract?.email || pract.notify_behavioral === false) return;
+
+    const pat = patResult.data as { first_name?: string; last_name?: string } | null;
+    const patientName = `${pat?.first_name ?? ""} ${pat?.last_name ?? ""}`.trim() || "Un patient";
+    const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`;
+    const AMBER = "#f59e0b";
+    const AMBER_DARK = "#d97706";
+
+    const body = `
+      <p style="margin:0 0 20px;font-size:15px;color:#94a3b8;line-height:1.65;">
+        Votre patient <strong style="color:#f8fafc;">${patientName}</strong> exprime une détresse comportementale dans le chat.
+      </p>
+      ${murmure ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom:20px;">
+        <tr>
+          <td style="background:#0d0d0d;border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:18px 20px;">
+            <p style="margin:0 0 8px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.1em;">Note clinique</p>
+            <p style="margin:0;font-size:13px;color:#e2e8f0;line-height:1.7;">${murmure}</p>
+          </td>
+        </tr>
+      </table>` : ""}
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+        <tr>
+          <td align="center">
+            <a href="${dashboardUrl}" style="display:inline-block;background:#10b981;color:#000000;font-size:14px;font-weight:700;padding:14px 36px;border-radius:12px;text-decoration:none;">Voir la fiche patient →</a>
+          </td>
+        </tr>
+      </table>`;
+
+    const emailHtml = buildEmailHtml({
+      preheader: `${patientName} exprime une détresse comportementale dans le chat.`,
+      greeting: "Alerte comportementale",
+      headline: "Votre patient a besoin d'attention",
+      body,
+      footerNote: `Vous pouvez désactiver ces alertes dans Paramètres → Notifications.`,
+      accentColor: AMBER,
+      accentColorDark: AMBER_DARK,
+    });
+
+    await sendEmail({
+      to: pract.email,
+      subject: `Alerte comportementale — ${patientName}`,
+      html: emailHtml,
+    });
+
+    // Marquer comme envoyé (1h) pour éviter le double-envoi si la conversation continue
+    await redis.set(dedupKey, true, { ex: 60 * 60 });
+  } catch { /* silencieux — ne doit jamais perturber le flux principal */ }
+}
 
 async function getPractitionerFromCache(practitionerId: string): Promise<CachedPractitioner | null> {
   try {
@@ -918,8 +994,8 @@ COMMENT JE GÈRE LES MOMENTS DIFFICILES :
 SÉCURITÉ & LIMITES :
 - Périmètre d'action autonome : ${resolvePerimetre(profile.perimetre)}
 - Face à une question médicale complexe, un traitement ou un bilan : ${resolveQuestionsMedicales(profile.questions_medicales)}
-- Quand un patient pose une question de curiosité générale sans lien avec la nutrition, son bien-être ou son suivi (culture générale, animaux, actualités, etc.) : réponds en UNE phrase légère et chaleureuse maximum, puis ramène naturellement à son suivi nutritionnel ou à comment il se sent. Ne développe jamais un sujet hors périmètre.
-- Quand un patient exprime une vraie souffrance psychologique : ${profile.urgence_detresse || "empathie immédiate et alerte praticien"}
+- Quand un patient pose une question de curiosité générale sans lien avec la nutrition, son bien-être ou son suivi (culture générale, animaux, actualités, etc.) : réponds en UNE phrase légère et chaleureuse maximum, puis ramène à ce qu'il venait de partager juste avant ou à comment il se sent maintenant. Ne fais jamais référence à un échange de plusieurs messages en arrière. Ne développe jamais un sujet hors périmètre.
+- Quand un patient exprime une vraie souffrance psychologique : ${profile.urgence_detresse || "empathie immédiate, présence totale"}
 
 VOIX DU PRATICIEN — C'est exactement ainsi que ce praticien répond. Reproduis cette intention, ce ton, cette structure. Adapte au contexte précis, ne recopie pas mot pour mot :
 - Avant un craquage (patient qui résiste à une envie forte) : "${profile.situation_avant_crise || "Reste là avec moi. L'envie est forte maintenant, mais elle va passer. Dis-moi ce qui se passe."}"
@@ -948,6 +1024,7 @@ RÈGLES ABSOLUES :
 - Utiliser le prénom avec parcimonie dans les réponses ordinaires : ponctuellement pour créer du lien ou marquer une rupture de ton. Jamais à chaque message.
 - INTERDICTION de Markdown : pas de gras, pas de tirets en début de ligne, pas d'astérisques, pas de numérotation. Toujours des paragraphes continus.
 - Ne JAMAIS dire "En tant qu'IA", "En tant que modèle de langue" ou similaire.
+- Ne jamais affirmer spontanément que le praticien a été prévenu, alerté ou sera contacté. Cette information t'est transmise explicitement dans le Murmure du Praticien quand elle est vraie — ne l'invente jamais de ta propre initiative.
 - Ne jamais inventer des informations médicales non confirmées.${!isAutonomieTotal ? `
 - Grossesse : félicite, redirige vers gynécologue/sage-femme, praticien adaptera le suivi.
 - TCA grave : stop conseils alimentaires, valide l'émotion, annonce relais praticien.
@@ -1730,6 +1807,8 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       await supabaseMain.from("patients").update({
         admin_alerts: [...alerts, { type: "admin_alert", alert_type: "behavioral", date: new Date().toISOString(), seen: false, murmure: crisisAnalysis.murmure, trigger_message_id: userMsgId }]
       }).eq("user_id", patientId);
+      // Email immédiat au praticien — fire-and-forget, ne bloque pas le stream
+      void sendBehavioralAlertEmailImmediate({ patientId, practitionerId, murmure: crisisAnalysis.murmure, supabase: supabaseMain });
       // Ouvrir une crisis_event si aucune n'est déjà ouverte pour ce patient
       try {
         const { count: openCrises } = await supabaseMain.from("crisis_events")
@@ -2077,6 +2156,20 @@ Max 150 mots. Sans markdown.`;
           if (resolvedSosEvent?.id) {
             try {
               await supabase.from("sos_events").update({ status: "success" }).eq("id", resolvedSosEvent.id);
+            } catch { /* silencieux */ }
+          }
+
+          // Chat apaisement sans exercice SOS en cours → créer un sos_event direct
+          // (distinction : origin="chat" vs "crise"/"exercice" pour le compteur dashboard)
+          if (shouldResolveApaisement && !resolvedSosEvent?.id) {
+            try {
+              await supabase.from("sos_events").insert({
+                patient_id: patientId,
+                practitioner_id: practitionerId ?? null,
+                origin: "chat",
+                status: "success",
+                triggered_at: new Date().toISOString(),
+              });
             } catch { /* silencieux */ }
           }
 
