@@ -2091,6 +2091,32 @@ Max 150 mots. Sans markdown.`;
             }).eq("user_id", patientId);
           }
 
+          // Cas manquant : Gemini détecte red_critical MAIS le classificateur pré-stream
+          // ne l'avait pas vu (ou l'avait classé red_behavioral → earlyBehavioralDetected=true).
+          // Dans ce cas, aucun admin_alert critique n'a été écrit et send-crisis-alert
+          // n'a pas été appelé → "Action requise" n'apparaît jamais sur le dashboard.
+          if (emotionalStatus === "red_critical" && crisisAnalysis.level !== "red_critical" && patientId && practitionerId) {
+            const { data: curCrit } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
+            const critAlerts = (curCrit as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
+            await supabase.from("patients").update({
+              admin_alerts: [...critAlerts, {
+                type: "admin_alert",
+                alert_type: "critical_llm",
+                date: new Date().toISOString(),
+                seen: false,
+                murmure: emotionalInsight || "Urgence détectée par Gemini",
+                trigger_message_id: userMsgId,
+              }]
+            }).eq("user_id", patientId);
+            try {
+              await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/send-crisis-alert`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "x-crisis-token": process.env.CRISIS_SECRET_TOKEN ?? "" },
+                body: JSON.stringify({ patientId, practitionerId, message: message?.slice(0, 200) ?? "", level: "critical" }),
+              });
+            } catch { /* silencieux */ }
+          }
+
           // Question hors périmètre détectée par Gemini → stocker dans admin_alerts
           if (adminAlert.action === "out_of_scope") {
             const { data: current } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
