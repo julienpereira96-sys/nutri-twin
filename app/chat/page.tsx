@@ -2129,7 +2129,7 @@ export default function ChatPage() {
                       <div style={{ flexShrink: 0, marginTop: 2 }}><IconAward size={15} color={ACCENT} strokeWidth={1.5} /></div>
                       <div style={{ flex: 1 }}>
                         <p style={{ margin: 0, fontSize: 14, color: "rgba(255,255,255,0.68)", lineHeight: 1.55 }}>{v.text}</p>
-                        {dateLabel && <p style={{ margin: "4px 0 0", fontSize: 11, color: TEXT_MUTED, opacity: 0.7 }}>{dateLabel}</p>}
+                        {dateLabel && <p style={{ margin: "4px 0 0", fontSize: 11, color: "rgba(255,255,255,0.45)" }}>{dateLabel}</p>}
                       </div>
                     </div>
                   );
@@ -3406,7 +3406,7 @@ export default function ChatPage() {
               ) : (
                 <InputBar isCenter={false} message={message} setMessage={setMessage} send={send} loading={loading} pendingImage={pendingImage} photoHovered={photoHovered} setPhotoHovered={setPhotoHovered} handleImageClick={handleImageClick} handleKeyDown={handleKeyDown} inputRef={inputRef} isMobile={isMobile} />
               )}
-              <p style={{ margin: "10px 0 0", fontSize: 10, color: TEXT_MUTED, textAlign: "center", whiteSpace: "nowrap" }}>
+              <p style={{ margin: "10px 0 0", fontSize: 11, color: "rgba(255,255,255,0.38)", textAlign: "center", whiteSpace: "nowrap" }}>
                 NutriTwin est une IA · En cas de doute, consultez votre praticien
               </p>
             </div>

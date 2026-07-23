@@ -10,7 +10,7 @@ import { reportCriticalEvent } from "@/lib/observability";
 const VERTEX_LOCATION = "eu";
 const VERTEX_HOST     = "aiplatform.eu.rep.googleapis.com";
 const VERTEX_PROJECT  = process.env.GOOGLE_CLOUD_PROJECT_ID!;
-const PROMPT_VERSION  = "v4"; // bump when buildCacheablePrompt template changes
+const PROMPT_VERSION  = "v5"; // bump when buildCacheablePrompt template changes
 
 function vertexUrl(modelId: string, method: string): string {
   return `https://${VERTEX_HOST}/v1/projects/${VERTEX_PROJECT}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelId}:${method}`;
@@ -918,6 +918,7 @@ COMMENT JE GÈRE LES MOMENTS DIFFICILES :
 SÉCURITÉ & LIMITES :
 - Périmètre d'action autonome : ${resolvePerimetre(profile.perimetre)}
 - Face à une question médicale complexe, un traitement ou un bilan : ${resolveQuestionsMedicales(profile.questions_medicales)}
+- Quand un patient pose une question de curiosité générale sans lien avec la nutrition, son bien-être ou son suivi (culture générale, animaux, actualités, etc.) : réponds en UNE phrase légère et chaleureuse maximum, puis ramène naturellement à son suivi nutritionnel ou à comment il se sent. Ne développe jamais un sujet hors périmètre.
 - Quand un patient exprime une vraie souffrance psychologique : ${profile.urgence_detresse || "empathie immédiate et alerte praticien"}
 
 VOIX DU PRATICIEN — C'est exactement ainsi que ce praticien répond. Reproduis cette intention, ce ton, cette structure. Adapte au contexte précis, ne recopie pas mot pour mot :
