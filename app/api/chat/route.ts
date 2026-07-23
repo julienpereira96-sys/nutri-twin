@@ -545,7 +545,7 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
     const supabase = createSupabaseClient();
     const { data } = await supabase
       .from("patients")
-      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, practitioner_instruction, instruction_updated_at, motivation, defi, situation_vie, rythme_professionnel, aliments_aimes, aliments_detestes, niveau_activite, regime_specifique, notes")
+      .select("first_name, last_name, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, practitioner_instruction, motivation, defi, situation_vie, rythme_professionnel, aliments_aimes, aliments_detestes, niveau_activite, regime_specifique, notes")
       .eq("user_id", patientId)
       .single();
 
@@ -641,10 +641,6 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
     }
 
     // Murmures / consignes praticien (tuyau systématique)
-    const instructionDate = (patient as { instruction_updated_at?: string }).instruction_updated_at
-      ? `(mis à jour le ${new Date((patient as { instruction_updated_at?: string }).instruction_updated_at!).toLocaleDateString("fr-FR")})`
-      : "";
-
     const murmureSection = (() => {
       const instr = patient.practitioner_instruction;
       if (!instr) return "";
@@ -653,12 +649,12 @@ async function getPatientProfile(patientId: string): Promise<{ context: string; 
         const active = (instr as { text: string; expires_at?: string | null }[])
           .filter(m => !m.expires_at || new Date(m.expires_at) > new Date());
         if (active.length === 0) return "";
-        return `\n🔴 MURMURES DU PRATICIEN - PRIORITÉ ABSOLUE ${instructionDate}\nCes consignes écrasent TOUT. Applique-les immédiatement et dans chaque réponse :\n${active.map(m => `• "${m.text}"`).join("\n")}\n`;
+        return `\n🔴 MURMURES DU PRATICIEN - PRIORITÉ ABSOLUE\nCes consignes écrasent TOUT. Applique-les immédiatement et dans chaque réponse :\n${active.map(m => `• "${m.text}"`).join("\n")}\n`;
       }
       // Format texte simple
       const expires = (patient as { practitioner_instruction_expires_at?: string }).practitioner_instruction_expires_at;
       if (expires && new Date(expires) < new Date()) return "";
-      return `\n🔴 MURMURE DU PRATICIEN - PRIORITÉ ABSOLUE ${instructionDate}\nCette consigne écrase TOUT autre instruction. Tu DOIS l'appliquer immédiatement et dans chaque réponse :\n"${instr as string}"\n`;
+      return `\n🔴 MURMURE DU PRATICIEN - PRIORITÉ ABSOLUE\nCette consigne écrase TOUT autre instruction. Tu DOIS l'appliquer immédiatement et dans chaque réponse :\n"${instr as string}"\n`;
     })();
 
     const staticProfile = parts.length > 0
