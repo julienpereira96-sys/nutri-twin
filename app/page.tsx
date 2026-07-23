@@ -27,9 +27,9 @@ const MS_PARTICLES: { left: number; bottom: number; size: number; color: string;
 function AnimatedChat() {
   const messages = [
     { role: "patient", text: "Bonsoir, j'ai encore craqué sur du chocolat. Je me sens vraiment nulle 😔", delay: 1500 },
-    { role: "ai", text: "Bonsoir Justine. Un mardi soir après les réunions — votre semaine était chargée. Qu'est-ce qui s'est passé ?", delay: 4500 },
+    { role: "ai", text: "Bonsoir Justine. Un mardi soir après les réunions, votre semaine était chargée. Qu'est-ce qui s'est passé ?", delay: 4500 },
     { role: "patient", text: "Rien mangé depuis midi, réunion jusqu'à 19h.", delay: 7500 },
-    { role: "ai", text: "Six heures sans manger avec votre rythme — c'est votre corps qui réclamait du carburant, pas un manque de volonté.", delay: 11500 },
+    { role: "ai", text: "Six heures sans manger avec votre rythme. Ce n'est pas un manque de volonté, c'est votre corps qui réclamait du carburant.", delay: 11500 },
     { role: "patient", text: "La semaine dernière j'avais réussi pourtant...", delay: 14500 },
     { role: "ai", text: "Parce que vous aviez préparé une collation à 16h30. On peut refaire exactement ça — vous connaissez déjà la solution.", delay: 18500 },
     { role: "patient", text: "Vous vous souvenez de ça ? C'est exactement ce dont j'avais besoin 💚", delay: 22000 },
@@ -130,13 +130,13 @@ function AnimatedChat() {
 function StaticDashboard() {
   const julieConversation = [
     { role: "patient", text: "Encore une journée à n'en plus finir. Je n'ai presque rien mangé." },
-    { role: "ai", text: "Bonsoir Julie. C'est le même schéma que les semaines chargées — votre corps va compenser ce soir. Vous avez pu dîner ?" },
+    { role: "ai", text: "Bonsoir Julie. C'est le même schéma que les semaines chargées. Votre corps va compenser ce soir. Vous avez pu dîner ?" },
     { role: "patient", text: "Un sandwich froid en réunion... et là je grignote devant mon écran." },
     { role: "ai", text: "Votre corps cherche l'énergie qui a manqué aujourd'hui. Ce n'est pas un échec, c'est de la physiologie." },
     { role: "patient", text: "Oui. Et je culpabilise en plus de tout ça." },
-    { role: "ai", text: "Ne rajoutez pas ça. On a travaillé exactement pour ces moments — vous savez déjà quoi faire demain matin." },
+    { role: "ai", text: "Ne rajoutez pas ça. On a travaillé exactement pour ces moments. Vous savez déjà quoi faire demain matin." },
     { role: "patient", text: "C'est plus facile à entendre de quelqu'un qui me connaît vraiment." },
-    { role: "ai", text: "Je suis là pour ça — pas pour des conseils génériques, mais pour ce qui fonctionne pour vous, Julie." },
+    { role: "ai", text: "Je suis là pour ça. Pas pour des conseils génériques, mais pour ce qui fonctionne pour vous, Julie." },
     { role: "patient", text: "Merci d'être là 💚" },
     { role: "ai", text: "Toujours. Bonne nuit." },
   ];
@@ -214,7 +214,7 @@ function StaticDashboard() {
                       <span style={{ fontSize: 11, fontWeight: 600, flex: 1, color: p.active ? "#f59e0b" : "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
                       <span style={{ fontSize: 9, color: "#4b5563", flexShrink: 0 }}>{p.time}</span>
                     </div>
-                    <p style={{ margin: 0, fontSize: 10, color: p.trophy ? "#10b981" : "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 35, display: "flex", alignItems: "center", gap: 3 }}>
+                    <p style={{ margin: 0, fontSize: 10, color: p.trophy ? "#10b981" : p.status === "orange" ? "#f59e0b" : "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 35, display: "flex", alignItems: "center", gap: 3 }}>
                       {p.trophy && <span style={{ fontSize: 9 }}>🏆</span>}
                       <span style={{ fontStyle: "italic" }}>{p.insight}</span>
                     </p>
@@ -277,6 +277,12 @@ function StaticDashboard() {
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }} />
                   <span style={{ fontSize: 10, fontWeight: 600, color: "#f59e0b" }}>Fatigue professionnelle</span>
                 </div>
+              </div>
+
+              {/* Emotional insight */}
+              <div style={{ background: "rgba(245,158,11,0.06)", borderRadius: 8, border: "1px solid rgba(245,158,11,0.2)", padding: "8px 10px" }}>
+                <p style={{ margin: "0 0 3px", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#f59e0b" }}>Insight émotionnel</p>
+                <p style={{ margin: 0, fontSize: 10, color: "#fcd34d", lineHeight: 1.6 }}>Grignotage ce soir après journée sans repas</p>
               </div>
 
               {/* Stats */}
