@@ -869,9 +869,21 @@ export default function ChatPage() {
           });
           if (histRes.ok) {
             const { messages: testHistData } = await histRes.json() as { messages: { role: "user" | "assistant"; content: string; created_at: string }[] };
-            if (testHistData?.length) {
-              setMessages(testHistData as ChatMessage[]);
-              void hydrateSosClosures(pid, practId, testHistData);
+            const dbMsgs = (testHistData ?? []) as ChatMessage[];
+            let finalMessages = dbMsgs;
+            if (restoredSessionId) {
+              try {
+                const savedRaw = sessionStorage.getItem(`nt_messages_${restoredSessionId}`);
+                if (savedRaw) {
+                  const saved = JSON.parse(savedRaw) as ChatMessage[];
+                  const nonWidget = saved.filter(m => m.role !== "widget");
+                  if (nonWidget.length > dbMsgs.length) finalMessages = nonWidget;
+                }
+              } catch { /* silencieux */ }
+            }
+            if (finalMessages.length) {
+              setMessages(finalMessages);
+              void hydrateSosClosures(pid, practId, testHistData ?? []);
             }
           } else {
             console.error("[NutriTwin] /api/conversations (test) FAILED", histRes.status, await histRes.text().catch(() => ""));
@@ -928,9 +940,22 @@ export default function ChatPage() {
         const histRes = await tFetch(`/api/conversations?practitionerId=${practId}`);
         if (histRes.ok) {
           const { messages: allHist } = await histRes.json() as { messages: { role: "user" | "assistant"; content: string; created_at: string }[] };
-          if (allHist?.length) {
-            setMessages(allHist as ChatMessage[]);
-            void hydrateSosClosures(data.user.id, practId, allHist);
+          const dbMsgs = (allHist ?? []) as ChatMessage[];
+          // Restaurer depuis sessionStorage si le stream a été interrompu (ex: déploiement mid-stream)
+          let finalMessages = dbMsgs;
+          if (restoredSessionId) {
+            try {
+              const savedRaw = sessionStorage.getItem(`nt_messages_${restoredSessionId}`);
+              if (savedRaw) {
+                const saved = JSON.parse(savedRaw) as ChatMessage[];
+                const nonWidget = saved.filter(m => m.role !== "widget");
+                if (nonWidget.length > dbMsgs.length) finalMessages = nonWidget;
+              }
+            } catch { /* silencieux */ }
+          }
+          if (finalMessages.length) {
+            setMessages(finalMessages);
+            void hydrateSosClosures(data.user.id, practId, allHist ?? []);
           }
         } else {
           console.error("[NutriTwin] /api/conversations FAILED", histRes.status, await histRes.text().catch(() => ""));
@@ -1152,6 +1177,18 @@ export default function ChatPage() {
   }, [sessionLoading]);
 
   useEffect(() => () => { if (breathingIntervalRef.current) clearInterval(breathingIntervalRef.current); }, []);
+
+  // ─── sessionStorage — protection reload/déploiement mid-stream ───────────────
+  // Sauvegarde les messages à chaque update pour les restaurer si la page recharge
+  // pendant un stream (ex: Vercel kill la fonction pendant un déploiement).
+  useEffect(() => {
+    if (!currentSessionId || !messages.length) return;
+    const storable = messages.filter(m => m.role !== "widget");
+    if (!storable.length) return;
+    try {
+      sessionStorage.setItem(`nt_messages_${currentSessionId}`, JSON.stringify(storable));
+    } catch { /* silencieux */ }
+  }, [messages, currentSessionId]);
 
   const closeTool = useCallback(() => {
     setActiveTool(null);
