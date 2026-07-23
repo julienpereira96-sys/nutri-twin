@@ -157,19 +157,19 @@ async function getOrCreateVertexCache(
 //              Pro+      → 7 jours / 40 msg max + résumé des messages plus anciens
 const PLAN_CONFIG = {
   essentiel: {
-    maxOutputTokens: 420,
+    maxOutputTokens: 200,
     ragChunks: 5,
     dailyMessageLimit: 30,
     isFounder: false,
   },
   pro: {
-    maxOutputTokens: 650,
+    maxOutputTokens: 280,
     ragChunks: 8,
     dailyMessageLimit: 100,
     isFounder: false,
   },
   cabinet: {
-    maxOutputTokens: 650,
+    maxOutputTokens: 280,
     ragChunks: 8,
     dailyMessageLimit: 100,
     isFounder: false,
