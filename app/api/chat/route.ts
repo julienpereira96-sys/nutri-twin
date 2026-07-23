@@ -2140,11 +2140,13 @@ Max 150 mots. Sans markdown.`;
           // emotional_status uniquement sur changements majeurs
           if (isSignificantStatusChange) {
             patientStatusUpdate.emotional_status = emotionalStatus;
-            // Retour au vert (apaisement) → vider la note clinique ET la fenêtre d'ancrage.
-            // Sinon l'ancien insight de crise reste collé sur un patient vert et réamorce le
-            // classifieur au message suivant (même bug que celui corrigé sur LeverAlerteCritique).
-            if (emotionalStatus === "green") {
-              patientStatusUpdate.emotional_insight = null;
+            // Retour au vert via apaisement (red_behavioral → green) → effacer l'ancien insight
+            // de crise ET la fenêtre d'ancrage. On ne touche pas à emotional_insight si c'est
+            // un isGreenNotable (patient déjà vert, Gemini vient de poser un nouvel insight).
+            // isGreenNotable et shouldResolveApaisement sont mutuellement exclusifs :
+            // isGreenNotable requiert currentEmotionalStatus !== "red_behavioral".
+            if (emotionalStatus === "green" && shouldResolveApaisement) {
+              if (!emotionalInsight) patientStatusUpdate.emotional_insight = null;
               patientStatusUpdate.red_behavioral_until = null;
             }
           }

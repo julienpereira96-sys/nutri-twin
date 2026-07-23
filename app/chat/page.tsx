@@ -1562,7 +1562,8 @@ export default function ChatPage() {
         const { done, value } = await reader.read(); if (done) break;
         fullText += decoder.decode(value, { stream: true });
         const visible = fullText
-          .replace(/\|\|\|[\s\S]*?\|\|\|/g, "")
+          .replace(/\|\|\|[\s\S]*?\|\|\|/g, "") // signal complet
+          .replace(/\|\|\|[\s\S]*$/, "")          // signal partiel (en cours de réception)
           .trim();
         targetTextRef.current = visible;
       }
