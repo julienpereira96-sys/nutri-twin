@@ -1974,11 +1974,13 @@ Max 150 mots. Sans markdown.`;
           // Seuls changements légitimes :
           //   1) Crise détectée → red_critical ou red_behavioral
           //   2) Résolution apaisement → green (depuis red_behavioral)
+          // NOTE : on NE remet JAMAIS au vert juste parce que Gemini renvoie "green" sur un
+          // message banal. red_behavioral est "sticky" jusqu'à apaisement explicite (signal
+          // Gemini + classificateur) ou action praticien (Marquer comme vu / LeverAlerte).
           const isSignificantStatusChange =
             emotionalStatus === "red_critical" ||
             emotionalStatus === "red_behavioral" ||
-            shouldResolveApaisement ||
-            (currentEmotionalStatus !== "green" && emotionalStatus === "green");
+            shouldResolveApaisement;
 
           // Apaisement confirmé → identifier le sos_event "pending" le plus récent
           // (servira à le marquer "success" ET à évaluer la 🏆 auto ci-dessous)

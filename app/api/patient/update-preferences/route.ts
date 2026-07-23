@@ -38,12 +38,16 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Invalider le cache Vertex AI pour que le jumeau intègre les nouvelles préférences
+  // Invalider le cache profil patient + le cache Vertex AI pour que le jumeau
+  // voie les nouvelles préférences dès le prochain message.
+  // Ordre important : del patient_profile_v2 d'abord (sinon getPatientProfile
+  // rebuildrait le Vertex cache avec l'ancien profil en mémoire).
   try {
     const redis = new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL!,
       token: process.env.UPSTASH_REDIS_REST_TOKEN!,
     });
+    await redis.del(`patient_profile_v2:${user.id}`);
     await redis.incr(`patient_v:${user.id}`);
   } catch { /* silencieux */ }
 
