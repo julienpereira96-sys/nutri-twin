@@ -2992,7 +2992,8 @@ function DashboardInner() {
                     </div>
                     {/* Bandeau alerte contextuel */}
                     {(() => {
-                      const alerts = selectedPatient.admin_alerts?.filter(a => !a.seen) ?? [];
+                      const alerts = (selectedPatient.admin_alerts?.filter(a => !a.seen) ?? [])
+                        .sort((a, b) => new Date(b.date ?? 0).getTime() - new Date(a.date ?? 0).getTime());
                       const isCritical = selectedPatient.emotional_status === "red_critical";
                       const isRed = isCritical;
                       const isBehavioralBanner = selectedPatient.emotional_status === "red_behavioral";

@@ -10,7 +10,7 @@ import { reportCriticalEvent } from "@/lib/observability";
 const VERTEX_LOCATION = "eu";
 const VERTEX_HOST     = "aiplatform.eu.rep.googleapis.com";
 const VERTEX_PROJECT  = process.env.GOOGLE_CLOUD_PROJECT_ID!;
-const PROMPT_VERSION  = "v1"; // bump when buildCacheablePrompt template changes
+const PROMPT_VERSION  = "v2"; // bump when buildCacheablePrompt template changes
 
 function vertexUrl(modelId: string, method: string): string {
   return `https://${VERTEX_HOST}/v1/projects/${VERTEX_PROJECT}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelId}:${method}`;
@@ -1759,7 +1759,7 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     // that needs a dynamic suffix appended to the system instruction.
     let systemOrCache: { type: "system"; text: string } | { type: "cache"; name: string };
 
-    if (systemPrompt || !patientId || !practitionerId || (isLastMessage && !imageBase64)) {
+    if (systemPrompt || !patientId || !practitionerId || (isLastMessage && !imageBase64) || forceAncrage) {
       const finalText = (isLastMessage && !imageBase64 && !systemPrompt)
         ? cacheablePrompt + lastMessageNote
         : cacheablePrompt;
