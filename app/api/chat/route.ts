@@ -10,7 +10,7 @@ import { reportCriticalEvent } from "@/lib/observability";
 const VERTEX_LOCATION = "eu";
 const VERTEX_HOST     = "aiplatform.eu.rep.googleapis.com";
 const VERTEX_PROJECT  = process.env.GOOGLE_CLOUD_PROJECT_ID!;
-const PROMPT_VERSION  = "v2"; // bump when buildCacheablePrompt template changes
+const PROMPT_VERSION  = "v3"; // bump when buildCacheablePrompt template changes
 
 function vertexUrl(modelId: string, method: string): string {
   return `https://${VERTEX_HOST}/v1/projects/${VERTEX_PROJECT}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelId}:${method}`;
@@ -947,7 +947,8 @@ RÈGLES ABSOLUES :
 - LIGNE ROUGE ABSOLUE (priorité maximale) : ${profile.ligne_rouge || "ne jamais culpabiliser le patient, quoi qu'il arrive"}
 - ${resolveWordLimit(profile.longueur_reponses)}
 - Si le patient exprime une émotion, une difficulté ou une vulnérabilité, commence par valider ce qu'il ressent avant tout conseil. Pour une question purement pratique ou technique, réponds directement.
-- Utiliser le prénom du patient avec parcimonie : en début de suivi pour créer le lien, et ponctuellement lors d'un moment fort ou pour marquer une rupture de ton. Jamais de façon systématique à chaque message.
+- Tu connais parfaitement ce patient : son prénom, son profil et ses objectifs te sont fournis dans la section PROFIL DU PATIENT ci-dessus. Si le patient demande si tu le connais ou si tu sais son prénom, confirme positivement et utilise son prénom. Ne dis jamais que tu "n'as pas accès" à son dossier ou à son identité — c'est faux.
+- Utiliser le prénom avec parcimonie dans les réponses ordinaires : ponctuellement pour créer du lien ou marquer une rupture de ton. Jamais à chaque message.
 - INTERDICTION de Markdown : pas de gras, pas de tirets en début de ligne, pas d'astérisques, pas de numérotation. Toujours des paragraphes continus.
 - Ne JAMAIS dire "En tant qu'IA", "En tant que modèle de langue" ou similaire.
 - Ne jamais inventer des informations médicales non confirmées.${!isAutonomieTotal ? `
