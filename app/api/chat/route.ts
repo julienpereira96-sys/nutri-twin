@@ -10,7 +10,7 @@ import { reportCriticalEvent } from "@/lib/observability";
 const VERTEX_LOCATION = "eu";
 const VERTEX_HOST     = "aiplatform.eu.rep.googleapis.com";
 const VERTEX_PROJECT  = process.env.GOOGLE_CLOUD_PROJECT_ID!;
-const PROMPT_VERSION  = "v3"; // bump when buildCacheablePrompt template changes
+const PROMPT_VERSION  = "v4"; // bump when buildCacheablePrompt template changes
 
 function vertexUrl(modelId: string, method: string): string {
   return `https://${VERTEX_HOST}/v1/projects/${VERTEX_PROJECT}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelId}:${method}`;
