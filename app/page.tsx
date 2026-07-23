@@ -31,8 +31,8 @@ function AnimatedChat() {
     { role: "patient", text: "Rien mangé depuis midi, réunion jusqu'à 19h.", delay: 7500 },
     { role: "ai", text: "Six heures sans manger avec votre rythme. Ce n'est pas un manque de volonté, c'est votre corps qui réclamait du carburant.", delay: 11500 },
     { role: "patient", text: "La semaine dernière j'avais réussi pourtant...", delay: 14500 },
-    { role: "ai", text: "Parce que vous aviez préparé une collation à 16h30. On peut refaire exactement ça — vous connaissez déjà la solution.", delay: 18500 },
-    { role: "patient", text: "Vous vous souvenez de ça ? C'est exactement ce dont j'avais besoin 💚", delay: 22000 },
+    { role: "ai", text: "Parce que vous aviez préparé une collation à 16h30. On peut refaire exactement ça, vous connaissez déjà la solution.", delay: 18500 },
+    { role: "patient", text: "C'est vrai. Merci 💚", delay: 22000 },
   ];
 
   const [visibleMessages, setVisibleMessages] = useState<number[]>([]);
@@ -136,7 +136,7 @@ function StaticDashboard() {
     { role: "patient", text: "Oui. Et je culpabilise en plus de tout ça." },
     { role: "ai", text: "Ne rajoutez pas ça. On a travaillé exactement pour ces moments. Vous savez déjà quoi faire demain matin." },
     { role: "patient", text: "C'est plus facile à entendre de quelqu'un qui me connaît vraiment." },
-    { role: "ai", text: "Je suis là pour ça. Pas pour des conseils génériques, mais pour ce qui fonctionne pour vous, Julie." },
+    { role: "ai", text: "C'est exactement pour ça que je suis là, Julie." },
     { role: "patient", text: "Merci d'être là 💚" },
     { role: "ai", text: "Toujours. Bonne nuit." },
   ];
@@ -275,14 +275,8 @@ function StaticDashboard() {
                 <p style={{ margin: "0 0 10px", fontSize: 10, color: "#4b5563" }}>julie.p@email.fr</p>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 5, borderRadius: 20, padding: "3px 10px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "#f59e0b" }}>Fatigue professionnelle</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "#f59e0b" }}>Grignotage ce soir après journée sans repas</span>
                 </div>
-              </div>
-
-              {/* Emotional insight */}
-              <div style={{ background: "rgba(245,158,11,0.06)", borderRadius: 8, border: "1px solid rgba(245,158,11,0.2)", padding: "8px 10px" }}>
-                <p style={{ margin: "0 0 3px", fontSize: 9, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#f59e0b" }}>Insight émotionnel</p>
-                <p style={{ margin: 0, fontSize: 10, color: "#fcd34d", lineHeight: 1.6 }}>Grignotage ce soir après journée sans repas</p>
               </div>
 
               {/* Stats */}
@@ -367,7 +361,7 @@ function StaticDashboard() {
               </div>
               <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, borderRadius: 20, padding: "3px 8px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
                 <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#f59e0b" }} />
-                <span style={{ fontSize: 9, fontWeight: 600, color: "#f59e0b" }}>Fatigue pro</span>
+                <span style={{ fontSize: 9, fontWeight: 600, color: "#f59e0b" }}>Grignotage ce soir</span>
               </div>
             </div>
             <div className="space-y-3 mb-3">
