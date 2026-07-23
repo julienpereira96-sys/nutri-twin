@@ -27,12 +27,12 @@ const MS_PARTICLES: { left: number; bottom: number; size: number; color: string;
 function AnimatedChat() {
   const messages = [
     { role: "patient", text: "Bonsoir, j'ai encore craqué sur du chocolat. Je me sens vraiment nulle 😔", delay: 1500 },
-    { role: "ai", text: "Bonsoir Justine. Un moment de craquage, ça ne remet pas en cause tout ce que vous construisez. Qu'est-ce qui s'est passé aujourd'hui ?", delay: 4500 },
-    { role: "patient", text: "Un café le matin, un sandwich à midi... pas grand chose.", delay: 7500 },
-    { role: "ai", text: "Tout s'explique. Ces fringales du soir ont presque toujours une cause en début de journée.", delay: 11500 },
-    { role: "patient", text: "J'ai rarement faim le matin. C'est grave ?", delay: 14500 },
-    { role: "ai", text: "Pas du tout. On va construire quelque chose qui vous ressemble vraiment, pas un plan standard qu'on applique à tout le monde.", delay: 18500 },
-    { role: "patient", text: "Merci, ça me soulage d'avoir quelqu'un à qui écrire 💚", delay: 22000 },
+    { role: "ai", text: "Bonsoir Justine. Un mardi soir après les réunions — votre semaine était chargée. Qu'est-ce qui s'est passé ?", delay: 4500 },
+    { role: "patient", text: "Rien mangé depuis midi, réunion jusqu'à 19h.", delay: 7500 },
+    { role: "ai", text: "Six heures sans manger avec votre rythme — c'est votre corps qui réclamait du carburant, pas un manque de volonté.", delay: 11500 },
+    { role: "patient", text: "La semaine dernière j'avais réussi pourtant...", delay: 14500 },
+    { role: "ai", text: "Parce que vous aviez préparé une collation à 16h30. On peut refaire exactement ça — vous connaissez déjà la solution.", delay: 18500 },
+    { role: "patient", text: "Vous vous souvenez de ça ? C'est exactement ce dont j'avais besoin 💚", delay: 22000 },
   ];
 
   const [visibleMessages, setVisibleMessages] = useState<number[]>([]);
@@ -111,9 +111,9 @@ function AnimatedChat() {
         <div className="border-t border-white/[0.06] px-4 py-3">
           <div style={{ display: "flex", alignItems: "center", gap: 8, borderRadius: 24, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: "10px 8px 10px 18px" }}>
             <span style={{ flex: 1, fontSize: 13, color: "rgba(255,255,255,0.2)" }}>Écrire un message…</span>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(16,185,129,0.10)", border: "1px solid rgba(16,185,129,0.35)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path d="M12 19V5M5 12l7-7 7 7" stroke="rgba(255,255,255,0.3)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M12 19V5M5 12l7-7 7 7" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
           </div>
@@ -130,19 +130,19 @@ function AnimatedChat() {
 function StaticDashboard() {
   const julieConversation = [
     { role: "patient", text: "Encore une journée à n'en plus finir. Je n'ai presque rien mangé." },
-    { role: "ai", text: "Bonsoir Julie. Ces journées sans pause laissent peu de place pour prendre soin de soi. Vous avez pu dîner ce soir ?" },
+    { role: "ai", text: "Bonsoir Julie. C'est le même schéma que les semaines chargées — votre corps va compenser ce soir. Vous avez pu dîner ?" },
     { role: "patient", text: "Un sandwich froid en réunion... et là je grignote devant mon écran." },
-    { role: "ai", text: "C'est votre corps qui cherche de l'énergie, pas un manque de volonté. Ce que vous portez en ce moment, c'est beaucoup." },
+    { role: "ai", text: "Votre corps cherche l'énergie qui a manqué aujourd'hui. Ce n'est pas un échec, c'est de la physiologie." },
     { role: "patient", text: "Oui. Et je culpabilise en plus de tout ça." },
-    { role: "ai", text: "Ne rajoutez pas ça. Ce que vous traversez est lourd, mais vous êtes là quand même. C'est déjà beaucoup." },
-    { role: "patient", text: "J'ai du mal à m'en convaincre parfois." },
-    { role: "ai", text: "C'est normal. On ne ressent pas toujours ce qu'on mérite. Mais ce soir, le simple fait d'en parler, c'est un pas." },
+    { role: "ai", text: "Ne rajoutez pas ça. On a travaillé exactement pour ces moments — vous savez déjà quoi faire demain matin." },
+    { role: "patient", text: "C'est plus facile à entendre de quelqu'un qui me connaît vraiment." },
+    { role: "ai", text: "Je suis là pour ça — pas pour des conseils génériques, mais pour ce qui fonctionne pour vous, Julie." },
     { role: "patient", text: "Merci d'être là 💚" },
-    { role: "ai", text: "Toujours. Bonne nuit Julie, prenez soin de vous." },
+    { role: "ai", text: "Toujours. Bonne nuit." },
   ];
 
   const patients = [
-    { initials: "JP", name: "Julie P.", insight: "Fatigue professionnelle", time: "19:47", color: "#8b5cf6", status: "orange", active: true, trophy: false },
+    { initials: "JP", name: "Julie P.", insight: "Grignotage ce soir après journée sans repas", time: "19:47", color: "#8b5cf6", status: "orange", active: true, trophy: false },
     { initials: "TR", name: "Thomas R.", insight: "5 jours sans écart", time: "Hier", color: "#3b82f6", status: "green", active: false, trophy: true },
     { initials: "SM", name: "Sophie M.", insight: "Merci pour les conseils hier !", time: "Lun", color: "#f43f5e", status: "green", active: false, trophy: false },
     { initials: "MD", name: "Marc D.", insight: "Ça se passe bien cette semaine", time: "Mar", color: "#f59e0b", status: "green", active: false, trophy: false },
@@ -214,7 +214,7 @@ function StaticDashboard() {
                       <span style={{ fontSize: 11, fontWeight: 600, flex: 1, color: p.active ? "#f59e0b" : "#d1d5db", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
                       <span style={{ fontSize: 9, color: "#4b5563", flexShrink: 0 }}>{p.time}</span>
                     </div>
-                    <p style={{ margin: 0, fontSize: 10, color: "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 35, display: "flex", alignItems: "center", gap: 3 }}>
+                    <p style={{ margin: 0, fontSize: 10, color: p.trophy ? "#10b981" : "#6b7280", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginLeft: 35, display: "flex", alignItems: "center", gap: 3 }}>
                       {p.trophy && <span style={{ fontSize: 9 }}>🏆</span>}
                       <span style={{ fontStyle: "italic" }}>{p.insight}</span>
                     </p>
