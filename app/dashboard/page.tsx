@@ -1954,7 +1954,8 @@ function DashboardInner() {
     }
   };
 
-  const scrollToAlertMessage = (alert: { date?: string }) => {
+  const scrollToAlertMessage = (alert: { date?: string; trigger_message_id?: string }) => {
+    if (alert.trigger_message_id) { setPendingScrollMessageId(alert.trigger_message_id); return; }
     const conversations = displayedConversations;
     if (!conversations.length) return;
     const alertDate = alert.date ? new Date(alert.date).getTime() : Date.now();

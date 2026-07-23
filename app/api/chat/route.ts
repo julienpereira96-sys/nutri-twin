@@ -1997,9 +1997,9 @@ Max 150 mots. Sans markdown.`;
             const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string; notable?: boolean; victory?: string; action?: string; alert_type?: string; apaisement?: string };
             emotionalStatus = parsed.status;
             geminiNotable = parsed.notable === true;
-            // emotional_insight : uniquement si Gemini juge le moment cliniquement notable
-            // (ou si status non-vert — toujours pertinent pour le praticien)
-            if (geminiNotable || parsed.status !== "green") {
+            // emotional_insight : si notable, si status non-vert, ou si victoire détectée
+            // (une victoire sans notable:true reste un moment cliniquement significatif)
+            if (geminiNotable || parsed.status !== "green" || parsed.victory) {
               emotionalInsight = parsed.reason;
             }
             // Victoire : classificateur en priorité (contexte enrichi + règles précises),
@@ -2054,6 +2054,7 @@ Max 150 mots. Sans markdown.`;
         if (patientId) {
           await supabase.from("conversations").insert([
             {
+              id: userMsgId,
               patient_id: patientId,
               practitioner_id: practitionerId,
               role: "user",
