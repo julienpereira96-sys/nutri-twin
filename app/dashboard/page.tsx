@@ -458,12 +458,14 @@ const RED_CRITICAL_COLOR = "#ef4444";
 function getStatusColor(status?: string) {
   if (status === "red_critical") return RED_CRITICAL_COLOR;
   if (status === "red_behavioral") return ORANGE_BEHAVIORAL;
-  return emerald;
+  if (status === "green") return emerald;
+  return "#94a3b8"; // gris — jamais évalué (null en DB)
 }
 function getStatusEmoji(status?: string) {
   if (status === "red_critical") return "🔴";
   if (status === "red_behavioral") return "🟠";
-  return "🟢";
+  if (status === "green") return "🟢";
+  return "⚪"; // en attente de données
 }
 
 // ═══ SVG ICONS ═══
@@ -1113,7 +1115,7 @@ function DashboardInner() {
     const patientIds = relations.map((r) => r.patient_id as string);
 
     // Tenter d'exclure les patients test (colonne is_test peut ne pas exister avant migration)
-    const baseSelect = "user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, last_seen_at";
+    const baseSelect = "user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, victory_message_id, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, last_seen_at";
     let { data: patientsData, error: patientsError } = await supabase.from("patients").select(baseSelect).in("user_id", patientIds).or("is_test.is.null,is_test.eq.false");
     if (patientsError || !patientsData) {
       // Fallback : requête sans le filtre is_test (migration non encore appliquée)
@@ -1232,7 +1234,7 @@ function DashboardInner() {
         objective: p.objective, pathologies: p.pathologies, allergies: p.allergies,
         practitioner_instruction: (p.practitioner_instruction as { id: string; text: string; expires_at?: string | null; created_at: string }[] | null) ?? [],
         private_notes: (p.private_notes as { id: string; text: string; created_at: string }[] | null) ?? [],
-        emotional_status: p.emotional_status ?? "green", emotional_insight: p.emotional_insight ?? "",
+        emotional_status: p.emotional_status ?? undefined, emotional_insight: p.emotional_insight ?? "",
         created_at: p.created_at,
         latest_victory: p.latest_victory ?? "",
         victory_detected_at: (p as { victory_detected_at?: string | null }).victory_detected_at ?? null,
@@ -1277,7 +1279,7 @@ function DashboardInner() {
       initials: `${p.first_name?.[0] ?? ""}${p.last_name?.[0] ?? ""}`.toUpperCase(),
       avatarColor: AVATAR_COLORS[i % AVATAR_COLORS.length], email: p.email ?? "",
       lastMessage: "", lastMessageTime: "", lastMessageRole: "", totalMessages: 0,
-      emotional_status: p.emotional_status ?? "green", emotional_insight: p.emotional_insight ?? "",
+      emotional_status: p.emotional_status ?? undefined, emotional_insight: p.emotional_insight ?? "",
       latest_victory: p.latest_victory ?? "", victory_detected_at: p.victory_detected_at ?? null,
       sharing_status: "shared", cabinet_id: cabinetId, created_at: p.created_at,
     }));
@@ -1302,7 +1304,7 @@ function DashboardInner() {
     if (!relations || relations.length === 0) { setPatients([]); setSelectedPatientId(null); setTestPatientsLoading(false); return; }
     const patientIds = relations.map(r => r.patient_id as string);
 
-    const baseSelect = "user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, is_test, motivation, defi, notes, aliments_detestes";
+    const baseSelect = "user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, victory_message_id, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, is_test, motivation, defi, notes, aliments_detestes";
     let { data: testPatients, error: testError } = await supabase
       .from("patients")
       .select(baseSelect)
@@ -1357,7 +1359,7 @@ function DashboardInner() {
       practitioner_instruction: (p.practitioner_instruction as RealPatient["practitioner_instruction"]) ?? [],
       private_notes: (p.private_notes as RealPatient["private_notes"]) ?? [],
       admin_alerts: (p.admin_alerts as RealPatient["admin_alerts"]) ?? [],
-      emotional_status: (p.emotional_status as string) ?? "green",
+      emotional_status: (p.emotional_status as string) ?? undefined,
       emotional_insight: (p.emotional_insight as string) ?? "",
       red_behavioral_until: (p.red_behavioral_until as string) ?? null,
       last_patient_message_at: (p.last_patient_message_at as string) ?? null,
@@ -1599,7 +1601,7 @@ function DashboardInner() {
       const [{ data: fresh }, { data: freshSos }] = await Promise.all([
         supabase
           .from("patients")
-          .select("user_id, admin_alerts, emotional_status, emotional_insight, latest_victory, victory_detected_at, last_seen_at, last_patient_message_at")
+          .select("user_id, admin_alerts, emotional_status, emotional_insight, latest_victory, victory_detected_at, victory_message_id, last_seen_at, last_patient_message_at")
           .in("user_id", ids),
         supabase
           .from("sos_events")
@@ -1617,7 +1619,7 @@ function DashboardInner() {
         sosResolvedMap.set(pid, (sosResolvedMap.get(pid) ?? 0) + 1);
       }
       setPatients(prev => prev.map(p => {
-        const f = (fresh as { user_id: string; admin_alerts?: object[]; emotional_status?: string; emotional_insight?: string; latest_victory?: string; victory_detected_at?: string | null; last_seen_at?: string | null; last_patient_message_at?: string | null }[]).find(d => d.user_id === p.id);
+        const f = (fresh as { user_id: string; admin_alerts?: object[]; emotional_status?: string; emotional_insight?: string; latest_victory?: string; victory_detected_at?: string | null; victory_message_id?: string | null; last_seen_at?: string | null; last_patient_message_at?: string | null }[]).find(d => d.user_id === p.id);
         if (!f) return p;
         // Recalculer lastActive : max entre valeur existante + nouvelles colonnes temps-réel
         const candidates = [p.lastActive, f.last_seen_at, f.last_patient_message_at].filter((d): d is string => !!d);
@@ -1628,6 +1630,7 @@ function DashboardInner() {
           emotional_insight: f.emotional_insight ?? p.emotional_insight,
           latest_victory: f.latest_victory ?? p.latest_victory,
           victory_detected_at: f.victory_detected_at ?? p.victory_detected_at,
+          victory_message_id: f.victory_message_id ?? p.victory_message_id,
           lastActive: newLastActive ?? p.lastActive,
           sosResolved: sosResolvedMap.has(p.id) ? sosResolvedMap.get(p.id)! : p.sosResolved,
         };
@@ -3064,7 +3067,7 @@ function DashboardInner() {
                             🏆 {selectedPatient.firstName} · {selectedPatient.latest_victory}
                           </span>
                           <button
-                            onClick={() => scrollToVictoryMessage(selectedPatient.victory_detected_at ?? undefined)}
+                            onClick={() => { if (selectedPatient.victory_message_id) { setPendingScrollMessageId(selectedPatient.victory_message_id); } else { scrollToVictoryMessage(selectedPatient.victory_detected_at ?? undefined); } }}
                             style={{ fontSize: 11, fontWeight: 600, color: emerald, background: "none", border: "none", cursor: "pointer", textDecoration: "underline", padding: 0, whiteSpace: "nowrap" }}>
                             Aller au message
                           </button>
@@ -3366,7 +3369,7 @@ function DashboardInner() {
                     <div style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 20, padding: "4px 12px", background: `${getStatusColor(selectedPatient.emotional_status)}15`, border: `1px solid ${getStatusColor(selectedPatient.emotional_status)}30` }}>
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: getStatusColor(selectedPatient.emotional_status), display: "inline-block", flexShrink: 0 }} />
                       <span style={{ fontSize: 11, fontWeight: 600, color: getStatusColor(selectedPatient.emotional_status), filter: discretMode ? "blur(4px)" : "none" }}>
-                        {selectedPatient.emotional_insight || (selectedPatient.emotional_status === "green" ? "Adhésion positive" : selectedPatient.emotional_status === "orange" ? "Vigilance modérée" : "Attention requise")}
+                        {selectedPatient.emotional_insight || (!selectedPatient.emotional_status ? "En attente de données" : selectedPatient.emotional_status === "green" ? "Adhésion positive" : selectedPatient.emotional_status === "orange" ? "Vigilance modérée" : "Attention requise")}
                       </span>
                     </div>
                   </div>
@@ -3886,11 +3889,11 @@ function DashboardInner() {
             {displayedPatients.length === 0 ? (
               <p style={{ textAlign: "center", color: "#64748b", marginTop: 60 }}>Aucun patient</p>
             ) : (() => {
-              // Tri strict : red_critical > red_behavioral > green
+              // Tri : red_critical > red_behavioral > green > en attente (null)
               const sorted = [...displayedPatients].sort((a, b) => {
                 const order: Record<string, number> = { red_critical: 0, red_behavioral: 1, green: 2 };
-                const ao = order[a.emotional_status ?? "green"] ?? 4;
-                const bo = order[b.emotional_status ?? "green"] ?? 4;
+                const ao = a.emotional_status ? (order[a.emotional_status] ?? 3) : 3;
+                const bo = b.emotional_status ? (order[b.emotional_status] ?? 3) : 3;
                 if (ao !== bo) return ao - bo;
                 // À égalité de statut, ceux avec victoire fraîche avant ceux sans
                 if (isVictoryFresh(a) && !isVictoryFresh(b)) return -1;
@@ -3905,7 +3908,7 @@ function DashboardInner() {
                     if (vueEnsembleFilter === "tous") return true;
                     if (vueEnsembleFilter === "alertes") return p.emotional_status === "red_critical" || p.emotional_status === "red_behavioral";
                     if (vueEnsembleFilter === "victoires") return isVictoryFresh(p) && p.emotional_status === "green";
-                    if (vueEnsembleFilter === "ras") return p.emotional_status === "green" && !isVictoryFresh(p);
+                    if (vueEnsembleFilter === "ras") return (!p.emotional_status || p.emotional_status === "green") && !isVictoryFresh(p);
                     return true;
                   });
 

@@ -1901,15 +1901,17 @@ Max 150 mots. Sans markdown.`;
         let emotionalInsight = "";
         let victoryText = "";
         let apaisementConfirme = false;
+        let geminiNotable = false;
         let adminAlert: { action?: string; alert_type?: string } = {};
         const statusMatch = fullText.match(/\|\|\|([\s\S]*?)\|\|\|/);
         if (statusMatch) {
           try {
             const parsed = JSON.parse(statusMatch[1]) as { status: string; reason: string; notable?: boolean; victory?: string; action?: string; alert_type?: string; apaisement?: string };
             emotionalStatus = parsed.status;
+            geminiNotable = parsed.notable === true;
             // emotional_insight : uniquement si Gemini juge le moment cliniquement notable
             // (ou si status non-vert — toujours pertinent pour le praticien)
-            if (parsed.notable === true || parsed.status !== "green") {
+            if (geminiNotable || parsed.status !== "green") {
               emotionalInsight = parsed.reason;
             }
             // Victoire : classificateur en priorité (contexte enrichi + règles précises),
@@ -1982,17 +1984,22 @@ Max 150 mots. Sans markdown.`;
           void incrementDailyMessageCount(patientId);
 
           // ═══ BRIDAGE emotional_status — uniquement sur événements majeurs ═══
-          // Ne jamais écrire emotional_status pour les messages de routine (green stable).
-          // Seuls changements légitimes :
-          //   1) Crise détectée → red_critical ou red_behavioral
-          //   2) Résolution apaisement → green (depuis red_behavioral)
-          // NOTE : on NE remet JAMAIS au vert juste parce que Gemini renvoie "green" sur un
-          // message banal. red_behavioral est "sticky" jusqu'à apaisement explicite (signal
-          // Gemini + classificateur) ou action praticien (Marquer comme vu / LeverAlerte).
+          // Changements légitimes :
+          //   1) Crise → red_critical ou red_behavioral
+          //   2) Résolution apaisement → green (depuis red_behavioral uniquement)
+          //   3) Signal positif notable → green (seulement si pas en rouge : le rouge reste
+          //      "sticky" jusqu'à apaisement explicite ou action praticien)
+          const isGreenNotable =
+            emotionalStatus === "green" &&
+            geminiNotable &&
+            currentEmotionalStatus !== "red_critical" &&
+            currentEmotionalStatus !== "red_behavioral";
+
           const isSignificantStatusChange =
             emotionalStatus === "red_critical" ||
             emotionalStatus === "red_behavioral" ||
-            shouldResolveApaisement;
+            shouldResolveApaisement ||
+            isGreenNotable;
 
           // Apaisement confirmé → identifier le sos_event "pending" le plus récent
           // (servira à le marquer "success" ET à évaluer la 🏆 auto ci-dessous)
