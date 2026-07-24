@@ -6055,13 +6055,13 @@ function DashboardInner() {
                     <p style={{ margin: "0 0 20px", fontSize: 13, color: "#64748b" }}>Les informations de base pour créer l&apos;espace de votre patient.</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                       <div>
-                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Email *</p>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Email <span style={{ color: "#f87171" }}>*</span></p>
                         <input type="email" value={inviteEmail} onChange={e => { setInviteEmail(e.target.value); setInviteError(""); }} placeholder="patient@email.fr"
                           style={{ width: "100%", height: 46, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 10 }}
                           onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
                           <div>
-                            <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Prénom</p>
+                            <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Prénom <span style={{ color: "#f87171" }}>*</span></p>
                             <input type="text" value={inviteFirstName} onChange={e => setInviteFirstName(e.target.value)} placeholder="Sophie"
                               style={{ width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 12px", fontSize: 14, outline: "none", boxSizing: "border-box" }}
                               onFocus={e => e.target.style.borderColor = emerald} onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
@@ -6512,7 +6512,7 @@ function DashboardInner() {
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div>
-                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Prénom *</p>
+                    <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Prénom <span style={{ color: "#f87171" }}>*</span></p>
                     <input type="text" value={addTestPatientForm.firstName}
                       onChange={e => setAddTestPatientForm(f => ({ ...f, firstName: e.target.value }))}
                       placeholder="Sophie"

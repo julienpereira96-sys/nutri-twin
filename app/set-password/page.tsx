@@ -216,7 +216,7 @@ export default function SetPasswordPage() {
                   <input type="checkbox" checked={acceptData} onChange={e => setAcceptData(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#10b981]" />
                   <span className="text-xs leading-relaxed text-zinc-400">Je consens au traitement de mes données nutritionnelles pour mon accompagnement personnalisé. *</span>
                 </label>
-                <p className="text-[11px] text-zinc-200">* Champs obligatoires</p>
+                <p className="text-[11px] text-zinc-200"><span style={{ color: "#f87171" }}>*</span> Champs obligatoires</p>
               </div>
               {error && (
                 <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">

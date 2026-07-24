@@ -367,7 +367,7 @@ try {
 
               </label>
 
-              <p className="text-[11px] text-zinc-200">* Champ obligatoire</p>
+              <p className="text-[11px] text-zinc-200"><span style={{ color: "#f87171" }}>*</span> Champ obligatoire</p>
             </div>
           </div>
 
