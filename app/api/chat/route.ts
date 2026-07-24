@@ -192,6 +192,7 @@ type ChatRequest = {
   origin?: "crise" | "pratique"; // forcé par le client (ex: bibliothèque d'exercices → toujours "pratique")
   isPostExercise?: boolean; // follow-up chaud post-exercice — bypass total des effets de bord
   toolId?: string; // outil SOS utilisé (breathing, ancrage, etc.) — transmis avec isPostExercise
+  timezone?: string; // fuseau horaire du client (ex: "Europe/Paris") — pour dateCtx correct
   isSosIntakeCheck?: boolean; // check de crise en arrière-plan sur l'intake vocal de SOSExercise
   // Vrai uniquement sur le dernier appel isSosIntakeCheck (depuis enterReadyPhase,
   // sur le transcript complet figé). Autorise l'écriture de emotional_insight —
@@ -1105,6 +1106,7 @@ export async function POST(request: Request) {
       toolId,
       isSosIntakeCheck,
       isFinalIntake,
+      timezone,
     } = await request.json() as ChatRequest;
 
     // Auth — toujours requise, que patientId soit présent ou non
@@ -1934,8 +1936,10 @@ Max 150 mots. Sans markdown.`;
           : "";
 
       // Repère temporel — injecté dans chaque tour utilisateur (jamais dans le cache).
+      // On utilise le timezone envoyé par le client pour éviter le décalage UTC serveur.
       const now = new Date();
-      const dateCtx = `[Contexte : ${now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}, ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}]\n\n`;
+      const tz = timezone && timezone.length < 50 ? timezone : "Europe/Paris";
+      const dateCtx = `[Contexte : ${now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: tz })}, ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: tz })}]\n\n`;
 
       // Layer 3 — Few-shot dynamique : situation la plus proche du message patient.
       // Injecté seulement si un match de confiance existe (similarité > 0.55) et qu'on

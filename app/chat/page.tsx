@@ -1497,7 +1497,7 @@ export default function ChatPage() {
     streamDoneRef.current = false;
 
     try {
-      const body: Record<string, string | undefined> = { message: trimmed || "Analyse cette photo", patientId: patientId ?? undefined, practitionerId: practitionerIdFromDb ?? undefined, sessionId: currentSessionId ?? undefined };
+      const body: Record<string, string | undefined> = { message: trimmed || "Analyse cette photo", patientId: patientId ?? undefined, practitionerId: practitionerIdFromDb ?? undefined, sessionId: currentSessionId ?? undefined, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone };
       if (img) { body.imageBase64 = img.base64; body.imageMimeType = img.mimeType; }
       const res = await tFetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: abortControllerRef.current.signal });
       if (!res.ok) {
@@ -1536,20 +1536,50 @@ export default function ChatPage() {
       // ─── Stream : RAF typewriter — découple réception et affichage ───
       const reader = res.body.getReader(); const decoder = new TextDecoder(); let fullText = "";
 
-      // Tick RAF : avance l'affichage de N chars/frame (≈3 en live, 6 en rattrapage)
-      const tick = () => {
+      // Tick RAF : typewriter timestamp-based avec pauses à la ponctuation
+      // Rattrapage (stream déjà fini) → affichage instantané
+      let lastTickTime = performance.now();
+      const CHAR_DELAY_MS = 15;   // délai de base par caractère
+      const JITTER_MS     = 4;    // variation aléatoire ±
+      const PAUSE_CLAUSE  = 60;   // virgule, point-virgule, deux-points
+      const PAUSE_SENTENCE = 140; // point, !, ?, saut de ligne
+
+      const charPause = (ch: string): number => {
+        if (".!?\n".includes(ch)) return PAUSE_SENTENCE;
+        if (",;:".includes(ch))   return PAUSE_CLAUSE;
+        return CHAR_DELAY_MS + (Math.random() * JITTER_MS * 2 - JITTER_MS);
+      };
+
+      const tick = (now: number) => {
         const target = targetTextRef.current;
-        const cur = displayedLenRef.current;
+        const cur    = displayedLenRef.current;
+
         if (cur < target.length) {
-          const speed = streamDoneRef.current ? 8 : 4;
-          const next = Math.min(cur + speed, target.length);
-          displayedLenRef.current = next;
-          setMessages(prev => {
-            const u = [...prev];
-            if (u[assistantIndex]) u[assistantIndex] = { ...u[assistantIndex], content: target.slice(0, next) };
-            return u;
-          });
+          if (streamDoneRef.current) {
+            // Rattrapage : tout afficher d'un coup
+            displayedLenRef.current = target.length;
+            setMessages(prev => {
+              const u = [...prev];
+              if (u[assistantIndex]) u[assistantIndex] = { ...u[assistantIndex], content: target };
+              return u;
+            });
+          } else {
+            // Streaming en cours : avancer caractère par caractère avec délai
+            const elapsed = now - lastTickTime;
+            const delay = charPause(target[cur] ?? "");
+            if (elapsed >= delay) {
+              lastTickTime = now;
+              const next = cur + 1;
+              displayedLenRef.current = next;
+              setMessages(prev => {
+                const u = [...prev];
+                if (u[assistantIndex]) u[assistantIndex] = { ...u[assistantIndex], content: target.slice(0, next) };
+                return u;
+              });
+            }
+          }
         }
+
         if (!streamDoneRef.current || displayedLenRef.current < targetTextRef.current.length) {
           typewriterRafRef.current = requestAnimationFrame(tick);
         } else {
