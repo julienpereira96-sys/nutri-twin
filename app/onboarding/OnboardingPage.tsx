@@ -18,6 +18,17 @@ type Question = {
 };
 
 const questions: Question[] = [
+  // BLOC 0 — PRÉSENTATION
+  {
+    id: "presentation",
+    block: "Présentation",
+    label: "Racontez-nous qui vous êtes en tant que praticien.",
+    sublabel: "Parcours, spécialité, ce qui vous anime, votre façon d'être avec vos patients...",
+    type: "free",
+    placeholder: "Exemple : Je suis nutritionniste depuis 10 ans, spécialisée dans l'accompagnement des troubles du comportement alimentaire. Ce qui m'anime, c'est d'aider mes patients à retrouver une relation apaisée avec l'alimentation, sans frustration ni règles rigides...",
+    optional: true,
+  },
+
   // BLOC 1 — IDENTITÉ & CARACTÈRE
   { id: "tone_of_voice", block: "Identité & Caractère", label: "Quelle posture relationnelle votre jumeau doit-il adopter ?", sublabel: "Le ton qu'il devra adopter par défaut avec vos patients", type: "single_with_free", options: ["Le Médical : factuel, précis, sobre, sans émojis", "Le Coach : énergique, motivant, direct, ça bouge", "Le Complice : chaleureux, empathique, très humain", "Le Pédagogue : explique, vulgarise, rassure", "Autre (Précisez...)"] },
   { id: "tutoiement", block: "Identité & Caractère", label: "Votre jumeau doit-il tutoyer ou vouvoyer vos patients ?", type: "single", options: ["Vouvoiement strict", "Vouvoiement bienveillant", "Tutoiement naturel", "Il s'adapte selon le patient"] },
@@ -69,7 +80,7 @@ const questions: Question[] = [
   { id: "situation_arret", block: "Mises en situation", label: "Un patient veut voler de ses propres ailes :", sublabel: '"Je me sens vraiment bien depuis 2 mois. J\'ai retrouvé un équilibre qui me convient, je me pèse plus, je stresse plus à table. Est-ce qu\'on a encore besoin de continuer les séances ou je peux y aller seul(e) maintenant ?"', type: "free", placeholder: "Vous auriez répondu quoi ?" },
 ];
 
-const BLOCKS = ["Identité & Caractère", "Philosophie Nutritionnelle", "Gestion Humaine & Émotions", "Sécurité & Limites", "Mises en situation", "Votre Expertise"];
+const BLOCKS = ["Présentation", "Identité & Caractère", "Philosophie Nutritionnelle", "Gestion Humaine & Émotions", "Sécurité & Limites", "Mises en situation", "Votre Expertise"];
 const AUTRE_OPTION = "Autre (Précisez...)";
 
 const NoteIcon = () => (

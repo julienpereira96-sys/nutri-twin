@@ -1,6 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { Redis } from "@upstash/redis";
 import { getSessionUser, unauthorized, forbidden } from "@/lib/api-auth";
+import {
+  generateProfileSummary,
+  generateSituationEmbeddings,
+} from "@/lib/practitioner-profile";
 
 export async function POST(request: Request) {
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -43,28 +47,31 @@ export async function POST(request: Request) {
   
   // Validation server-side des answers
   const ALLOWED_KEYS = [
+    // Bloc 0 — Présentation
+    "presentation",
     // Bloc 1 — Identité & Caractère
     "tone_of_voice","tutoiement","technicite","longueur_reponses","emojis",
     // Bloc 2 — Philosophie Nutritionnelle
-    "approche_generale","pathologies","position_regimes","position_glucides",
-    "position_jeune","position_complements","position_petit_dejeuner",
-    "sensibilite_budget","orientation_produits","jamais_dire","conviction",
+    "approche_generale","pathologies","dimension_emotionnelle",
+    "position_regimes","position_glucides","position_jeune","position_complements",
+    "position_petit_dejeuner","sensibilite_budget","orientation_produits",
+    "jamais_dire","conviction",
     // Bloc 3 — Gestion Humaine & Émotions
     "alimentation_emotionnelle","non_suivi","fetes_vacances",
     "levier_motivation","profil_perfectionniste","adaptation_profil",
+    "gestion_culpabilite","vocabulaire_crise",
     // Bloc 4 — Sécurité & Limites
     "perimetre","questions_medicales","urgence_detresse","ligne_rouge",
     // Ma Vision & Ma Signature (injection directe, pas RAG)
     "vision","signature",
-    // Mises en situation
-    "situation_craquage","situation_stagnation","situation_abandon",
+    // Mises en situation (toutes, y compris les 4 précédemment manquantes)
+    "situation_craquage","situation_avant_crise","situation_stagnation","situation_abandon",
     "situation_prediabete","situation_alcool","situation_marketing","situation_drastique",
-    "situation_flemme","situation_coup_dur",
-    "situation_victoire","situation_arret",
+    "situation_flemme","situation_coup_dur","situation_victoire","situation_arret",
   ];
 
   // Vision et Signature peuvent être des textes longs
-  const LONG_TEXT_KEYS = new Set(["vision","signature","ligne_rouge","jamais_dire","conviction"]);
+  const LONG_TEXT_KEYS = new Set(["presentation","vision","signature","ligne_rouge","jamais_dire","conviction"]);
 
   const sanitizedAnswers: Record<string, string> = {};
   for (const [key, value] of Object.entries(answers)) {
@@ -96,11 +103,29 @@ export async function POST(request: Request) {
           url: process.env.UPSTASH_REDIS_REST_URL!,
           token: process.env.UPSTASH_REDIS_REST_TOKEN!,
         });
+        // Invalider les caches existants
         await redis.del(`practitioner:${userId}`);
         await redis.del(`patient_profile:${userId}`);
         await redis.incr(`pract_v:${userId}`);
+
+        // Générer en parallèle : résumé de profil (LLM) + embeddings de situations.
+        // Le résumé remplace les champs bruts dans le system prompt caché.
+        // Les embeddings permettent la sélection few-shot dynamique au runtime.
+        // Les deux sont des optimisations — silencieux en cas d'échec.
+        const [profileSummary] = await Promise.all([
+          generateProfileSummary(sanitizedAnswers).catch(() => ""),
+          generateSituationEmbeddings(sanitizedAnswers, userId, redis).catch(() => {}),
+        ]);
+
+        // Stocker le résumé dans la table si non vide
+        if (profileSummary) {
+          await supabase
+            .from("practitioner_profiles")
+            .update({ profile_summary: profileSummary })
+            .eq("user_id", userId);
+        }
       } catch {
-        // Silencieux
+        // Silencieux — la sauvegarde du profil est déjà confirmée
       }
     }
 

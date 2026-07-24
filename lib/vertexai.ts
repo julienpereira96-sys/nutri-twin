@@ -101,6 +101,32 @@ export async function vertexGenerateMultipart(
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
 }
 
+/** Compute text embeddings via text-multilingual-embedding-002 (EU, europe-west1).
+ *  Accepts up to 250 texts per call — all batched in a single API request.
+ *  Returns one embedding vector per input text (same order). */
+export async function vertexEmbed(texts: string[]): Promise<number[][]> {
+  if (texts.length === 0) return [];
+  const token = await getVertexToken();
+  // Embeddings use a regional endpoint (not the multiregion EU host used for generation).
+  const url = `https://europe-west1-aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT}/locations/europe-west1/publishers/google/models/text-multilingual-embedding-002:predict`;
+  const body = {
+    instances: texts.map((content) => ({ task_type: "SEMANTIC_SIMILARITY", content })),
+  };
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Vertex Embed ${res.status}: ${await res.text()}`);
+  const data = await res.json() as {
+    predictions?: { embeddings?: { values?: number[] } }[];
+  };
+  return (data.predictions ?? []).map((p) => p.embeddings?.values ?? []);
+}
+
 /** Streaming generateContent — yields text chunks via Server-Sent Events */
 export async function* vertexStreamGenerate(
   modelId: string,

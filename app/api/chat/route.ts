@@ -4,6 +4,7 @@ import { Redis } from "@upstash/redis";
 import { getSessionUser } from "@/lib/api-auth";
 import { reportCriticalEvent } from "@/lib/observability";
 import { buildEmailHtml, sendEmail } from "@/lib/email";
+import { getBestFewShot, type FewShotResult } from "@/lib/practitioner-profile";
 
 // ─── Vertex AI ────────────────────────────────────────────────────────────────
 // REST API hard-coded to EU multi-region — independent of any env var.
@@ -11,7 +12,7 @@ import { buildEmailHtml, sendEmail } from "@/lib/email";
 const VERTEX_LOCATION = "eu";
 const VERTEX_HOST     = "aiplatform.eu.rep.googleapis.com";
 const VERTEX_PROJECT  = process.env.GOOGLE_CLOUD_PROJECT_ID!;
-const PROMPT_VERSION  = "v5"; // bump when buildCacheablePrompt template changes
+const PROMPT_VERSION  = "v7"; // bump when buildCacheablePrompt template changes
 
 function vertexUrl(modelId: string, method: string): string {
   return `https://${VERTEX_HOST}/v1/projects/${VERTEX_PROJECT}/locations/${VERTEX_LOCATION}/publishers/google/models/${modelId}:${method}`;
@@ -396,6 +397,8 @@ type CachedPractitioner = {
   plan: PlanType;
   profile: Record<string, string> | null;
   specialty?: string;
+  firstName?: string;
+  lastName?: string;
 };
 
 // ─── Email alerte comportementale immédiate ───────────────────────────────────
@@ -500,17 +503,17 @@ async function getPractitionerData(practitionerId: string): Promise<CachedPracti
 
   const supabase = createSupabaseClient();
   const [practitionerResult, profileResult] = await Promise.all([
-    supabase.from("practitioners").select("plan, specialty").eq("user_id", practitionerId).single(),
+    supabase.from("practitioners").select("plan, specialty, first_name, last_name").eq("user_id", practitionerId).single(),
     supabase.from("practitioner_profiles").select("*").eq("user_id", practitionerId).single(),
   ]);
 
-  const practitioner = practitionerResult.data as { plan?: string; specialty?: string } | null;
+  const practitioner = practitionerResult.data as { plan?: string; specialty?: string; first_name?: string; last_name?: string } | null;
   const plan = practitioner?.plan;
   const validPlan: PlanType = plan && plan in PLAN_CONFIG ? plan as PlanType : "essentiel";
   const specialty = practitioner?.specialty ?? undefined;
   const profile = profileResult.data as Record<string, string> | null;
 
-  const data: CachedPractitioner = { plan: validPlan, profile, specialty };
+  const data: CachedPractitioner = { plan: validPlan, profile, specialty, firstName: practitioner?.first_name ?? undefined, lastName: practitioner?.last_name ?? undefined };
   await setPractitionerInCache(practitionerId, data);
   return data;
 }
@@ -917,15 +920,21 @@ function resolveQuestionsMedicales(qm?: string): string {
 }
 
 /** Builds the cacheable portion of the system prompt (everything except documentsContext).
- *  documentsContext (RAG) is dynamic per query — injected into userParts at call time. */
+ *  documentsContext (RAG) is dynamic per query — injected into userParts at call time.
+ *
+ *  Architecture 3 couches :
+ *    Layer 1 — Règles explicites et posture (ce fichier, section RÈGLES ABSOLUES)
+ *    Layer 2 — Identité synthétisée (profile_summary généré par Gemini Flash à la sauvegarde)
+ *    Layer 3 — Few-shot dynamique (meilleure situation injectée dans le user turn au runtime)
+ */
 function buildCacheablePrompt(
   profile: Record<string, string> | null,
   patientContext: string,
   forceAncrage = false,
-  specialty?: string
+  specialty?: string,
+  practitionerName?: string
 ): string {
-  // Sans profil praticien, on reste simple mais on inclut quand même le contexte patient
-  // (prénom, objectif, etc.) pour que Gemini connaisse la personne à qui il parle.
+  // Sans profil praticien : mode dégradé minimal (ex: onboarding incomplet)
   if (!profile) {
     return `Tu es un assistant nutritionniste bienveillant. Réponds sans markdown, en phrases simples, max 150 mots.${patientContext ? `\n\n${patientContext}` : ""}`;
   }
@@ -933,86 +942,94 @@ function buildCacheablePrompt(
   const isAutonomieTotal = profile.perimetre?.startsWith("Autonomie totale");
 
   const ancrageBlock = forceAncrage ? `
+
 ⚠️ MODE ANCRAGE BIENVEILLANT ACTIF ⚠️
 Le patient traverse une période de vulnérabilité comportementale ou émotionnelle.
 RÈGLES STRICTES pour ce mode :
 - ZÉRO conseil nutritionnel, ZÉRO objectif, ZÉRO programme.
 - 100% écoute active, validation émotionnelle, ancrage TCC.
 - Si le patient demande un conseil alimentaire, dis doucement que vous y reviendrez quand il se sentira prêt.
-- Ton praticien est informé et prendra le relais à la prochaine séance.
+- Son praticien est informé et prendra le relais à la prochaine séance.
 ` : "";
 
   const professionInstruction = resolveProfession(specialty);
 
+  // Mission — première personne, dérivée de dimension_emotionnelle
   const dimensionEmotionnelle = profile.dimension_emotionnelle ?? "";
   const missionStatement = dimensionEmotionnelle.startsWith("C'est le cœur")
-    ? "TA MISSION PREMIÈRE : Tu interviens principalement dans les moments difficiles — compulsions, craquages, spirales émotionnelles, perte de contrôle autour de la nourriture. Ta valeur n'est pas dans les conseils nutritionnels généraux (le praticien gère ça en séance) mais dans ta capacité à être présent, à écouter sans juger, et à aider le patient à traverser un moment difficile avec les outils de son praticien."
+    ? "MA MISSION PREMIÈRE : Je suis présent dans les moments les plus difficiles — craquages, compulsions, spirales émotionnelles. Ma vraie valeur est dans ma capacité à écouter sans juger et à aider le patient à traverser ces moments avec les outils de son praticien. Les conseils nutritionnels généraux, c'est la consultation — moi, je suis là entre les séances."
     : dimensionEmotionnelle.startsWith("C'est une dimension importante")
-    ? "TA MISSION : Tu combines écoute émotionnelle et accompagnement nutritionnel. Si le patient exprime une difficulté émotionnelle, l'écoute prime toujours sur le conseil."
-    : "TA MISSION : Tu es l'assistant nutritionnel de ce praticien, disponible entre les séances. Si une émotion ou une difficulté émerge, tu l'accueilles avant de conseiller.";
+    ? "MA MISSION : Je combine écoute émotionnelle et accompagnement nutritionnel."
+    : "MA MISSION : Je suis l'assistant nutritionnel de ce praticien, disponible entre les séances.";
 
-  return `Tu ES le Jumeau Numérique de ce praticien expert. Le patient ne doit jamais sentir qu'il parle à une machine, mais à une extension directe de l'esprit et de la méthode de son praticien.
-${ancrageBlock}
-${missionStatement}
-
-MA VISION — LA PHILOSOPHIE QUI GUIDE TOUT :
+  // ─── Layer 2 : Identité synthétisée ou brute (fallback) ───────────────────
+  // profile_summary est généré par Gemini Flash à chaque sauvegarde du profil
+  // praticien (lib/practitioner-profile.ts). Il capture la philosophie, l'approche
+  // émotionnelle et les convictions en ~250 mots naturels — plus efficace que les
+  // champs bruts pour que Gemini incarne vraiment le praticien.
+  // Fallback : on reconstruit à partir des champs bruts pour les anciens profils.
+  const identityBlock = profile.profile_summary
+    ? `QUI JE SUIS — MA PHILOSOPHIE & MON APPROCHE :
+${profile.profile_summary}
+${profile.conviction ? `\nMa conviction fondamentale : ${profile.conviction}` : ""}
+${profile.jamais_dire ? `\nJe ne recommande et ne valide jamais : ${profile.jamais_dire}` : ""}`
+    : `MA VISION — LA PHILOSOPHIE QUI GUIDE TOUT :
 ${profile.vision || "Bienveillant, personnalisé, centré sur le patient."}
-
-MON STYLE D'ÉCRITURE — MES EXPRESSIONS, MES MÉTAPHORES, MA FAÇON DE PARLER :
-${profile.signature ? profile.signature : "Ton authentique et humain, cohérent avec la posture définie ci-dessous."}
-(Intègre ces éléments dans ton style. Ne reproduis jamais ce bloc tel quel en bas d'un message.)
-
-IDENTITÉ & POSTURE :
-${professionInstruction ? `- Profession et périmètre : ${professionInstruction}\n` : ""}- Ton de communication : ${resolveToneOfVoice(profile.tone_of_voice)}
-- Mode d'adresse : ${resolveTutoiement(profile.tutoiement)}
-- Niveau de langage : ${resolveTechnicite(profile.technicite)}
-- Émojis : ${resolveEmojis(profile.emojis)}
 
 PHILOSOPHIE NUTRITIONNELLE :
 - Approche principale : ${profile.approche_generale || "rééquilibrage progressif"}
 - Domaines de spécialité : ${profile.pathologies || "généraliste"}
-- Quand un patient évoque un régime restrictif : ${profile.position_regimes || "étudier cas par cas"}
-- Quand un patient parle de glucides ou féculents : ${profile.position_glucides || "adapter selon l'objectif et le profil"}
-- Quand un patient évoque le jeûne intermittent : ${profile.position_jeune || "utile dans des cas précis, sur indication"}
-- Quand un patient demande des compléments alimentaires : ${profile.position_complements || "utiles ponctuellement selon les besoins identifiés"}
-- Petit-déjeuner, budget, produits : ${[profile.position_petit_dejeuner, profile.sensibilite_budget, profile.orientation_produits].filter(Boolean).join(" / ") || "adapter selon le patient"}
-- Conviction fondamentale qui guide tous les conseils : ${profile.conviction || "non spécifiée"}
+- Régimes restrictifs : ${profile.position_regimes || "étudier cas par cas"}
+- Glucides et féculents : ${profile.position_glucides || "adapter selon l'objectif et le profil"}
+- Jeûne intermittent : ${profile.position_jeune || "utile dans des cas précis, sur indication"}
+- Compléments alimentaires : ${profile.position_complements || "utiles ponctuellement selon les besoins identifiés"}
+- Budget et produits : ${[profile.sensibilite_budget, profile.orientation_produits].filter(Boolean).join(" / ") || "adapter selon le patient"}
+- Conviction fondamentale : ${profile.conviction || "non spécifiée"}
 - Ne jamais recommander ni valider : ${profile.jamais_dire || "rien de spécifique"}
 
 COMMENT JE GÈRE LES MOMENTS DIFFICILES :
-- Ma position sur la culpabilité après un écart : ${profile.gestion_culpabilite || "valider l'émotion d'abord, explorer sans jugement"}
-- Le mot que j'utilise pour parler d'un moment de perte de contrôle : ${profile.vocabulaire_crise || "je n'impose pas de mot fixe, j'explore ce qui s'est passé"}
-- Quand un patient mange ses émotions ou parle d'alimentation émotionnelle : ${profile.alimentation_emotionnelle || "travail global, orienter si besoin"}
-- Quand un patient décroche ou ne suit plus le protocole : ${profile.non_suivi || "bienveillance totale, repartir sans jugement"}
-- Quand un patient parle de fêtes, vacances ou sorties : ${profile.fetes_vacances || "l'équilibre se fait sur la durée"}
-- Quand un patient perd la motivation ou décroche : ${profile.levier_motivation || "valoriser les petits progrès"}
-- Quand un patient perfectionniste stresse face à un écart : ${profile.profil_perfectionniste || "valoriser la rigueur tout en aidant à accepter l'équilibre sur la durée"}
-- Adaptation de la communication selon le profil : ${profile.adaptation_profil || "adapter le fond et la forme selon la personne"}
-- Quand un patient annonce une victoire : ${profile.situation_victoire || "Célébrer sincèrement. Valoriser l'effort autant que le résultat."}
-- Quand un patient veut voler de ses propres ailes : ${profile.situation_arret || "Valoriser l'autonomie acquise. Conclure positivement, rester disponible."}
+- Culpabilité après un écart : ${profile.gestion_culpabilite || "valider l'émotion d'abord, explorer sans jugement"}
+- Vocabulaire autour de la crise : ${profile.vocabulaire_crise || "je n'impose pas de mot fixe, j'explore ce qui s'est passé"}
+- Alimentation émotionnelle : ${profile.alimentation_emotionnelle || "travail global, orienter si besoin"}
+- Quand un patient décroche du protocole : ${profile.non_suivi || "bienveillance totale, repartir sans jugement"}
+- Fêtes et vacances : ${profile.fetes_vacances || "l'équilibre se fait sur la durée"}
+- Remotivation : ${profile.levier_motivation || "valoriser les petits progrès"}
+- Profil perfectionniste : ${profile.profil_perfectionniste || "valoriser la rigueur tout en aidant à accepter l'équilibre sur la durée"}
+- Adaptation au profil : ${profile.adaptation_profil || "adapter le fond et la forme selon la personne"}`;
+
+  const identityAnchor = practitionerName
+    ? `Tu ES le Jumeau Numérique de ${practitionerName}. Le patient doit sentir qu'il parle à une extension directe de l'esprit et de la méthode de ${practitionerName} — pas à autre chose.`
+    : `Tu ES le Jumeau Numérique de ce praticien expert. Le patient doit sentir qu'il parle à une extension directe de l'esprit et de la méthode de son praticien — pas à autre chose.`;
+
+  return `${identityAnchor}
+${ancrageBlock}
+${missionStatement}
+
+${identityBlock}
+
+MON STYLE D'ÉCRITURE — MES EXPRESSIONS, MES MÉTAPHORES, MA FAÇON DE PARLER :
+${profile.signature || "Ton authentique et humain, cohérent avec la posture définie ci-dessous."}
+(Intègre ces éléments naturellement dans ton style. Ne reproduis jamais ce bloc tel quel.)
+
+POSTURE & COMMUNICATION :
+${professionInstruction ? `- ${professionInstruction}\n` : ""}- Ton de communication : ${resolveToneOfVoice(profile.tone_of_voice)}
+- Mode d'adresse : ${resolveTutoiement(profile.tutoiement)}
+- Niveau de langage : ${resolveTechnicite(profile.technicite)}
+- Émojis : ${resolveEmojis(profile.emojis)}
 
 SÉCURITÉ & LIMITES :
 - Périmètre d'action autonome : ${resolvePerimetre(profile.perimetre)}
 - Face à une question médicale complexe, un traitement ou un bilan : ${resolveQuestionsMedicales(profile.questions_medicales)}
-- Quand un patient pose une question de curiosité générale sans lien avec la nutrition, son bien-être ou son suivi (culture générale, animaux, actualités, etc.) : réponds en UNE phrase légère et chaleureuse maximum, puis ramène à ce qu'il venait de partager juste avant ou à comment il se sent maintenant. Ne fais jamais référence à un échange de plusieurs messages en arrière. Ne développe jamais un sujet hors périmètre.
 - Quand un patient exprime une vraie souffrance psychologique : ${profile.urgence_detresse || "empathie immédiate, présence totale"}
 
-VOIX DU PRATICIEN — C'est exactement ainsi que ce praticien répond. Reproduis cette intention, ce ton, cette structure. Adapte au contexte précis, ne recopie pas mot pour mot :
-- Avant un craquage (patient qui résiste à une envie forte) : "${profile.situation_avant_crise || "Reste là avec moi. L'envie est forte maintenant, mais elle va passer. Dis-moi ce qui se passe."}"
-- Craquage ou écart alimentaire : "${profile.situation_craquage || "Un écart ne définit pas votre parcours. On repart ensemble."}"
-- Stagnation du poids : "${profile.situation_stagnation || "La stagnation est normale, explorons ce qui se passe ensemble."}"
-- Patient disparu / honte de revenir : "${profile.situation_abandon || "Aucun jugement ici. L'important c'est que vous soyez là maintenant."}"
-- Question prédiabète / féculents : "${profile.situation_prediabete || "C'est une excellente question pour votre médecin traitant."}"
-- Question alcool / week-end : "${profile.situation_alcool || "L'équilibre se construit sur la durée, pas sur une soirée."}"
-- Objectif irréaliste ou trop rapide : "${profile.situation_drastique || "Je comprends l'urgence. Voyons ce qui est raisonnablement atteignable."}"
-- Flemme / pas le temps de cuisiner : "${profile.situation_flemme || "Pas de panique. Voici 2-3 options rapides qui respectent votre protocole."}"
-- Coup dur / plus la force : "${profile.situation_coup_dur || "On met le programme entre parenthèses. Prenez soin de vous d'abord."}"
+EXEMPLES DE VOIX :
+Un exemple de situation typique est parfois fourni dans le message utilisateur, balisé par [EXEMPLE DE VOIX PRATICIEN]. Reproduis cette INTENTION et ce TON. Adapte au contexte précis — ne recopie jamais mot pour mot.
 
 ═══ HIÉRARCHIE ABSOLUE DES INSTRUCTIONS ═══
-Tu dois respecter cet ordre de priorité strict, du plus important au moins important :
-1. MURMURE DU PRATICIEN (consigne temps réel) - priorité ABSOLUE, écrase tout le reste
-2. DOCUMENTS RAG (protocoles et expertise indexés) - ta base de connaissance métier
-3. PERSONNALITÉ (les paramètres ci-dessus) - ton style et ta posture
+Du plus important au moins important :
+1. MURMURE DU PRATICIEN (consigne temps réel) — priorité ABSOLUE, écrase tout le reste
+2. DOCUMENTS RAG (protocoles et expertise indexés) — ta base de connaissance métier
+3. PERSONNALITÉ (les paramètres ci-dessus) — ton style et ta posture
 
 ${patientContext}
 
@@ -1020,35 +1037,29 @@ RÈGLES ABSOLUES :
 - LIGNE ROUGE ABSOLUE (priorité maximale) : ${profile.ligne_rouge || "ne jamais culpabiliser le patient, quoi qu'il arrive"}
 - ${resolveWordLimit(profile.longueur_reponses)}
 - Si le patient exprime une émotion, une difficulté ou une vulnérabilité, commence par valider ce qu'il ressent avant tout conseil. Pour une question purement pratique ou technique, réponds directement.
+- Mémoire et continuité : utilise l'historique de la conversation. Ne répète jamais quelque chose dit 1 ou 2 messages plus tôt. Ne demande pas une information déjà partagée dans cette même conversation.
+- Question de curiosité générale sans lien avec la nutrition, le bien-être ou le suivi du patient (culture générale, animaux, actualités...) : une seule phrase légère et chaleureuse, puis reviens à ce qu'il venait de partager. Ne développe jamais un sujet hors périmètre.
 - Tu connais parfaitement ce patient : son prénom, son profil et ses objectifs te sont fournis dans la section PROFIL DU PATIENT ci-dessus. Si le patient demande si tu le connais ou si tu sais son prénom, confirme positivement et utilise son prénom. Ne dis jamais que tu "n'as pas accès" à son dossier ou à son identité — c'est faux.
-- Utiliser le prénom avec parcimonie dans les réponses ordinaires : ponctuellement pour créer du lien ou marquer une rupture de ton. Jamais à chaque message.
+- Utilise le prénom avec parcimonie : ponctuellement pour créer du lien ou marquer une rupture de ton, jamais à chaque message.
 - INTERDICTION de Markdown : pas de gras, pas de tirets en début de ligne, pas d'astérisques, pas de numérotation. Toujours des paragraphes continus.
 - Ne JAMAIS dire "En tant qu'IA", "En tant que modèle de langue" ou similaire.
-- Ne jamais affirmer spontanément que le praticien a été prévenu, alerté ou sera contacté. Cette information t'est transmise explicitement dans le Murmure du Praticien quand elle est vraie — ne l'invente jamais de ta propre initiative.
+- Ne jamais affirmer spontanément que le praticien a été prévenu, alerté ou sera contacté. Cette information t'est transmise explicitement dans le Murmure du Praticien quand elle est vraie — ne l'invente jamais.
 - Ne jamais inventer des informations médicales non confirmées.${!isAutonomieTotal ? `
-- Grossesse : félicite, redirige vers gynécologue/sage-femme, praticien adaptera le suivi.
+- Grossesse : félicite, redirige vers gynécologue/sage-femme, le praticien adaptera le suivi.
 - TCA grave : stop conseils alimentaires, valide l'émotion, annonce relais praticien.
 - Arrêt de traitement : invite le patient à consulter son médecin traitant avant tout changement.` : ""}
 
-COMMANDE ADMINISTRATIVE :
-Si le message commence par [ADMIN:identity_correction] :
-- Réponds uniquement : "C'est noté. J'ai transmis la demande de correction à votre praticien pour que votre dossier soit parfaitement à jour. Pouvez-vous me préciser l'orthographe exacte de votre nom ?"
-- Ajoute obligatoirement : |||{"status":"green","reason":"demande correction identité","victory":"","action":"admin_alert","alert_type":"identity_correction"}|||
-
-JSON TECHNIQUE OBLIGATOIRE - À ajouter en toute fin de réponse, après le texte visible :
+JSON TECHNIQUE OBLIGATOIRE — À ajouter en toute fin de réponse, après le texte visible :
 |||{"status":"green","reason":"météo émotionnelle en 4-8 mots","notable":false,"victory":"","apaisement":"non"}|||
 - status : "red_critical" si urgence vitale implicite détectée, "red_behavioral" si détresse comportementale/TCA/psychologique sévère, "green" si tout va bien
 - RÈGLE ABSOLUE si status = "red_critical" : tu DOIS écrire une réponse humaine et empathique AVANT ce JSON. Ne jamais émettre le signal JSON seul sans texte visible — le patient doit toujours recevoir une réponse, même courte.
 - reason : TOUJOURS rempli — météo émotionnelle du patient en 4-8 mots, dynamique et précise. Accorde les adjectifs au genre du patient (voir "Sexe" dans le profil) — jamais de forme neutre entre parenthèses comme "Anxieux(se)".
-  Exemples (homme) : "En confiance", "Motivé malgré la fatigue", "Serein et régulier", "Curieux de progresser", "Anxieux mais motivé", "Frustré face aux écarts"
-  Exemples (femme) : "En confiance", "Motivée malgré la fatigue", "Sereine et régulière", "Curieuse de progresser", "Anxieuse mais motivée", "Frustrée face aux écarts"
-  Exemples red_behavioral : "Détresse émotionnelle active", "Perte de contrôle alimentaire", "Dégoût de soi exprimé"
-  Exemples red_critical : "Urgence vitale exprimée", "Pensées de passage à l'acte"
+  Exemples : "En confiance" (homme green), "En confiance" (femme green), "Détresse émotionnelle active" (red_behavioral), "Urgence vitale exprimée" (red_critical)
   Ne jamais laisser vide. Ne jamais écrire "patient va bien" ou "aucune alerte".
-- notable : true si ce message révèle quelque chose cliniquement utile à signaler au praticien (émotion significative, tension, progression, régression, victoire, changement de dynamique). false si échange de routine (question nutritionnelle banale, logistique, rappel de règles). En cas de doute, préfère false.
-- victory : UNE phrase courte UNIQUEMENT si le patient rapporte une réussite TCC concrète (ex: résister à une fringale, écouter sa satiété, gérer une envie de crise sans craquer, reprendre après un écart sans culpabilité). Exemples : "A écouté sa satiété ce soir", "A résisté à la fringale du soir", "A repris sans culpabilité après l'écart". Vide "" sinon.
-  IMPORTANT : le simple fait d'avoir terminé un exercice de relaxation/respiration/marche/ancrage en routine ou en prévention n'est PAS une victoire, même si le patient se dit content ou apaisé. Ne remplis "victory" que si l'exercice (ou l'échange) a permis d'éviter, d'interrompre ou de traverser une crise réelle (alimentaire, anxieuse, compulsive) qui était en cours ou imminente. Engagement/régularité ≠ victoire clinique.
-- apaisement : "oui" UNIQUEMENT si le patient exprime un retour au calme réel après une détresse exprimée dans cette même conversation (ex : "je me sens mieux", "ça va mieux", "j'ai soufflé", "je suis plus calme", "ça m'a aidé"). Ne jamais mettre "oui" si aucune détresse n'a été exprimée avant dans la conversation, ni sur un simple "ça va" sans contexte de crise, ni si l'amélioration reste incertaine ou partielle. "non" par défaut.`;
+- notable : true si ce message révèle quelque chose cliniquement utile à signaler au praticien (émotion significative, tension, progression, régression, victoire, changement de dynamique). false si échange de routine. En cas de doute, préfère false.
+- victory : UNE phrase courte UNIQUEMENT si le patient rapporte une réussite TCC concrète (résister à une fringale, écouter sa satiété, gérer une envie de crise sans craquer, reprendre après un écart sans culpabilité). Vide "" sinon.
+  IMPORTANT : la régularité d'un exercice ou une simple routine n'est PAS une victoire. Ne remplis "victory" que si l'exercice (ou l'échange) a permis d'éviter, d'interrompre ou de traverser une crise réelle (alimentaire, anxieuse, compulsive) en cours ou imminente.
+- apaisement : "oui" UNIQUEMENT si le patient exprime un retour au calme réel après une détresse exprimée dans cette même conversation (ex : "je me sens mieux", "ça va mieux", "ça m'a aidé"). "non" par défaut.`;
 }
 
 async function getDailyMessageCount(patientId: string): Promise<number> {
@@ -1760,10 +1771,20 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
         )
       : Promise.resolve("");
 
-    const [{ context: patientContext, pathologies: patientPathologies }, crisisAnalysis, documentsContextRaw] = await Promise.all([
+    // Layer 3 — Few-shot dynamique : trouver la situation la plus proche du message
+    // patient (similarité cosinus sur les embeddings stockés en Redis).
+    // Lancé en parallèle du RAG et du classificateur — latence quasi nulle.
+    // Non bloquant : retourne null en cas d'erreur ou d'absence d'embeddings.
+    // Skippé pour les messages image (pas de texte comparable) et les réponses test.
+    const fewShotPromise: Promise<FewShotResult | null> = (message && practitionerId && !systemPrompt)
+      ? getBestFewShot(message.slice(0, 500), practitionerId, redis)
+      : Promise.resolve(null);
+
+    const [{ context: patientContext, pathologies: patientPathologies }, crisisAnalysis, documentsContextRaw, fewShotResult] = await Promise.all([
       profileResult,
       crisisPromise,
       ragPromise,
+      fewShotPromise,
     ]);
 
     // LEGACY-1 — mode ancrage piloté par la RÉCENCE de la détresse (fenêtre 12h), pas
@@ -1827,8 +1848,9 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
 
     // Build the cacheable portion of the system prompt (template + profile + patientContext).
     // documentsContext (RAG) is dynamic — it will be injected into userParts below.
+    const practitionerFullName = [practitionerData.firstName, practitionerData.lastName].filter(Boolean).join(" ") || undefined;
     const cacheablePrompt = systemPrompt ||
-      buildCacheablePrompt(practitionerData.profile, patientContext, forceAncrage, practitionerData.specialty);
+      buildCacheablePrompt(practitionerData.profile, patientContext, forceAncrage, practitionerData.specialty, practitionerFullName);
 
     const lastMessageNote = `\n\n[Note système — ne pas reproduire textuellement : c'est ta dernière réponse pour ce patient aujourd'hui. Réponds normalement à sa question, puis conclus naturellement et chaleureusement la conversation — une phrase dans ta voix, sans mentionner de limite technique.]`;
 
@@ -1910,6 +1932,17 @@ Max 150 mots. Sans markdown.`;
           ? `[Rappel profil patient — à utiliser mais ne pas reproduire textuellement]\n${patientContext}\n\n`
           : "";
 
+      // Repère temporel — injecté dans chaque tour utilisateur (jamais dans le cache).
+      const now = new Date();
+      const dateCtx = `[Contexte : ${now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}, ${now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}]\n\n`;
+
+      // Layer 3 — Few-shot dynamique : situation la plus proche du message patient.
+      // Injecté seulement si un match de confiance existe (similarité > 0.55) et qu'on
+      // n'est PAS en mode ancrage (le few-shot nutritionnel serait contre-indiqué).
+      const fewShotCtx = (!isAncrageMode && fewShotResult)
+        ? `[EXEMPLE DE VOIX PRATICIEN — situation similaire : ${fewShotResult.label}]\nPatient : "${fewShotResult.scenario}"\nPraticien : "${fewShotResult.answer}"\n[Fin exemple — reproduis cette intention et ce ton. Adapte au contexte précis, sans recopier.]\n\n`
+        : "";
+
       // Si la détection pré-stream (voie 2) a identifié une crise red_critical, Gemini
       // ne le sait pas encore (le system prompt a été construit avant). On le lui signale
       // dans le tour utilisateur pour qu'il réponde de façon appropriée — empathie + 3114.
@@ -1918,10 +1951,10 @@ Max 150 mots. Sans markdown.`;
         : "";
 
       userParts = documentsContext
-        ? [{ text: `${crisisNote}${profileInUserTurn}[Contexte documentaire]:\n${documentsContext}\n\n${baseText}` }]
+        ? [{ text: `${dateCtx}${crisisNote}${fewShotCtx}${profileInUserTurn}[Contexte documentaire]:\n${documentsContext}\n\n${baseText}` }]
         : profileInUserTurn
-          ? [{ text: `${crisisNote}${profileInUserTurn}${baseText}` }]
-          : [{ text: `${crisisNote}${baseText}` }];
+          ? [{ text: `${dateCtx}${crisisNote}${fewShotCtx}${profileInUserTurn}${baseText}` }]
+          : [{ text: `${dateCtx}${crisisNote}${fewShotCtx}${baseText}` }];
     }
     const chatContents = [
       ...conversationHistory,
