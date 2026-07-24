@@ -209,12 +209,12 @@ export default function SetPasswordPage() {
                 <label className="flex cursor-pointer items-start gap-3">
                   <input type="checkbox" checked={acceptCGU} onChange={e => setAcceptCGU(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#10b981]" />
                   <span className="text-xs leading-relaxed text-zinc-400">
-                    J'accepte les <a href="/cgu" target="_blank" className="text-[#10b981] hover:underline">CGU</a> et la <a href="/confidentialite" target="_blank" className="text-[#10b981] hover:underline">Politique de Confidentialité</a> *
+                    J'accepte les <a href="/cgu" target="_blank" className="text-[#10b981] hover:underline">CGU</a> et la <a href="/confidentialite" target="_blank" className="text-[#10b981] hover:underline">Politique de Confidentialité</a> <span style={{ color: "#f87171" }}>*</span>
                   </span>
                 </label>
                 <label className="flex cursor-pointer items-start gap-3">
                   <input type="checkbox" checked={acceptData} onChange={e => setAcceptData(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#10b981]" />
-                  <span className="text-xs leading-relaxed text-zinc-400">Je consens au traitement de mes données nutritionnelles pour mon accompagnement personnalisé. *</span>
+                  <span className="text-xs leading-relaxed text-zinc-400">Je consens au traitement de mes données nutritionnelles pour mon accompagnement personnalisé. <span style={{ color: "#f87171" }}>*</span></span>
                 </label>
                 <p className="text-[11px] text-zinc-200"><span style={{ color: "#f87171" }}>*</span> Champs obligatoires</p>
               </div>

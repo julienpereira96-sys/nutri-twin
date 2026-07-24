@@ -2603,6 +2603,7 @@ function DashboardInner() {
       });
       if (!res.ok) throw new Error();
       setInviteResentSuccess(true);
+      if (practitionerId) { await new Promise(r => setTimeout(r, 500)); await loadPatients(practitionerId); }
     } catch {
       setInviteError("Une erreur est survenue. Veuillez réessayer.");
     } finally {
