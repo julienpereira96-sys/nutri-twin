@@ -6172,7 +6172,7 @@ function DashboardInner() {
                 {(() => {
                   const step2Disabled = !invitePathologies || !inviteObjectifClinique;
                   return (
-                    <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+                    <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
                       <button onClick={() => setInviteStep(1)}
                         style={{ flex: 1, height: 44, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", color: "#94a3b8", cursor: "pointer", fontSize: 14, fontWeight: 500, transition: "all 0.2s" }}
                         onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; }}
