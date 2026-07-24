@@ -280,7 +280,7 @@ async function analyzeCrisisWithLLM(
 - Dernière victoire : ${patientState.latest_victory || "Aucune"}${minutesSinceLastVictory !== null ? ` (il y a ${minutesSinceLastVictory} min)` : ""}
 ` : "";
 
-    const prompt = `Tu es un classificateur médical dédié pour un suivi nutritionnel. Analyse le message du patient en tenant compte du contexte.
+    const prompt = `Tu es un classificateur clinique pour un suivi nutritionnel et comportemental. Analyse le message du patient en tenant compte du contexte.
 ${stateBlock}
 PROFIL PATIENT (extrait) :
 ${patientContext.slice(0, 400)}
@@ -295,24 +295,25 @@ Réponds UNIQUEMENT en JSON strict, sans markdown ni commentaire :
 
 RÈGLES LEVEL :
 - "red_critical" : intention suicidaire ou urgence vitale EXPLICITE dans ce message.
-- "red_behavioral" : exprimé à la 1ère personne, temps présent ou très récent (ce soir, aujourd'hui, là maintenant) ; détresse émotionnelle active OU perte de contrôle alimentaire (crise TCA, frigo dévalisé, ingestion sans contrôle, compulsion) ; dégoût profond de soi en ce moment. JAMAIS pour : questions théoriques/éducatives, récit à la 3e personne, événements anciens, formulations au futur ou hypothétiques.
+- "red_behavioral" : exprimé à la 1ère personne, temps présent ou très récent (ce soir, aujourd'hui, là maintenant) ; détresse émotionnelle liée à l'alimentation, au corps ou à l'estime de soi (honte, dégoût de soi, sentiment d'échec total en ce moment) OU perte de contrôle alimentaire (crise TCA, frigo dévalisé, ingestion sans contrôle, compulsion). JAMAIS pour : questions théoriques/éducatives, récit à la 3e personne, événements anciens, stress professionnel ou relationnel sans lien alimentaire, formulations au futur ou hypothétiques.
 - "none" : tout le reste.
 
-RÈGLES VICTORY (renseigner uniquement si TOUTES les conditions sont réunies) :
-- Réussite concrète et NOUVELLE dans CE message, absente des échanges précédents
-- Statut actuel différent de "red_behavioral"
-- Dernière victoire notée différente (pas le même sujet dans les 30 dernières minutes)
-- Formulation certaine (pas future ou hypothétique), non-ironique, non-sarcastique
-- 1 phrase courte décrivant la réussite (ex : "A tenu ses apports cibles toute la semaine")
-- Si une condition manque : chaîne vide ""
-
 RÈGLES MURMURE :
-- Si level est "red_behavioral" ou "red_critical" : note clinique de 4 à 8 mots à la 3e personne, jamais une citation directe du patient (ex : "Stress aigu exprimé ce soir", "Perte de contrôle alimentaire", "Dégoût de soi exprimé", "Détresse émotionnelle active").
-- Si level est "none" : chaîne vide "".
+- Si level "red_behavioral" : note clinique de 4 à 8 mots à la 3e personne, sans citation directe (ex : "Perte de contrôle alimentaire ce soir", "Dégoût de soi exprimé", "Détresse liée au corps", "Craquage avec honte intense").
+- Si level "red_critical" : note clinique courte (ex : "Pensées suicidaires exprimées", "Urgence vitale exprimée").
+- Si level "none" : "".
+
+RÈGLES VICTORY (toutes les conditions réunies, sinon "") :
+- Le patient rapporte avoir évité, interrompu ou traversé une crise réelle dans CE message : envie compulsive résistée, moment de vulnérabilité géré sans recours alimentaire, retour au calme après une détresse active
+- Réussite absente des échanges précédents
+- Statut actuel ≠ "red_behavioral"
+- Pas le même sujet que la dernière victoire dans les 30 dernières minutes
+- Formulation certaine, non-ironique, non-sarcastique
+- 1 phrase à la 3e personne (ex : "A résisté à une envie compulsive en soirée", "A traversé un moment de vulnérabilité sans recours alimentaire")
 
 RÈGLES APAISEMENT :
-- true : soulagement physiologique ou émotionnel EXPLICITE et personnel ("je me sens mieux", "ça va mieux", "je suis plus calme maintenant")
-- false : messages courts de fermeture ("ok", "merci", "à bientôt"), politesse sans contenu émotionnel, amélioration relative vague
+- true : SEULEMENT si le statut actuel est "red_behavioral" ET que le patient exprime un soulagement explicite ("je me sens mieux", "ça va mieux", "je suis plus calme maintenant")
+- false : tout le reste — message court ("ok", "merci"), politesse, amélioration vague, ou statut ≠ "red_behavioral"
 
 {"level":"none","murmure":"","victory":"","apaisement":false}`;
 
@@ -936,7 +937,11 @@ function buildCacheablePrompt(
 ): string {
   // Sans profil praticien : mode dégradé minimal (ex: onboarding incomplet)
   if (!profile) {
-    return `Tu es un assistant nutritionniste bienveillant. Réponds sans markdown, en phrases simples, max 150 mots.${patientContext ? `\n\n${patientContext}` : ""}`;
+    return `Tu es un assistant nutritionniste bienveillant. Réponds sans markdown, en phrases simples, max 150 mots.${patientContext ? `\n\n${patientContext}` : ""}
+
+JSON TECHNIQUE OBLIGATOIRE en toute fin de réponse :
+|||{"status":"green","reason":"météo en 4-8 mots","notable":false,"victory":"","apaisement":"non"}|||
+- status : "red_critical" si urgence vitale, "red_behavioral" si détresse comportementale ou TCA sévère, "green" sinon.`;
   }
 
   const isAutonomieTotal = profile.perimetre?.startsWith("Autonomie totale");
@@ -949,7 +954,6 @@ RÈGLES STRICTES pour ce mode :
 - ZÉRO conseil nutritionnel, ZÉRO objectif, ZÉRO programme.
 - 100% écoute active, validation émotionnelle, ancrage TCC.
 - Si le patient demande un conseil alimentaire, dis doucement que vous y reviendrez quand il se sentira prêt.
-- Son praticien est informé et prendra le relais à la prochaine séance.
 ` : "";
 
   const professionInstruction = resolveProfession(specialty);
@@ -1051,15 +1055,17 @@ RÈGLES ABSOLUES :
 
 JSON TECHNIQUE OBLIGATOIRE — À ajouter en toute fin de réponse, après le texte visible :
 |||{"status":"green","reason":"météo émotionnelle en 4-8 mots","notable":false,"victory":"","apaisement":"non"}|||
-- status : "red_critical" si urgence vitale implicite détectée, "red_behavioral" si détresse comportementale/TCA/psychologique sévère, "green" si tout va bien
-- RÈGLE ABSOLUE si status = "red_critical" : tu DOIS écrire une réponse humaine et empathique AVANT ce JSON. Ne jamais émettre le signal JSON seul sans texte visible — le patient doit toujours recevoir une réponse, même courte.
+- status :
+  - "red_critical" si urgence vitale détectée — y compris formulations implicites ou métaphoriques ("je veux disparaître", "j'en peux plus de cette vie")
+  - "red_behavioral" UNIQUEMENT si tu identifies une détresse ou un pattern sur l'ensemble de la conversation que le message courant seul ne révèle pas clairement : montée progressive sur plusieurs échanges, répétition de signaux, contexte TCA ou émotionnel qui rend un message apparemment anodin cliniquement significatif. JAMAIS pour : questions théoriques, récit passé ou à la 3e personne, stress sans lien alimentaire, formulations au futur ou hypothétiques.
+  - "green" dans tous les autres cas.
+- RÈGLE ABSOLUE si status = "red_critical" : tu DOIS écrire une réponse humaine et empathique AVANT ce JSON. Ne jamais émettre le signal JSON seul sans texte visible — le patient doit toujours recevoir une réponse.
 - reason : TOUJOURS rempli — météo émotionnelle du patient en 4-8 mots, dynamique et précise. Accorde les adjectifs au genre du patient (voir "Sexe" dans le profil) — jamais de forme neutre entre parenthèses comme "Anxieux(se)".
-  Exemples : "En confiance" (homme green), "En confiance" (femme green), "Détresse émotionnelle active" (red_behavioral), "Urgence vitale exprimée" (red_critical)
+  Exemples : "En confiance, détendue" / "Tension autour du corps" / "Détresse émotionnelle active" / "Urgence vitale exprimée"
   Ne jamais laisser vide. Ne jamais écrire "patient va bien" ou "aucune alerte".
-- notable : true si ce message révèle quelque chose cliniquement utile à signaler au praticien (émotion significative, tension, progression, régression, victoire, changement de dynamique). false si échange de routine. En cas de doute, préfère false.
-- victory : UNE phrase courte UNIQUEMENT si le patient rapporte une réussite TCC concrète (résister à une fringale, écouter sa satiété, gérer une envie de crise sans craquer, reprendre après un écart sans culpabilité). Vide "" sinon.
-  IMPORTANT : la régularité d'un exercice ou une simple routine n'est PAS une victoire. Ne remplis "victory" que si l'exercice (ou l'échange) a permis d'éviter, d'interrompre ou de traverser une crise réelle (alimentaire, anxieuse, compulsive) en cours ou imminente.
-- apaisement : "oui" UNIQUEMENT si le patient exprime un retour au calme réel après une détresse exprimée dans cette même conversation (ex : "je me sens mieux", "ça va mieux", "ça m'a aidé"). "non" par défaut.`;
+- notable : true si ce message révèle quelque chose cliniquement utile pour le praticien (émotion significative, tension, progression, régression, victoire, changement de dynamique). false si échange de routine. En cas de doute, false.
+- victory : UNE phrase courte si le patient rapporte avoir évité, interrompu ou traversé une crise réelle (résistance à une compulsion, moment de vulnérabilité géré sans recours alimentaire, traversée d'une envie de crise). Vide "" pour : routine quotidienne, objectif nutritionnel ordinaire, progrès sans tension préalable.
+- apaisement : "oui" UNIQUEMENT si le patient exprime un retour au calme réel et explicite après une détresse visible dans cette même conversation ("je me sens mieux", "ça va mieux", "ça m'a aidé"). "non" par défaut.`;
 }
 
 async function getDailyMessageCount(patientId: string): Promise<number> {
@@ -1397,7 +1403,6 @@ Réponds UNIQUEMENT en JSON sans markdown ni backticks :
           await supabase.from("patients").update({
             emotional_status: "red_behavioral",
             emotional_insight: crisisAnalysis.murmure || "Alerte comportementale détectée en fin d'exercice",
-            red_behavioral_until: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), // LEGACY-1 : fenêtre de mode ancrage (12h) — n'affecte PLUS le statut
           }).eq("user_id", patientId);
           const { data: cur } = await supabase.from("patients").select("admin_alerts").eq("user_id", patientId).single();
           const alerts = (cur as { admin_alerts?: object[] } | null)?.admin_alerts ?? [];
@@ -1586,7 +1591,6 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       if (level === "red_behavioral") {
         await supabase.from("patients").update({
           emotional_status: "red_behavioral",
-          red_behavioral_until: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), // LEGACY-1 : fenêtre de mode ancrage
           // emotional_insight uniquement sur la synthèse finale — pas sur les
           // fragments intermédiaires (scintillement météo côté praticien)
           ...(isFinalIntake ? { emotional_insight: sosIntakeCrisisAnalysis.murmure || "Alerte comportementale détectée pendant l'exercice SOS" } : {}),
@@ -1702,7 +1706,6 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     // Récupérer statut actuel du patient
     const supabaseMain = createSupabaseClient();
     let currentEmotionalStatus = "green";
-    let redBehavioralUntil: string | null = null; // LEGACY-1 : fin de fenêtre de mode ancrage
     let patientStateForClassifier: PatientStateContext = {
       emotional_status: "green",
       emotional_insight: "",
@@ -1713,13 +1716,12 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     if (patientId) {
       const { data: patientStatus } = await supabaseMain
         .from("patients")
-        .select("emotional_status, emotional_insight, latest_victory, victory_detected_at, red_behavioral_until")
+        .select("emotional_status, emotional_insight, latest_victory, victory_detected_at")
         .eq("user_id", patientId)
         .single();
       if (patientStatus) {
-        const ps = patientStatus as { emotional_status?: string; emotional_insight?: string; latest_victory?: string; victory_detected_at?: string; red_behavioral_until?: string | null };
+        const ps = patientStatus as { emotional_status?: string; emotional_insight?: string; latest_victory?: string; victory_detected_at?: string };
         currentEmotionalStatus = ps.emotional_status ?? "green";
-        redBehavioralUntil = ps.red_behavioral_until ?? null;
         patientStateForClassifier = {
           emotional_status: currentEmotionalStatus,
           emotional_insight: ps.emotional_insight ?? "",
@@ -1756,9 +1758,12 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       : Promise.resolve([] as { role: string; content: string }[]);
 
     // Classificateur — toujours lancé, sans barrière regex (contexte enrichi : messages + état patient)
+    // .catch() défensif : si profileResult ou recentForClassifier rejette, on dégrade gracieusement
+    // plutôt que de faire planter tout le Promise.all aval.
     const crisisPromise = (message && patientId)
       ? Promise.all([profileResult, recentForClassifierPromise])
         .then(([p, recent]) => analyzeCrisisWithLLM(message, p.context, recent, patientStateForClassifier))
+        .catch((): CrisisAnalysis => ({ level: "none", murmure: "", victory: "", apaisement: false }))
       : Promise.resolve<CrisisAnalysis>({ level: "none", murmure: "", victory: "", apaisement: false });
 
     // Lancer RAG en parallèle du classificateur de crise : dès que profileResult
@@ -1787,12 +1792,9 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       fewShotPromise,
     ]);
 
-    // LEGACY-1 — mode ancrage piloté par la RÉCENCE de la détresse (fenêtre 12h), pas
-    // par le statut persistant : le statut praticien peut rester red_behavioral longtemps
-    // (jusqu'à apaisement réel ou action praticien), mais le Jumeau ressort du mode ancrage
-    // une fois la fenêtre écoulée — un patient qui revient plus tard retrouve un Jumeau normal.
-    const ancrageWindowActive = !!redBehavioralUntil && new Date(redBehavioralUntil).getTime() > Date.now();
-    const inBehavioralAncrage = currentEmotionalStatus === "red_behavioral" && ancrageWindowActive;
+    // Mode ancrage : actif tant que le statut persistant est red_behavioral (résolution uniquement via apaisement explicite)
+    // ou si le classificateur vient de détecter une crise dans CE message.
+    const inBehavioralAncrage = currentEmotionalStatus === "red_behavioral";
     // Skip RAG en mode ancrage : le jumeau ne doit donner aucun conseil nutritionnel.
     const isAncrageMode = crisisAnalysis.level === "red_behavioral" || inBehavioralAncrage;
     const documentsContext = isAncrageMode ? "" : documentsContextRaw;
@@ -1820,7 +1822,6 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
       await supabaseMain.from("patients").update({
         emotional_status: "red_behavioral",
         emotional_insight: crisisAnalysis.murmure || "Alerte comportementale détectée",
-        red_behavioral_until: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), // LEGACY-1 : fenêtre de mode ancrage
       }).eq("user_id", patientId);
       // Alerte discrète sur le Dashboard uniquement (pas d'email pour éviter le spam praticien)
       const { data: cur } = await supabaseMain.from("patients").select("admin_alerts").eq("user_id", patientId).single();
@@ -1950,11 +1951,17 @@ Max 150 mots. Sans markdown.`;
         ? `[Note système confidentielle — ne pas reproduire : une urgence psychologique a été détectée dans ce message. Réponds avec empathie et bienveillance, mentionne le 3114 naturellement, et positionne status="red_critical" dans le JSON de fin.]\n\n`
         : "";
 
+      // Injecter l'état émotionnel persistant (dynamique, jamais caché) pour que Gemini
+      // puisse détecter un apaisement "après une détresse visible dans cette conversation".
+      const emotionalCtx = (currentEmotionalStatus !== "green" && patientStateForClassifier.emotional_insight)
+        ? `[État émotionnel actuel du patient — ne pas reproduire : statut "${currentEmotionalStatus}", note clinique : "${patientStateForClassifier.emotional_insight}"]\n\n`
+        : "";
+
       userParts = documentsContext
-        ? [{ text: `${dateCtx}${crisisNote}${fewShotCtx}${profileInUserTurn}[Contexte documentaire]:\n${documentsContext}\n\n${baseText}` }]
+        ? [{ text: `${dateCtx}${crisisNote}${emotionalCtx}${fewShotCtx}${profileInUserTurn}[Contexte documentaire]:\n${documentsContext}\n\n${baseText}` }]
         : profileInUserTurn
-          ? [{ text: `${dateCtx}${crisisNote}${fewShotCtx}${profileInUserTurn}${baseText}` }]
-          : [{ text: `${dateCtx}${crisisNote}${fewShotCtx}${baseText}` }];
+          ? [{ text: `${dateCtx}${crisisNote}${emotionalCtx}${fewShotCtx}${profileInUserTurn}${baseText}` }]
+          : [{ text: `${dateCtx}${crisisNote}${emotionalCtx}${fewShotCtx}${baseText}` }];
     }
     const chatContents = [
       ...conversationHistory,
@@ -2181,7 +2188,6 @@ Max 150 mots. Sans markdown.`;
             // isGreenNotable requiert currentEmotionalStatus !== "red_behavioral".
             if (emotionalStatus === "green" && shouldResolveApaisement) {
               if (!emotionalInsight) patientStatusUpdate.emotional_insight = null;
-              patientStatusUpdate.red_behavioral_until = null;
             }
           }
           // Mettre à jour le timestamp du dernier message patient (pour indicateur silence 24h)
