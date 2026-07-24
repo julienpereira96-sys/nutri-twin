@@ -12,6 +12,13 @@ ALTER TABLE practitioners ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS last_patient_message_at timestamptz;
 
+-- patients : champs profil patient (formulaire d'invitation step 2)
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS niveau_activite text;
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS regime_specifique text;
+
+-- patients : flag patient test (exclure des listes réelles)
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS is_test boolean DEFAULT false;
+
 -- sos_events : données exercice vocal SOS
 ALTER TABLE sos_events ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending';
 ALTER TABLE sos_events ADD COLUMN IF NOT EXISTS origin text DEFAULT 'pratique';

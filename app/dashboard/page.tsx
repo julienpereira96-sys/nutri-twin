@@ -1110,11 +1110,10 @@ function DashboardInner() {
   };
 
   const loadPatients = async (pid: string): Promise<boolean> => {
-    const { data: relations } = await supabase.from("patient_practitioner").select("patient_id").eq("practitioner_id", pid);
-    if (!relations || relations.length === 0) { setLoading(false); if (!testModeRef.current) setOnboardingDemoMode(true); return true; }
+    const { data: relations, error: relError } = await supabase.from("patient_practitioner").select("patient_id").eq("practitioner_id", pid);
+    if (relError || !relations || relations.length === 0) { setLoading(false); if (!testModeRef.current) setOnboardingDemoMode(true); return true; }
     const patientIds = relations.map((r) => r.patient_id as string);
 
-    // Tenter d'exclure les patients test (colonne is_test peut ne pas exister avant migration)
     const baseSelect = "user_id, first_name, last_name, email, age, sexe, taille, poids, objective, pathologies, allergies, traitements, objectif_clinique, niveau_activite, regime_specifique, practitioner_instruction, emotional_status, emotional_insight, red_behavioral_until, last_patient_message_at, latest_victory, victory_detected_at, victory_message_id, private_notes, admin_alerts, created_at, onboarding_completed, onboarding_status, sharing_status, cabinet_id, last_seen_at";
     let { data: patientsData, error: patientsError } = await supabase.from("patients").select(baseSelect).in("user_id", patientIds).or("is_test.is.null,is_test.eq.false");
     if (patientsError || !patientsData) {
