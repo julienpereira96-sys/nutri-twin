@@ -19,6 +19,10 @@ ALTER TABLE patients ADD COLUMN IF NOT EXISTS regime_specifique text;
 -- patients : flag patient test (exclure des listes réelles)
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS is_test boolean DEFAULT false;
 
+-- patients : cabinet collaboratif (sans FK pour rester 100% safe si cabinets n'existe pas)
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS cabinet_id uuid;
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS sharing_status text NOT NULL DEFAULT 'private';
+
 -- sos_events : données exercice vocal SOS
 ALTER TABLE sos_events ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending';
 ALTER TABLE sos_events ADD COLUMN IF NOT EXISTS origin text DEFAULT 'pratique';
