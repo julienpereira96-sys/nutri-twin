@@ -2883,7 +2883,7 @@ export default function ChatPage() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           </div>
           <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 600, color: TEXT_PRIMARY }}>Clôturer mon accompagnement</h3>
-          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY, lineHeight: 1.6 }}>Cette action est irréversible. Toutes vos données seront supprimées conformément au RGPD.</p>
+          <p style={{ margin: "0 0 20px", fontSize: 13, color: TEXT_SECONDARY, lineHeight: 1.6 }}>Votre compte sera désactivé et votre praticien ne vous verra plus dans son tableau de bord. Vos données sont conservées conformément à la loi.</p>
           <input type="password" value={deletePassword} onChange={e => setDeletePassword(e.target.value)} placeholder="Confirmez avec votre mot de passe"
             style={{ width: "100%", height: 44, borderRadius: 10, border: `1px solid ${deleteError ? "rgba(244,63,94,0.5)" : "rgba(255,255,255,0.1)"}`, background: "rgba(255,255,255,0.03)", color: TEXT_PRIMARY, padding: "0 14px", fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 8, fontFamily: "inherit" }}
             onFocus={e => e.target.style.borderColor = "rgba(244,63,94,0.4)"}
@@ -2899,7 +2899,7 @@ export default function ChatPage() {
             <button onClick={async () => {
               if (!deletePassword) return;
               setDeletingAccount(true); setDeleteError("");
-              const res = await fetch("/api/delete-account", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: deletePassword }) });
+              const res = await fetch("/api/end-coaching", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password: deletePassword }) });
               const data = await res.json() as { error?: string };
               if (!res.ok) { setDeleteError(data.error ?? "Erreur"); setDeletingAccount(false); return; }
               setDeleteSuccess(true);
@@ -2912,7 +2912,7 @@ export default function ChatPage() {
               }, 1000);
             }} disabled={deletingAccount || !deletePassword}
               style={{ flex: 1, height: 44, borderRadius: 10, background: deletingAccount || !deletePassword ? "rgba(244,63,94,0.04)" : "rgba(244,63,94,0.1)", border: "1px solid rgba(244,63,94,0.3)", color: "#f87171", fontSize: 14, fontWeight: 600, cursor: deletingAccount || !deletePassword ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
-              {deletingAccount ? "Suppression..." : "Confirmer"}
+              {deletingAccount ? <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><span style={{ width: 15, height: 15, borderRadius: "50%", border: "2px solid rgba(248,113,113,0.2)", borderTop: "2px solid #f87171", display: "inline-block", animation: "spin 1s linear infinite", flexShrink: 0 }} />Suppression</span> : "Confirmer"}
             </button>
           </div>
         </>

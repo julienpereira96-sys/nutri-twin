@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser, unauthorized } from "@/lib/api-auth";
 import { purgePatientData } from "@/lib/purgePatientData";
 import { Redis } from "@upstash/redis";
+import { buildEmailHtml, sendEmail } from "@/lib/email";
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
@@ -57,6 +58,14 @@ export async function POST(request: Request) {
     );
   }
 
+  // Récupérer le prénom avant la purge (la ligne patients sera supprimée)
+  const { data: patientRow } = await adminClient
+    .from("patients")
+    .select("first_name")
+    .eq("user_id", userId)
+    .single();
+  const firstName = patientRow?.first_name as string | null | undefined;
+
   // RGPD-4 — purge via le helper canonique (tables enfant + profil + avatar Storage),
   // source de vérité unique alignée avec droit-a-loubli.sql.
   const purge = await purgePatientData(adminClient, userId);
@@ -75,6 +84,25 @@ export async function POST(request: Request) {
   if (deleteAuthError) {
     console.error("[NutriTwin] delete-account — deleteUser error:", deleteAuthError.message);
     return NextResponse.json({ error: "Données supprimées mais le compte n'a pas pu être clôturé. Contactez le support." }, { status: 500 });
+  }
+
+  // Email de confirmation RGPD — non bloquant (échec silencieux)
+  if (user.email) {
+    const deletionDate = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    const greeting = firstName ? `Bonjour ${firstName},` : "Bonjour,";
+    const html = buildEmailHtml({
+      preheader: "Vos données NutriTwin ont bien été supprimées.",
+      greeting,
+      headline: "Suppression de votre compte",
+      body: `<p style="margin:0 0 16px;font-size:15px;color:#94a3b8;line-height:1.75;">
+        Nous vous confirmons que votre compte NutriTwin ainsi que l'ensemble de vos données personnelles ont été <strong style="color:#f8fafc;">définitivement supprimés</strong> le ${deletionDate}, conformément à votre demande.
+      </p>
+      <p style="margin:0;font-size:15px;color:#94a3b8;line-height:1.75;">
+        Aucune donnée vous concernant n'est conservée sur nos serveurs. Si vous avez des questions, contactez-nous à <a href="mailto:contact@nutritwin.fr" style="color:#10b981;text-decoration:none;">contact@nutritwin.fr</a>.
+      </p>`,
+      footerNote: "Conformément au Règlement Général sur la Protection des Données (RGPD, Art. 17).",
+    });
+    sendEmail({ to: user.email, subject: "Confirmation de suppression de votre compte NutriTwin", html }).catch(() => {});
   }
 
   return NextResponse.json({ success: true });
