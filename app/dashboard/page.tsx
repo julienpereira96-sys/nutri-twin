@@ -948,14 +948,14 @@ function DashboardInner() {
   const [inviteSexe, setInviteSexe] = useState("");
   const [inviteTaille, setInviteTaille] = useState("");
   const [invitePoids, setInvitePoids] = useState("");
-  const [invitePathologies, setInvitePathologies] = useState<string[]>([]);
-  const [inviteAllergies, setInviteAllergies] = useState<string[]>([]);
-  const [inviteTraitements, setInviteTraitements] = useState<string[]>([]);
-  const [inviteObjectifClinique, setInviteObjectifClinique] = useState<string[]>([]);
+  const [invitePathologies, setInvitePathologies] = useState("");
+  const [inviteAllergies, setInviteAllergies] = useState("");
+  const [inviteTraitements, setInviteTraitements] = useState("");
+  const [inviteObjectifClinique, setInviteObjectifClinique] = useState("");
   const [inviteBriefJumeau, setInviteBriefJumeau] = useState("");
   const [inviteNotes, setInviteNotes] = useState("");
   const [inviteNiveauActivite, setInviteNiveauActivite] = useState("");
-  const [inviteRegime, setInviteRegime] = useState<string[]>([]);
+  const [inviteRegime, setInviteRegime] = useState("");
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -2584,8 +2584,8 @@ function DashboardInner() {
 
   const resetInviteForm = () => {
     setInviteEmail(""); setInviteFirstName(""); setInviteLastName(""); setInviteAge(""); setInviteSexe(""); setInviteTaille(""); setInvitePoids("");
-    setInvitePathologies([]); setInviteAllergies([]); setInviteTraitements([]); setInviteObjectifClinique([]);
-    setInviteBriefJumeau(""); setInviteNotes(""); setInviteNiveauActivite(""); setInviteRegime([]); setInviteError("");
+    setInvitePathologies(""); setInviteAllergies(""); setInviteTraitements(""); setInviteObjectifClinique("");
+    setInviteBriefJumeau(""); setInviteNotes(""); setInviteNiveauActivite(""); setInviteRegime(""); setInviteError("");
     setInviteMurmureDuration("permanent");
     setInviteExistingUnactivated(false); setInviteResentLoading(false); setInviteResentSuccess(false);
     setInviteStep(1);
@@ -2614,7 +2614,7 @@ function DashboardInner() {
     if (!inviteEmail.trim()) return;
     setInviting(true); setInviteError("");
     try {
-      const res = await fetch("/api/invite-patient", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId: practitionerId ?? "", first_name: inviteFirstName || null, last_name: inviteLastName || null, age: inviteAge ? parseInt(inviteAge) : null, sexe: inviteSexe || null, taille: inviteTaille ? parseInt(inviteTaille) : null, poids: invitePoids ? parseFloat(invitePoids) : null, pathologies: invitePathologies.length > 0 ? invitePathologies.join(", ") : null, allergies: inviteAllergies.length > 0 ? inviteAllergies.join(", ") : null, traitements: inviteTraitements.length > 0 ? inviteTraitements.join(", ") : null, objectif_clinique: inviteObjectifClinique.length > 0 ? inviteObjectifClinique.join(", ") : null, brief_jumeau: inviteBriefJumeau || null, notes: inviteNotes || null, niveau_activite: inviteNiveauActivite || null, regime_specifique: inviteRegime.length > 0 ? inviteRegime.join(", ") : null, murmure_duration: inviteMurmureDuration }) });
+      const res = await fetch("/api/invite-patient", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: inviteEmail.trim(), practitionerId: practitionerId ?? "", first_name: inviteFirstName || null, last_name: inviteLastName || null, age: inviteAge ? parseInt(inviteAge) : null, sexe: inviteSexe || null, taille: inviteTaille ? parseInt(inviteTaille) : null, poids: invitePoids ? parseFloat(invitePoids) : null, pathologies: invitePathologies || null, allergies: inviteAllergies || null, traitements: inviteTraitements || null, objectif_clinique: inviteObjectifClinique || null, brief_jumeau: inviteBriefJumeau || null, notes: inviteNotes || null, niveau_activite: inviteNiveauActivite || null, regime_specifique: inviteRegime || null, murmure_duration: inviteMurmureDuration }) });
       const data = await res.json() as { error?: string };
       if (!res.ok) setInviteError(data.error ?? "Une erreur est survenue.");
       else { const savedFirstName = inviteFirstName; resetInviteForm(); setInviteFirstName(savedFirstName); setInviteSuccess(true); if (practitionerId) { await new Promise(r => setTimeout(r, 500)); await loadPatients(practitionerId); } }
@@ -6135,46 +6135,90 @@ function DashboardInner() {
               <>
                 <p style={{ margin: "0 0 4px", fontSize: 13, color: "#94a3b8" }}>Pour que le jumeau ne donne jamais un conseil inadapté.</p>
                 <p style={{ margin: "0 0 20px", fontSize: 12, color: "#4b5563" }}>Vous pourrez compléter depuis la fiche patient.</p>
-                {/* Multi-select chips */}
+                {/* Selects step 2 */}
                 {(() => {
-                  const chipToggle = (opt: string, vals: string[], setVals: (v: string[]) => void, none: string) => {
-                    if (opt === none) { setVals(vals.includes(none) ? [] : [none]); }
-                    else { const without = vals.filter(v => v !== none); setVals(without.includes(opt) ? without.filter(v => v !== opt) : [...without, opt]); }
-                  };
-                  const chipStyle = (active: boolean): React.CSSProperties => ({ padding: "4px 10px", borderRadius: 20, fontSize: 12, fontWeight: active ? 600 : 400, cursor: "pointer", border: active ? "1px solid rgba(16,185,129,0.4)" : "1px solid rgba(255,255,255,0.08)", background: active ? "rgba(16,185,129,0.1)" : "rgba(255,255,255,0.03)", color: active ? "#10b981" : "#64748b", transition: "all 0.15s" });
-                  const multiFields: { label: string; values: string[]; setVals: (v: string[]) => void; options: string[]; none: string; required?: boolean }[] = [
-                    { label: "Pathologies", values: invitePathologies, setVals: setInvitePathologies, options: ["Diabète type 2", "Hypertension", "Hypothyroïdie", "SOPK", "Cholestérol", "TCA", "Surpoids"], none: "Aucune", required: true },
-                    { label: "Allergies", values: inviteAllergies, setVals: setInviteAllergies, options: ["Gluten", "Lactose", "Fruits à coque", "Œufs", "Fruits de mer"], none: "Aucune" },
-                    { label: "Traitements", values: inviteTraitements, setVals: setInviteTraitements, options: ["Metformine", "Lévothyrox", "Pilule contraceptive", "Antidépresseurs", "Insuline"], none: "Aucun" },
-                    { label: "Objectif clinique", values: inviteObjectifClinique, setVals: setInviteObjectifClinique, options: ["Perte de poids", "Prise de masse", "Équilibre glycémique", "Bien-être général", "Grossesse"], none: "Aucun", required: true },
-                    { label: "Régime alimentaire", values: inviteRegime, setVals: setInviteRegime, options: ["Végétarien", "Vegan", "Sans gluten", "Halal", "Méditerranéen"], none: "Aucun" },
-                  ];
+                  const selStyle: React.CSSProperties = { width: "100%", height: 42, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "#161616", color: "white", padding: "0 10px", fontSize: 13, outline: "none", boxSizing: "border-box" };
                   return (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>
-                      {multiFields.map(f => (
-                        <div key={f.label}>
-                          <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>{f.label}{f.required && <span style={{ color: "#f87171" }}> *</span>}</p>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                            {[f.none, ...f.options].map(opt => (
-                              <button key={opt} type="button" onClick={() => chipToggle(opt, f.values, f.setVals, f.none)} style={chipStyle(f.values.includes(opt))}>{opt}</button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                      {/* Activité — single select */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 16 }}>
                       <div>
-                        <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Activité physique</p>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                          {["Aucune", "Sédentaire", "Légère", "Modérée", "Intense", "Athlète"].map(opt => (
-                            <button key={opt} type="button" onClick={() => setInviteNiveauActivite(inviteNiveauActivite === opt ? "" : opt)} style={chipStyle(inviteNiveauActivite === opt)}>{opt}</button>
-                          ))}
-                        </div>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Pathologies <span style={{ color: "#f87171" }}>*</span></p>
+                        <select value={invitePathologies} onChange={e => setInvitePathologies(e.target.value)} style={selStyle}>
+                          <option value="">Choisir</option>
+                          <option value="Aucune">Aucune</option>
+                          <option value="Diabète type 2">Diabète type 2</option>
+                          <option value="Hypertension">Hypertension</option>
+                          <option value="Hypothyroïdie">Hypothyroïdie</option>
+                          <option value="SOPK">SOPK</option>
+                          <option value="Cholestérol">Cholestérol</option>
+                          <option value="TCA">TCA</option>
+                          <option value="Surpoids">Surpoids</option>
+                        </select>
+                      </div>
+                      <div>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Allergies</p>
+                        <select value={inviteAllergies} onChange={e => setInviteAllergies(e.target.value)} style={selStyle}>
+                          <option value="">Choisir</option>
+                          <option value="Aucune">Aucune</option>
+                          <option value="Gluten">Gluten</option>
+                          <option value="Lactose">Lactose</option>
+                          <option value="Fruits à coque">Fruits à coque</option>
+                          <option value="Œufs">Œufs</option>
+                          <option value="Fruits de mer">Fruits de mer</option>
+                        </select>
+                      </div>
+                      <div>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Traitements</p>
+                        <select value={inviteTraitements} onChange={e => setInviteTraitements(e.target.value)} style={selStyle}>
+                          <option value="">Choisir</option>
+                          <option value="Aucun">Aucun</option>
+                          <option value="Metformine">Metformine</option>
+                          <option value="Lévothyrox">Lévothyrox</option>
+                          <option value="Pilule contraceptive">Pilule contraceptive</option>
+                          <option value="Antidépresseurs">Antidépresseurs</option>
+                          <option value="Insuline">Insuline</option>
+                        </select>
+                      </div>
+                      <div>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Objectif clinique <span style={{ color: "#f87171" }}>*</span></p>
+                        <select value={inviteObjectifClinique} onChange={e => setInviteObjectifClinique(e.target.value)} style={selStyle}>
+                          <option value="">Choisir</option>
+                          <option value="Aucun">Aucun</option>
+                          <option value="Perte de poids">Perte de poids</option>
+                          <option value="Prise de masse">Prise de masse</option>
+                          <option value="Équilibre glycémique">Équilibre glycémique</option>
+                          <option value="Bien-être général">Bien-être général</option>
+                          <option value="Grossesse">Grossesse</option>
+                        </select>
+                      </div>
+                      <div>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Régime alimentaire</p>
+                        <select value={inviteRegime} onChange={e => setInviteRegime(e.target.value)} style={selStyle}>
+                          <option value="">Choisir</option>
+                          <option value="Aucun">Aucun</option>
+                          <option value="Végétarien">Végétarien</option>
+                          <option value="Vegan">Vegan</option>
+                          <option value="Sans gluten">Sans gluten</option>
+                          <option value="Halal">Halal</option>
+                          <option value="Méditerranéen">Méditerranéen</option>
+                        </select>
+                      </div>
+                      <div>
+                        <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Activité physique</p>
+                        <select value={inviteNiveauActivite} onChange={e => setInviteNiveauActivite(e.target.value)} style={selStyle}>
+                          <option value="">Choisir</option>
+                          <option value="Aucune">Aucune</option>
+                          <option value="Sédentaire">Sédentaire</option>
+                          <option value="Légère">Légère</option>
+                          <option value="Modérée">Modérée</option>
+                          <option value="Intense">Intense</option>
+                          <option value="Athlète">Athlète</option>
+                        </select>
                       </div>
                     </div>
                   );
                 })()}
                 {(() => {
-                  const step2Disabled = invitePathologies.length === 0 || inviteObjectifClinique.length === 0;
+                  const step2Disabled = !invitePathologies || !inviteObjectifClinique;
                   return (
                     <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
                       <button onClick={() => setInviteStep(1)}
