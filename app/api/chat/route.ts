@@ -2106,7 +2106,7 @@ Max 150 mots. Sans markdown.`;
         }
 
         if (patientId) {
-          await supabase.from("conversations").insert([
+          const { error: convInsertError } = await supabase.from("conversations").insert([
             {
               id: userMsgId,
               patient_id: patientId,
@@ -2123,6 +2123,9 @@ Max 150 mots. Sans markdown.`;
               session_id: sessionId ?? null,
             },
           ]);
+          if (convInsertError) {
+            console.error("[NutriTwin] conversations — ÉCHEC enregistrement :", convInsertError.message, "| code:", convInsertError.code, "| détails:", convInsertError.details, "| practitionerId:", practitionerId, "| sessionId:", sessionId ?? "aucun");
+          }
 
           void incrementDailyMessageCount(patientId);
 
