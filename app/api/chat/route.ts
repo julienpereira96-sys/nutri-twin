@@ -93,6 +93,7 @@ async function* vertexStreamGenerate(
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
   let buf = "";
+  let debugStreamCount = 0;
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -103,6 +104,13 @@ async function* vertexStreamGenerate(
       if (!line.startsWith("data: ")) continue;
       const json = line.slice(6).trim();
       if (!json || json === "[DONE]") continue;
+      // ── DEBUG TEMPORAIRE (désactivé par défaut) — DEBUG_STREAM=1 ──
+      // Logge les 3 premières lignes SSE brutes (tronquées) pour voir ce que Vertex renvoie
+      // AVANT tout traitement (diagnostic des apostrophes manquantes).
+      if (process.env.DEBUG_STREAM === "1" && debugStreamCount < 3) {
+        debugStreamCount++;
+        console.log(`[DEBUG_STREAM] ligne SSE brute #${debugStreamCount} :`, json.slice(0, 400));
+      }
       try {
         const parsed = JSON.parse(json) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
         // Itérer TOUTES les parts et ignorer les parts de raisonnement (`thought`).
