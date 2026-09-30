@@ -2098,14 +2098,22 @@ function DashboardInner() {
     const setSaved = field === "vision" ? setVisionSaved : setSignatureSaved;
     setSaving(true);
     try {
-      await fetch("/api/save-profile", {
+      const res = await fetch("/api/save-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answers: { [field]: value }, userId: practitionerId }),
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
-    } catch { /* silencieux */ }
+      if (!res.ok) {
+        console.error("saveVisionOrSignature — échec HTTP", res.status);
+        alert("L'enregistrement a échoué. Vos modifications n'ont pas été sauvegardées, veuillez réessayer.");
+      } else {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+      }
+    } catch (err) {
+      console.error("saveVisionOrSignature — erreur réseau :", err);
+      alert("L'enregistrement a échoué (connexion). Veuillez réessayer.");
+    }
     setSaving(false);
   };
 

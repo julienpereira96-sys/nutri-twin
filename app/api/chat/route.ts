@@ -1855,6 +1855,16 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     const cacheablePrompt = systemPrompt ||
       buildCacheablePrompt(practitionerData.profile, patientContext, forceAncrage, practitionerData.specialty, practitionerFullName);
 
+    // ── DEBUG TEMPORAIRE (désactivé par défaut) — active avec DEBUG_PROMPT=1 sur Vercel ──
+    // Logge la partie PRATICIEN du prompt (patientContext volontairement vide : pas de données de santé dans les logs).
+    if (process.env.DEBUG_PROMPT === "1" && !systemPrompt) {
+      try {
+        const dbg = buildCacheablePrompt(practitionerData.profile, "", forceAncrage, practitionerData.specialty, practitionerFullName);
+        console.log(`[DEBUG_PROMPT] practitionerId=${practitionerId} profile=${practitionerData.profile ? "oui" : "NON (prompt générique)"} profile_summary=${practitionerData.profile?.profile_summary ? "oui" : "NON"} longueur=${dbg.length} fewShot=${fewShotResult ? "oui" : "non"}`);
+        for (let i = 0; i < dbg.length; i += 3500) console.log(`[DEBUG_PROMPT] ${Math.floor(i / 3500) + 1}/${Math.ceil(dbg.length / 3500)}\n${dbg.slice(i, i + 3500)}`);
+      } catch (e) { console.error("[DEBUG_PROMPT] échec", e); }
+    }
+
     const lastMessageNote = `\n\n[Note système — ne pas reproduire textuellement : c'est ta dernière réponse pour ce patient aujourd'hui. Réponds normalement à sa question, puis conclus naturellement et chaleureusement la conversation — une phrase dans ta voix, sans mentionner de limite technique.]`;
 
     // Determine whether to use a Vertex cachedContent resource or a plain systemInstruction.
