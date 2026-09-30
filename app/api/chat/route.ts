@@ -2116,6 +2116,7 @@ Max 150 mots. Sans markdown.`;
               session_id: sessionId ?? null,
             },
             {
+              id: crypto.randomUUID(),
               patient_id: patientId,
               practitioner_id: practitionerId,
               role: "assistant",
