@@ -45,11 +45,6 @@ const SITUATION_SCENARIOS: Record<string, { label: string; scenario: string }> =
     scenario:
       "Est-ce que je peux boire de l'alcool ce week-end avec mes amis ou ça ruine tout mon suivi",
   },
-  situation_marketing: {
-    label: "Produit minceur ou promesse miracle",
-    scenario:
-      "J'ai vu un complément minceur qui semble très efficace, vous en pensez quoi, ça vaut le coup",
-  },
   situation_drastique: {
     label: "Objectif irréaliste ou urgence forte",
     scenario:
@@ -129,6 +124,7 @@ export async function generateProfileSummary(
     profile.position_glucides && `Position sur les glucides : ${profile.position_glucides}`,
     profile.position_jeune && `Jeûne intermittent : ${profile.position_jeune}`,
     profile.position_complements && `Compléments alimentaires : ${profile.position_complements}`,
+    profile.position_petit_dejeuner && `Petit-déjeuner : ${profile.position_petit_dejeuner}`,
     profile.sensibilite_budget && `Sensibilité budget : ${profile.sensibilite_budget}`,
     profile.orientation_produits && `Types de produits privilégiés : ${profile.orientation_produits}`,
     profile.dimension_emotionnelle &&
@@ -169,12 +165,14 @@ Ce texte sera injecté tel quel dans Gemini pour incarner ce praticien. Il doit 
 Écris directement le texte synthèse, sans titre ni introduction.`;
 
   try {
-    const summary = await vertexGenerate("gemini-2.0-flash-001", prompt, {
+    const summary = await vertexGenerate("gemini-3.1-flash-lite", prompt, {
       maxOutputTokens: 450,
       temperature: 0.3,
     });
     return summary.trim();
-  } catch {
+  } catch (err) {
+    // Non bloquant (fallback champs bruts), mais on log pour ne pas échouer en silence
+    console.error("generateProfileSummary — ÉCHEC :", err);
     return "";
   }
 }
@@ -186,7 +184,7 @@ Ce texte sera injecté tel quel dans Gemini pour incarner ce praticien. Il doit 
  * Pour chaque situation renseignée, on embed le SCÉNARIO CANONIQUE (ce que le patient
  * écrirait), et on stocke la réponse praticien associée. À l'exécution, on compare
  * l'embedding du message patient aux scénarios pour trouver le meilleur match.
- * Clé Redis : `situation_embeddings:{practitionerId}` — expire dans 90 jours.
+ * Clé Redis : `situation_embeddings:{practitionerId}` — sans expiration (regénérée à chaque save profil).
  */
 export async function generateSituationEmbeddings(
   profile: Record<string, string>,
@@ -215,8 +213,7 @@ export async function generateSituationEmbeddings(
 
   await redis.set(
     `situation_embeddings:${practitionerId}`,
-    JSON.stringify(situations),
-    { ex: 90 * 24 * 3600 } // 90 jours — regénéré à chaque save profil
+    JSON.stringify(situations)
   );
 }
 

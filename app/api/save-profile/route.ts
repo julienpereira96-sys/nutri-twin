@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     "vision","signature",
     // Mises en situation (toutes, y compris les 4 précédemment manquantes)
     "situation_craquage","situation_avant_crise","situation_stagnation","situation_abandon",
-    "situation_prediabete","situation_alcool","situation_marketing","situation_drastique",
+    "situation_prediabete","situation_alcool","situation_drastique",
     "situation_flemme","situation_coup_dur","situation_victoire","situation_arret",
   ];
 

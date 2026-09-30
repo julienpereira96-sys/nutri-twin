@@ -5333,7 +5333,7 @@ function DashboardInner() {
 
             {/* MA VISION ET MA SIGNATURE */}
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>Ma Vision et Ma Signature</p>
+              <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>Ma Vision et Mon Style d'écriture</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {/* Vision card */}
                 {editingVision ? (
@@ -5370,7 +5370,7 @@ function DashboardInner() {
                 {/* Signature card */}
                 {editingSignature ? (
                   <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                    <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em" }}>Ma Signature</p>
+                    <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.07em" }}>Mon Style d'écriture</p>
                     <textarea value={signatureDraft} onChange={e => setSignatureDraft(e.target.value)} autoFocus
                       placeholder={'Exemple : Je compare souvent le métabolisme à un feu de camp. Mon expression fétiche : "Un repas ne fait pas le moine, on tourne la page"...'}
                       rows={4} style={{ width: "100%", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)", background: "#1a1a1a", color: "white", padding: "10px 12px", fontSize: 13, outline: "none", resize: "none", fontFamily: "Inter, sans-serif", boxSizing: "border-box" }} />
@@ -5387,7 +5387,7 @@ function DashboardInner() {
                     <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={emerald} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                       <span style={{ fontSize: 12, color: "#e2e8f0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 260 }}>
-                        {signatureText ? "Ma Signature" : <span style={{ color: "#4b5563" }}>Ma Signature (non renseignée)</span>}
+                        {signatureText ? "Mon Style d'écriture" : <span style={{ color: "#4b5563" }}>Mon Style d'écriture (non renseigné)</span>}
                       </span>
                     </div>
                     <button onClick={() => { if (!onboardingDemoMode) { setSignatureDraft(signatureText); setEditingSignature(true); } }}

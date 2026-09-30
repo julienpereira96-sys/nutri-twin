@@ -12,6 +12,9 @@ ALTER TABLE practitioners ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS last_patient_message_at timestamptz;
 
+-- patients : verrou comportemental (expiration du statut red_behavioral)
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS red_behavioral_until timestamptz;
+
 -- patients : champs profil patient (formulaire d'invitation step 2)
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS niveau_activite text;
 ALTER TABLE patients ADD COLUMN IF NOT EXISTS regime_specifique text;

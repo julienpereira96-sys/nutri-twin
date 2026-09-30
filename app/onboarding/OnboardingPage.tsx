@@ -676,7 +676,7 @@ export default function OnboardingPage() {
                     <p className="text-xs font-mono font-bold tracking-widest text-[#10b981] uppercase mb-3">Configuration terminée</p>
                     <h2 className="text-2xl font-bold text-white mb-3 leading-tight">Votre Jumeau est prêt.</h2>
                     <p className="text-sm text-zinc-400 max-w-sm leading-relaxed mb-2">
-                      Votre double numérique est désormais capable de prendre le relais auprès de vos patients, avec votre philosophie, votre expertise et votre signature.
+                      Votre double numérique est désormais capable de prendre le relais auprès de vos patients, avec votre philosophie, votre expertise et votre style d'écriture.
                     </p>
                     <p className="text-xs font-mono text-[#10b981]/50 mb-10">[NT-006] Certification validée · Jumeau opérationnel</p>
                     {saveError && <p className="mb-4 text-sm text-red-400">{saveError}</p>}
@@ -753,7 +753,7 @@ export default function OnboardingPage() {
                         { code: "NT-002", label: "Analyse des réponses comportementales" },
                         { code: "NT-003", label: "Calibration du ton et du style" },
                         { code: "NT-004", label: "Intégration de votre expertise" },
-                        { code: "NT-005", label: "Injection de votre signature émotionnelle" },
+                        { code: "NT-005", label: "Injection de votre voix et de vos expressions" },
                         { code: "NT-006", label: "Certification du Jumeau NutriTwin" },
                       ].map((s, i) => {
                         const isDone = genStep > i + 1;
@@ -791,7 +791,7 @@ export default function OnboardingPage() {
               /* Identity step — Vision & Signature */
               <section className="rounded-3xl border border-white/10 bg-[#121212] p-6 sm:p-8">
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#10b981]">Votre Expertise</p>
-                <h1 className="text-xl font-bold leading-tight sm:text-2xl">Définissez votre vision et votre signature</h1>
+                <h1 className="text-xl font-bold leading-tight sm:text-2xl">Définissez votre vision et votre style d'écriture</h1>
 
                 {/* Score bar */}
                 <div className="mt-5 rounded-2xl p-5 transition-all duration-500"
@@ -805,7 +805,7 @@ export default function OnboardingPage() {
                       style={{ width: `${identityScore}%`, backgroundColor: identityColor }} />
                   </div>
                   <p className="mt-3 text-sm leading-relaxed" style={{ color: identityColor }}>
-                    {identityFilled === 0 && "La structure de votre Jumeau est prête ! Vos réponses lui ont transmis votre logique clinique complète : positions scientifiques, règles de sécurité et réflexes face aux situations difficiles. Il sait désormais quoi répondre sur le fond. Il ne lui manque plus que votre style unique : complétez votre Vision et votre Signature pour que l'IA s'approprie votre identité professionnelle et devienne votre véritable double virtuel."}
+                    {identityFilled === 0 && "La structure de votre Jumeau est prête ! Vos réponses lui ont transmis votre logique clinique complète : positions scientifiques, règles de sécurité et réflexes face aux situations difficiles. Il sait désormais quoi répondre sur le fond. Il ne lui manque plus que votre style unique : complétez votre Vision et votre Style d'écriture pour que l'IA s'approprie votre identité professionnelle et devienne votre véritable double virtuel."}
                     {identityFilled === 1 && visionSaved && "Votre Jumeau possède désormais votre philosophie profonde ! Il ne lui reste plus qu'à capturer votre style d'écriture : vos expressions fétiches, vos métaphores, le rythme de vos phrases. C'est la dernière étape pour atteindre une fidélité à 100 %."}
                     {identityFilled === 1 && signatureSaved && "Votre Jumeau possède désormais votre style d'écriture ! Il ne lui reste plus qu'à intégrer votre Vision pour que ses conseils reflètent fidèlement votre positionnement et vos valeurs. C'est la dernière étape pour atteindre une fidélité à 100 %."}
                     {identityFilled === 2 && "Configuration réussie. Votre Jumeau possède toute votre identité. Il est désormais prêt à vous épauler et à interagir de manière ultra-sécurisée avec vos patients. Rendez-vous sur votre tableau de bord pour inviter vos premiers patients et laisser votre Jumeau prolonger votre accompagnement."}
@@ -983,7 +983,7 @@ export default function OnboardingPage() {
                             onMouseLeave={e => { if (signatureText.trim()) { e.currentTarget.style.background = signatureEditing ? `rgba(${signatureRgb},0.12)` : "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = signatureEditing ? `rgba(${signatureRgb},0.3)` : "rgba(255,255,255,0.15)"; } }}>
                             {savingSignature
                               ? <><span style={{ width: 13, height: 13, borderRadius: "50%", border: `2px solid rgba(${signatureRgb},0.2)`, borderTop: `2px solid rgba(${signatureRgb},1)`, animation: "spin 1s linear infinite", display: "inline-block", flexShrink: 0 }} />Enregistrement</>
-                              : signatureEditing ? "Mettre à jour ma signature" : "Enregistrer ma signature"}
+                              : signatureEditing ? "Mettre à jour mon style d'écriture" : "Enregistrer mon style d'écriture"}
                           </button>
                         </div>
                       </>
@@ -1005,13 +1005,13 @@ export default function OnboardingPage() {
                         <div className="hidden sm:block" style={{ position: "absolute", top: "50%", right: "calc(100% + 12px)", transform: "translateY(-50%)", width: 280, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
                           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                            Enregistrez votre {!visionSaved && !signatureSaved ? "Vision et votre Signature" : !visionSaved ? "Vision" : "Signature"} pour activer votre Jumeau.
+                            Enregistrez votre {!visionSaved && !signatureSaved ? "Vision et votre Style d'écriture" : !visionSaved ? "Vision" : "Style d'écriture"} pour activer votre Jumeau.
                           </span>
                         </div>
                         <div className="block sm:hidden" style={{ position: "absolute", bottom: "calc(100% + 8px)", right: 0, width: 240, borderRadius: 12, padding: "10px 14px", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, textAlign: "center", pointerEvents: "none", whiteSpace: "normal", zIndex: 10 }}>
                           <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                            Enregistrez votre {!visionSaved && !signatureSaved ? "Vision et votre Signature" : !visionSaved ? "Vision" : "Signature"} pour activer votre Jumeau.
+                            Enregistrez votre {!visionSaved && !signatureSaved ? "Vision et votre Style d'écriture" : !visionSaved ? "Vision" : "Style d'écriture"} pour activer votre Jumeau.
                           </span>
                         </div>
                       </>
