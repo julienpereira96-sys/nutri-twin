@@ -112,17 +112,40 @@ export async function POST(request: Request) {
         // Le résumé remplace les champs bruts dans le system prompt caché.
         // Les embeddings permettent la sélection few-shot dynamique au runtime.
         // Les deux sont des optimisations — silencieux en cas d'échec.
+        // IMPORTANT : on génère à partir du profil COMPLET relu en base, pas des seules
+        // réponses de cette requête. Sinon une sauvegarde partielle (ex. vision ou style
+        // d'écriture édité depuis le dashboard) écraserait le résumé par une synthèse
+        // bâtie sur ce seul champ.
+        const { data: fullRow } = await supabase
+          .from("practitioner_profiles")
+          .select("*")
+          .eq("user_id", userId)
+          .single();
+        const fullProfile: Record<string, string> = { ...sanitizedAnswers };
+        for (const [k, v] of Object.entries(fullRow ?? {})) {
+          if (typeof v === "string" && v.trim()) fullProfile[k] = v;
+        }
+
         const [profileSummary] = await Promise.all([
-          generateProfileSummary(sanitizedAnswers).catch(() => ""),
-          generateSituationEmbeddings(sanitizedAnswers, userId, redis).catch(() => {}),
+          generateProfileSummary(fullProfile).catch((err) => {
+            console.error("save-profile — résumé de profil en échec :", err);
+            return "";
+          }),
+          generateSituationEmbeddings(fullProfile, userId, redis).catch((err) => {
+            console.error("save-profile — embeddings de situations en échec :", err);
+          }),
         ]);
 
         // Stocker le résumé dans la table si non vide
         if (profileSummary) {
-          await supabase
+          const { error: summaryError } = await supabase
             .from("practitioner_profiles")
             .update({ profile_summary: profileSummary })
             .eq("user_id", userId);
+          if (summaryError) console.error("save-profile — enregistrement du résumé en échec :", summaryError.message);
+          // Le résumé vient d'être écrit : on invalide de nouveau les caches pour que le chat le voie
+          await redis.del(`practitioner:${userId}`);
+          await redis.incr(`pract_v:${userId}`);
         }
       } catch {
         // Silencieux — la sauvegarde du profil est déjà confirmée
