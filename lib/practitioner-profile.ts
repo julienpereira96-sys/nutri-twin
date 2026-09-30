@@ -166,9 +166,10 @@ Ce texte sera injecté tel quel dans Gemini pour incarner ce praticien. Il doit 
 
   try {
     const summary = await vertexGenerate("gemini-3.1-flash-lite", prompt, {
-      maxOutputTokens: 450,
+      maxOutputTokens: 2000,
       temperature: 0.3,
     });
+    if (!summary.trim()) console.error("generateProfileSummary — le modèle a renvoyé un texte vide");
     return summary.trim();
   } catch (err) {
     // Non bloquant (fallback champs bruts), mais on log pour ne pas échouer en silence

@@ -147,8 +147,9 @@ export async function POST(request: Request) {
           await redis.del(`practitioner:${userId}`);
           await redis.incr(`pract_v:${userId}`);
         }
-      } catch {
-        // Silencieux — la sauvegarde du profil est déjà confirmée
+      } catch (err) {
+        // La sauvegarde du profil est déjà confirmée, mais on log pour ne pas échouer en silence
+        console.error("save-profile — bloc résumé/caches en échec :", err);
       }
     }
 

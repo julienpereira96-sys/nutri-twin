@@ -70,9 +70,17 @@ export async function vertexGenerate(
   });
   if (!res.ok) throw new Error(`Vertex AI ${res.status}: ${await res.text()}`);
   const data = await res.json() as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
+    candidates?: { finishReason?: string; content?: { parts?: { text?: string; thought?: boolean }[] } }[];
   };
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  // Concatène toutes les parts de texte en ignorant les parts de raisonnement (`thought`).
+  // Lire uniquement parts[0] renvoyait "" quand le modèle émettait une part de pensée d'abord.
+  const cand = data.candidates?.[0];
+  const text = (cand?.content?.parts ?? [])
+    .filter((p) => !p.thought && typeof p.text === "string")
+    .map((p) => p.text as string)
+    .join("");
+  if (!text) console.error(`vertexGenerate(${modelId}) — réponse vide, finishReason=${cand?.finishReason ?? "inconnu"}`);
+  return text;
 }
 
 /** Non-streaming multimodal generateContent (text + inlineData parts) */
