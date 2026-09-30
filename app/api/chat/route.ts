@@ -75,12 +75,21 @@ async function* vertexStreamGenerate(
   const body = systemOrCache.type === "cache"
     ? { cachedContent: systemOrCache.name, contents, generationConfig }
     : { contents, systemInstruction: { parts: [{ text: systemOrCache.text }] }, generationConfig };
-  const res = await fetch(vertexUrl(modelId, "streamGenerateContent") + "?alt=sse", {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`Vertex AI stream ${res.status}: ${await res.text()}`);
+  // 429 RESOURCE_EXHAUSTED = capacité partagée Vertex momentanément saturée (pas un quota du projet).
+  // On réessaie jusqu'à 2 fois avec un court délai, UNIQUEMENT avant le premier token
+  // (aucun texte n'a encore été envoyé au patient à ce stade).
+  let res: Response | undefined;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    res = await fetch(vertexUrl(modelId, "streamGenerateContent") + "?alt=sse", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.status !== 429 || attempt === 2) break;
+    console.warn(`[NutriTwin] Vertex 429 (tentative ${attempt + 1}/3) — nouvel essai dans ${(attempt + 1) * 1.5}s`);
+    await new Promise((r) => setTimeout(r, (attempt + 1) * 1500));
+  }
+  if (!res || !res.ok) throw new Error(`Vertex AI stream ${res?.status}: ${res ? await res.text() : "pas de réponse"}`);
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
   let buf = "";
