@@ -93,7 +93,6 @@ async function* vertexStreamGenerate(
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
   let buf = "";
-  let debugStreamCount = 0;
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
@@ -104,13 +103,6 @@ async function* vertexStreamGenerate(
       if (!line.startsWith("data: ")) continue;
       const json = line.slice(6).trim();
       if (!json || json === "[DONE]") continue;
-      // ── DEBUG TEMPORAIRE (désactivé par défaut) — DEBUG_STREAM=1 ──
-      // Logge les 3 premières lignes SSE brutes (tronquées) pour voir ce que Vertex renvoie
-      // AVANT tout traitement (diagnostic des apostrophes manquantes).
-      if (process.env.DEBUG_STREAM === "1" && debugStreamCount < 3) {
-        debugStreamCount++;
-        console.log(`[DEBUG_STREAM] ligne SSE brute #${debugStreamCount} :`, json.slice(0, 400));
-      }
       try {
         const parsed = JSON.parse(json) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
         // Itérer TOUTES les parts et ignorer les parts de raisonnement (`thought`).
@@ -1873,16 +1865,6 @@ Réponds uniquement avec le message de clôture, rien d'autre.`;
     const practitionerFullName = [practitionerData.firstName, practitionerData.lastName].filter(Boolean).join(" ") || undefined;
     const cacheablePrompt = systemPrompt ||
       buildCacheablePrompt(practitionerData.profile, patientContext, forceAncrage, practitionerData.specialty, practitionerFullName);
-
-    // ── DEBUG TEMPORAIRE (désactivé par défaut) — active avec DEBUG_PROMPT=1 sur Vercel ──
-    // Logge la partie PRATICIEN du prompt (patientContext volontairement vide : pas de données de santé dans les logs).
-    if (process.env.DEBUG_PROMPT === "1" && !systemPrompt) {
-      try {
-        const dbg = buildCacheablePrompt(practitionerData.profile, "", forceAncrage, practitionerData.specialty, practitionerFullName);
-        console.log(`[DEBUG_PROMPT] practitionerId=${practitionerId} profile=${practitionerData.profile ? "oui" : "NON (prompt générique)"} profile_summary=${practitionerData.profile?.profile_summary ? "oui" : "NON"} longueur=${dbg.length} fewShot=${fewShotResult ? "oui" : "non"}`);
-        for (let i = 0; i < dbg.length; i += 3500) console.log(`[DEBUG_PROMPT] ${Math.floor(i / 3500) + 1}/${Math.ceil(dbg.length / 3500)}\n${dbg.slice(i, i + 3500)}`);
-      } catch (e) { console.error("[DEBUG_PROMPT] échec", e); }
-    }
 
     const lastMessageNote = `\n\n[Note système — ne pas reproduire textuellement : c'est ta dernière réponse pour ce patient aujourd'hui. Réponds normalement à sa question, puis conclus naturellement et chaleureusement la conversation — une phrase dans ta voix, sans mentionner de limite technique.]`;
 
