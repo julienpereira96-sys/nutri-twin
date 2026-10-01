@@ -108,7 +108,7 @@ export async function POST(request: Request) {
       // SOS events (déclenchements avec contexte + exercice choisi + issue)
       supabase
         .from("sos_events")
-        .select("triggered_at, sos_context, raw_response, status, origin, closing_message, intake_message")
+        .select("triggered_at, sos_context, raw_response, status, origin, closing_message, intake_message, summary_text")
         .eq("patient_id", patientId)
         .gte("triggered_at", `${dateFrom}T00:00:00`)
         .lte("triggered_at", `${dateTo}T23:59:59`)
@@ -174,6 +174,7 @@ export async function POST(request: Request) {
       raw_response?: { tool_id?: string } | null;
       status?: string | null; origin?: string | null;
       closing_message?: string | null; intake_message?: string | null;
+      summary_text?: string | null;
     };
     const sosEpisodesReport = (sosEventsRaw ?? []) as SosEventReportRow[];
 
@@ -182,6 +183,8 @@ export async function POST(request: Request) {
       // Séparer crises (origine réelle) et pratique volontaire
       const crisisEps  = sosEpisodesReport.filter(e => e.origin === "crise");
       const pratiqEps  = sosEpisodesReport.filter(e => e.origin === "pratique");
+      // Apaisements exprimés en conversation (comptés comme crises désamorcées, détaillés à part)
+      const chatEps    = sosEpisodesReport.filter(e => e.origin === "chat" && e.status === "success");
 
       const byStatus = {
         success:   crisisEps.filter(e => e.status === "success"),
@@ -203,11 +206,21 @@ export async function POST(request: Request) {
       const lines: string[] = [];
 
       // ── Crises (déclenchées par détresse) ──
-      if (crisisEps.length > 0) {
-        lines.push(`Épisodes de crise (${crisisEps.length}) :`);
-        if (byStatus.success.length > 0) {
-          lines.push(`  Désamorcées (${byStatus.success.length}) :`);
-          byStatus.success.forEach(ev => lines.push("  " + fmtEvent(ev, ev.closing_message ? `ressenti : "${ev.closing_message.slice(0, 120)}"` : undefined)));
+      if (crisisEps.length + chatEps.length > 0) {
+        lines.push(`Épisodes de crise (${crisisEps.length + chatEps.length}) :`);
+        if (byStatus.success.length + chatEps.length > 0) {
+          lines.push(`  Désamorcées (${byStatus.success.length + chatEps.length}) :`);
+          if (byStatus.success.length > 0) {
+            lines.push(`    Par exercice SOS (${byStatus.success.length}) :`);
+            byStatus.success.forEach(ev => lines.push("    " + fmtEvent(ev, ev.closing_message ? `ressenti : "${ev.closing_message.slice(0, 120)}"` : undefined)));
+          }
+          if (chatEps.length > 0) {
+            lines.push(`    Par apaisement exprimé en conversation (${chatEps.length}) :`);
+            chatEps.forEach(ev => {
+              const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+              lines.push(`      - ${date} : ${ev.summary_text || "Apaisement exprimé en conversation"}`);
+            });
+          }
         }
         if (byStatus.completed.length > 0) {
           lines.push(`  Terminées sans apaisement confirmé (${byStatus.completed.length}) :`);
@@ -248,7 +261,7 @@ export async function POST(request: Request) {
       const topTools = Object.entries(toolCounts).sort((a, b) => b[1] - a[1]).map(([t, n]) => `${toolNamesReport[t] ?? t} (${n}x)`).join(", ");
 
       sosSection = `INTERVENTIONS MON SOUTIEN (période du ${dateFrom} au ${dateTo}) :
-- Volume total : ${sosEpisodesReport.length} session${sosEpisodesReport.length > 1 ? "s" : ""} (${crisisEps.length} crise${crisisEps.length > 1 ? "s" : ""}, ${pratiqEps.length} pratique${pratiqEps.length > 1 ? "s" : ""} volontaire${pratiqEps.length > 1 ? "s" : ""})
+- Volume total : ${sosEpisodesReport.length} session${sosEpisodesReport.length > 1 ? "s" : ""} (${crisisEps.length + chatEps.length} crise${crisisEps.length + chatEps.length > 1 ? "s" : ""}, ${pratiqEps.length} pratique${pratiqEps.length > 1 ? "s" : ""} volontaire${pratiqEps.length > 1 ? "s" : ""})
 ${crisisEps.length > 0 ? `- Contextes déclencheurs : ${topContexts || "non renseigné"}` : ""}
 - Exercices utilisés : ${topTools || "non renseigné"}
 ${lines.join("\n")}`;

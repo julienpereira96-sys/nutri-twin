@@ -124,14 +124,14 @@ export async function POST(request: Request) {
       lastCursor
         ? supabase
             .from("sos_events")
-            .select("triggered_at, sos_context, raw_response, origin, closing_message, intake_message, status")
+            .select("triggered_at, sos_context, raw_response, origin, closing_message, intake_message, status, summary_text")
             .eq("patient_id", patientId)
             .gt("triggered_at", lastCursor)
             .order("triggered_at", { ascending: false })
             .limit(20)
         : supabase
             .from("sos_events")
-            .select("triggered_at, sos_context, raw_response, origin, closing_message, intake_message, status")
+            .select("triggered_at, sos_context, raw_response, origin, closing_message, intake_message, status, summary_text")
             .eq("patient_id", patientId)
             .order("triggered_at", { ascending: false })
             .limit(20),
@@ -248,24 +248,36 @@ export async function POST(request: Request) {
       closing_message?: string | null;
       intake_message?: string | null;
       status?: string | null;
+      summary_text?: string | null;
     };
     const sosEpisodes = (sosEventsRaw ?? []) as SosEventRow[];
     const sosCrises = sosEpisodes.filter(ev => ev.origin === "crise");
-    const sosPratiques = sosEpisodes.filter(ev => ev.origin !== "crise");
+    // Apaisements exprimés en conversation : comptés comme crises désamorcées, détaillés à part
+    const sosChat = sosEpisodes.filter(ev => ev.origin === "chat" && ev.status === "success");
+    const sosPratiques = sosEpisodes.filter(ev => ev.origin !== "crise" && ev.origin !== "chat");
     const sosSection = sosEpisodes.length > 0
       ? `ÉPISODES MON SOUTIEN DEPUIS LE DERNIER BILAN (${sosEpisodes.length} déclenchement${sosEpisodes.length > 1 ? "s" : ""}) :\n` +
-        (sosCrises.length > 0
-          ? `  Crises désamorcées (${sosCrises.length}) :\n` + sosCrises.map(ev => {
-              const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
-              const context = ev.sos_context?.split(" | ")[0] ?? "non précisé";
-              const toolId = ev.raw_response?.tool_id;
-              const exercise = toolId ? (toolNames[toolId] ?? toolId) : "exercice non précisé";
-              const outcome = ev.status === "success" ? "apaisé(e)" : "non résolu";
-              return `    - ${date} : ${context} → ${exercise} (${outcome})`;
-            }).join("\n")
+        (sosCrises.length + sosChat.length > 0
+          ? `  Crises désamorcées (${sosCrises.length + sosChat.length}) :\n` +
+            (sosCrises.length > 0
+              ? `    Par exercice SOS (${sosCrises.length}) :\n` + sosCrises.map(ev => {
+                  const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+                  const context = ev.sos_context?.split(" | ")[0] ?? "non précisé";
+                  const toolId = ev.raw_response?.tool_id;
+                  const exercise = toolId ? (toolNames[toolId] ?? toolId) : "exercice non précisé";
+                  const outcome = ev.status === "success" ? "apaisé(e)" : "non résolu";
+                  return `      - ${date} : ${context} → ${exercise} (${outcome})`;
+                }).join("\n")
+              : "") +
+            (sosChat.length > 0
+              ? `${sosCrises.length > 0 ? "\n" : ""}    Par apaisement exprimé en conversation (${sosChat.length}) :\n` + sosChat.map(ev => {
+                  const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+                  return `      - ${date} : ${ev.summary_text || "Apaisement exprimé en conversation"}`;
+                }).join("\n")
+              : "")
           : "") +
         (sosPratiques.length > 0
-          ? `${sosCrises.length > 0 ? "\n" : ""}  Pratique volontaire (${sosPratiques.length}) :\n` + sosPratiques.map(ev => {
+          ? `${sosCrises.length + sosChat.length > 0 ? "\n" : ""}  Pratique volontaire (${sosPratiques.length}) :\n` + sosPratiques.map(ev => {
               const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
               const toolId = ev.raw_response?.tool_id;
               const exercise = toolId ? (toolNames[toolId] ?? toolId) : "exercice non précisé";
