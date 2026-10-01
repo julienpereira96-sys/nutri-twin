@@ -2112,6 +2112,12 @@ Max 150 mots. Sans markdown.`;
           emotionalStatus = "red_critical";
         } else if (shouldResolveApaisement) {
           emotionalStatus = "green";
+        } else if (earlyBehavioralDetected && emotionalStatus !== "red_critical") {
+          // Le classifieur a déjà posé red_behavioral sur CE message : le JSON du modèle
+          // principal (qui peut répondre "green") ne doit pas écraser ce statut. Sans cette
+          // garde, currentEmotionalStatus (lu avant l'écriture du rouge) faisait passer
+          // isGreenNotable à vrai et repassait le patient en vert.
+          emotionalStatus = "red_behavioral";
         }
 
         // CD-2 — garantir la ressource d'urgence sur TOUTE bascule red_critical détectée
