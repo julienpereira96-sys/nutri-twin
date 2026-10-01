@@ -1224,7 +1224,7 @@ function DashboardInner() {
           }
           return count;
         })(),
-        sosResolved: (sosEventsByPatient.get(p.user_id) ?? []).filter(e => e.status === "success" && e.origin === "crise").length,
+        sosResolved: (sosEventsByPatient.get(p.user_id) ?? []).filter(e => e.status === "success" && (e.origin === "crise" || e.origin === "chat")).length,
         sosEvents: sosEventsByPatient.get(p.user_id) ?? [],
         red_behavioral_until: (p as { red_behavioral_until?: string | null }).red_behavioral_until ?? null,
         last_patient_message_at: (p as { last_patient_message_at?: string | null }).last_patient_message_at ?? null,
@@ -1613,7 +1613,8 @@ function DashboardInner() {
       // Crises désamorcées ce mois par patient (recompte depuis la BDD)
       const sosResolvedMap = new Map<string, number>();
       for (const e of (freshSos ?? [])) {
-        if ((e.origin as string | null) !== "crise") continue;
+        // Exercice SOS ("crise") ou apaisement exprimé en conversation ("chat")
+        if ((e.origin as string | null) !== "crise" && (e.origin as string | null) !== "chat") continue;
         const pid = e.patient_id as string;
         sosResolvedMap.set(pid, (sosResolvedMap.get(pid) ?? 0) + 1);
       }
@@ -3428,8 +3429,8 @@ function DashboardInner() {
                                 {sos > 0 ? `${sos} ce mois` : "Aucune"}
                               </span>
                               {(() => {
-                                // Popover : uniquement les crises réellement désamorcées (success + non pratique)
-                                const resolvedCrisisEvts = sosEvts.filter(ev => ev.status === "success" && ev.origin === "crise");
+                                // Popover : crises réellement désamorcées (exercice SOS ou apaisement en conversation)
+                                const resolvedCrisisEvts = sosEvts.filter(ev => ev.status === "success" && (ev.origin === "crise" || ev.origin === "chat"));
                                 if (resolvedCrisisEvts.length === 0) return null;
                                 const renderRow = (ev: typeof sosEvts[number], idx: number, list: typeof sosEvts) => {
                                   const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
@@ -4110,6 +4111,7 @@ function DashboardInner() {
       {openSosModal && (() => {
         const modalPatient = patients.find(p => p.id === openSosModal);
         const modalSosEvts = (modalPatient?.sosEvents ?? []).filter(ev => ev.status === "success" && ev.origin === "crise");
+        const modalChatEvts = (modalPatient?.sosEvents ?? []).filter(ev => ev.status === "success" && ev.origin === "chat");
         const toolNames: Record<string, string> = {
           breathing: "Cohérence cardiaque", ancrage: "Ancrage sensoriel",
           manger: "Pleine conscience alimentaire", restructuration: "Restructuration cognitive",
@@ -4138,9 +4140,13 @@ function DashboardInner() {
               </div>
               {/* Corps */}
               <div style={{ maxHeight: "60vh", overflowY: "auto", padding: "8px 0" }}>
-                {modalSosEvts.length === 0 ? (
+                {modalSosEvts.length === 0 && modalChatEvts.length === 0 && (
                   <p style={{ textAlign: "center", fontSize: 13, color: "#64748b", padding: "32px 24px" }}>Aucune crise désamorcée ce mois.</p>
-                ) : modalSosEvts.map((ev, idx) => {
+                )}
+                {modalSosEvts.length > 0 && (
+                  <p style={{ margin: 0, padding: "12px 24px 4px", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>Exercices SOS ({modalSosEvts.length})</p>
+                )}
+                {modalSosEvts.map((ev, idx) => {
                   const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
                   const time = new Date(ev.triggered_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
                   const context = ev.sos_context?.split(" | ")[0]?.trim() ?? "–";
@@ -4163,6 +4169,25 @@ function DashboardInner() {
                           {context !== "–" ? `Contexte : ${context}` : "Détail non disponible pour cette session."}
                         </p>
                       )}
+                    </div>
+                  );
+                })}
+                {modalChatEvts.length > 0 && (
+                  <p style={{ margin: 0, padding: modalSosEvts.length > 0 ? "16px 24px 4px" : "12px 24px 4px", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b", borderTop: modalSosEvts.length > 0 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>Apaisements en conversation ({modalChatEvts.length})</p>
+                )}
+                {modalChatEvts.map((ev, idx) => {
+                  const date = new Date(ev.triggered_at).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+                  const time = new Date(ev.triggered_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+                  return (
+                    <div key={`chat-${idx}`} style={{ padding: "16px 24px", borderBottom: idx < modalChatEvts.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: emerald, flexShrink: 0, marginTop: 1 }} />
+                        <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{date} à {time}</span>
+                        <span style={{ fontSize: 11, color: emerald, fontWeight: 600, marginLeft: "auto", whiteSpace: "nowrap" }}>Conversation</span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.82)", lineHeight: 1.7, paddingLeft: 14 }}>
+                        {ev.summary_text || "Apaisement exprimé en conversation"}
+                      </p>
                     </div>
                   );
                 })}
