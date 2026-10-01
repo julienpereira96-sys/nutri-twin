@@ -913,6 +913,9 @@ function DashboardInner() {
   const [replyIsFromJumeau, setReplyIsFromJumeau] = useState(false);
   const [replyGenerating, setReplyGenerating] = useState(false);
   const [replySending, setReplySending] = useState(false);
+  // Confirmation éphémère après envoi d'un message de soutien (succès ou échec)
+  const [soutienToast, setSoutienToast] = useState<{ ok: boolean; text: string } | null>(null);
+  const soutienToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
   const patientsRef = useRef<RealPatient[]>([]);
   const testModeRef = useRef(false);
@@ -1998,6 +2001,13 @@ function DashboardInner() {
     }
   };
 
+  // Bandeau éphémère (4 s) partagé par les envois au patient (soutien, bravo, victoire)
+  const flashToast = (ok: boolean, text: string) => {
+    if (soutienToastTimer.current) clearTimeout(soutienToastTimer.current);
+    setSoutienToast({ ok, text });
+    soutienToastTimer.current = setTimeout(() => setSoutienToast(null), 4000);
+  };
+
   const sendBravoMessage = async (patientId: string, text: string) => {
     if (onboardingDemoMode) {
       setBravoState(prev => ({ ...prev, [patientId]: { expanded: false, text: "", editing: false, loading: false, sending: false, sent: true } }));
@@ -2007,12 +2017,15 @@ function DashboardInner() {
     }
     setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], sending: true } }));
     try {
-      await fetch("/api/send-bravo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId, practitionerId, messageText: text }) });
+      const res = await fetch("/api/send-bravo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId, practitionerId, messageText: text }) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setBravoState(prev => ({ ...prev, [patientId]: { expanded: false, text: "", editing: false, loading: false, sending: false, sent: true } }));
       setPatients(prev => prev.map(p => p.id === patientId ? { ...p, latest_victory: undefined } : p));
       setTimeout(() => setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], sent: false } })), 3000);
-    } catch {
+    } catch (err) {
+      console.error("sendBravoMessage — échec", err);
       setBravoState(prev => ({ ...prev, [patientId]: { ...prev[patientId], sending: false } }));
+      flashToast(false, "L'envoi a échoué — votre message est conservé, réessayez.");
     }
   };
 
@@ -2035,12 +2048,15 @@ function DashboardInner() {
     const key = `${patientId}-${alertDate}`;
     setOutOfScopeReply(prev => ({ ...prev, [key]: { ...prev[key], sending: true } }));
     try {
-      await fetch("/api/send-bravo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId, practitionerId, messageText: text }) });
+      const res = await fetch("/api/send-bravo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId, practitionerId, messageText: text }) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setOutOfScopeReply(prev => ({ ...prev, [key]: { expanded: false, text: "", sending: false } }));
       // Also mark as seen after reply
       await markOutOfScopeSeen(patientId, alertDate);
-    } catch {
+    } catch (err) {
+      console.error("sendOutOfScopeReply — échec", err);
       setOutOfScopeReply(prev => ({ ...prev, [key]: { ...prev[key], sending: false } }));
+      flashToast(false, "L'envoi a échoué — votre message est conservé, réessayez.");
     }
   };
 
@@ -2056,11 +2072,15 @@ function DashboardInner() {
     }
     if (!practitionerId) { setSendingVictory(null); return; }
     try {
-      await fetch("/api/send-victory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId, practitionerId, victoryText }) });
+      const res = await fetch("/api/send-victory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ patientId, practitionerId, victoryText }) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setPatients((prev) => prev.map((p) => p.id === patientId ? { ...p, latest_victory: "" } : p));
       setVictorySent(patientId);
       setTimeout(() => setVictorySent(null), 3000);
-    } catch { /* silencieux */ }
+    } catch (err) {
+      console.error("sendVictory — échec", err);
+      flashToast(false, "L'envoi a échoué, réessayez.");
+    }
     setSendingVictory(null);
   };
 
@@ -2526,7 +2546,7 @@ function DashboardInner() {
     if (!replyText.trim() || !selectedPatientId || !practitionerId || replySending) return;
     setReplySending(true);
     const msgContent = replyText.trim();
-    const newMsg = { id: `local-${Date.now()}`, role: "assistant" as const, content: msgContent, created_at: new Date().toISOString() };
+    let sendOk = true;
     // Mise à jour locale — marque les alertes comme vues mais NE change PAS emotional_status
     // (le retour à green n'est déclenché que par Gemini via signal d'apaisement patient)
     if (onboardingDemoMode) {
@@ -2534,17 +2554,33 @@ function DashboardInner() {
         ? { ...p, admin_alerts: p.admin_alerts?.map(a => ({ ...a, seen: true })) } : p));
     } else {
       try {
-        await fetch("/api/send-soutien", {
+        const res = await fetch("/api/send-soutien", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ patientId: selectedPatientId, practitionerId, messageText: msgContent }),
         });
-        setPatients(prev => prev.map(p => p.id === selectedPatientId
-          ? { ...p, admin_alerts: p.admin_alerts?.map(a => ({ ...a, seen: true })) } : p));
-      } catch { /* silencieux */ }
+        if (!res.ok) {
+          sendOk = false;
+          console.error("sendSoutien — échec HTTP", res.status);
+        } else {
+          setPatients(prev => prev.map(p => p.id === selectedPatientId
+            ? { ...p, admin_alerts: p.admin_alerts?.map(a => ({ ...a, seen: true })) } : p));
+        }
+      } catch (err) {
+        sendOk = false;
+        console.error("sendSoutien — erreur réseau", err);
+      }
     }
-    // Ajouter le message à la conversation locale
-    setConversations(prev => [...prev, newMsg]);
+    // Retour visuel éphémère (4 s). En cas d'échec, le message reste dans le champ pour réessayer.
+    if (soutienToastTimer.current) clearTimeout(soutienToastTimer.current);
+    setSoutienToast(sendOk
+      ? { ok: true, text: `Message de soutien envoyé à ${selectedPatient?.firstName ?? "votre patient"}` }
+      : { ok: false, text: "L'envoi a échoué — votre message est conservé, réessayez." });
+    soutienToastTimer.current = setTimeout(() => setSoutienToast(null), 4000);
+    if (!sendOk) { setReplySending(false); return; }
+    // Le message de soutien est un post-it épinglé côté patient (patients.practitioner_pinned_message) :
+    // il n'est volontairement PAS ajouté au fil de conversation du dashboard (il ressemblait à une
+    // réponse du jumeau et disparaissait au rechargement).
     setReplyMode(false);
     setReplyText("");
     setReplyIsFromJumeau(false);
@@ -4183,7 +4219,6 @@ function DashboardInner() {
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
                         <span style={{ width: 6, height: 6, borderRadius: "50%", background: emerald, flexShrink: 0, marginTop: 1 }} />
                         <span style={{ fontSize: 11, color: "#94a3b8", whiteSpace: "nowrap" }}>{date} à {time}</span>
-                        <span style={{ fontSize: 11, color: emerald, fontWeight: 600, marginLeft: "auto", whiteSpace: "nowrap" }}>Conversation</span>
                       </div>
                       <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.82)", lineHeight: 1.7, paddingLeft: 14 }}>
                         {ev.summary_text || "Apaisement exprimé en conversation"}
@@ -4196,6 +4231,12 @@ function DashboardInner() {
           </div>
         );
       })()}
+
+      {soutienToast && (
+        <div role="status" style={{ position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)", zIndex: 90, padding: "10px 18px", borderRadius: 12, background: "#0d0d0d", border: `1px solid ${soutienToast.ok ? "rgba(16,185,129,0.35)" : "rgba(244,63,94,0.35)"}`, color: soutienToast.ok ? emerald : "#f87171", fontSize: 13, fontWeight: 500, boxShadow: "0 8px 30px rgba(0,0,0,0.6)", maxWidth: "calc(100vw - 40px)" }}>
+          {soutienToast.ok ? "✓ " : ""}{soutienToast.text}
+        </div>
+      )}
 
       {showPinModal && (
         <div onClick={e => { if (e.target === e.currentTarget) setShowPinModal(false); }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
