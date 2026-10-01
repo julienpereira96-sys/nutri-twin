@@ -345,6 +345,7 @@ RÈGLES APAISEMENT :
         // par le retry + fail-safe (CD-1/CD-4), pas par un modèle plus lourd.
         const raw = await vertexGenerate("gemini-3.1-flash-lite", prompt, { maxOutputTokens: 150, temperature: 0 });
         const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim()) as CrisisAnalysis;
+        console.log(`[NutriTwin] classifieur → level=${parsed.level ?? "none"} murmure="${parsed.murmure ?? ""}" apaisement=${!!parsed.apaisement}`);
         return {
           level: parsed.level ?? "none",
           murmure: parsed.murmure ?? "",
@@ -353,6 +354,7 @@ RÈGLES APAISEMENT :
         };
       } catch (err) {
         lastErr = err;
+        console.warn(`[NutriTwin] classifieur — essai ${attempt + 1}/2 échoué :`, err instanceof Error ? err.message : String(err));
       }
     }
     void reportCriticalEvent("Classifieur de crise en échec après retry — crise potentiellement NON détectée", { error: lastErr instanceof Error ? lastErr.message : String(lastErr) });
