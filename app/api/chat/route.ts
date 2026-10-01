@@ -2230,12 +2230,20 @@ Max 150 mots. Sans markdown.`;
           // (distinction : origin="chat" vs "crise"/"exercice" pour le compteur dashboard)
           if (shouldResolveApaisement && !resolvedSosEvent?.id) {
             try {
+              // Insight de la crise qui vient d'être apaisée (lu avant l'écriture du nouvel insight)
+              // → note lisible côté praticien, sans appel LLM supplémentaire.
+              const crisisInsight = (patientStateForClassifier.emotional_insight ?? "").trim();
               await supabase.from("sos_events").insert({
                 patient_id: patientId,
                 practitioner_id: practitionerId ?? null,
                 origin: "chat",
                 status: "success",
                 triggered_at: new Date().toISOString(),
+                // clé omise si vide : on ne sait pas si la colonne accepte NULL
+                ...(crisisInsight ? { sos_context: crisisInsight } : {}),
+                summary_text: crisisInsight
+                  ? `Apaisement exprimé en conversation après : ${crisisInsight}`
+                  : "Apaisement exprimé en conversation",
               });
             } catch { /* silencieux */ }
           }
